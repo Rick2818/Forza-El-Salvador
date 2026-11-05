@@ -84,7 +84,7 @@ agente no publica.
 | Destino de datos | Hoja de cálculo privada | 2026-11-05 | Ricardo |
 | Base legal | Consentimiento explícito (casilla del formulario) | 2026-11-05 | Ricardo |
 | Encargado de tratamiento | Solo Ricardo | 2026-11-05 | Ricardo |
-| Autorización de publicación | **No** (sin dominio ni hosting) | 2026-11-05 | Ricardo |
+| Autorización de publicación | **Sí** (merge #342, Vercel production) | 2026-11-05 | Ricardo |
 
 ---
 

@@ -22,7 +22,7 @@ publicación ni el tratamiento de datos personales.
 
 | Qué | Responsable | Bloquea |
 |---|---|---|
-| Publicación y dominio | Ricardo | Salir a internet |
+| Publicación y dominio | Ricardo | **APROBADA** (merge #342, Vercel production) |
 | Nombrar formalmente los roles técnicos | Ricardo | Nada: ya operan Ricardo y el agente |
 
 ## Regla

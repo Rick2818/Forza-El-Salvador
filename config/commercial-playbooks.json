@@ -199,7 +199,7 @@
     "legalBasis": "explicit-consent",
     "controller": "Ricardo",
     "thirdPartyProcessors": [],
-    "publicationAuthorized": false,
+    "publicationAuthorized": true,
     "realDataCaptureAuthorized": false,
     "documents": [
       {
@@ -229,7 +229,9 @@
     "notLegalAdvice": true,
     "ownerApprovedAt": "2026-11-05",
     "legalReviewExternal": false,
-    "riskAcceptedByOwner": true
+    "riskAcceptedByOwner": true,
+    "publishedAt": "2026-11-05",
+    "publishedVia": "PR #342 merged to main; Vercel production"
   },
   "operationsAssets": [
     {
