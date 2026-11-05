@@ -4,7 +4,7 @@
 > legal** y no certifica cumplimiento de ninguna norma. Los textos son borradores que deben
 > ser aprobados por el propietario o por un profesional antes de publicarse.
 
-Fecha: 2026-11-05 · Estado: `DRAFT_PENDING_OWNER_APPROVAL`
+Fecha: 2026-11-05 · Estado: `DRAFT_PARTIALLY_APPROVED` (3 decisiones tomadas el 2026-11-05; textos siguen en borrador)
 
 ---
 
@@ -85,3 +85,22 @@ Prohibido en cualquier pieza:
 
 **Criterio de salida:** el plan pasa de `DRAFT_PENDING_OWNER_APPROVAL` a `APPROVED` solo con
 la aprobación explícita de Ricardo o de un profesional contratado.
+
+---
+
+## 7. Decisiones tomadas el 2026-11-05
+
+Las tres decisiones que bloqueaban la captura ya están tomadas por el propietario:
+
+| # | Decisión | Elección |
+|---|---|---|
+| 5 | Destino de los datos | Hoja de cálculo privada, acceso solo de Ricardo |
+| 6 | Base legal para contactar | Consentimiento explícito, casilla obligatoria del formulario |
+| 7 | Encargado de tratamiento | Solo Ricardo; sin terceros |
+
+**Lo que sigue en borrador:** el aviso de privacidad no tiene URL porque no hay dominio; el canal
+de retiro del consentimiento y el plazo de conservación no están redactados. Hasta que esos dos
+puntos existan, el plan **no** debe publicarse ni recibir datos reales.
+
+**Lo que no cambia:** este documento sigue sin ser asesoría legal y el agente no certifica
+cumplimiento.

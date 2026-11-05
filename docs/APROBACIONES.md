@@ -9,14 +9,15 @@ publicación ni el tratamiento de datos personales.
 | 2026-11-05 | Primera puerta: Operaciones | Ricardo | `APPROVED` | Antes que ventas y mercadeo |
 | 2026-11-05 | 3 tareas de operaciones más vendibles | Ricardo | `APPROVED` | Pedidos, facturas, stock |
 | 2026-11-05 | Copy bilingüe de las 3 tareas | Ricardo | `APPROVED` | Revisado en `docs/COPY-OPERACIONES.md` |
+| 2026-11-05 | Destino de datos: hoja de cálculo privada | Ricardo | `APPROVED` | Migrar a base propia tras 10 solicitudes |
+| 2026-11-05 | Base legal: consentimiento explícito | Ricardo | `APPROVED` | Ya implementado en el formulario |
+| 2026-11-05 | Encargado de tratamiento: solo Ricardo | Ricardo | `APPROVED` | Sin terceros procesando datos |
 
 ## Pendiente de aprobación
 
 | Qué | Responsable | Bloquea |
 |---|---|---|
-| Texto legal (aviso, consentimiento, términos) | Ricardo o profesional externo | Recibir solicitudes reales |
-| Destino de los datos (CRM, correo, hoja) | Ricardo | Recibir solicitudes reales |
-| Base legal para contactar | Ricardo | Recibir solicitudes reales |
+| Texto legal final (aviso con URL, canal de retiro, plazo de conservación) | Ricardo o profesional externo | Publicar y recibir solicitudes reales |
 | Publicación y dominio | Ricardo | Salir a internet |
 | Asignación de nombres a roles técnicos | Ricardo | Nada: ya operan Ricardo y el agente |
 

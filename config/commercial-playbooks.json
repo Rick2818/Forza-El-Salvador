@@ -191,6 +191,23 @@
       "status": "PROPOSED_REQUIRES_TECHNICAL_VALIDATION"
     }
   ],
+  "legal": {
+    "status": "DECIDED",
+    "decidedAt": "2026-11-05",
+    "decidedBy": "Ricardo (propietario)",
+    "dataDestination": "private-spreadsheet",
+    "legalBasis": "explicit-consent",
+    "controller": "Ricardo",
+    "thirdPartyProcessors": [],
+    "publicationAuthorized": false,
+    "realDataCaptureAuthorized": false,
+    "blockedUntil": [
+      "privacy notice published at a stable URL",
+      "consent withdrawal channel documented",
+      "retention period defined"
+    ],
+    "notLegalAdvice": true
+  },
   "operationsAssets": [
     {
       "id": "operaciones-pedidos",

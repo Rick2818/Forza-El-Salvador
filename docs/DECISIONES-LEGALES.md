@@ -1,6 +1,6 @@
 # Tres decisiones legales — hoja para decidir
 
-Fecha: 2026-11-05 · Estado: `PENDING_OWNER_DECISION`
+Fecha: 2026-11-05 · Estado: `DECIDED` (2026-11-05, propietario)
 Esto **no es asesoría legal**. Es una hoja para que Ricardo elija con consecuencias claras a la
 vista. Un profesional puede revisarla después; el agente no puede certificar cumplimiento.
 
@@ -81,7 +81,29 @@ agente no publica.
 
 | Decisión | Opción elegida | Fecha | Aprobó |
 |---|---|---|---|
-| Destino de datos | | | |
-| Base legal | | | |
-| Encargado de tratamiento | | | |
-| Autorización de publicación | Sí / No | | |
+| Destino de datos | Hoja de cálculo privada | 2026-11-05 | Ricardo |
+| Base legal | Consentimiento explícito (casilla del formulario) | 2026-11-05 | Ricardo |
+| Encargado de tratamiento | Solo Ricardo | 2026-11-05 | Ricardo |
+| Autorización de publicación | **No** (sin dominio ni hosting) | 2026-11-05 | Ricardo |
+
+---
+
+## Registro de la decisión
+
+Decidido por Ricardo el 2026-11-05:
+
+1. **Destino:** hoja de cálculo privada. Una sola persona con acceso. Migrar a base de datos
+   propia (Supabase) cuando existan más de diez solicitudes.
+2. **Base legal:** consentimiento explícito. La casilla del formulario es obligatoria, no está
+   premarcada y se registra junto con la solicitud.
+3. **Encargado del tratamiento:** solo Ricardo. No hay terceros procesando datos hoy.
+4. **Publicación:** no autorizada todavía. Falta dominio y hosting.
+
+Lo que **sigue** pendiente aunque estas tres estén decididas:
+
+- Publicar el aviso de privacidad en una URL estable (necesita dominio).
+- Redactar el canal para retirar el consentimiento y el borrado.
+- Definir el plazo de conservación de la hoja.
+- Revisión por un profesional si se publica y se reciben datos de personas fuera de Bolivia.
+
+El agente no certifica cumplimiento legal; solo deja constancia de lo decidido.
