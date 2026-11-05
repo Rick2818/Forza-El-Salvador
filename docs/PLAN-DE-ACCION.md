@@ -2,6 +2,7 @@
 
 Fecha: 2026-11-05 · Estado: `ACTIVE_DRAFT` · Presupuesto: **US$0**
 Alcance: solo el plan comercial (contenido, oferta y recorridos). No incluye publicar la landing.
+Equipo real: **2 personas** — Ricardo (propietario) y el agente (operación técnica).
 
 ---
 
@@ -48,35 +49,35 @@ Alcance: solo el plan comercial (contenido, oferta y recorridos). No incluye pub
 
 ### Días 1–30 (2026-11-05 → 2026-12-05) — captación mínima verificable
 
-| Hito | Fecha objetivo | Criterio de hecho |
-|---|---|---|
-| Oferta de 3 servicios congelada | 2026-11-10 | Los 3 servicios y sus entregables aprobados |
-| 22 piezas revisadas y aprobadas | 2026-11-15 | Copy aprobado pieza por pieza |
-| 3 páginas por función (ventas, mercadeo, operaciones) | 2026-11-20 | Publicables en el repositorio |
-| 10 fichas de integración con fuente y fecha | 2026-11-22 | Cada ficha cita origen y estado técnico |
-| Ruta de solicitud escrita probada de extremo a extremo | 2026-11-28 | Recibo generado con datos de prueba |
-| Métricas activas (capturas, evaluaciones, propuestas) | 2026-12-05 | Reporte por tenant sin datos sintéticos |
+| Hito | Fecha objetivo | Criterio de hecho | Responsable |
+|---|---|---|---|
+| Oferta de 3 servicios congelada | 2026-11-10 | Los 3 servicios y sus entregables aprobados | Ricardo (aprueba) |
+| 22 piezas redactadas | 2026-11-14 | Kit generado y revisado | Agente (redacta), Ricardo (aprueba) |
+| 3 páginas por función | 2026-11-20 | Publicables en el repositorio | Agente |
+| 10 fichas de integración con fuente y fecha | 2026-11-22 | Cada ficha cita origen y estado técnico | Agente |
+| Ruta de solicitud escrita probada | 2026-11-28 | Recibo generado con datos de prueba | Agente |
+| Métricas activas | 2026-12-05 | Reporte por tenant sin datos sintéticos | Agente |
 
-**Criterio de éxito:** 10 oportunidades registradas con procedencia `real` y **3 evaluaciones escritas** solicitadas.
+**Criterio de éxito:** 10 oportunidades registradas con procedencia `real` y **3 evaluaciones escritas** solicitadas (las cierra Ricardo).
 
 ### Días 31–60 (2026-12-05 → 2027-01-04) — superficie de comparación y prueba
 
-| Hito | Fecha objetivo |
-|---|---|
-| 2 comparativas `/vs/` con afirmaciones citadas | 2026-12-18 |
-| 2 casos de cliente **con consentimiento escrito** | 2027-01-04 |
-| 3 piezas de academia | 2027-01-04 |
-| Catálogo de plantillas publicable | 2027-01-04 |
+| Hito | Fecha objetivo | Responsable |
+|---|---|---|
+| 2 comparativas `/vs/` con afirmaciones citadas | 2026-12-18 | Agente |
+| 2 casos de cliente **con consentimiento escrito** | 2027-01-04 | Ricardo (consentimiento) + Agente (redacción) |
+| 3 piezas de academia | 2027-01-04 | Agente |
+| Catálogo de plantillas publicable | 2027-01-04 | Agente |
 
 **Criterio:** 30 oportunidades, 10 evaluaciones, 3 propuestas preparadas.
 
 ### Días 61–90 (2027-01-04 → 2027-02-03) — canales de socio
 
-| Hito | Fecha objetivo |
-|---|---|
-| Directorio de socios con criterios de admisión | 2027-01-20 |
-| Programa de referidos medido por origen | 2027-01-25 |
-| Prospección A2A **solo con socios verificados y autorización** | 2027-02-03 |
+| Hito | Fecha objetivo | Responsable |
+|---|---|---|
+| Directorio de socios con criterios de admisión | 2027-01-20 | Agente (estructura), Ricardo (criterios) |
+| Programa de referidos medido por origen | 2027-01-25 | Agente |
+| Prospección A2A **solo con socios verificados y autorización** | 2027-02-03 | Ricardo (autoriza), Agente (ejecuta) |
 
 **Criterio:** 1 propuesta autorizada enviada por adaptador verificado y 1 conversación comercial documentada.
 
@@ -84,40 +85,58 @@ Alcance: solo el plan comercial (contenido, oferta y recorridos). No incluye pub
 
 ---
 
-## 4. Quién
+## 4. Quién (equipo real: 2)
 
-Roles necesarios. **Ninguno está asignado todavía** (`PENDING_OWNER_ASSIGNMENT`).
-
-| Rol | Responsabilidad | Decide sobre |
-|---|---|---|
-| Propietario (Boltech) | Aprueba oferta, precios y publicación | Alcance, precio, autorización |
-| Operador comercial | Recibe, cualifica y prepara propuestas | Siguiente paso de cada oportunidad |
-| Responsable técnico | Valida integraciones y criterio de aceptación | Viabilidad técnica |
-| Revisor de contenido | Aprueba copy y claims antes de entregar | Qué se puede decir |
-| Revisor legal (si aplica) | Consentimiento, datos y condiciones | Texto legal |
+| Rol | Asignado | Responsabilidad | Decide sobre |
+|---|---|---|---|
+| Propietario (Boltech) | **Ricardo** | Aprueba oferta, precios, publicación y gasto | Alcance, precio, autorización |
+| Operador comercial | **Ricardo** | Recibe, cualifica, negocia y cierra | Siguiente paso de cada oportunidad |
+| Responsable técnico y operativo | **Agente** | Implementa, valida integraciones, ejecuta builds, mantiene repo y métricas | Viabilidad técnica y aceptación técnica |
+| Redacción y control de contenido | **Agente** redacta y audita; **Ricardo** aprueba | Copy, claims y consistencia | Qué se puede decir (aprobación final de Ricardo) |
+| Revisor legal | **NO ASIGNADO** | Aviso de privacidad, consentimiento, términos y datos | Texto legal |
 
 ### Matriz de decisión
 
-| Decisión | Propietario | Operador | Técnico | Contenido | Legal |
-|---|---|---|---|---|---|
-| Aprobar oferta/precio | **A** | C | C | C | I |
-| Cualificar oportunidad | I | **R** | C | I | I |
-| Validar integración | I | C | **R** | I | I |
-| Aprobar copy | **A** | C | I | **R** | C |
-| Enviar propuesta | **A** | **R** | C | I | C |
+| Decisión | Ricardo | Agente | Legal externo |
+|---|---|---|---|
+| Aprobar oferta/precio | **A/R** | C | I |
+| Cualificar oportunidad | **A/R** | C | I |
+| Validar integración | A | **R** | I |
+| Aprobar copy | **A** | **R** | C |
+| Enviar propuesta | **A/R** | C | I |
+| Publicar | **A/R** | C | I |
 
 `R` = responsable, `A` = aprueba, `C` = consultado, `I` = informado.
+
+### 4.1 Límites de esta asignación (importante)
+
+El agente **no es abogado y no puede ejercer como revisor legal**. Puede y va a:
+
+- Redactar borradores de aviso de privacidad, texto de consentimiento y términos.
+- Mantener un checklist legal y marcar qué falta.
+- Auditar que no haya claims prohibidos ni datos de terceros sin consentimiento.
+- Verificar que el formulario pida consentimiento y no pida datos innecesarios.
+
+El agente **no puede**:
+
+- Certificar cumplimiento legal (GDPR, CCPA, LFPDPPP u otro).
+- Firmar, representar o asumir responsabilidad legal.
+- Decidir si un texto legal es suficiente.
+
+**Regla operativa:** nada se publica con datos personales reales hasta que Ricardo apruebe el texto legal final. Si no se contrata revisión profesional, la decisión y el riesgo quedan documentados como aceptados por el propietario.
 
 ---
 
 ## 5. Mercadeo
 
-Existe, pero como **contenido listo para revisión**, no como campaña activa.
+Existe como **contenido listo para revisión**, no como campaña activa.
 
 - Material por rol comprador y por tarea concreta.
 - Prohibiciones explícitas: clientes no verificados, ROI sin fuente, SOC 2 sin certificación, garantía de resultados, testimonios inventados.
 - Canales definidos pero **cerrados**: `a2a`, `organic-web`, `institutional-linkedin`, `marketplaces`, `partner-programs`.
 - No hay campañas, calendario editorial, email activo ni inversión publicitaria.
+
+**Reparto:** Ricardo define a quién le habla y valida el mensaje; el agente produce las piezas y audita claims.
 
 ---
 
@@ -129,7 +148,7 @@ Estrategia **interna**, lista pero no activada hacia fuera.
 - Eventos: `a2a.partner.received`, `a2a.partner.reply.received`, `marketing.a2a.material.requested`.
 - Estado del canal: `LOCAL_INTERNAL_ONLY`, `sendEnabled: false`.
 - Requisitos para abrir un envío externo: endpoint aprobado, identidad del destinatario, consentimiento legal y recibo firmado.
-- Uso externo previsto solo en el tramo 61–90 días y con autorización explícita.
+- Uso externo previsto solo en el tramo 61–90 días y con autorización explícita de Ricardo.
 
 ---
 
@@ -161,13 +180,14 @@ Estrategia **interna**, lista pero no activada hacia fuera.
 
 ## 9. Definición de "plan comercial terminado"
 
-- [ ] Oferta de 3 servicios aprobada
-- [ ] 22 piezas revisadas
-- [ ] 3 páginas por función listas
-- [ ] 10 fichas de integración con fuente
-- [ ] Ruta de solicitud probada de extremo a extremo
-- [ ] Métricas activas
-- [ ] Responsables asignados a la matriz del punto 4
-- [ ] Criterios de los días 30/60/90 aceptados
+- [ ] Oferta de 3 servicios aprobada — **Ricardo**
+- [ ] 22 piezas revisadas — *agente redacta, Ricardo aprueba*
+- [ ] 3 páginas por función listas — *agente*
+- [ ] 10 fichas de integración con fuente — *agente*
+- [ ] Ruta de solicitud probada de extremo a extremo — *agente*
+- [ ] Métricas activas — *agente*
+- [x] Responsables asignados a la matriz del punto 4
+- [ ] Texto legal revisado y aprobado — **Ricardo (o profesional externo)**
+- [ ] Criterios de los días 30/60/90 aceptados — **Ricardo**
 
 Mientras alguna casilla siga vacía, el plan permanece en `ACTIVE_DRAFT`.
