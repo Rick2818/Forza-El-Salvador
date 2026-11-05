@@ -1,6 +1,6 @@
 # Operaciones — las 3 tareas más vendibles
 
-Fecha: 2026-11-05 · Estado: `PENDING_OWNER_APPROVAL`
+Fecha: 2026-11-05 · Estado: `APPROVED` (2026-11-05, propietario)
 Criterio de selección: frecuencia del dolor × facilidad de medir × bajo riesgo de datos.
 
 ---

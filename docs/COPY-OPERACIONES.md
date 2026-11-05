@@ -1,6 +1,6 @@
 # Copy listo para aprobar — Operaciones (3 tareas)
 
-Estado: `PENDING_OWNER_APPROVAL` · Precios: ninguno (todo va a cotización según alcance)
+Estado: `APPROVED` (2026-11-05, propietario) · Precios: ninguno (todo va a cotización según alcance)
 Reglas aplicadas: sin porcentajes, sin "el mejor", sin garantías, sin testimonios.
 
 ---
@@ -101,8 +101,8 @@ Pick one task, agree the scope in writing, and define how it will be measured. P
 
 ## Checklist de aprobación para el propietario
 
-- [ ] Las 3 tareas son las correctas para empezar
-- [ ] El tono es aceptable
-- [ ] Se puede mostrar a un comprador real
-- [ ] Los límites declarados son suficientes
+- [x] Las 3 tareas son las correctas para empezar
+- [x] El tono es aceptable
+- [x] Se puede mostrar a un comprador real
+- [x] Los límites declarados son suficientes
 - [ ] Falta texto legal antes de publicar (ver `docs/LEGAL-MINIMO.md`)
