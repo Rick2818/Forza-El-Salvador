@@ -2,13 +2,14 @@
 
 Revisión del plan comercial tipo Relevance AI antes de cualquier publicación.
 Resultado global: **APTO EN LOCAL**, **NO APTO PARA PUBLICAR** hasta completar los puntos 3 y 4.
+Actualizado el 2026-11-05 tras el cierre del plan: ver `docs/CIERRE-PLAN-COMERCIAL.md`.
 
 ## 1. Verificaciones ejecutadas
 
 | Verificación | Comando | Resultado |
 |---|---|---|
 | Sintaxis de módulos | `npm run check` | OK |
-| Pruebas automatizadas | `npm test` | 51 tests, 51 pass, 0 fail |
+| Pruebas automatizadas | `npm test` | 52 tests, 52 pass, 0 fail |
 | Validación del embudo | `node src/cli.mjs funnel-check` | `status: VALID` |
 | Validación SEO | `node src/cli.mjs seo-check` | `status: VALID`, 34 URLs |
 | Landing generada | `preview/index.html` y `preview/en/index.html` | 75 archivos bilingües |

@@ -2,6 +2,7 @@
 
 Fecha: 2026-11-05 · Estado: `LOCAL_CONFIGURED` / `REVIEW_REQUIRED` · Presupuesto: **US$0**
 Equipo: **Ricardo (propietario y ventas) + agente (operación, redacción y técnica)**
+> Cierre formal: ver `docs/CIERRE-PLAN-COMERCIAL.md` (2026-11-05). El plan está cerrado en contenido; solo faltan 2 aprobaciones del propietario.
 
 ---
 

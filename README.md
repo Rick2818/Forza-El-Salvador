@@ -30,7 +30,7 @@ Toda cifra exige `reference: true` **y** `quoteRequired: true`; se muestran con 
 
 ## Evidencia
 
-`evidence/manifests/` conserva los 16 manifiestos de observación (7 de Langflow y 9 de
+`evidence/manifests/` conserva los 15 manifiestos de observación (7 de Langflow y 8 de
 Relevance AI), todos en estado `IMPORTED_PENDING_HUMAN_REVIEW`. **No son capturas
 certificadas** y no acreditan resultados, ingresos ni número de clientes de terceros.
 

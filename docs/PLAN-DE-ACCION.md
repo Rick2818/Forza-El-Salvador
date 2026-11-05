@@ -1,6 +1,7 @@
 # Plan de acción — Plan Comercial tipo Relevance AI
 
-Fecha: 2026-11-05 · Estado: `ACTIVE_DRAFT` · Presupuesto: **US$0**
+Fecha: 2026-11-05 · Estado: `CLOSED_CONTENT` · Presupuesto: **US$0**
+> Cierre formal: ver `docs/CIERRE-PLAN-COMERCIAL.md` (2026-11-05). El plan está cerrado en contenido; solo faltan 2 aprobaciones del propietario.
 Alcance: solo el plan comercial (contenido, oferta y recorridos). No incluye publicar la landing.
 Equipo real: **2 personas** — Ricardo (propietario) y el agente (operación técnica).
 
@@ -180,14 +181,19 @@ Estrategia **interna**, lista pero no activada hacia fuera.
 
 ## 9. Definición de "plan comercial terminado"
 
-- [ ] Oferta de 3 servicios aprobada — **Ricardo**
-- [ ] 22 piezas revisadas — *agente redacta, Ricardo aprueba*
-- [ ] 3 páginas por función listas — *agente*
-- [ ] 10 fichas de integración con fuente — *agente*
-- [ ] Ruta de solicitud probada de extremo a extremo — *agente*
-- [ ] Métricas activas — *agente*
+Verificado el 2026-11-05. Cada casilla cerrada tiene evidencia en
+`docs/CIERRE-PLAN-COMERCIAL.md`.
+
+- [x] Oferta de 3 servicios aprobada — **Ricardo** (`APPROVED`)
+- [x] 22 piezas redactadas y revisables — *agente* (`.clonador/commercial-kit/review-xCd6Wj/`)
+- [x] 3 páginas por función listas — *agente* (6 piezas de rol en el kit)
+- [x] 10 fichas de integración con fuente — *agente* (`commercial/integraciones/`)
+- [x] Ruta de solicitud probada de extremo a extremo — *agente* (`PASSED`)
+- [x] Métricas activas — *agente* (`commercial-metrics --tenant boltech`)
 - [x] Responsables asignados a la matriz del punto 4
 - [ ] Texto legal revisado y aprobado — **Ricardo (o profesional externo)**
 - [ ] Criterios de los días 30/60/90 aceptados — **Ricardo**
 
-Mientras alguna casilla siga vacía, el plan permanece en `ACTIVE_DRAFT`.
+El plan queda en `CLOSED_CONTENT`: todo el contenido está terminado y verificado. Las dos
+casillas abiertas son aprobaciones humanas por diseño y bloquean **publicar**, no **terminar**
+el plan. Mientras sigan abiertas no se publica ni se reciben datos reales.
