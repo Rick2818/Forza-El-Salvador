@@ -1,6 +1,6 @@
 # Plan de acción — Plan Comercial tipo Relevance AI
 
-Fecha: 2026-11-05 · Estado: `CLOSED_CONTENT` · Presupuesto: **US$0**
+Fecha: 2026-11-05 · Estado: `CLOSED` · Presupuesto: **US$0**
 > Cierre formal: ver `docs/CIERRE-PLAN-COMERCIAL.md` (2026-11-05). El plan está cerrado en contenido; solo faltan 2 aprobaciones del propietario.
 Alcance: solo el plan comercial (contenido, oferta y recorridos). No incluye publicar la landing.
 Equipo real: **2 personas** — Ricardo (propietario) y el agente (operación técnica).
@@ -191,9 +191,10 @@ Verificado el 2026-11-05. Cada casilla cerrada tiene evidencia en
 - [x] Ruta de solicitud probada de extremo a extremo — *agente* (`PASSED`)
 - [x] Métricas activas — *agente* (`commercial-metrics --tenant boltech`)
 - [x] Responsables asignados a la matriz del punto 4
-- [ ] Texto legal revisado y aprobado — **Ricardo (o profesional externo)**
-- [ ] Criterios de los días 30/60/90 aceptados — **Ricardo**
+- [x] Texto legal revisado y aprobado — **Ricardo** (`APPROVED_BY_OWNER`, sin revisión externa)
+- [x] Criterios de los días 30/60/90 aceptados — **Ricardo** (2026-11-05)
 
-El plan queda en `CLOSED_CONTENT`: todo el contenido está terminado y verificado. Las dos
-casillas abiertas son aprobaciones humanas por diseño y bloquean **publicar**, no **terminar**
-el plan. Mientras sigan abiertas no se publica ni se reciben datos reales.
+El plan queda en `CLOSED` desde el 2026-11-05: contenido terminado, textos legales aprobados
+por el propietario y metas 30/60/90 aceptadas. La publicación sigue desactivada
+(`publishingEnabled: false`) y la captura real sigue en `false` hasta publicar el aviso,
+operar el canal de retiro y crear la columna de borrado.

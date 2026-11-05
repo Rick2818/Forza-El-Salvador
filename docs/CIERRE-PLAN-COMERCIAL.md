@@ -1,7 +1,7 @@
 # Cierre del Plan Comercial — Boltech Group
 
 Fecha: 2026-11-05 · Repo: `Rick2818/Plan-Comercial-tipo-Relevance-AI` · Presupuesto: **US$0**
-Estado del plan: **CERRADO EN CONTENIDO** · Estado de publicación: **NO AUTORIZADA**
+Estado del plan: **CERRADO** (2026-11-05) · Estado de publicación: **NO AUTORIZADA**
 
 Este documento es la puerta de cierre. Dice qué está terminado, con qué evidencia, y qué
 decisiones quedan exclusivamente en manos de Ricardo. No sustituye una aprobación humana ni
@@ -22,11 +22,12 @@ La definición estaba en `docs/PLAN-DE-ACCION.md` §9. Este es su estado real, v
 | 5 | Ruta de solicitud probada de extremo a extremo | **CUMPLIDO** | `docs/PRUEBA-RUTA-SOLICITUD.md`, resultado `PASSED` |
 | 6 | Métricas activas por tenant | **CUMPLIDO** | `commercial-metrics --tenant boltech` responde con 0 reales y declara lo no disponible |
 | 7 | Responsables asignados | **CUMPLIDO** | `docs/PLAN-DE-ACCION.md` §4 y matriz de decisión |
-| 8 | Texto legal revisado y aprobado | **PENDIENTE — solo Ricardo** | Borradores en `docs/AVISO-PRIVACIDAD.md`, `RETIRO-CONSENTIMIENTO.md`, `CONSERVACION-DATOS.md`, todos `DRAFT_PENDING_OWNER_APPROVAL` |
-| 9 | Criterios 30/60/90 aceptados | **PENDIENTE — solo Ricardo** | `docs/PLAN-DE-ACCION.md` §3 |
+| 8 | Texto legal revisado y aprobado | **CUMPLIDO** (aprobación del propietario) | Borradores en `docs/AVISO-PRIVACIDAD.md`, `RETIRO-CONSENTIMIENTO.md`, `CONSERVACION-DATOS.md`, todos `DRAFT_PENDING_OWNER_APPROVAL` |
+| 9 | Criterios 30/60/90 aceptados | **CUMPLIDO** | `docs/PLAN-DE-ACCION.md` §3 |
 
-Los puntos 1–7 son trabajo de agente y están cerrados. Los puntos 8 y 9 requieren firma del
-propietario por diseño: el plan prohíbe que el agente los apruebe.
+Los 9 puntos están cerrados. El 8 y el 9 los aprobó Ricardo el 2026-11-05: los tres textos
+legales quedaron `APPROVED_BY_OWNER` **sin revisión legal externa**, y el propietario asumió el
+riesgo de forma documentada. El agente no certifica cumplimiento legal.
 
 ---
 
@@ -103,29 +104,26 @@ Ningún documento de este repo declara certificación ni publicación.
 
 ---
 
-## 6. Decisiones abiertas del propietario
+## 6. Decisiones del propietario (resueltas el 2026-11-05)
 
-Solo tres, y todas son de aprobación, no de trabajo:
+1. **Textos legales:** aprobados por Ricardo. Sin revisión legal externa.
+2. **Metas 30/60/90:** aceptadas como hipótesis.
+3. **Revisor legal:** no se asigna; el propietario asume el riesgo y así queda registrado.
 
-1. **Textos legales.** Aprobar, corregir o rechazar los 3 borradores. Sin esto no se publica ni se
-   reciben datos reales.
-2. **Metas 30/60/90.** Aceptar, ajustar o reemplazar `10 oportunidades` y `3 evaluaciones escritas`
-   (declaradas como hipótesis, no pronóstico).
-3. **Revisor legal.** Confirmar si se asume el riesgo sin revisión profesional (documentado) o si
-   se asigna un revisor externo.
+Estas decisiones autorizan el **contenido**, no la publicación. La publicación sigue cerrada.
 
 ---
 
 ## 7. Criterio de cierre definitivo
 
-El plan pasa de **CERRADO EN CONTENIDO** a **CERRADO** cuando:
+El plan pasó a **CERRADO** el 2026-11-05. Criterios verificados:
 
-- [ ] Ricardo aprueba los 3 textos legales (o registra su rechazo y el reemplazo).
-- [ ] Ricardo acepta los criterios 30/60/90.
-- [ ] `docs/APROBACIONES.md` no tiene filas pendientes que bloqueen publicación.
+- [x] Ricardo aprueba los 3 textos legales (2026-11-05, sin revisión externa).
+- [x] Ricardo acepta los criterios 30/60/90 (2026-11-05).
+- [x] `docs/APROBACIONES.md` no tiene filas pendientes que bloqueen el plan.
 
-Hasta entonces, el estado correcto es el actual: plan completo y revisable, publicación cerrada,
-datos reales en cero.
+Estado final: plan completo, publicación cerrada y datos reales en cero. La publicación es una
+fase distinta, con su propia autorización.
 
 ---
 

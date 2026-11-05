@@ -202,17 +202,34 @@
     "publicationAuthorized": false,
     "realDataCaptureAuthorized": false,
     "documents": [
-      { "id": "privacy-notice", "file": "docs/AVISO-PRIVACIDAD.md", "status": "DRAFT_PENDING_OWNER_APPROVAL" },
-      { "id": "consent-withdrawal", "file": "docs/RETIRO-CONSENTIMIENTO.md", "status": "DRAFT_PENDING_OWNER_APPROVAL" },
-      { "id": "retention", "file": "docs/CONSERVACION-DATOS.md", "status": "DRAFT_PENDING_OWNER_APPROVAL" }
+      {
+        "id": "privacy-notice",
+        "file": "docs/AVISO-PRIVACIDAD.md",
+        "status": "APPROVED_BY_OWNER",
+        "approvedAt": "2026-11-05"
+      },
+      {
+        "id": "consent-withdrawal",
+        "file": "docs/RETIRO-CONSENTIMIENTO.md",
+        "status": "APPROVED_BY_OWNER",
+        "approvedAt": "2026-11-05"
+      },
+      {
+        "id": "retention",
+        "file": "docs/CONSERVACION-DATOS.md",
+        "status": "APPROVED_BY_OWNER",
+        "approvedAt": "2026-11-05"
+      }
     ],
     "blockedUntil": [
-      "the three legal texts are approved by the owner",
       "privacy notice published at a stable URL",
       "consent withdrawal channel operating on the real mailbox",
-      "retention period approved and the deletion-date column created"
+      "the deletion-date column exists in the private spreadsheet"
     ],
-    "notLegalAdvice": true
+    "notLegalAdvice": true,
+    "ownerApprovedAt": "2026-11-05",
+    "legalReviewExternal": false,
+    "riskAcceptedByOwner": true
   },
   "operationsAssets": [
     {
@@ -222,7 +239,11 @@
       "title": "Pedidos de correo y WhatsApp a una tabla",
       "body": "Registra cada pedido desde el mensaje original, con número único, cliente, ítems, cantidades y estado. Los casos dudosos los confirma una persona antes de aceptarlos. Aprobado por el propietario el 2026-11-05.",
       "offerId": "implementation",
-      "integrations": ["gmail", "google-sheets", "airtable"]
+      "integrations": [
+        "gmail",
+        "google-sheets",
+        "airtable"
+      ]
     },
     {
       "id": "operaciones-facturas",
@@ -231,7 +252,11 @@
       "title": "Facturas contra orden de compra",
       "body": "Compara cada factura con su orden de compra y marca toda diferencia con su motivo y su monto. Finanzas aprueba o rechaza; el sistema no decide. Aprobado por el propietario el 2026-11-05.",
       "offerId": "implementation",
-      "integrations": ["gmail", "google-drive", "google-sheets"]
+      "integrations": [
+        "gmail",
+        "google-drive",
+        "google-sheets"
+      ]
     },
     {
       "id": "operaciones-stock",
@@ -240,7 +265,11 @@
       "title": "Stock bajo mínimo con reposición sugerida",
       "body": "Cada día lista los ítems bajo mínimo con la cantidad sugerida según consumo. Operaciones aprueba la reposición; el sistema no compra ni paga nada. Aprobado por el propietario el 2026-11-05.",
       "offerId": "custom-agent",
-      "integrations": ["google-sheets", "airtable", "supabase"]
+      "integrations": [
+        "google-sheets",
+        "airtable",
+        "supabase"
+      ]
     }
   ],
   "comparisons": [

@@ -1,11 +1,11 @@
-# Aviso de privacidad — BORRADOR
-
+# Aviso de privacidad — APROBADO POR EL PROPIETARIO
 > **Nota interna:** este texto lo prepara el agente como apoyo operativo. **No es asesoría
-> legal** y no certifica cumplimiento de ninguna norma. Debe revisarlo el propietario o un
-> profesional antes de publicarse.
+> legal** y no certifica cumplimiento de ninguna norma. Aprobado por el propietario el 2026-11-05;
+> no hubo revisión legal externa y el propietario asumió el riesgo (ver `docs/APROBACIONES.md`).
 
-Estado: `DRAFT_PENDING_OWNER_APPROVAL` · Fecha: 2026-11-05
-Campos entre corchetes: **debe completarlos el propietario antes de publicar.**
+Estado: `APPROVED_BY_OWNER` · Aprobado: 2026-11-05 · Revisión legal externa: no (riesgo asumido)
+Campos entre corchetes: **debe completarlos el propietario antes de publicar.** La aprobación
+cubre el texto, no los datos que faltan ni la publicación.
 
 ---
 

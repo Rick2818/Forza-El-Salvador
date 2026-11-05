@@ -1,10 +1,9 @@
-# Plazo de conservación de datos — BORRADOR
+# Plazo de conservación de datos — APROBADO POR EL PROPIETARIO
+> **Nota interna:** este texto lo prepara el agente como apoyo operativo. **No es asesoría
+> legal** y no certifica cumplimiento de ninguna norma. Aprobado por el propietario el 2026-11-05;
+> no hubo revisión legal externa y el propietario asumió el riesgo (ver `docs/APROBACIONES.md`).
 
-> **Nota interna:** apoyo operativo del agente. **No es asesoría legal.** Los plazos son una
-> propuesta razonable para una operación pequeña; un profesional debe confirmarlos según la
-> normativa aplicable.
-
-Estado: `DRAFT_PENDING_OWNER_APPROVAL` · Fecha: 2026-11-05
+Estado: `APPROVED_BY_OWNER` · Aprobado: 2026-11-05 · Revisión legal externa: no (riesgo asumido)
 
 ---
 

@@ -83,7 +83,7 @@ Prohibido en cualquier pieza:
 | Marcar vacíos y blockear publicación | Asumir responsabilidad legal |
 | Verificar que no se pidan datos innecesarios | Decidir la base legal |
 
-**Criterio de salida:** el plan pasa de `DRAFT_PENDING_OWNER_APPROVAL` a `APPROVED` solo con
+**Criterio de salida:** el plan pasa de `APPROVED_BY_OWNER` a `APPROVED` solo con
 la aprobación explícita de Ricardo o de un profesional contratado.
 
 ---
@@ -98,9 +98,10 @@ Las tres decisiones que bloqueaban la captura ya están tomadas por el propietar
 | 6 | Base legal para contactar | Consentimiento explícito, casilla obligatoria del formulario |
 | 7 | Encargado de tratamiento | Solo Ricardo; sin terceros |
 
-**Lo que sigue en borrador:** el aviso de privacidad no tiene URL porque no hay dominio; el canal
-de retiro del consentimiento y el plazo de conservación no están redactados. Hasta que esos dos
-puntos existan, el plan **no** debe publicarse ni recibir datos reales.
+**Aprobado el 2026-11-05:** los tres textos están aprobados por el propietario, sin revisión
+legal externa. El riesgo asumido está registrado en `docs/APROBACIONES.md`. **Lo que sigue
+pendiente:** publicar el aviso en una URL estable, operar el canal de retiro en el buzón real y
+crear la columna de fecha de borrado. Hasta entonces no se publica ni se reciben datos reales.
 
 **Lo que no cambia:** este documento sigue sin ser asesoría legal y el agente no certifica
 cumplimiento.
@@ -113,13 +114,13 @@ Los tres textos que faltaban ya están redactados como borradores, en español e
 
 | Texto | Archivo | Estado |
 |---|---|---|
-| Aviso de privacidad completo | `docs/AVISO-PRIVACIDAD.md` | `DRAFT_PENDING_OWNER_APPROVAL` |
-| Retiro del consentimiento | `docs/RETIRO-CONSENTIMIENTO.md` | `DRAFT_PENDING_OWNER_APPROVAL` |
-| Plazo de conservación | `docs/CONSERVACION-DATOS.md` | `DRAFT_PENDING_OWNER_APPROVAL` |
+| Aviso de privacidad completo | `docs/AVISO-PRIVACIDAD.md` | `APPROVED_BY_OWNER` |
+| Retiro del consentimiento | `docs/RETIRO-CONSENTIMIENTO.md` | `APPROVED_BY_OWNER` |
+| Plazo de conservación | `docs/CONSERVACION-DATOS.md` | `APPROVED_BY_OWNER` |
 
 Cada uno trae su checklist de publicación y deja entre corchetes los datos que solo puede
 completar el propietario: razón social, domicilio, correo de privacidad y URLs.
 
 **Siguen bloqueando la captura real:** que el aviso esté **aprobado y publicado en una URL
 estable**, que exista el **canal de retiro** operativo y que los **plazos estén aprobados**.
-Un borrador no sustituye a un texto publicado.
+Un texto aprobado no sustituye a un texto publicado.

@@ -103,16 +103,18 @@ Estado de los textos que acompañan a estas decisiones (redactados el 2026-11-05
 
 | Texto | Redactado | Aprobado | Publicado |
 |---|---|---|---|
-| Aviso de privacidad (`docs/AVISO-PRIVACIDAD.md`) | Sí | No | No |
-| Retiro del consentimiento (`docs/RETIRO-CONSENTIMIENTO.md`) | Sí | No | No |
-| Plazo de conservación (`docs/CONSERVACION-DATOS.md`) | Sí | No | No |
+| Aviso de privacidad (`docs/AVISO-PRIVACIDAD.md`) | Sí | **Sí** (propietario) | No |
+| Retiro del consentimiento (`docs/RETIRO-CONSENTIMIENTO.md`) | Sí | **Sí** (propietario) | No |
+| Plazo de conservación (`docs/CONSERVACION-DATOS.md`) | Sí | **Sí** (propietario) | No |
 
 Lo que **sigue** bloqueando la captura real:
 
-- Aprobar los tres textos.
+- ~~Aprobar los tres textos.~~ Hecho el 2026-11-05 por el propietario, sin revisión legal externa.
 - Publicar el aviso en una URL estable (necesita dominio).
 - Operar el canal de retiro en el buzón real.
 - Crear en la hoja la columna de fecha de borrado prevista.
 - Revisión por un profesional si se publica y se reciben datos de personas fuera de Bolivia.
 
+**Aprobación del 2026-11-05:** Ricardo aprobó los tres textos como propietario y asumió el
+riesgo de no contratar revisión legal externa. La aprobación cubre el texto, no la publicación.
 El agente no certifica cumplimiento legal; solo deja constancia de lo decidido.

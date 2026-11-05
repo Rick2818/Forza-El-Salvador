@@ -1,9 +1,9 @@
-# Retiro del consentimiento — BORRADOR
+# Retiro del consentimiento — APROBADO POR EL PROPIETARIO
+> **Nota interna:** este texto lo prepara el agente como apoyo operativo. **No es asesoría
+> legal** y no certifica cumplimiento de ninguna norma. Aprobado por el propietario el 2026-11-05;
+> no hubo revisión legal externa y el propietario asumió el riesgo (ver `docs/APROBACIONES.md`).
 
-> **Nota interna:** apoyo operativo del agente. **No es asesoría legal.** Requiere aprobación del
-> propietario antes de publicarse.
-
-Estado: `DRAFT_PENDING_OWNER_APPROVAL` · Fecha: 2026-11-05
+Estado: `APPROVED_BY_OWNER` · Aprobado: 2026-11-05 · Revisión legal externa: no (riesgo asumido)
 Campos entre corchetes: **debe completarlos el propietario.**
 
 ---
