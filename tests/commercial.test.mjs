@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { loadCommercialConfig, commercialAssets, buildCommercialKit, captureCommercial, commercialMetrics } from '../src/commercial.mjs';
+import { loadCommercialConfig, commercialAssets, operationsAssets, buildCommercialKit, captureCommercial, commercialMetrics } from '../src/commercial.mjs';
 import { OpportunityRegistry } from '../src/opportunities.mjs';
 import { computeMetrics } from '../src/metrics.mjs';
 const config = await loadCommercialConfig();
@@ -84,6 +85,31 @@ test('two real funnels exclude synthetic wins and other tenants, and preserve qu
   const general = await computeMetrics({ registry, workflow: { status: async () => ({ jobs: 0, byState: {} }) } });
   assert.deepEqual(general.revenue.verifiedByCurrency, {});
 });
+test('the three approved operations submissions are capture-ready once consent is given', async t => {
+  const { readdir, readFile: read } = await import('node:fs/promises');
+  const { registry } = await setup(t);
+  const dir = fileURLToPath(new URL('../commercial/operaciones/submissions/', import.meta.url));
+  const files = (await readdir(dir)).filter(name => name.endsWith('.submission.json'));
+  assert.equal(files.length, 3);
+  for (const name of files) {
+    const template = JSON.parse(await read(path.join(dir, name), 'utf8'));
+    assert.equal(template.provenance, 'synthetic');
+    assert.equal(template.payload.consent, false);
+    await assert.rejects(captureCommercial(config, registry, template), /consent/);
+    const result = await captureCommercial(config, registry, {
+      ...template,
+      payload: { ...template.payload, requestId: `req-${template.assetId}`, consent: true }
+    });
+    assert.equal(result.record.attribution.playbookId, 'solution-led');
+    assert.equal(result.nextAction.type, 'HUMAN_WRITTEN_QUALIFICATION');
+    assert.equal(result.nextAction.sent, false);
+  }
+  const metrics = await commercialMetrics(config, registry, 'boltech');
+  assert.equal(metrics.playbooks.find(p => p.id === 'solution-led').realOpportunities, 0);
+  assert.equal(commercialAssets(config).length, 22);
+  assert.equal(operationsAssets(config).length, 3);
+});
+
 test('CLI captures a request and returns per-playbook metrics from the same local state', async t => {
   const { dir } = await setup(t);
   const built = await buildCommercialKit(config, dir);

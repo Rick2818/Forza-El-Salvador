@@ -16,8 +16,8 @@ escrito y oferta sin precio público.
 | Oferta | 3 servicios: implementación, agente a medida, soporte — todos a cotización |
 | Recorridos | 2: `adoption-services` (Langflow) y `solution-led` (Relevance AI) |
 | Primera puerta | Operaciones, con 3 tareas aprobadas |
-| Piezas | 22 por kit + 3 fichas de operaciones (ES/EN) |
-| Pruebas | 51/51 pasan |
+| Piezas | 22 por kit + 3 fichas de operaciones (ES/EN) + 10 fichas de integración (ES/EN) |
+| Pruebas | 52/52 pasan |
 | Gasto | US$0 |
 | Publicado | Nada |
 | Datos reales recibidos | Ninguno |
@@ -154,10 +154,11 @@ distinta sería inventada.
 
 ## 8. Próximos hitos (30 días)
 
-1. 10 fichas de integración (fuentes ya verificadas: 10/10 responden `200`).
-2. Ruta de solicitud probada con datos sintéticos.
-3. Métricas activas con reporte por tenant.
-4. Primeras 3 conversaciones comerciales reales.
+1. ~~10 fichas de integración~~ — hechas: `docs/INTEGRACIONES-10.md` y `commercial/integraciones/`.
+2. ~~Ruta de solicitud probada con datos sintéticos~~ — hecha: `docs/PRUEBA-RUTA-SOLICITUD.md`.
+3. ~~Métricas con reporte por tenant~~ — hechas: 0 reales, 3 sintéticas excluidas.
+4. Primeras 3 conversaciones comerciales reales — **bloqueado** por las 3 decisiones legales
+   (`docs/DECISIONES-LEGALES.md`).
 
 **Definición de terminado del plan:** oferta aprobada, piezas revisadas, ruta probada, métricas
 activas y responsables asignados. Hoy faltan los últimos tres.

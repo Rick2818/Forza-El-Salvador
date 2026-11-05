@@ -23,6 +23,19 @@ export function commercialAssets(config) {
     ...config.offers.map(item => ({ id: `offer-${item.id}`, playbookId: 'adoption-services', type: 'offer', title: item.title, body: `${item.deliverables.join('. ')}. ${item.pricing}. Costos de terceros y condiciones se revisan antes de contratar.`, offerId: item.id }))
   ];
 }
+// The three approved operations assets live beside the generated kit and are
+// intentionally excluded from commercialAssets so the kit keeps its 22 records.
+export function operationsAssets(config) {
+  return (config.operationsAssets || []).map(item => ({
+    id: item.id,
+    playbookId: item.playbookId,
+    type: item.type || 'operations-task',
+    title: item.title,
+    body: item.body,
+    offerId: item.offerId,
+    integrationIds: item.integrations || []
+  }));
+}
 export function commercialPlan(config) {
   const assets = commercialAssets(config);
   return { status: config.status, brand: config.brand, budgetUSD: config.budgetUSD,
@@ -61,7 +74,7 @@ export async function buildCommercialKit(config, stateDir) {
 }
 export async function captureCommercial(config, registry, submission) {
   const playbook = playbookFor(config, submission.playbookId);
-  const asset = commercialAssets(config).find(item => item.id === submission.assetId && item.playbookId === playbook.id);
+  const asset = [...commercialAssets(config), ...operationsAssets(config)].find(item => item.id === submission.assetId && item.playbookId === playbook.id);
   if (!asset) fail('Asset does not belong to selected playbook');
   if (!playbook.offerIds.includes(submission.offerId)) fail('Offer does not belong to selected playbook');
   if (!['real', 'synthetic'].includes(submission.provenance)) fail('Explicit real or synthetic provenance is required');

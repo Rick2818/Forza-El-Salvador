@@ -191,6 +191,35 @@
       "status": "PROPOSED_REQUIRES_TECHNICAL_VALIDATION"
     }
   ],
+  "operationsAssets": [
+    {
+      "id": "operaciones-pedidos",
+      "playbookId": "solution-led",
+      "type": "operations-task",
+      "title": "Pedidos de correo y WhatsApp a una tabla",
+      "body": "Registra cada pedido desde el mensaje original, con número único, cliente, ítems, cantidades y estado. Los casos dudosos los confirma una persona antes de aceptarlos. Aprobado por el propietario el 2026-11-05.",
+      "offerId": "implementation",
+      "integrations": ["gmail", "google-sheets", "airtable"]
+    },
+    {
+      "id": "operaciones-facturas",
+      "playbookId": "solution-led",
+      "type": "operations-task",
+      "title": "Facturas contra orden de compra",
+      "body": "Compara cada factura con su orden de compra y marca toda diferencia con su motivo y su monto. Finanzas aprueba o rechaza; el sistema no decide. Aprobado por el propietario el 2026-11-05.",
+      "offerId": "implementation",
+      "integrations": ["gmail", "google-drive", "google-sheets"]
+    },
+    {
+      "id": "operaciones-stock",
+      "playbookId": "solution-led",
+      "type": "operations-task",
+      "title": "Stock bajo mínimo con reposición sugerida",
+      "body": "Cada día lista los ítems bajo mínimo con la cantidad sugerida según consumo. Operaciones aprueba la reposición; el sistema no compra ni paga nada. Aprobado por el propietario el 2026-11-05.",
+      "offerId": "custom-agent",
+      "integrations": ["google-sheets", "airtable", "supabase"]
+    }
+  ],
   "comparisons": [
     {
       "id": "implementacion-o-langflow",
