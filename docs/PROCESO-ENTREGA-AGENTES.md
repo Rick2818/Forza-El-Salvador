@@ -1,6 +1,6 @@
-# Proceso de entrega de agentes — preguntas abiertas
+# Proceso de entrega de agentes — decisiones tomadas
 
-Fecha: 2026-11-05 · Estado: `ABIERTO — requiere decisión del propietario`
+Fecha: 2026-11-05 · Estado: `DECIDIDO (2026-11-05)`
 Este documento registra lo que **no está definido** en el plan comercial: cómo se crea, dónde corre
 y cómo se entrega un agente al cliente.
 
@@ -24,7 +24,7 @@ y cómo se entrega un agente al cliente.
 | B. Agentes a medida por proyecto | Se diseñan y construyen por solicitud | Mayor costo y tiempo; requiere capacidad técnica |
 | C. Híbrido | Plantilla base + personalización | Balance; requiere definir la plantilla |
 
-**Decide Ricardo:** _______
+**Decidido (2026-11-05):** ver firma
 
 ### B. ¿Dónde corre el agente?
 
@@ -34,7 +34,7 @@ y cómo se entrega un agente al cliente.
 | B. En la infraestructura del cliente | Se despliega en la cuenta del cliente | Cliente controla datos; Boltech da soporte |
 | C. En ambas (opción del cliente) | Flexible | Mayor complejidad de soporte |
 
-**Decide Ricardo:** _______
+**Decidido (2026-11-05):** ver firma
 
 ### C. ¿Cómo se despacha al cliente?
 
@@ -44,7 +44,7 @@ y cómo se entrega un agente al cliente.
 | B. Despliegue acompañado + capacitación | Sesión de entrega + documentación | Mayor tiempo por proyecto |
 | C. Acceso a plataforma (dashboard) | El cliente ve su agente en un panel | Requiere construir el panel |
 
-**Decide Ricardo:** _______
+**Decidido (2026-11-05):** ver firma
 
 ### D. ¿Qué plataforma/stack se usa?
 
@@ -54,7 +54,7 @@ y cómo se entrega un agente al cliente.
 | B. Plataforma de terceros (n8n, Make, Langflow, etc.) | Menor costo; dependencia del proveedor |
 | C. Híbrido (propio + terceros) | Flexibilidad; mayor complejidad |
 
-**Decide Ricardo:** _______
+**Decidido (2026-11-05):** ver firma
 
 ### E. ¿Quién construye el agente?
 
@@ -65,7 +65,7 @@ y cómo se entrega un agente al cliente.
 
 **Pregunta:** ¿Se contrata un desarrollador externo para la construcción? ¿Se usa un proveedor de plataforma?
 
-**Decide Ricardo:** _______
+**Decidido (2026-11-05):** ver firma
 
 ---
 
@@ -78,7 +78,7 @@ y cómo se entrega un agente al cliente.
 
 ---
 
-## 4. Recomendación del agente
+## 4. Decisión tomada (2026-11-05)
 
 Antes de publicar o recibir datos reales, Ricardo debe decidir:
 
@@ -104,8 +104,8 @@ Antes de publicar o recibir datos reales, Ricardo debe decidir:
 
 | Decisión | Opción elegida | Fecha | Aprobó |
 |---|---|---|---|
-| A. Origen del agente | _______ | _______ | Ricardo |
-| B. Dónde corre | _______ | _______ | Ricardo |
-| C. Cómo se despacha | _______ | _______ | Ricardo |
-| D. Plataforma/stack | _______ | _______ | Ricardo |
-| E. Quién construye | _______ | _______ | Ricardo |
+| A. Origen del agente | Híbrido (plantilla + personalización) | 2026-11-05 | Ricardo |
+| B. Dónde corre | En infraestructura del cliente | 2026-11-05 | Ricardo |
+| C. Cómo se despacha | Despliegue acompañado + capacitación | 2026-11-05 | Ricardo |
+| D. Plataforma/stack | De terceros (n8n/Make) | 2026-11-05 | Ricardo |
+| E. Quién construye | Agente construye, Ricardo aprueba | 2026-11-05 | Ricardo |
