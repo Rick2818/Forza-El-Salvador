@@ -99,11 +99,20 @@ Decidido por Ricardo el 2026-11-05:
 3. **Encargado del tratamiento:** solo Ricardo. No hay terceros procesando datos hoy.
 4. **Publicación:** no autorizada todavía. Falta dominio y hosting.
 
-Lo que **sigue** pendiente aunque estas tres estén decididas:
+Estado de los textos que acompañan a estas decisiones (redactados el 2026-11-05):
 
-- Publicar el aviso de privacidad en una URL estable (necesita dominio).
-- Redactar el canal para retirar el consentimiento y el borrado.
-- Definir el plazo de conservación de la hoja.
+| Texto | Redactado | Aprobado | Publicado |
+|---|---|---|---|
+| Aviso de privacidad (`docs/AVISO-PRIVACIDAD.md`) | Sí | No | No |
+| Retiro del consentimiento (`docs/RETIRO-CONSENTIMIENTO.md`) | Sí | No | No |
+| Plazo de conservación (`docs/CONSERVACION-DATOS.md`) | Sí | No | No |
+
+Lo que **sigue** bloqueando la captura real:
+
+- Aprobar los tres textos.
+- Publicar el aviso en una URL estable (necesita dominio).
+- Operar el canal de retiro en el buzón real.
+- Crear en la hoja la columna de fecha de borrado prevista.
 - Revisión por un profesional si se publica y se reciben datos de personas fuera de Bolivia.
 
 El agente no certifica cumplimiento legal; solo deja constancia de lo decidido.

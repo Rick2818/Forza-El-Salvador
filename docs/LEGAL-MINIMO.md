@@ -104,3 +104,22 @@ puntos existan, el plan **no** debe publicarse ni recibir datos reales.
 
 **Lo que no cambia:** este documento sigue sin ser asesoría legal y el agente no certifica
 cumplimiento.
+
+---
+
+## 8. Textos redactados el 2026-11-05
+
+Los tres textos que faltaban ya están redactados como borradores, en español e inglés:
+
+| Texto | Archivo | Estado |
+|---|---|---|
+| Aviso de privacidad completo | `docs/AVISO-PRIVACIDAD.md` | `DRAFT_PENDING_OWNER_APPROVAL` |
+| Retiro del consentimiento | `docs/RETIRO-CONSENTIMIENTO.md` | `DRAFT_PENDING_OWNER_APPROVAL` |
+| Plazo de conservación | `docs/CONSERVACION-DATOS.md` | `DRAFT_PENDING_OWNER_APPROVAL` |
+
+Cada uno trae su checklist de publicación y deja entre corchetes los datos que solo puede
+completar el propietario: razón social, domicilio, correo de privacidad y URLs.
+
+**Siguen bloqueando la captura real:** que el aviso esté **aprobado y publicado en una URL
+estable**, que exista el **canal de retiro** operativo y que los **plazos estén aprobados**.
+Un borrador no sustituye a un texto publicado.

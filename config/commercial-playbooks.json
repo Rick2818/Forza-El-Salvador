@@ -201,10 +201,16 @@
     "thirdPartyProcessors": [],
     "publicationAuthorized": false,
     "realDataCaptureAuthorized": false,
+    "documents": [
+      { "id": "privacy-notice", "file": "docs/AVISO-PRIVACIDAD.md", "status": "DRAFT_PENDING_OWNER_APPROVAL" },
+      { "id": "consent-withdrawal", "file": "docs/RETIRO-CONSENTIMIENTO.md", "status": "DRAFT_PENDING_OWNER_APPROVAL" },
+      { "id": "retention", "file": "docs/CONSERVACION-DATOS.md", "status": "DRAFT_PENDING_OWNER_APPROVAL" }
+    ],
     "blockedUntil": [
+      "the three legal texts are approved by the owner",
       "privacy notice published at a stable URL",
-      "consent withdrawal channel documented",
-      "retention period defined"
+      "consent withdrawal channel operating on the real mailbox",
+      "retention period approved and the deletion-date column created"
     ],
     "notLegalAdvice": true
   },
