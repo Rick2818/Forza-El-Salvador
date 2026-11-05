@@ -1,0 +1,5 @@
+# _redirects — Redirecciones para Cloudflare Pages
+
+# Redirigir rutas antiguas si es necesario
+# Ejemplo:
+# /solicitud   /solicitud.html   200

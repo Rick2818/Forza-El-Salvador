@@ -1,0 +1,14 @@
+# wrangler.toml — Configuración para Cloudflare Pages
+# Nombre del proyecto en Cloudflare Pages
+
+name = "boltech-group"
+compatibility_date = "2026-11-05"
+
+[environments.production]
+
+[build]
+  command = "echo 'skip build'"
+  functions = "functions"
+
+[[env.production.variables]]
+  AIRTABLE_TABLE_NAME = "Leads"
