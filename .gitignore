@@ -1,0 +1,7 @@
+node_modules/
+.clonador/
+content/
+.env
+.env.*
+*.log
+.DS_Store

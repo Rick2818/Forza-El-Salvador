@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "brand": "Boltech Group",
+  "language": "en",
+  "status": "LOCAL_CONFIGURED",
+  "seo": {
+    "baseUrl": "https://boltech-group.vercel.app",
+    "baseUrlStatus": "PENDING_OWNER_CONFIRMATION",
+    "note": "The published domain must be confirmed before submitting the sitemap. Until then this kit is not published."
+  },
+  "clonedFrom": {
+    "mechanism": "enterprise funnel: buyer specialty, named task, proof, alternative, short form without budget",
+    "observedAt": "2026-11-03",
+    "note": "Replicates the observed structure. Specialties, packages and reference prices belong to Boltech Group, not to the observed vendor.",
+    "sourceIds": ["relevance-public", "relevance-pricing", "boltech-public"]
+  },
+  "landing": {
+    "blocks": ["hero", "roi", "enterprise", "integrations", "ctaBand", "proofBand", "resources", "framework", "catalog", "specialties", "closing"],
+    "hero": {
+      "eyebrow": "AI agents for companies",
+      "headline": "Fewer tasks. More results.",
+      "subline": "AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure.",
+      "primaryCta": "Request a proposal",
+      "secondaryCta": "See specialties"
+    },
+    "roi": {
+      "headline": "Start with one agent, not with a one-year project.",
+      "body": "The pilot validates one flow and one simple integration before the rest of the operation is committed."
+    },
+    "enterprise": {
+      "headline": "Built for teams that answer for the outcome",
+      "pillars": ["Security and data", "Access and controls", "Oversight"]
+    },
+    "integrations": {
+      "headline": "Connect to what you already use",
+      "body": "External integrations require authorisation and certification before they are connected. We do not announce an integration we have not tested."
+    },
+    "ctaBand": {
+      "headline": "Want to know whether your process can be automated?",
+      "body": "Describe it and you get an answer with a defined scope, not a brochure.",
+      "cta": "Request a proposal"
+    },
+    "proofBand": {
+      "headline": "Customer cases",
+      "status": "PENDING_OWNER_DECISION",
+      "note": "No cases with a verifiable figure have been published yet. This block stays empty on purpose; it is not filled with other companies' logos."
+    },
+    "resources": {
+      "headline": "Where to start reading",
+      "items": [
+        { "title": "What you need before the call", "body": "A description of the current process, who runs it, and what happens when something goes wrong." },
+        { "title": "What we do not do", "body": "Connect an integration without certifying it, or promise an outcome that cannot be measured." }
+      ]
+    },
+    "framework": {
+      "headline": "From idea to agent",
+      "steps": [
+        { "title": "Tell us what you need", "body": "You pick a specialty and the tasks to solve." },
+        { "title": "We agree the scope", "body": "We review integrations, limits, budget and timeline." },
+        { "title": "We configure and validate", "body": "After approval and contracting, we check permissions and behaviour." }
+      ]
+    },
+    "catalog": {
+      "headline": "Agents by specialty",
+      "body": "One specialty, one agent. Pick the one that matches your team."
+    },
+    "specialties": {
+      "headline": "Select a specialty",
+      "body": "Each door leads to that specialty's agent, with its scope and its limits."
+    },
+    "closing": {
+      "headline": "Which task would you like to automate?",
+      "body": "Describe your process and we will assess a solution with a defined scope.",
+      "cta": "Write to Boltech"
+    }
+  },
+  "trust": {
+    "headline": "Clear scope, agreed integrations, supervised implementation",
+    "sections": [
+      {
+        "id": "security",
+        "title": "Security and data",
+        "points": [
+          "We declare which data the agent reads, where it is stored and for how long.",
+          "Nothing is sent to a third party without appearing in the proposal.",
+          "Customer data is not used to train models."
+        ]
+      },
+      {
+        "id": "access",
+        "title": "Access and controls",
+        "points": [
+          "External integrations require authorisation and certification before they are connected.",
+          "Permissions are limited to the agreed scope, not to the whole system.",
+          "Any access can be revoked without dismantling the work."
+        ]
+      },
+      {
+        "id": "oversight",
+        "title": "Oversight",
+        "points": [
+          "Implementation is supervised: every run can be reviewed afterwards.",
+          "Decisions that affect a person always have human review.",
+          "Every send or change is logged and can be stopped."
+        ]
+      }
+    ],
+    "limits": [
+      "Published prices are references, not final offers.",
+      "Contracting is subject to an approved quote, taxes and terms.",
+      "External integrations require authorisation and certification.",
+      "There is no 24/7 support."
+    ]
+  },
+  "activation": {
+    "headline": "From idea to agent",
+    "steps": [
+      "Tell us what you need: you pick a specialty and the tasks to solve.",
+      "We agree the scope: we review integrations, limits, budget and timeline.",
+      "We configure and validate: after approval and contracting, we check permissions and behaviour."
+    ],
+    "requirements": [
+      "An internal owner with authority to approve.",
+      "Authorised access to the tools the process uses.",
+      "Written acceptance criteria before work starts."
+    ],
+    "docs": [
+      { "title": "What you need before the call", "body": "A description of the current process, who runs it, and what happens when something goes wrong." },
+      { "title": "What you get afterwards", "body": "The written scope, the acceptance criteria and the start date." },
+      { "title": "What we do not do", "body": "Connect an integration without certifying it, or promise an outcome that cannot be measured." }
+    ]
+  },
+  "form": {
+    "id": "request-a-call",
+    "submitLabel": "Request a call",
+    "intro": "Tell us which task you would like to automate. With that we assess a solution with a defined scope.",
+    "requiredCount": 6,
+    "prohibitedFields": ["budget", "presupuesto", "phone", "telefono", "employees", "timeline", "plazo"],
+    "fields": [
+      { "name": "firstname", "label": "First name", "type": "text", "required": true, "mapsTo": "contactName" },
+      { "name": "lastname", "label": "Last name", "type": "text", "required": true, "mapsTo": "contactName" },
+      { "name": "email", "label": "Work email", "type": "email", "required": true, "mapsTo": "contactEmail" },
+      { "name": "company", "label": "Company", "type": "text", "required": true, "mapsTo": "company" },
+      { "name": "jobtitle", "label": "Job title", "type": "text", "required": true, "mapsTo": "jobTitle" },
+      { "name": "outcome", "label": "Which task do you want to automate?", "type": "textarea", "required": true, "mapsTo": "notes" }
+    ],
+    "legalFields": [
+      { "name": "consent", "label": "I agree to be contacted by this means", "type": "checkbox", "required": true, "mapsTo": "consentToContact" }
+    ]
+  },
+  "pricing": {
+    "headline": "Three ways to start",
+    "note": "Reference prices, not final offers. Contracting is subject to an approved quote, taxes and terms.",
+    "offers": [
+      {
+        "id": "prebuilt",
+        "name": "Agents ready to configure",
+        "description": "Specialties such as sales, customer service, marketing, finance, logistics and registrations.",
+        "referencePrice": "From US$69/month, subject to scope and quotas.",
+        "reference": true,
+        "quoteRequired": true,
+        "cta": "Visit the Factory"
+      },
+      {
+        "id": "pilot",
+        "name": "Enterprise pilot",
+        "description": "A bounded validation of one flow and one simple integration.",
+        "referencePrice": "US$600: US$300 upfront and US$300 on delivery.",
+        "reference": true,
+        "quoteRequired": true,
+        "cta": "Assess a pilot"
+      },
+      {
+        "id": "custom",
+        "name": "Custom agents",
+        "description": "Solutions integrated into your processes. Operation and support are quoted separately.",
+        "referencePrice": "Implementation from US$900.",
+        "reference": true,
+        "quoteRequired": true,
+        "cta": "Talk about my project"
+      }
+    ],
+    "cta": "Talk to the team",
+    "faq": [
+      { "q": "How do I start?", "a": "You pick a specialty and request a call. The scope is defined in writing during that call." },
+      { "q": "Is the price final?", "a": "No. Published prices are references and contracting is subject to an approved quote, taxes and terms." },
+      { "q": "What does the pilot include?", "a": "The validation of one flow and one simple integration. Anything not included is written into the proposal." },
+      { "q": "How is data protected?", "a": "We declare which data is read, where it is stored and who can see it before you sign." }
+    ]
+  },
+  "comparisons": [
+    {
+      "id": "servicio-o-plataforma",
+      "competitor": "automation platforms",
+      "title": "Accompanied service or platform",
+      "fitFor": "There is no single answer: it depends on who will build, maintain and answer for the flow.",
+      "differences": [
+        "Here someone answers for the outcome, not just for the tool.",
+        "The scope is written before work starts and can be rejected.",
+        "Integrations are certified before they are connected."
+      ],
+      "switching": [
+        "We review what you already have working.",
+        "We keep what works and replace only the part that fails.",
+        "Nothing is turned off before the replacement is tested."
+      ],
+      "faq": [
+        { "q": "Is a platform or a service better?", "a": "It depends on whether you have a team to build and maintain. If you do, a platform usually pays off more. If you do not, a service avoids work nobody will do." },
+        { "q": "Can I migrate what I already have?", "a": "It is reviewed case by case. We do not promise a migration without seeing it first." },
+        { "q": "Do you only work with sales?", "a": "No. There are agents for customer service, marketing, finance, logistics and registrations." },
+        { "q": "Do you work with non-technical teams?", "a": "Yes. The requirement is an internal owner, not a programmer." }
+      ],
+      "cta": "See the proposal on your own processes"
+    }
+  ],
+  "proof": {
+    "status": "PENDING_OWNER_DECISION",
+    "placement": "next-to-the-form",
+    "policy": "Own cases only, with a verifiable figure. With no published customers yet, the space is declared empty. It is not filled with other companies' logos.",
+    "cases": []
+  },
+  "departments": [
+    { "id": "ventas", "name": "Sales", "taskIds": ["agente-ventas"] },
+    { "id": "servicio-al-cliente", "name": "Customer service", "taskIds": ["agente-servicio-cliente"] },
+    { "id": "mercadeo", "name": "Marketing", "taskIds": ["agente-mercadeo"] },
+    { "id": "finanzas", "name": "Finance", "taskIds": ["agente-finanzas"] },
+    { "id": "logistica", "name": "Logistics", "taskIds": ["agente-logistica"] },
+    { "id": "quimica-farmacia-registros", "name": "Chemistry, Pharmacy and Registrations", "taskIds": ["agente-registros"] }
+  ],
+  "tasks": [
+    {
+      "id": "agente-ventas",
+      "departmentId": "ventas",
+      "name": "Sales Agent",
+      "status": "PREBUILT_CONFIGURABLE",
+      "promise": "Every opportunity with its next step, without depending on someone remembering.",
+      "howItWorks": {
+        "trigger": "A query, a form or a new contact comes in.",
+        "decision": "It separates the buyer from the browser.",
+        "action": "It prepares the follow-up and leaves it ready for a person to review and send."
+      },
+      "qualityBar": "No follow-up leaves without an owner and a date, on every run.",
+      "shapedBy": "The stages and rules are those of your process, not a closed template.",
+      "risk": {
+        "security": "We declare which data is read and where it is stored.",
+        "access": "Only authorised people can edit rules and lists.",
+        "oversight": "Every send is logged and can be stopped."
+      },
+      "sharedStack": "All agents share the same database, permissions and log, so adding another does not mean starting over.",
+      "cta": { "label": "Put the sales agent to work", "timeframe": "initial configuration" }
+    },
+    {
+      "id": "agente-servicio-cliente",
+      "departmentId": "servicio-al-cliente",
+      "name": "Customer Service Agent",
+      "status": "PREBUILT_CONFIGURABLE",
+      "promise": "Every request reaches someone who can resolve it, on the first assignment.",
+      "howItWorks": {
+        "trigger": "A request comes in through any enabled channel.",
+        "decision": "It identifies the subject and the real urgency, not the declared one.",
+        "action": "It answers the repeatable and escalates what needs a person."
+      },
+      "qualityBar": "Misclassified requests are returned and feed the rule, on every run.",
+      "shapedBy": "The categories are those of your operation, not a generic tree.",
+      "risk": {
+        "security": "Requester data does not leave the agreed environment.",
+        "access": "Each queue has a defined owner.",
+        "oversight": "Every automatic reassignment is logged."
+      },
+      "sharedStack": "All agents share the same database, permissions and log, so adding another does not mean starting over.",
+      "cta": { "label": "Put the customer service agent to work", "timeframe": "initial configuration" }
+    },
+    {
+      "id": "agente-mercadeo",
+      "departmentId": "mercadeo",
+      "name": "Marketing Agent",
+      "status": "PREBUILT_CONFIGURABLE",
+      "promise": "Material that comes from the offer and the context, not from a blank draft.",
+      "howItWorks": {
+        "trigger": "A piece is needed for a specific audience.",
+        "decision": "It picks the argument that fits that audience and drops the one that does not.",
+        "action": "It produces the draft and leaves it in review before delivery."
+      },
+      "qualityBar": "No piece is delivered without human review, on every run.",
+      "shapedBy": "Tone and limits are set by your team.",
+      "risk": {
+        "security": "Customer data is not used in the material without authorisation.",
+        "access": "Only the authorised team publishes.",
+        "oversight": "Every version is logged and can be reverted."
+      },
+      "sharedStack": "All agents share the same database, permissions and log, so adding another does not mean starting over.",
+      "cta": { "label": "Put the marketing agent to work", "timeframe": "initial configuration" }
+    },
+    {
+      "id": "agente-finanzas",
+      "departmentId": "finanzas",
+      "name": "Finance Agent",
+      "status": "PREBUILT_CONFIGURABLE",
+      "promise": "Numbers arrive ordered and with their source, not on a loose sheet.",
+      "howItWorks": {
+        "trigger": "An invoice, a movement or a period close comes in.",
+        "decision": "It checks that the record matches its source document.",
+        "action": "It flags the difference and leaves it for review before posting."
+      },
+      "qualityBar": "No record is posted without its source document, on every run.",
+      "shapedBy": "Accounting criteria are set by your team, not by the agent.",
+      "risk": {
+        "security": "Financial data does not leave the agreed environment.",
+        "access": "Only the authorised area accesses the records.",
+        "oversight": "Every flagged difference is logged with its reason."
+      },
+      "sharedStack": "All agents share the same database, permissions and log, so adding another does not mean starting over.",
+      "cta": { "label": "Put the finance agent to work", "timeframe": "initial configuration" }
+    },
+    {
+      "id": "agente-logistica",
+      "departmentId": "logistica",
+      "name": "Logistics Agent",
+      "status": "PREBUILT_CONFIGURABLE",
+      "promise": "The state of a shipment is known before the customer asks.",
+      "howItWorks": {
+        "trigger": "A shipment is created or its state changes.",
+        "decision": "It detects the deviation from the committed date.",
+        "action": "It notifies the right person and proposes the next action."
+      },
+      "qualityBar": "No alert is sent without the source that supports it, on every run.",
+      "shapedBy": "Committed times are set by your operation.",
+      "risk": {
+        "security": "Recipient data is handled under the declared legal basis.",
+        "access": "Each carrier sees only its shipments.",
+        "oversight": "Every alert is logged and can be audited."
+      },
+      "sharedStack": "All agents share the same database, permissions and log, so adding another does not mean starting over.",
+      "cta": { "label": "Put the logistics agent to work", "timeframe": "initial configuration" }
+    },
+    {
+      "id": "agente-registros",
+      "departmentId": "quimica-farmacia-registros",
+      "name": "Chemistry, Pharmacy and Registrations Agent",
+      "status": "PREBUILT_CONFIGURABLE",
+      "promise": "Files are checked against the applicable rule, not against someone's memory.",
+      "howItWorks": {
+        "trigger": "A file comes in, or a registration requirement falls due.",
+        "decision": "It compares what was submitted against the current requirement list.",
+        "action": "It flags what is missing and leaves it for review before submission."
+      },
+      "qualityBar": "No file is declared complete without the requirement list verified, on every run.",
+      "shapedBy": "The rule and the requirement list are supplied by your team.",
+      "risk": {
+        "security": "Files are treated as regulated data and do not leave the agreed environment.",
+        "access": "Only authorised staff access each file.",
+        "oversight": "The final decision on a file is always human."
+      },
+      "sharedStack": "All agents share the same database, permissions and log, so adding another does not mean starting over.",
+      "cta": { "label": "Put the registrations agent to work", "timeframe": "initial configuration" }
+    }
+  ]
+}

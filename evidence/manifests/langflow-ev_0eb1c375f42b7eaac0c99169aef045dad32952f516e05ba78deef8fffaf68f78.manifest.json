@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "targetId": "langflow",
+  "organization": "Langflow",
+  "evidenceId": "ev_0eb1c375f42b7eaac0c99169aef045dad32952f516e05ba78deef8fffaf68f78",
+  "capturedAt": "2026-11-04T01:27:24.475Z",
+  "sourceUrl": "https://www.langflow.org/use-cases/",
+  "coverage": "Catalogo publico de casos de uso y plantillas: 1360 nodos DOM, 1004 de accesibilidad, 31 recursos. Categorias visibles (Business, Customer Support, Documents, Knowledge Bases, Analytics, Data Processing) y plantillas nombradas (Call Classification Analytics, CSV Query Assistant, PRD Draftsman, Bug Report Deduplicator, Feature Prioritization Scorer, AI Contract Risk Scanner).",
+  "limitations": "Sin sesion. Solo se observo el listado inicial y los primeros elementos; el catalogo completo y cada plantilla no se abrieron. No se verifico ejecucion de las plantillas.",
+  "artifactSha256": "b64ca22ed3a0b576e9a50e4f11258918df53e7b1f84555240219d6c54f0be607",
+  "originalFileName": "langflow-use-cases.json",
+  "status": "IMPORTED_PENDING_HUMAN_REVIEW",
+  "note": "Hash verifies this imported artifact only; it does not authenticate REA execution, coverage or third-party behavior."
+}

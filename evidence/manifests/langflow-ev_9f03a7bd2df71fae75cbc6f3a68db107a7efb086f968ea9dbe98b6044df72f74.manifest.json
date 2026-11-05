@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "targetId": "langflow",
+  "organization": "Langflow",
+  "evidenceId": "ev_9f03a7bd2df71fae75cbc6f3a68db107a7efb086f968ea9dbe98b6044df72f74",
+  "capturedAt": "2026-11-03T16:35:26.535Z",
+  "sourceUrl": "https://www.langflow.org/",
+  "coverage": "Landing publica https://www.langflow.org/: 2458 nodos DOM, 991 nodos de accesibilidad, 30 recursos del origen, encabezados de seccion, CTAs (Get Started for Free, Star on GitHub), navegacion superior y metricas mostradas (156k, 25k, 10k, 16k)",
+  "limitations": "Sin sesion ni autenticacion. completeness=policy_filtered: texto de consola, fuentes de script, claves de storage, cuerpos de red y websockets excluidos por no aprobados; terceros fuera del origen excluidos (metadata, resources, scripts). Observacion de 2 s iniciada al adjuntar el target: actividad previa no disponible. El texto de accesibilidad se retuvo (7968 bytes) pero el contenido DOM no. No se observaron precios, checkout ni flujo de compra.",
+  "artifactSha256": "2deba5f9975419de64a0600e9d4e364e6402e78336c5dee3eb57d09b755afe52",
+  "originalFileName": "langflow-observation.json",
+  "status": "IMPORTED_PENDING_HUMAN_REVIEW",
+  "note": "Hash verifies this imported artifact only; it does not authenticate REA execution, coverage or third-party behavior."
+}

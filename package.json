@@ -1,0 +1,20 @@
+{
+  "name": "plan-comercial-tipo-relevance-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Plan comercial tipo Relevance AI: embudo enterprise bilingue, SEO/AEO y recorridos comerciales, reimplementado como codigo original para Boltech Group",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/funnel.mjs && node --check src/seo.mjs && node --check src/cli.mjs && node --check src/marketing.mjs && node --check src/commercial.mjs && node --check src/offer.mjs && node --check src/content.mjs && node --check src/metrics.mjs && node --check src/opportunities.mjs && node --check src/channels.mjs && node --check src/rea.mjs && node --check src/agent.mjs && node --check src/a2a-client.mjs",
+    "funnel:build": "node src/cli.mjs funnel-build",
+    "funnel:check": "node src/cli.mjs funnel-check",
+    "seo:check": "node src/cli.mjs seo-check",
+    "commercial:plan": "node src/cli.mjs commercial-plan",
+    "commercial:build": "node src/cli.mjs commercial-build"
+  },
+  "license": "UNLICENSED"
+}

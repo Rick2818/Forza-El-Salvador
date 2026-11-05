@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "targetId": "relevance-ai",
+  "organization": "Relevance AI",
+  "evidenceId": "ev_2305adafcfcb86169fa35b90c96dccc6690cee7179b5fd925534b0de611627ef",
+  "capturedAt": "2026-11-04T01:29:05.261Z",
+  "sourceUrl": "https://relevanceai.com/pricing",
+  "coverage": "Pagina de precios publica: 562 nodos DOM, 419 de accesibilidad, 33 recursos. Sin cifras publicadas: la pagina muestra Enterprise, Talk to sales y Custom Vendor Credits, mas preguntas frecuentes. La navegacion expone competidores declarados (Clay, Claude Managed Agents, OpenAI Codex, Gemini Enterprise, Microsoft Copilot Studio, Gumloop, Dust), Trust Center, Academy y API and MCP.",
+  "limitations": "No hay importes, planes ni limites publicados que se puedan comparar; la estructura de precios real solo seria observable dentro de una conversacion comercial, que no se realizo.",
+  "artifactSha256": "b00c8aaa71a123acb37598e22c6a574005db71eff13ccb3f3fa56b6806079318",
+  "originalFileName": "relevance-pricing.json",
+  "status": "IMPORTED_PENDING_HUMAN_REVIEW",
+  "note": "Hash verifies this imported artifact only; it does not authenticate REA execution, coverage or third-party behavior."
+}

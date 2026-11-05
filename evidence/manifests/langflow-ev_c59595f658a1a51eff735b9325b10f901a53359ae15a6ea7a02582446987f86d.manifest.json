@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "targetId": "langflow",
+  "organization": "Langflow",
+  "evidenceId": "ev_c59595f658a1a51eff735b9325b10f901a53359ae15a6ea7a02582446987f86d",
+  "capturedAt": "2026-11-04T01:25:34.901Z",
+  "sourceUrl": "https://www.langflow.org/pricing",
+  "coverage": "Ruta /pricing de Langflow: respuesta 404 (This page could not be found), 240 nodos DOM, 14 recursos. No existe pagina publica de precios en esa ruta.",
+  "limitations": "Solo se observo la ruta /pricing. No se exploraron otras rutas de precios ni un area autenticada; la ausencia en esta ruta no prueba que no exista precios en otro lugar.",
+  "artifactSha256": "15ff46c11cb3b29d8cb465dbf5c3b02137be3be8a4170f2ac791aab6fc6ec51a",
+  "originalFileName": "langflow-pricing.json",
+  "status": "IMPORTED_PENDING_HUMAN_REVIEW",
+  "note": "Hash verifies this imported artifact only; it does not authenticate REA execution, coverage or third-party behavior."
+}

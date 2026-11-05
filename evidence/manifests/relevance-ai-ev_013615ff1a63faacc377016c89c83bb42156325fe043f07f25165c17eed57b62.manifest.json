@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "targetId": "relevance-ai",
+  "organization": "Relevance AI",
+  "evidenceId": "ev_013615ff1a63faacc377016c89c83bb42156325fe043f07f25165c17eed57b62",
+  "capturedAt": "2026-11-04T01:28:13.393Z",
+  "sourceUrl": "https://relevanceai.com/",
+  "coverage": "Landing publica: 2465 nodos DOM, 1841 de accesibilidad, 66 recursos. Propuesta (Specialist AI Agents for Every Task), navegacion completa por departamento y producto, y tres casos de cliente con cifras declaradas por el vendedor (Qualified 7M USD de pipeline, Send Payments 40 h semanales, Zembl 30 por ciento mas de conversiones).",
+  "limitations": "Las cifras de casos son declaraciones del vendedor en su propia pagina, no metricas verificadas por terceros. Sin sesion; no se abrio ningun caso, no se observo facturacion ni contratos.",
+  "artifactSha256": "abba0221569169e0b986707f536eda0432683459f076835ca51b9e39d547f9d5",
+  "originalFileName": "relevance-landing.json",
+  "status": "IMPORTED_PENDING_HUMAN_REVIEW",
+  "note": "Hash verifies this imported artifact only; it does not authenticate REA execution, coverage or third-party behavior."
+}
