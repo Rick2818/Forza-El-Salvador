@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function () { try { var saved = localStorage.getItem('boltech-theme'); var theme = saved === 'light' || saved === 'dark' ? saved : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); document.documentElement.dataset.theme = theme; } catch (_) { document.documentElement.dataset.theme = 'dark'; } })();</script>
+<title>Boltech Group · AI agents for companies</title>
+<meta name="description" content="AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure. Request a proposal.">
+<link rel="canonical" href="https://boltech-group.vercel.app/en/">
+<link rel="alternate" hreflang="es" href="https://boltech-group.vercel.app/">
+<link rel="alternate" hreflang="en" href="https://boltech-group.vercel.app/en/">
+<link rel="alternate" hreflang="x-default" href="https://boltech-group.vercel.app/">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Boltech Group">
+<meta property="og:title" content="Boltech Group · AI agents for companies">
+<meta property="og:description" content="AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure. Request a proposal.">
+<meta property="og:url" content="https://boltech-group.vercel.app/en/">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Boltech Group · AI agents for companies">
+<meta name="twitter:description" content="AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure. Request a proposal.">
+<script type="application/ld+json">{"@type":"Organization","name":"Boltech Group","url":"https://boltech-group.vercel.app/","description":"AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure."}</script>
+<script type="application/ld+json">{"@type":"WebPage","@id":"https://boltech-group.vercel.app/en/","url":"https://boltech-group.vercel.app/en/","name":"Boltech Group · AI agents for companies","description":"AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure. Request a proposal.","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"Boltech Group","url":"https://boltech-group.vercel.app/"}}</script>
+<script type="application/ld+json">{"@type":"WebSite","name":"Boltech Group","url":"https://boltech-group.vercel.app/","inLanguage":"en"}</script>
+<style>
+
+  @layer reset, tokens, base, layout, components, motion;
+  @layer reset {
+    *, *::before, *::after { box-sizing: border-box; }
+    body, h1, h2, h3, h4, p, ol, ul { margin: 0; }
+  }
+  @layer tokens {
+    :root, [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0D1116;
+      --bg-grad: #12171E;
+      --surface: #161D26;
+      --surface-2: #1B2430;
+      --line: #273242;
+      --line-strong: #35465A;
+      --ink: #EDEFF4;
+      --muted: #8E9AA9;
+      --accent: #FFB454;
+      --accent-strong: #FFCC85;
+      --teal: #5CE0C6;
+      --danger: #FF7A6B;
+      --accent-ghost: rgba(255,180,84,.12);
+      --teal-ghost: rgba(92,224,198,.10);
+      --glow-accent: 0 6px 24px rgba(255,180,84,.26);
+      --card-depth: 0 28px 60px rgba(0,0,0,.46);
+      --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.05'/></svg>");
+    }
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #F2F3F5;
+      --bg-grad: #FFFFFF;
+      --surface: #FFFFFF;
+      --surface-2: #F6F7F9;
+      --line: #DDE1E7;
+      --line-strong: #C5CBD4;
+      --ink: #131A22;
+      --muted: #55636F;
+      --accent: #8A4E00;
+      --accent-strong: #6B3D00;
+      --teal: #0B7A5E;
+      --danger: #B42318;
+      --accent-ghost: rgba(138,78,0,.09);
+      --teal-ghost: rgba(11,122,94,.08);
+      --glow-accent: 0 8px 24px rgba(138,78,0,.22);
+      --card-depth: 0 22px 48px rgba(19,26,34,.12);
+      --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='4' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.028'/></svg>");
+    }
+  }
+  @layer base {
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% -8%, rgba(255,180,84,.10), transparent 42%),
+        radial-gradient(circle at 88% 4%, rgba(92,224,198,.10), transparent 46%),
+        linear-gradient(180deg, var(--bg-grad) 0%, var(--bg) 340px);
+      background-attachment: fixed;
+      font: 16px/1.62 ui-sans-serif, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      transition: color .25s ease, background .25s ease;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px),
+        var(--noise);
+      background-size: 72px 72px, 72px 72px, 160px 160px;
+      opacity: .30;
+      mask-image: radial-gradient(circle at 50% 0%, black, transparent 72%);
+      -webkit-mask-image: radial-gradient(circle at 50% 0%, black, transparent 72%);
+    }
+    main, header, footer { position: relative; z-index: 1; }
+    ::selection { background: var(--accent); color: #131A22; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+  }
+  @layer layout {
+    header {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+      padding: 14px 26px;
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      backdrop-filter: blur(14px) saturate(1.15);
+      border-bottom: 1px solid var(--line);
+    }
+    header strong { font-size: 18px; letter-spacing: .02em; }
+    header strong a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+    header strong a::before {
+      content: "";
+      width: 12px; height: 12px; border-radius: 2px;
+      background: conic-gradient(from 45deg, var(--accent), var(--teal) 40%, var(--accent));
+      box-shadow: 0 0 12px rgba(255,180,84,.55);
+    }
+    nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    nav a {
+      color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600; letter-spacing: .02em;
+      padding: 8px 12px; border-radius: 999px; border: 1px solid transparent; transition: .2s ease;
+    }
+    nav a:hover { color: var(--ink); border-color: var(--line); background: var(--surface-2); }
+    main { max-width: 1040px; margin: 0 auto; padding: 0 26px 96px; }
+    section { padding: 56px 0; border: 0; }
+    section + section { border-top: 1px solid var(--line); }
+    .crumbs { font-size: 13px; color: var(--muted); padding: 18px 0 0; letter-spacing: .02em; }
+    .crumbs a { color: var(--teal); }
+  }
+  @layer components {
+    h1 {
+      font-size: clamp(2.6rem, 6.2vw, 4rem); line-height: 1.02; font-weight: 800;
+      letter-spacing: -0.035em; text-wrap: balance; margin: 0 0 18px;
+    }
+    h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.14; letter-spacing: -0.02em; font-weight: 780; margin: 0 0 18px; text-wrap: balance; }
+    h3 { font-size: 1.4rem; letter-spacing: -0.02em; font-weight: 760; margin: 0 0 10px; }
+    h4 { font-size: .78rem; margin: 26px 0 12px; font-family: ui-monospace, "SF Mono", Consolas, monospace; text-transform: uppercase; letter-spacing: .14em; color: var(--teal); }
+    p { margin: 0 0 14px; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .lead { font-size: 1.08rem; color: #B6C0CB; max-width: 60ch; line-height: 1.6; }
+    [data-theme="light"] .lead { color: var(--muted); }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-family: ui-monospace, "SF Mono", Consolas, monospace;
+      font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--teal);
+      border: 1px solid color-mix(in srgb, var(--teal) 40%, transparent);
+      background: var(--teal-ghost); border-radius: 999px; padding: 7px 14px; margin: 0 0 18px;
+    }
+    .eyebrow .dot {
+      width: 8px; height: 8px; border-radius: 999px; background: var(--teal);
+      box-shadow: 0 0 0 0 rgba(92,224,198,.6); animation: ping 2.2s ease-out infinite;
+    }
+    .promise { font-size: 1.1rem; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; max-width: 58ch; }
+    .doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; padding: 0; list-style: none; }
+    .doors a {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 15px 16px; border: 1px solid var(--line); border-radius: 14px;
+      color: var(--ink); text-decoration: none; background: var(--surface);
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease; position: relative; overflow: hidden;
+    }
+    .doors a::after { content: "→"; color: var(--muted); transition: transform .22s ease; }
+    .doors a:hover { transform: translateY(-3px); border-color: var(--line-strong); box-shadow: var(--card-depth); }
+    .doors a:hover::after { transform: translateX(6px); color: var(--accent); }
+    .actions { display: flex; gap: 14px; flex-wrap: wrap; margin: 26px 0 6px; }
+    .cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .82rem; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #14110A; text-decoration: none; background: var(--accent);
+      padding: 15px 22px; border-radius: 10px; border: 1px solid var(--accent-strong);
+      box-shadow: var(--glow-accent); transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .cta:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(255,180,84,.4); color: #14110A; }
+    .band {
+      border: 1px solid var(--line-strong); border-radius: 18px;
+      background:
+        radial-gradient(circle at 20% -30%, rgba(255,180,84,.18), transparent 55%),
+        radial-gradient(circle at 90% 120%, rgba(92,224,198,.16), transparent 55%),
+        var(--surface);
+      padding: 40px 38px; margin: 24px 0;
+      box-shadow: var(--card-depth);
+    }
+    .pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 18px; }
+    .pillar {
+      border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: var(--surface);
+      transition: transform .25s ease, border-color .25s ease;
+    }
+    .pillar:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .pillar h4 { margin-top: 0; }
+    .steps { display: grid; gap: 0; padding: 0; list-style: none; counter-reset: step; }
+    .steps li {
+      display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
+      padding: 14px 0 22px; position: relative;
+      border-left: 1px solid var(--line-strong); padding-left: 28px; margin-left: 21px;
+    }
+    .steps li::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: -22px; top: 14px;
+      width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+      background: linear-gradient(145deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--line-strong);
+      color: var(--accent); font-family: ui-monospace, monospace; font-weight: 700;
+    }
+    .steps li:last-child { padding-bottom: 0; }
+    .steps span { display: block; color: var(--muted); font-size: .95rem; max-width: 52ch; }
+    .task, .comparison {
+      border: 1px solid var(--line); border-radius: 18px; background: var(--surface);
+      padding: 28px; margin: 18px 0; box-shadow: var(--card-depth);
+    }
+    .status {
+      display: inline-block; font-family: ui-monospace, monospace; font-size: .64rem;
+      letter-spacing: .16em; text-transform: uppercase; color: var(--teal);
+      border: 1px solid color-mix(in srgb, var(--teal) 40%, transparent);
+      background: var(--teal-ghost); border-radius: 999px; padding: 4px 12px; margin: 4px 0 12px;
+    }
+    .offer {
+      border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: var(--surface);
+      position: relative; overflow: hidden; margin: 14px 0;
+    }
+    .offer::before {
+      content: ""; position: absolute; inset: 0 auto 0 0; width: 3px;
+      background: linear-gradient(180deg, var(--accent), var(--teal));
+    }
+    .price { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.01em; color: var(--accent); }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 12px 0; }
+    dt { font-family: ui-monospace, monospace; font-size: .72rem; align-self: start; color: var(--teal); letter-spacing: .06em; }
+    dd { margin: 0; color: var(--ink); }
+    label { display: grid; gap: 7px; font-size: .82rem; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+    input, textarea, select {
+      font: inherit; color: var(--ink); padding: 12px 14px; border-radius: 10px;
+      border: 1px solid var(--line-strong); background: var(--surface-2); transition: .2s ease;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+    button {
+      font: inherit; font-weight: 800; letter-spacing: .06em; justify-self: start;
+      color: #14110A; background: var(--accent); border: 0; padding: 14px 20px; border-radius: 10px;
+      cursor: pointer; box-shadow: var(--glow-accent); transition: transform .2s ease;
+    }
+    button:hover { transform: translateY(-2px); }
+    .check { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+    details { border-bottom: 1px solid var(--line); padding: 12px 0 14px; }
+    summary { cursor: pointer; font-weight: 700; }
+    .siblings { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; list-style: none; }
+    .siblings a { color: var(--teal); text-decoration: none; border: 1px solid var(--line); padding: 7px 11px; border-radius: 999px; font-size: .86rem; }
+    .siblings a:hover { border-color: var(--teal); }
+    footer { padding: 34px 26px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); }
+    #scroll-progress {
+      position: fixed; top: 0; left: 0; height: 2px; width: 0%; z-index: 30;
+      background: linear-gradient(90deg, var(--accent), var(--teal));
+      transition: width .08s linear;
+    }
+    .theme-toggle {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px;
+      background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+      cursor: pointer; font-family: ui-monospace, monospace; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase;
+    }
+    .theme-toggle svg { width: 14px; height: 14px; }
+    [data-theme="dark"] .theme-toggle .moon { display: none; }
+    [data-theme="light"] .theme-toggle .sun { display: none; }
+    .theme-toggle:hover { color: var(--ink); border-color: var(--teal); }
+  }
+  @layer motion {
+    section { animation: rise .55s cubic-bezier(.2,.7,.3,1) both; }
+    main > section:nth-of-type(1) { animation-delay: .02s; }
+    main > section:nth-of-type(2) { animation-delay: .09s; }
+    main > section:nth-of-type(3) { animation-delay: .16s; }
+    main > section:nth-of-type(4) { animation-delay: .23s; }
+    main > section:nth-of-type(5) { animation-delay: .30s; }
+    main > section:nth-of-type(6) { animation-delay: .37s; }
+    main > section:nth-of-type(7) { animation-delay: .44s; }
+    main > section:nth-of-type(8) { animation-delay: .51s; }
+    main > section:nth-of-type(9) { animation-delay: .58s; }
+    main > section:nth-of-type(10) { animation-delay: .65s; }
+    main > section:nth-of-type(11) { animation-delay: .72s; }
+    main > section:nth-of-type(n+12) { animation-delay: .78s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(92,224,198,.55); } 100% { box-shadow: 0 0 0 9px rgba(92,224,198,0); } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
+    }
+    @media (max-width: 680px) {
+      .lead { font-size: 1rem; }
+      dl { grid-template-columns: 1fr; gap: 2px 0; }
+      .steps li { margin-left: 18px; padding-left: 22px; }
+      main { padding: 0 16px 64px; }
+      section { padding: 40px 0; }
+      .band { padding: 28px 22px; }
+    }
+  }
+
+</style>
+</head>
+<body>
+<div id="scroll-progress" aria-hidden="true"></div>
+<header>
+  <strong>Boltech Group</strong>
+  <div class="header-actions">
+    <nav>
+      <a href="#entrada">Home</a>
+      <a href="#catalogo">Specialties</a>
+      <a href="#conversion">Request</a>
+      <a href="#precio">Pricing</a>
+      <a href="#confianza">Trust</a>
+      <a href="#activacion">How we start</a>
+      <a href="../index.html" hreflang="es">Español</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch theme" aria-pressed="false"><svg class="sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg class="moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6a8.5 8.5 0 1 0 11.8 11.8Z" fill="currentColor"/></svg><span class="sr-only">Switch theme</span></button>
+  </div>
+</header>
+<main>
+  <section id="entrada" data-layer="entrada"><p class="eyebrow">AI agents for companies</p><h1>Fewer tasks. More results.</h1><p class="lead">AI agents that automate processes, serve customers and organise the work. Start with a solution ready to configure, or build one to measure.</p><div class="actions"><a class="cta" href="#conversion">Request a proposal</a><a href="#catalogo">See specialties</a></div></section>
+<section><h2>Start with one agent, not with a one-year project.</h2><p class="lead">The pilot validates one flow and one simple integration before the rest of the operation is committed.</p></section>
+<section><h2>Built for teams that answer for the outcome</h2><div class="pillars"><div class="pillar"><h4>Security and data</h4><ul><li>We declare which data the agent reads, where it is stored and for how long.</li><li>Nothing is sent to a third party without appearing in the proposal.</li><li>Customer data is not used to train models.</li></ul></div><div class="pillar"><h4>Access and controls</h4><ul><li>External integrations require authorisation and certification before they are connected.</li><li>Permissions are limited to the agreed scope, not to the whole system.</li><li>Any access can be revoked without dismantling the work.</li></ul></div><div class="pillar"><h4>Oversight</h4><ul><li>Implementation is supervised: every run can be reviewed afterwards.</li><li>Decisions that affect a person always have human review.</li><li>Every send or change is logged and can be stopped.</li></ul></div></div></section>
+<section><h2>Connect to what you already use</h2><p class="lead">External integrations require authorisation and certification before they are connected. We do not announce an integration we have not tested.</p></section>
+<section class="band"><h2>Want to know whether your process can be automated?</h2><p>Describe it and you get an answer with a defined scope, not a brochure.</p><p><a class="cta" href="#conversion">Request a proposal</a></p></section>
+<section id="prueba" data-layer="prueba"><h2>Customer cases</h2><p class="muted">No published cases yet.</p><p class="muted">No cases with a verifiable figure have been published yet. This block stays empty on purpose; it is not filled with other companies&#39; logos.</p></section>
+<section><h2>Where to start reading</h2><div class="pillars"><div class="pillar"><h4>What you need before the call</h4><p>A description of the current process, who runs it, and what happens when something goes wrong.</p></div><div class="pillar"><h4>What we do not do</h4><p>Connect an integration without certifying it, or promise an outcome that cannot be measured.</p></div></div></section>
+<section><h2>From idea to agent</h2><ol class="steps"><li><strong>Tell us what you need</strong><span>You pick a specialty and the tasks to solve.</span></li><li><strong>We agree the scope</strong><span>We review integrations, limits, budget and timeline.</span></li><li><strong>We configure and validate</strong><span>After approval and contracting, we check permissions and behaviour.</span></li></ol></section>
+<section id="catalogo"><h2>Agents by specialty</h2><p class="lead">One specialty, one agent. Pick the one that matches your team.</p><ul class="doors"><li><a href="#task-agente-ventas">Sales Agent</a></li><li><a href="#task-agente-servicio-cliente">Customer Service Agent</a></li><li><a href="#task-agente-mercadeo">Marketing Agent</a></li><li><a href="#task-agente-finanzas">Finance Agent</a></li><li><a href="#task-agente-logistica">Logistics Agent</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations Agent</a></li></ul></section>
+<section data-layer="departamento"><h2>Select a specialty</h2><p class="lead">Each door leads to that specialty&#39;s agent, with its scope and its limits.</p><ul class="doors"><li><a href="#task-agente-ventas">Sales</a></li><li><a href="#task-agente-servicio-cliente">Customer service</a></li><li><a href="#task-agente-mercadeo">Marketing</a></li><li><a href="#task-agente-finanzas">Finance</a></li><li><a href="#task-agente-logistica">Logistics</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations</a></li></ul></section>
+<section class="band"><h2>Which task would you like to automate?</h2><p>Describe your process and we will assess a solution with a defined scope.</p><p><a class="cta" href="#conversion">Write to Boltech</a></p></section>
+
+  <section>
+    
+<article class="task" id="task-agente-ventas" data-layer="tarea">
+  <p class="eyebrow">Sales</p>
+  <h3>Sales Agent</h3>
+  <p class="status">PREBUILT_CONFIGURABLE</p>
+  <p class="promise">Every opportunity with its next step, without depending on someone remembering.</p>
+  <h4>How it works</h4>
+  <dl>
+    <dt>It starts when</dt><dd>A query, a form or a new contact comes in.</dd>
+    <dt>It decides</dt><dd>It separates the buyer from the browser.</dd>
+    <dt>It acts</dt><dd>It prepares the follow-up and leaves it ready for a person to review and send.</dd>
+  </dl>
+  <h4>No follow-up leaves without an owner and a date, on every run.</h4>
+  <p>The stages and rules are those of your process, not a closed template.</p>
+  <h4>Built for teams that answer for the outcome</h4>
+  <ul>
+    <li><strong>Security and data:</strong> We declare which data is read and where it is stored.</li>
+    <li><strong>Access and controls:</strong> Only authorised people can edit rules and lists.</li>
+    <li><strong>Oversight:</strong> Every send is logged and can be stopped.</li>
+  </ul>
+  <h4>Combine it with more agents</h4>
+  <ul class="siblings"><li><a href="#task-agente-servicio-cliente">Customer Service Agent</a></li><li><a href="#task-agente-mercadeo">Marketing Agent</a></li><li><a href="#task-agente-finanzas">Finance Agent</a></li><li><a href="#task-agente-logistica">Logistics Agent</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations Agent</a></li></ul>
+  <h4>All agents share the same database, permissions and log, so adding another does not mean starting over.</h4>
+  <p><a class="cta" href="/en/#conversion">Put the sales agent to work</a></p>
+</article>
+<article class="task" id="task-agente-servicio-cliente" data-layer="tarea">
+  <p class="eyebrow">Customer service</p>
+  <h3>Customer Service Agent</h3>
+  <p class="status">PREBUILT_CONFIGURABLE</p>
+  <p class="promise">Every request reaches someone who can resolve it, on the first assignment.</p>
+  <h4>How it works</h4>
+  <dl>
+    <dt>It starts when</dt><dd>A request comes in through any enabled channel.</dd>
+    <dt>It decides</dt><dd>It identifies the subject and the real urgency, not the declared one.</dd>
+    <dt>It acts</dt><dd>It answers the repeatable and escalates what needs a person.</dd>
+  </dl>
+  <h4>Misclassified requests are returned and feed the rule, on every run.</h4>
+  <p>The categories are those of your operation, not a generic tree.</p>
+  <h4>Built for teams that answer for the outcome</h4>
+  <ul>
+    <li><strong>Security and data:</strong> Requester data does not leave the agreed environment.</li>
+    <li><strong>Access and controls:</strong> Each queue has a defined owner.</li>
+    <li><strong>Oversight:</strong> Every automatic reassignment is logged.</li>
+  </ul>
+  <h4>Combine it with more agents</h4>
+  <ul class="siblings"><li><a href="#task-agente-ventas">Sales Agent</a></li><li><a href="#task-agente-mercadeo">Marketing Agent</a></li><li><a href="#task-agente-finanzas">Finance Agent</a></li><li><a href="#task-agente-logistica">Logistics Agent</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations Agent</a></li></ul>
+  <h4>All agents share the same database, permissions and log, so adding another does not mean starting over.</h4>
+  <p><a class="cta" href="/en/#conversion">Put the customer service agent to work</a></p>
+</article>
+<article class="task" id="task-agente-mercadeo" data-layer="tarea">
+  <p class="eyebrow">Marketing</p>
+  <h3>Marketing Agent</h3>
+  <p class="status">PREBUILT_CONFIGURABLE</p>
+  <p class="promise">Material that comes from the offer and the context, not from a blank draft.</p>
+  <h4>How it works</h4>
+  <dl>
+    <dt>It starts when</dt><dd>A piece is needed for a specific audience.</dd>
+    <dt>It decides</dt><dd>It picks the argument that fits that audience and drops the one that does not.</dd>
+    <dt>It acts</dt><dd>It produces the draft and leaves it in review before delivery.</dd>
+  </dl>
+  <h4>No piece is delivered without human review, on every run.</h4>
+  <p>Tone and limits are set by your team.</p>
+  <h4>Built for teams that answer for the outcome</h4>
+  <ul>
+    <li><strong>Security and data:</strong> Customer data is not used in the material without authorisation.</li>
+    <li><strong>Access and controls:</strong> Only the authorised team publishes.</li>
+    <li><strong>Oversight:</strong> Every version is logged and can be reverted.</li>
+  </ul>
+  <h4>Combine it with more agents</h4>
+  <ul class="siblings"><li><a href="#task-agente-ventas">Sales Agent</a></li><li><a href="#task-agente-servicio-cliente">Customer Service Agent</a></li><li><a href="#task-agente-finanzas">Finance Agent</a></li><li><a href="#task-agente-logistica">Logistics Agent</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations Agent</a></li></ul>
+  <h4>All agents share the same database, permissions and log, so adding another does not mean starting over.</h4>
+  <p><a class="cta" href="/en/#conversion">Put the marketing agent to work</a></p>
+</article>
+<article class="task" id="task-agente-finanzas" data-layer="tarea">
+  <p class="eyebrow">Finance</p>
+  <h3>Finance Agent</h3>
+  <p class="status">PREBUILT_CONFIGURABLE</p>
+  <p class="promise">Numbers arrive ordered and with their source, not on a loose sheet.</p>
+  <h4>How it works</h4>
+  <dl>
+    <dt>It starts when</dt><dd>An invoice, a movement or a period close comes in.</dd>
+    <dt>It decides</dt><dd>It checks that the record matches its source document.</dd>
+    <dt>It acts</dt><dd>It flags the difference and leaves it for review before posting.</dd>
+  </dl>
+  <h4>No record is posted without its source document, on every run.</h4>
+  <p>Accounting criteria are set by your team, not by the agent.</p>
+  <h4>Built for teams that answer for the outcome</h4>
+  <ul>
+    <li><strong>Security and data:</strong> Financial data does not leave the agreed environment.</li>
+    <li><strong>Access and controls:</strong> Only the authorised area accesses the records.</li>
+    <li><strong>Oversight:</strong> Every flagged difference is logged with its reason.</li>
+  </ul>
+  <h4>Combine it with more agents</h4>
+  <ul class="siblings"><li><a href="#task-agente-ventas">Sales Agent</a></li><li><a href="#task-agente-servicio-cliente">Customer Service Agent</a></li><li><a href="#task-agente-mercadeo">Marketing Agent</a></li><li><a href="#task-agente-logistica">Logistics Agent</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations Agent</a></li></ul>
+  <h4>All agents share the same database, permissions and log, so adding another does not mean starting over.</h4>
+  <p><a class="cta" href="/en/#conversion">Put the finance agent to work</a></p>
+</article>
+<article class="task" id="task-agente-logistica" data-layer="tarea">
+  <p class="eyebrow">Logistics</p>
+  <h3>Logistics Agent</h3>
+  <p class="status">PREBUILT_CONFIGURABLE</p>
+  <p class="promise">The state of a shipment is known before the customer asks.</p>
+  <h4>How it works</h4>
+  <dl>
+    <dt>It starts when</dt><dd>A shipment is created or its state changes.</dd>
+    <dt>It decides</dt><dd>It detects the deviation from the committed date.</dd>
+    <dt>It acts</dt><dd>It notifies the right person and proposes the next action.</dd>
+  </dl>
+  <h4>No alert is sent without the source that supports it, on every run.</h4>
+  <p>Committed times are set by your operation.</p>
+  <h4>Built for teams that answer for the outcome</h4>
+  <ul>
+    <li><strong>Security and data:</strong> Recipient data is handled under the declared legal basis.</li>
+    <li><strong>Access and controls:</strong> Each carrier sees only its shipments.</li>
+    <li><strong>Oversight:</strong> Every alert is logged and can be audited.</li>
+  </ul>
+  <h4>Combine it with more agents</h4>
+  <ul class="siblings"><li><a href="#task-agente-ventas">Sales Agent</a></li><li><a href="#task-agente-servicio-cliente">Customer Service Agent</a></li><li><a href="#task-agente-mercadeo">Marketing Agent</a></li><li><a href="#task-agente-finanzas">Finance Agent</a></li><li><a href="#task-agente-registros">Chemistry, Pharmacy and Registrations Agent</a></li></ul>
+  <h4>All agents share the same database, permissions and log, so adding another does not mean starting over.</h4>
+  <p><a class="cta" href="/en/#conversion">Put the logistics agent to work</a></p>
+</article>
+<article class="task" id="task-agente-registros" data-layer="tarea">
+  <p class="eyebrow">Chemistry, Pharmacy and Registrations</p>
+  <h3>Chemistry, Pharmacy and Registrations Agent</h3>
+  <p class="status">PREBUILT_CONFIGURABLE</p>
+  <p class="promise">Files are checked against the applicable rule, not against someone&#39;s memory.</p>
+  <h4>How it works</h4>
+  <dl>
+    <dt>It starts when</dt><dd>A file comes in, or a registration requirement falls due.</dd>
+    <dt>It decides</dt><dd>It compares what was submitted against the current requirement list.</dd>
+    <dt>It acts</dt><dd>It flags what is missing and leaves it for review before submission.</dd>
+  </dl>
+  <h4>No file is declared complete without the requirement list verified, on every run.</h4>
+  <p>The rule and the requirement list are supplied by your team.</p>
+  <h4>Built for teams that answer for the outcome</h4>
+  <ul>
+    <li><strong>Security and data:</strong> Files are treated as regulated data and do not leave the agreed environment.</li>
+    <li><strong>Access and controls:</strong> Only authorised staff access each file.</li>
+    <li><strong>Oversight:</strong> The final decision on a file is always human.</li>
+  </ul>
+  <h4>Combine it with more agents</h4>
+  <ul class="siblings"><li><a href="#task-agente-ventas">Sales Agent</a></li><li><a href="#task-agente-servicio-cliente">Customer Service Agent</a></li><li><a href="#task-agente-mercadeo">Marketing Agent</a></li><li><a href="#task-agente-finanzas">Finance Agent</a></li><li><a href="#task-agente-logistica">Logistics Agent</a></li></ul>
+  <h4>All agents share the same database, permissions and log, so adding another does not mean starting over.</h4>
+  <p><a class="cta" href="/en/#conversion">Put the registrations agent to work</a></p>
+</article>
+  </section>
+
+  <section id="alternativa">
+<article class="comparison" data-layer="alternativa">
+  <h3>Accompanied service or platform</h3>
+  <h4>Which one fits your team</h4>
+  <p>There is no single answer: it depends on who will build, maintain and answer for the flow.</p>
+  <h4>Where we differ</h4>
+  <ul><li>Here someone answers for the outcome, not just for the tool.</li><li>The scope is written before work starts and can be rejected.</li><li>Integrations are certified before they are connected.</li></ul>
+  <h4>Switching is easy</h4>
+  <ul><li>We review what you already have working.</li><li>We keep what works and replace only the part that fails.</li><li>Nothing is turned off before the replacement is tested.</li></ul>
+  <h4>Frequently asked questions</h4>
+  <details><summary>Is a platform or a service better?</summary><p>It depends on whether you have a team to build and maintain. If you do, a platform usually pays off more. If you do not, a service avoids work nobody will do.</p></details><details><summary>Can I migrate what I already have?</summary><p>It is reviewed case by case. We do not promise a migration without seeing it first.</p></details><details><summary>Do you only work with sales?</summary><p>No. There are agents for customer service, marketing, finance, logistics and registrations.</p></details><details><summary>Do you work with non-technical teams?</summary><p>Yes. The requirement is an internal owner, not a programmer.</p></details>
+  <p><a class="cta" href="/en/#conversion">See the proposal on your own processes</a></p>
+</article></section>
+
+  <section id="conversion" data-layer="conversion">
+    <h2>Request a call</h2>
+    <p class="lead">Tell us which task you would like to automate. With that we assess a solution with a defined scope.</p>
+    <p class="muted">We do not ask for budget, phone, company size or timeline. That is discovered on the call.</p>
+    <form method="post" action="#" data-receipt="not-configured">
+      <label for="firstname">First name <span aria-hidden="true">*</span><input id="firstname" name="firstname" type="text" required></label><label for="lastname">Last name <span aria-hidden="true">*</span><input id="lastname" name="lastname" type="text" required></label><label for="email">Work email <span aria-hidden="true">*</span><input id="email" name="email" type="email" required></label><label for="company">Company <span aria-hidden="true">*</span><input id="company" name="company" type="text" required></label><label for="jobtitle">Job title <span aria-hidden="true">*</span><input id="jobtitle" name="jobtitle" type="text" required></label><label for="outcome">Which task do you want to automate? <span aria-hidden="true">*</span><textarea id="outcome" name="outcome" rows="4" required></textarea></label>
+      <label class="check"><input id="consent" name="consent" type="checkbox" required> I agree to be contacted by this means</label>
+      <button type="submit">Request a call</button>
+      <p class="muted">Form not connected: nothing is sent in this environment.</p>
+    </form>
+    <h4>Proof</h4>
+    <div data-layer="prueba">
+    <p class="muted">No published cases yet.</p>
+    <p class="muted">Own cases only, with a verifiable figure. With no published customers yet, the space is declared empty. It is not filled with other companies&#39; logos.</p>
+    </div>
+  </section>
+
+  <section id="precio" data-layer="conversion">
+    <h2>Three ways to start</h2>
+    <p class="muted">Reference prices, not final offers. Contracting is subject to an approved quote, taxes and terms.</p>
+    <div class="offer"><h3>Agents ready to configure</h3><p>Specialties such as sales, customer service, marketing, finance, logistics and registrations.</p><p class="price">From US$69/month, subject to scope and quotas.</p><p><a class="cta" href="#conversion">Visit the Factory</a></p></div><div class="offer"><h3>Enterprise pilot</h3><p>A bounded validation of one flow and one simple integration.</p><p class="price">US$600: US$300 upfront and US$300 on delivery.</p><p><a class="cta" href="#conversion">Assess a pilot</a></p></div><div class="offer"><h3>Custom agents</h3><p>Solutions integrated into your processes. Operation and support are quoted separately.</p><p class="price">Implementation from US$900.</p><p><a class="cta" href="#conversion">Talk about my project</a></p></div>
+    <p><a class="cta" href="#conversion">Talk to the team</a></p>
+    <h4>Frequently asked questions</h4>
+    <details><summary>How do I start?</summary><p>You pick a specialty and request a call. The scope is defined in writing during that call.</p></details><details><summary>Is the price final?</summary><p>No. Published prices are references and contracting is subject to an approved quote, taxes and terms.</p></details><details><summary>What does the pilot include?</summary><p>The validation of one flow and one simple integration. Anything not included is written into the proposal.</p></details><details><summary>How is data protected?</summary><p>We declare which data is read, where it is stored and who can see it before you sign.</p></details>
+  </section>
+
+  <section id="confianza" data-layer="confianza">
+    <h2>Clear scope, agreed integrations, supervised implementation</h2>
+    <h4>Security and data</h4><ul><li>We declare which data the agent reads, where it is stored and for how long.</li><li>Nothing is sent to a third party without appearing in the proposal.</li><li>Customer data is not used to train models.</li></ul><h4>Access and controls</h4><ul><li>External integrations require authorisation and certification before they are connected.</li><li>Permissions are limited to the agreed scope, not to the whole system.</li><li>Any access can be revoked without dismantling the work.</li></ul><h4>Oversight</h4><ul><li>Implementation is supervised: every run can be reviewed afterwards.</li><li>Decisions that affect a person always have human review.</li><li>Every send or change is logged and can be stopped.</li></ul>
+    <h4>What we do not do</h4>
+    <ul><li>Published prices are references, not final offers.</li><li>Contracting is subject to an approved quote, taxes and terms.</li><li>External integrations require authorisation and certification.</li><li>There is no 24/7 support.</li></ul>
+  </section>
+
+  <section id="activacion" data-layer="activacion">
+    <h2>From idea to agent</h2>
+    <ol><li>Tell us what you need: you pick a specialty and the tasks to solve.</li><li>We agree the scope: we review integrations, limits, budget and timeline.</li><li>We configure and validate: after approval and contracting, we check permissions and behaviour.</li></ol>
+    <h4>What you need to have</h4>
+    <ul><li>An internal owner with authority to approve.</li><li>Authorised access to the tools the process uses.</li><li>Written acceptance criteria before work starts.</li></ul>
+    <h4>What you need before the call</h4><p>A description of the current process, who runs it, and what happens when something goes wrong.</p><h4>What you get afterwards</h4><p>The written scope, the acceptance criteria and the start date.</p><h4>What we do not do</h4><p>Connect an integration without certifying it, or promise an outcome that cannot be measured.</p>
+  </section>
+</main>
+<footer>Status: REVIEW_REQUIRED. Unpublished. Own copy; no third-party trademarks, design or code is copied.</footer>
+<script>(function () { var root = document.documentElement; function updateThemeButton() { var button = document.getElementById('theme-toggle'); if (button) button.setAttribute('aria-pressed', String(root.dataset.theme === 'light')); } var button = document.getElementById('theme-toggle'); if (button) { button.addEventListener('click', function () { var next = root.dataset.theme === 'light' ? 'dark' : 'light'; root.dataset.theme = next; try { localStorage.setItem('boltech-theme', next); } catch (_) {} updateThemeButton(); }); } updateThemeButton(); var bar = document.getElementById('scroll-progress'); if (bar) { var update = function () { var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); bar.style.width = (window.scrollY / max * 100).toFixed(2) + '%'; }; window.addEventListener('scroll', update, { passive: true }); window.addEventListener('resize', update, { passive: true }); update(); } })();</script>
+</body>
+</html>

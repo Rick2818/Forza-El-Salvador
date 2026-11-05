@@ -1,0 +1,44 @@
+# All crawlers are welcome.
+User-agent: *
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: GPTBot
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: OAI-SearchBot
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: ChatGPT-User
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: ClaudeBot
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: Claude-User
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: Claude-SearchBot
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: PerplexityBot
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: Perplexity-User
+Allow:
+
+# Answer engines may read and cite the site.
+User-agent: Google-Extended
+Allow:
+
+# Curated overview for language models:
+# https://boltech-group.vercel.app/llms.txt
+
+Sitemap: https://boltech-group.vercel.app/sitemap.xml

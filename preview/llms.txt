@@ -1,0 +1,36 @@
+# Boltech Group
+
+> Agentes de IA que automatizan procesos, atienden clientes y organizan el trabajo. Empieza con una solución lista para configurar o crea una a medida.
+
+Resumen del sitio para asistentes y motores de respuesta. Todo el texto es propio; los precios son de referencia.
+
+## Producto
+- [Menos tareas. Más resultados.](https://boltech-group.vercel.app/): Agentes de IA que automatizan procesos, atienden clientes y organizan el trabajo. Empieza con una solución lista para configurar o crea una a medida…
+- [Tres formas de empezar](https://boltech-group.vercel.app/precios/): Tres formas de empezar. Precios de referencia, no ofertas finales. Contratación sujeta a cotización aprobada, impuestos y condiciones.
+- [Alcance claro, integraciones acordadas, implementación supervisada](https://boltech-group.vercel.app/confianza/): Alcance claro, integraciones acordadas, implementación supervisada
+- [De la idea al agente](https://boltech-group.vercel.app/como-empezamos/): De la idea al agente Cuéntanos qué necesitas: eliges una especialidad y las tareas a resolver.
+
+## Especialidades
+- [Ventas](https://boltech-group.vercel.app/especialidades/ventas/): Cada oportunidad con su siguiente paso, sin depender de que alguien se acuerde.
+- [Servicio al cliente](https://boltech-group.vercel.app/especialidades/servicio-al-cliente/): Cada solicitud llega a quien puede resolverla, en la primera asignación.
+- [Mercadeo](https://boltech-group.vercel.app/especialidades/mercadeo/): Materiales que salen de la oferta y del contexto, no de un borrador en blanco.
+- [Finanzas](https://boltech-group.vercel.app/especialidades/finanzas/): Los números llegan ordenados y con su origen, no en una hoja suelta.
+- [Logística](https://boltech-group.vercel.app/especialidades/logistica/): El estado del envío se sabe antes de que el cliente pregunte.
+- [Química, Farmacia y Registros](https://boltech-group.vercel.app/especialidades/quimica-farmacia-registros/): Los expedientes se revisan contra la norma aplicable, no contra la memoria de alguien.
+
+## Agentes
+- [Agente de Ventas](https://boltech-group.vercel.app/agentes/agente-ventas/): Cada oportunidad con su siguiente paso, sin depender de que alguien se acuerde. Ningún seguimiento sale sin responsable y fecha, en cada corrida.
+- [Agente de Servicio al Cliente](https://boltech-group.vercel.app/agentes/agente-servicio-cliente/): Cada solicitud llega a quien puede resolverla, en la primera asignación. Las solicitudes mal clasificadas se devuelven y alimentan la regla, en cada corrida.
+- [Agente de Mercadeo](https://boltech-group.vercel.app/agentes/agente-mercadeo/): Materiales que salen de la oferta y del contexto, no de un borrador en blanco. Ninguna pieza se entrega sin revisión humana, en cada corrida.
+- [Agente de Finanzas](https://boltech-group.vercel.app/agentes/agente-finanzas/): Los números llegan ordenados y con su origen, no en una hoja suelta. Ningún registro se contabiliza sin su documento de origen, en cada corrida.
+- [Agente de Logística](https://boltech-group.vercel.app/agentes/agente-logistica/): El estado del envío se sabe antes de que el cliente pregunte. Ninguna alerta se envía sin la fuente que la respalda, en cada corrida.
+- [Agente de Química, Farmacia y Registros](https://boltech-group.vercel.app/agentes/agente-registros/): Los expedientes se revisan contra la norma aplicable, no contra la memoria de alguien. Ningún expediente se declara completo sin la lista de requisitos…
+
+## Comparativas
+- [Servicio acompañado o plataforma](https://boltech-group.vercel.app/vs/servicio-o-plataforma/): No hay una respuesta única: depende de quién va a construir, mantener y responder por el flujo.
+
+## Límites declarados
+- Los precios publicados son de referencia, no ofertas finales.
+- La contratación está sujeta a cotización aprobada, impuestos y condiciones.
+- Las integraciones externas requieren autorización y certificación.
+- No hay soporte 24/7.
