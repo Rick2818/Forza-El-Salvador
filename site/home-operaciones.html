@@ -1,0 +1,40 @@
+<!-- SECCIÓN PARA INSERTAR EN index.html, justo después de </section> de #solutions
+     y antes del bloque <style id="specialist-premium-style">.
+     Usa las clases existentes (section, kicker, cards, card, fine) para heredar el estilo. -->
+<style id="operations-first-door-style">
+#operations .ops-badge{display:inline-block;margin-left:8px;padding:3px 9px;border:1px solid #6d5a34;border-radius:999px;color:#e2bc67;font-size:10px;letter-spacing:.08em;vertical-align:middle}
+#operations .card{min-height:245px}
+#operations .card p{margin-bottom:14px}
+#operations .card .ops-accept{color:#a9a7a2;font-size:12px;line-height:1.55;border-top:1px solid #2b2a27;padding-top:12px;margin-top:auto}
+#operations .card a{padding-top:14px}
+@media(max-width:760px){#operations .ops-badge{display:block;margin:8px 0 0;width:max-content}}
+</style>
+<section id="operations" class="section">
+  <div class="kicker" data-es="Primera puerta: Operaciones" data-en="First door: Operations">Primera puerta: Operaciones</div>
+  <h2 data-es="Tres tareas de operación que se pueden automatizar esta semana" data-en="Three operations tasks you can automate this week">Tres tareas de operación que se pueden automatizar esta semana</h2>
+  <p data-es="Elige la tarea que más tiempo te quita. Recibes una evaluación por escrito, sin demo obligatoria y sin precio en la primera conversación." data-en="Pick the task that costs you the most time. You get a written assessment, no mandatory demo, and no price in the first conversation.">Elige la tarea que más tiempo te quita. Recibes una evaluación por escrito, sin demo obligatoria y sin precio en la primera conversación.</p>
+  <div class="cards">
+    <article class="card">
+      <span class="number">01 / PEDIDOS</span>
+      <h3 data-es="Deja de copiar pedidos a mano" data-en="Stop retyping orders by hand">Deja de copiar pedidos a mano</h3>
+      <p data-es="Cada pedido entra con número único, cliente, ítems y estado. Los casos dudosos los confirma una persona." data-en="Every order gets a unique number, customer, items and status. Ambiguous cases are confirmed by a person.">Cada pedido entra con número único, cliente, ítems y estado. Los casos dudosos los confirma una persona.</p>
+      <span class="ops-accept" data-es="Se acepta con 20 pedidos de prueba sin duplicados ni pérdidas." data-en="Accepted with 20 test orders and no duplicates or losses.">Se acepta con 20 pedidos de prueba sin duplicados ni pérdidas.</span>
+      <a href="/solicitud?tarea=pedidos" data-es="Evaluar esta tarea →" data-en="Assess this task →">Evaluar esta tarea →</a>
+    </article>
+    <article class="card">
+      <span class="number">02 / FACTURAS</span>
+      <h3 data-es="Detecta la diferencia antes de pagar" data-en="Catch the difference before you pay">Detecta la diferencia antes de pagar</h3>
+      <p data-es="Comparamos cada factura con su orden de compra y marcamos qué no coincide, con el monto y el motivo." data-en="Each invoice is matched to its purchase order; every mismatch is flagged with amount and reason.">Comparamos cada factura con su orden de compra y marcamos qué no coincide, con el monto y el motivo.</p>
+      <span class="ops-accept" data-es="Se acepta con 30 facturas de prueba y diferencias sembradas, todas detectadas." data-en="Accepted with 30 test invoices and seeded differences, all caught.">Se acepta con 30 facturas de prueba y diferencias sembradas, todas detectadas.</span>
+      <a href="/solicitud?tarea=facturas" data-es="Evaluar esta tarea →" data-en="Assess this task →">Evaluar esta tarea →</a>
+    </article>
+    <article class="card">
+      <span class="number">03 / STOCK</span>
+      <h3 data-es="Entérate del quiebre antes de que ocurra" data-en="Find out about a stockout before it happens">Entérate del quiebre antes de que ocurra</h3>
+      <p data-es="Cada día ves qué ítems están por debajo del mínimo y cuánto conviene reponer. El sistema no compra ni paga." data-en="Every day you see which items are below minimum and how much to reorder. The system never buys or pays.">Cada día ves qué ítems están por debajo del mínimo y cuánto conviene reponer. El sistema no compra ni paga.</p>
+      <span class="ops-accept" data-es="Se acepta con 30 días simulados sin quiebres en ítems con mínimo definido." data-en="Accepted with 30 simulated days and no stockouts on items with a defined minimum.">Se acepta con 30 días simulados sin quiebres en ítems con mínimo definido.</span>
+      <a href="/solicitud?tarea=stock" data-es="Evaluar esta tarea →" data-en="Assess this task →">Evaluar esta tarea →</a>
+    </article>
+  </div>
+  <p class="fine" data-es="Sin porcentajes de ahorro ni resultados garantizados: cada tarea se mide con el criterio de aceptación escrito antes de empezar." data-en="No savings percentages or guaranteed results: each task is measured against the acceptance criteria agreed in writing before starting.">Sin porcentajes de ahorro ni resultados garantizados: cada tarea se mide con el criterio de aceptación escrito antes de empezar.</p>
+</section>
