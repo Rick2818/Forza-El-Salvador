@@ -101,7 +101,9 @@ const REPLIES = {
     ops:
       'Trabajamos tres tareas de operación: pedidos que llegan por correo o WhatsApp, facturas y documentos por revisar, y control de stock. Para cada una evaluamos el proceso actual y qué parte conviene automatizar con aprobación humana. ¿Cuál de las tres se parece más a tu caso?',
     pricing:
-      'Los precios son de referencia y se confirman por alcance: la prueba de un flujo cuesta US$600 (US$300 al inicio y US$300 tras la entrega verificada) e incluye un flujo y una integración simple. Un agente con alcance general parte de US$900. Licencias, uso y mantenimiento se cotizan aparte. No hay compra ni pago automático en el sitio.',
+      'Los precios son de referencia y se confirman por alcance: la prueba de un flujo cuesta US$600 (US$300 al inicio y US$300 tras la entrega verificada) e incluye un flujo y una integración simple. Un agente con alcance general parte de US$900. Ese valor cubre diseño, integración y entrega: no incluye el modelo de IA ni su consumo. Licencias, uso y mantenimiento se cotizan aparte. No hay compra ni pago automático en el sitio.',
+    autonomy:
+      'La autonomía tiene un costo aparte y hay que decidirla antes de cotizar. Si el agente debe decidir y ejecutar sin aprobación humana, necesita un modelo de IA en operación: ese costo no está incluido en la prueba ni en el alcance base. Se cotiza por separado o lo paga el cliente directamente al proveedor (OpenAI, Google, Anthropic u otro); además exige límites de gasto, registro de acciones y revisión periódica. Si cada acción sensible lleva aprobación humana, no se requiere IA de pago. ¿Tu caso necesita autonomía total o aprobación humana?',
     evaluation:
       'La evaluación es por escrito y no exige demo. Nos cuentas la tarea, revisamos el alcance y respondemos por correo con qué se puede automatizar, qué necesita aprobación humana y qué información falta. Puedes pedirla en /solicitud o dejar tus datos aquí.',
     timeline:
@@ -125,7 +127,9 @@ const REPLIES = {
     ops:
       'We work on three operations tasks: orders that arrive by email or WhatsApp, invoices and documents that need review, and stock control. For each one we review the current process and which part is worth automating with human approval. Which one is closest to your case?',
     pricing:
-      'Prices are references confirmed by scope: a one-workflow pilot is USD 600 (USD 300 upfront and USD 300 after verified delivery) and includes one workflow and one simple integration. A general-scope agent starts at USD 900. Licenses, usage and maintenance are quoted separately. Nothing is purchased or paid automatically on this site.',
+      'Prices are references confirmed by scope: a one-workflow pilot is USD 600 (USD 300 upfront and USD 300 after verified delivery) and includes one workflow and one simple integration. A general-scope agent starts at USD 900. That price covers design, integration and delivery: it does not include the AI model or its usage. Licenses, usage and maintenance are quoted separately. Nothing is purchased or paid automatically on this site.',
+    autonomy:
+      'Autonomy is a separate cost and must be decided before quoting. If the agent has to decide and act without human approval, it needs an AI model running in production: that cost is not included in the pilot or the base scope. It is quoted separately or paid by the client directly to the provider (OpenAI, Google, Anthropic or another); it also requires spending limits, action logs and periodic review. If every sensitive action keeps human approval, no paid AI is required. Does your case need full autonomy or human approval?',
     evaluation:
       'The assessment is written and does not require a demo. You describe the task, we review scope and reply by email with what can be automated, what needs human approval and what information is missing. Request it at /solicitud or leave your details here.',
     timeline:
@@ -160,6 +164,9 @@ function advisorReply(message, language) {
           : 'No registro datos de contacto desde el chat sin consentimiento explícito. Usa el botón "Dejar mis datos" y marca la casilla, o el formulario en /solicitud.',
       intent: 'pii'
     };
+  }
+  if (/(autonom|sin aprobacion|sin supervision|sin intervencion|sin humanos|decida solo|por si mismo|por si solo|autonomous|unattended|without (human )?approval|no human (approval|supervision))/.test(text)) {
+    return { lang, reply: r.autonomy, intent: 'autonomy' };
   }
   if (/(precio|costo|cuanto|cobran|tarifa|presupuesto|price|cost|how much|fee|budget)/.test(text)) {
     return { lang, reply: r.pricing, intent: 'pricing' };

@@ -13,7 +13,9 @@ export const REPLIES = {
       'Hola, soy Leo, el asistente de ventas de Boltech Group (no soy una persona). Te ayudo a ver si vale la pena automatizar pedidos, facturas o control de stock. ¿Qué tarea te quita más tiempo hoy?',
     ops:
       'Trabajamos tres tareas: pedidos que llegan por correo o WhatsApp, facturas y documentos por revisar, y control de stock. Revisamos cómo se hace hoy y qué parte conviene automatizar con aprobación humana. ¿Cuál se parece más a tu caso?',
-    pricing: PRICE_ES + ' No hay cobro automático por este medio.',
+    pricing: PRICE_ES + ' Ese valor cubre diseño, integración y entrega: no incluye el modelo de IA ni su consumo. No hay cobro automático por este medio.',
+    autonomy:
+      'La autonomía tiene un costo aparte y hay que decidirla antes de cotizar. Si el agente debe decidir y ejecutar sin aprobación humana, necesita un modelo de IA en operación: ese costo no está incluido en la prueba ni en el alcance base. Se cotiza por separado o lo paga el cliente directamente al proveedor (OpenAI, Google, Anthropic u otro); además exige límites de gasto, registro de acciones y revisión periódica. Si cada acción sensible lleva aprobación humana, no se requiere IA de pago. ¿Tu caso necesita autonomía total o aprobación humana?',
     evaluation:
       'La evaluación es por escrito y no exige demo: nos cuentas la tarea, revisamos el alcance y respondemos con qué se puede automatizar, qué necesita aprobación humana y qué información falta. Si quieres, deja tu correo aquí y la enviamos.',
     timeline:
@@ -38,7 +40,9 @@ export const REPLIES = {
       'Hi, I am Leo, the sales assistant at Boltech Group (not a person). I help you see whether automating orders, invoices or stock is worth it. Which task takes the most time today?',
     ops:
       'We work on three tasks: orders that arrive by email or WhatsApp, invoices and documents that need review, and stock control. We review how it works today and which part is worth automating with human approval. Which one is closest to your case?',
-    pricing: PRICE_EN + ' Nothing is charged automatically here.',
+    pricing: PRICE_EN + ' That price covers design, integration and delivery: it does not include the AI model or its usage. Nothing is charged automatically here.',
+    autonomy:
+      'Autonomy is a separate cost and must be decided before quoting. If the agent has to decide and act without human approval, it needs an AI model running in production: that cost is not included in the pilot or the base scope. It is quoted separately or paid by the client directly to the provider (OpenAI, Google, Anthropic or another); it also requires spending limits, action logs and periodic review. If every sensitive action keeps human approval, no paid AI is required. Does your case need full autonomy or human approval?',
     evaluation:
       'The assessment is written and does not require a demo: you describe the task, we review scope and reply with what can be automated, what needs human approval and what is missing. Leave your email here and we will send it.',
     timeline:
@@ -87,6 +91,7 @@ export function pickIntent(text) {
     .replace(/[\u0300-\u036f]/g, '');
 
   if (EMAIL_RE.test(t)) return 'email';
+  if (/(autonom|sin aprobacion|sin supervision|sin intervencion|sin humanos|decida solo|por si mismo|por si solo|autonomous|unattended|without (human )?approval|no human (approval|supervision))/.test(t)) return 'autonomy';
   if (/(precio|cuesta|cuanto|tarifa|presupuesto|price|cost|quote|how much)/.test(t)) return 'pricing';
   if (/(pedido|factura|stock|inventario|order|invoice|inventory)/.test(t)) return 'ops';
   if (/(seguridad|datos|privacidad|security|privacy|data)/.test(t)) return 'security';
