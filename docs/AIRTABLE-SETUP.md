@@ -1,62 +1,94 @@
-# Airtable — Configuración para Boltech Group
+# Airtable — dónde se guardan las solicitudes
 
-Fecha: 2026-11-05 · Tiempo estimado: 5 minutos · Costo: Gratis
+Actualizado: 2026-11-06
 
-## Paso 1: Crear cuenta
-Ve a https://airtable.com y crea una cuenta gratuita (puedes usar Google para entrar rápido).
+El formulario escribe en **Airtable** mediante el endpoint `/api/lead`
+(Cloudflare Pages Function). Hay dos formas de dejarlo listo.
 
-## Paso 2: Crear la base
-1. Haz clic en **"Add a base"** → **"Start from scratch"**
-2. Ponle nombre: **Boltech Leads**
-3. Te aparecerá una tabla llamada "Table 1". Cambiale nombre a: **Leads**
+---
 
-## Paso 3: Crear las columnas
-En la tabla, borra las columnas que sobren y deja solo estas (una por una):
+## Opción 1 · Usar el CRM que ya existe (recomendada)
 
-| Nombre de columna | Tipo de campo |
-|-------------------|---------------|
-| Nombre | Texto largo |
+La cuenta de Airtable ya tiene la base **Boltech CRM** con la tabla **Leads**.
+No hay que crear nada: solo copiar tres datos al panel de Cloudflare.
+
+| Variable en Cloudflare | Valor |
+|---|---|
+| `AIRTABLE_API_KEY` | token `pat…` de la cuenta |
+| `AIRTABLE_BASE_ID` | `appCQZd0IhBHFoZ9P` |
+| `AIRTABLE_TABLE_ID` | `tblZaox2MX5uYA5PZ` |
+
+Qué escribe el endpoint en esa tabla:
+
+| Campo del CRM | Contenido |
+|---|---|
+| `Name` | Nombre de la persona (o el correo si no lo escribió) |
+| `Contact Email` | Correo |
+| `Status` | `To do` |
+| `Source` | `Website` |
+| `Commercial Stage` | `Researching` |
+| `Pain Categories` | `Workflow Automation` |
+| `Consent to Share` | marcado (consentimiento otorgado) |
+| `Notes` | Empresa, cargo, tarea, activo, página, referencia y texto del consentimiento |
+| `Next Action` | “Revisar la solicitud y responder por escrito con la evaluación.” |
+
+El endpoint no toca importes, cotizaciones ni estados de pago.
+
+> El token debe tener acceso a la base **Boltech CRM**. Si el token solo ve otras
+> bases, Airtable responde `403` y el endpoint lo registra en **Functions → Logs**.
+
+---
+
+## Opción 2 · Crear una base nueva solo para leads
+
+Útil si prefieres separar los leads del CRM.
+
+1. https://airtable.com → **Add a base** → **Start from scratch** → nombre `Boltech Leads`.
+2. Renombra la tabla a `Leads` y crea estas columnas:
+
+| Columna | Tipo |
+|---|---|
+| Nombre | Texto de una línea |
 | Correo | Correo electrónico |
-| Empresa | Texto largo |
-| Cargo | Texto largo |
+| Empresa | Texto de una línea |
+| Cargo | Texto de una línea |
 | Tarea | Texto largo |
-| Activo | Texto corto (pedidos, facturas, stock, general) |
-| Idioma | Texto corto (es, en) |
-| Fuente | Texto corto (web_solicitud, web_advisor) |
-| Página | Texto largo |
-| Consentimiento | Casilla de verificación |
+| Activo | Texto de una línea |
+| Idioma | Texto de una línea |
+| Fuente | Texto de una línea |
+| Página | URL |
+| Consentimiento | Casilla |
 | Fecha consentimiento | Fecha |
-| ID solicitud | Texto corto |
-| Fecha creación | Fecha (automática) |
+| ID solicitud | Texto de una línea |
 
-## Paso 4: Obtener tu API Key
-1. Haz clic en tu foto de perfil (arriba a la derecha) → **Account**
-2. Busca **API key** → Copia la clave (empieza por `pat...`)
-3. Guárdala en un lugar seguro. **No la compartas con nadie.**
+3. Copia el **Base ID** (`app…`) de la URL de la base y el **Table ID** (`tbl…`)
+   de la URL de la tabla.
+4. Crea un token en https://airtable.com/create/tokens con los permisos
+   `data.records:write` (y `schema.bases:read` si quieres validar la tabla).
+5. Configura en Cloudflare `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` y
+   `AIRTABLE_TABLE_ID` (o `AIRTABLE_TABLE_NAME=Leads`).
 
-## Paso 5: Obtener tu Base ID
-1. Abre tu base **Boltech Leads**
-2. Mira la URL en el navegador. Se ve así:
-   `https://airtable.com/appXXXXXXXXXXXXXX/tblXXXXXXXXXXXXXX/viwXXXX...`
-3. El texto después de `app` y antes de la primera `/` es tu **Base ID** (empieza por `app`)
-4. Ejemplo: si la URL es `https://airtable.com/appAbCd1234EfGhIj/tbl...`, tu Base ID es `appAbCd1234EfGhIj`
+El endpoint detecta el esquema: primero intenta el del CRM, luego el genérico y
+por último un mínimo de tres columnas. Así funciona con cualquiera de las dos
+opciones sin cambiar código.
 
 ---
 
-## Paso 6: Anota estos tres datos (los necesitarás después)
-Escribe en un papel o bloc de notas:
+## Comprobar que escribe
 
-```
-AIRTABLE_API_KEY = patXXXXXXXXXXXXXXXXXXXX
-AIRTABLE_BASE_ID = appXXXXXXXXXXXXXX
-AIRTABLE_TABLE_NAME = Leads
-```
-
----
-
-## ¿Y si me equivoco?
-No pasa nada. Puedes borrar la base y crear otra en 2 minutos. Airtable es gratis para hasta 1,000 registros, que es más que suficiente para empezar.
+1. Envía el formulario de `/solicitud` con consentimiento marcado.
+2. Debe responder “Solicitud registrada”.
+3. La fila aparece en la tabla con el `Notes` que incluye la referencia
+   `WEB-…` que devolvió el endpoint.
+4. Si no aparece, revisa **Cloudflare → tu proyecto → Functions → Logs**
+   (busca `[airtable]`).
 
 ---
 
-Siguiente paso: cuando quieras subir el sitio a otro host, usa el archivo `MIGRACION-GUIA.md` que está junto a este.
+## Nota sobre privacidad
+
+- El formulario no pide presupuesto, teléfono, tamaño de empresa ni plazo.
+- Solo se escribe con `consent: true`; sin consentimiento el endpoint responde
+  `400 CONSENT_REQUIRED`.
+- Las solicitudes se conservan según `docs/CONSERVACION-DATOS.md` y pueden
+  retirarse escribiendo a `ricardo.boltechgroup@gmail.com`.

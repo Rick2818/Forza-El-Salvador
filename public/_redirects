@@ -1,0 +1,9 @@
+# _redirects — Cloudflare Pages
+# Cloudflare Pages resuelve /solicitud → /solicitud.html automáticamente.
+# Se conservan rutas cortas heredadas para no romper enlaces compartidos.
+
+/gmail-privacy   /gmail-privacy.html   200
+/gmail-terms     /gmail-terms.html     200
+
+# Alias de la landing anterior (Vercel) cuando se comparta el enlace antiguo
+# no aplica: el dominio anterior está deshabilitado en origen.

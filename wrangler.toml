@@ -1,14 +1,13 @@
-# wrangler.toml — Configuración para Cloudflare Pages
-# Nombre del proyecto en Cloudflare Pages
+# Cloudflare Pages — Boltech Group
+# Proyecto: plan-comercial-tipo-relevance-ai
+# Salida estática: public/   ·   Funciones: functions/
 
-name = "boltech-group"
+name = "plan-comercial-tipo-relevance-ai"
 compatibility_date = "2026-11-05"
+pages_build_output_dir = "public"
 
-[environments.production]
-
-[build]
-  command = "echo 'skip build'"
-  functions = "functions"
-
-[[env.production.variables]]
-  AIRTABLE_TABLE_NAME = "Leads"
+# El almacenamiento de solicitudes se configura en el panel de Cloudflare
+# (Settings → Variables and Secrets), no aquí:
+#   AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_ID (o AIRTABLE_TABLE_NAME)
+#   RESEND_API_KEY (opcional), LEAD_NOTIFICATION_EMAIL (opcional)
+#   LEAD_FROM_EMAIL (opcional, requiere dominio verificado en Resend)
