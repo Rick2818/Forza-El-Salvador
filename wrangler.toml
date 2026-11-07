@@ -11,3 +11,13 @@ pages_build_output_dir = "public"
 #   AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_ID (o AIRTABLE_TABLE_NAME)
 #   RESEND_API_KEY (opcional), LEAD_NOTIFICATION_EMAIL (opcional)
 #   LEAD_FROM_EMAIL (opcional, requiere dominio verificado en Resend)
+
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+FREELANCER_API_ENABLED = "false"
+LEO_PLATFORM_WRITE_ENABLED = "false"
+LEO_PLATFORM_DAILY_READ_LIMIT = "40"
+
+[ai]
+binding = "AI"

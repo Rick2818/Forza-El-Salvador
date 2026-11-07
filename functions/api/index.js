@@ -4,6 +4,8 @@
 // configurada en este despliegue: los endpoints de voz responden 503 y la
 // página lo informa sin romper el chat.
 
+import { respondAsLeo } from '../../src/leo_sales_runtime.mjs';
+
 const MAX_BODY = 20 * 1024;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -56,7 +58,7 @@ function reply(type, language, message) {
 }
 
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env = {} } = context;
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
 
@@ -78,16 +80,16 @@ export async function onRequest(context) {
   }
 
   if (url.searchParams.has('leo_sales')) {
-    const text = String(body.message || '').trim();
-    const greeting =
-      language === 'en'
-        ? 'Hi, I am Leo, the guided sales assistant. I can help you describe the process you want to automate. I do not send emails, confirm orders or take payments.'
-        : 'Hola, soy Leo, el asesor guiado de ventas. Te ayudo a describir el proceso que quieres automatizar. No envío correos, no confirmo pedidos y no proceso pagos.';
-    const next =
-      language === 'en'
-        ? 'Tell me: which task takes the most time, how it works today and what result you expect. For a written assessment use /solicitud.'
-        : 'Cuéntame: qué tarea te quita más tiempo, cómo se hace hoy y qué resultado esperas. Para una evaluación por escrito usa /solicitud.';
-    return json({ success: true, reply: text ? next : greeting });
+    try {
+      const result = await respondAsLeo(
+        { message: body.message, history: body.history, language },
+        { env }
+      );
+      return json({ success: true, ...result });
+    } catch (error) {
+      const status = Number(error?.statusCode) || 400;
+      return json({ success: false, error: String(error?.message || 'LEO_UNAVAILABLE') }, status);
+    }
   }
 
   if (url.searchParams.has('maria_speech') || url.searchParams.has('rodrigo_speech')) {
