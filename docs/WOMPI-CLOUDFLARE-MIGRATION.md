@@ -11,6 +11,7 @@ POST /api/payments?action=create-approved
 POST /api/payments?action=wompi-webhook
 GET  /api/payments?action=wompi-return&...
 GET  /api/payments?action=status&orderId=...
+GET  /commerce-admin.html
 ```
 
 ## Preservado
@@ -22,8 +23,10 @@ GET  /api/payments?action=status&orderId=...
 - Comprobacion independiente de `TransaccionCompra` antes de marcar `PAID`.
 - Validacion de importe, enlace, transaccion, resultado y entorno.
 - Idempotencia: una orden `PAID` no vuelve a procesarse.
+- Ledger de eventos firmado en `event:wompi:<sha256>` con retención de 90 días.
 - KV dedicado `COMMERCE`; no se usa la tabla de leads.
 - Sin datos de tarjeta en Boltech.
+- Provisionamiento mínimo posterior a pago: tenant activo, límites y estado de integraciones.
 
 ## Estado de credenciales
 
@@ -50,10 +53,12 @@ id: 92142dba891b4c0aac9edf370c85a808
 
 ## Regla de activacion
 
-Un webhook firmado y verificado deja la orden en:
+Un webhook firmado y verificado deja la orden y el tenant en:
 
 ```text
-PAID / READY_FOR_MANUAL_PROVISIONING
+PAID / TENANT_ACTIVE_INTEGRATIONS_PENDING_AUTH
 ```
 
-No se declara tenant activo ni integracion conectada solo porque el cliente vuelve del checkout.
+El tenant contiene límites operativos y queda activo, pero las integraciones permanecen en `PENDING_CUSTOMER_AUTH`. No se guardan credenciales ni se conecta ningún partner sin autorización explícita.
+
+La pantalla interna `/commerce-admin.html` permite emitir cotizaciones aprobadas y consultar órdenes. El token administrativo se ingresa manualmente, no se guarda en `localStorage` y no se reutilizan tokens de partners.
