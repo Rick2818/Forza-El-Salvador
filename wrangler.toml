@@ -18,6 +18,11 @@ compatibility_flags = ["nodejs_compat"]
 FREELANCER_API_ENABLED = "false"
 LEO_PLATFORM_WRITE_ENABLED = "false"
 LEO_PLATFORM_DAILY_READ_LIMIT = "40"
+PAYMENT_ENV = "production"
 
 [ai]
 binding = "AI"
+
+[[kv_namespaces]]
+binding = "COMMERCE"
+id = "92142dba891b4c0aac9edf370c85a808"
