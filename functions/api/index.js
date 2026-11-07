@@ -7,6 +7,7 @@
 import { respondAsLeo } from '../../src/leo_sales_runtime.mjs';
 
 const MAX_BODY = 20 * 1024;
+const MAX_SPEECH_BODY = 12 * 1024;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -19,6 +20,30 @@ function json(data, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS }
   });
+}
+
+function xmlEscape(value) {
+  return String(value || '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&apos;', '"': '&quot;' }[character]));
+}
+
+async function azureSpeech(text, env) {
+  const key = String(env.AZURE_SPEECH_KEY || '').trim();
+  const region = String(env.AZURE_SPEECH_REGION || '').trim();
+  if (!key || !region) throw Object.assign(new Error('LEO_VOICE_NOT_CONFIGURED'), { statusCode: 503 });
+  const ssml = `<speak version="1.0" xml:lang="es-SV"><voice name="es-SV-RodrigoNeural">${xmlEscape(text)}</voice></speak>`;
+  const response = await fetch(`https://${encodeURIComponent(region)}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    method: 'POST',
+    headers: {
+      'Ocp-Apim-Subscription-Key': key,
+      'Content-Type': 'application/ssml+xml',
+      'X-Microsoft-OutputFormat': 'audio-24khz-160kbitrate-mono-mp3',
+      'User-Agent': 'Boltech-Leo'
+    },
+    body: ssml,
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw Object.assign(new Error('LEO_VOICE_HTTP_' + response.status), { statusCode: 503 });
+  return new Response(response.body, { status: 200, headers: { ...CORS, 'Content-Type': 'audio/mpeg', 'X-Boltech-Voice-Id': 'es-SV-RodrigoNeural', 'Cache-Control': 'no-store' } });
 }
 
 const SPECIALISTS = {
@@ -92,15 +117,11 @@ export async function onRequest(context) {
     }
   }
 
-  if (url.searchParams.has('maria_speech') || url.searchParams.has('rodrigo_speech')) {
-    return json(
-      {
-        ok: false,
-        error: url.searchParams.has('maria_speech') ? 'MARIA_UNAVAILABLE' : 'RODRIGO_UNAVAILABLE',
-        message: 'La voz neuronal no está configurada en este despliegue. El chat de texto sigue disponible.'
-      },
-      503
-    );
+  if (url.searchParams.has('leo_speech') || url.searchParams.has('rodrigo_speech') || url.searchParams.has('maria_speech')) {
+    if (raw.length > MAX_SPEECH_BODY) return json({ ok: false, error: 'PAYLOAD_TOO_LARGE' }, 413);
+    const text = String(body.text || '').trim().slice(0, 800);
+    if (!text) return json({ ok: false, error: 'TEXT_REQUIRED' }, 400);
+    try { return await azureSpeech(text, env); } catch (error) { return json({ ok: false, error: String(error?.message || 'LEO_VOICE_UNAVAILABLE') }, Number(error?.statusCode) || 503); }
   }
 
   return json({ ok: false, error: 'NOT_FOUND' }, 404);

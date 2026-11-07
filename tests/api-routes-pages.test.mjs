@@ -49,3 +49,26 @@ test('a wrong method returns the documented 405 with a body', async () => {
   assert.equal(response.status, 405);
   assert.equal((await response.json()).error, 'METHOD_NOT_ALLOWED');
 });
+
+test('Leo speech uses Azure voice and the sales page has no Rodrigo label', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async url => {
+    assert.match(String(url), /tts\.speech\.microsoft\.com/);
+    return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+  };
+  try {
+    const response = await onRequest({
+      request: new Request('https://boltech-group.pages.dev/api?leo_speech=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'Hola, soy Leo.' })
+      }),
+      env: { AZURE_SPEECH_KEY: 'key', AZURE_SPEECH_REGION: 'eastus' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('X-Boltech-Voice-Id'), 'es-SV-RodrigoNeural');
+    assert.equal(response.headers.get('Content-Type'), 'audio/mpeg');
+    const html = readFileSync(new URL('sales-agent.html', PUBLIC), 'utf8');
+    assert.doesNotMatch(html, /Rodrigo|rodrigo_speech/);
+  } finally { globalThis.fetch = original; }
+});
