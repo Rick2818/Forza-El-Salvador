@@ -32,15 +32,21 @@ async function parseBody(request) {
 }
 async function get(env, key) { return env.COMMERCE.get(key, { type: 'json' }); }
 async function put(env, key, value, ttl = 60 * 60 * 24 * 365) { return env.COMMERCE.put(key, JSON.stringify(value), { expirationTtl: ttl }); }
+async function sha256(value) { const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value))); return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join(''); }
+async function recordEvent(env, fingerprint, record) { await put(env, 'event:wompi:' + fingerprint, record, 60 * 60 * 24 * 90); }
+async function provisionTenant(env, order) {
+  const tenantId = 'tenant-' + order.orderId;
+  const existing = await get(env, 'tenant:' + tenantId);
+  if (existing) return existing;
+  const tenant = { tenantId, orderId: order.orderId, status: 'ACTIVE', plan: order.product.id, planName: order.product.name, limits: { monthlyTasks: order.product.limit }, customerEmail: order.customerEmail, integrations: { status: 'PENDING_CUSTOMER_AUTH', connected: [] }, activatedAt: new Date().toISOString() };
+  await put(env, 'tenant:' + tenantId, tenant);
+  await put(env, 'tenant-by-order:' + order.orderId, { tenantId, status: tenant.status });
+  return tenant;
+}
 async function id(prefix) { return prefix + '-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join(''); }
 async function stableId(prefix, value) { const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value))); return prefix + '-' + Array.from(new Uint8Array(digest).slice(0, 16), b => b.toString(16).padStart(2, '0')).join(''); }
 function product(body) { const p = PRODUCTS[clean(body.productId)]; const amount = Number(body.approvedAmountUsd); if (!p || body.approved !== true || !clean(body.quoteReference, 160) || !Number.isFinite(amount) || amount < p.minimumUsd || amount > 100000 || Math.abs(amount * 100 - Math.round(amount * 100)) > .000001) throw Object.assign(new Error('INVALID_APPROVED_QUOTE'), { status: 400 }); return { id: clean(body.productId), name: p.name, amount, limit: p.limit, quoteReference: clean(body.quoteReference, 160) }; }
-async function token(c) {
-  const response = await fetch(W_AUTH, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: c.appId, client_secret: c.apiSecret, audience: 'wompi_api' }).toString(), signal: AbortSignal.timeout(12000) });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.access_token) throw Object.assign(new Error('WOMPI_AUTH_FAILED'), { status: 502 });
-  return data.access_token;
-}
+async function token(c) { const response = await fetch(W_AUTH, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: new URLSearchParams({ grant_type: 'client_credentials', client_id: c.appId, client_secret: c.apiSecret, audience: 'wompi_api' }).toString(), signal: AbortSignal.timeout(12000) }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw Object.assign(new Error('WOMPI_AUTH_FAILED'), { status: 502 }); return data.access_token; }
 async function wompi(c, path, options = {}) {
   const access = await token(c);
   const response = await fetch(W_API + path, { ...options, headers: { Authorization: 'Bearer ' + access, Accept: 'application/json', 'Content-Type': 'application/json', ...(options.headers || {}) }, signal: AbortSignal.timeout(15000) });
@@ -76,8 +82,8 @@ export async function onRequest({ request, env = {} }) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   const url = new URL(request.url); const action = clean(url.searchParams.get('action'));
   if (request.method === 'GET' && action === 'readiness') { const c = cfg(env); return json({ success: true, provider: 'WOMPI_SV', officialOAuth: true, credentialsConfigured: Boolean(c.appId && c.apiSecret), paymentEnvironment: c.env || null, storageConfigured: c.storage, writeEnabled: Boolean(c.appId && c.apiSecret && c.storage && clean(env.COMMERCE_ADMIN_TOKEN)), termsVersion: TERMS_VERSION }); }
-  if (request.method === 'GET' && action === 'status') { if (!cfg(env).storage) return json({ success: false, code: 'COMMERCE_STORAGE_NOT_CONFIGURED' }, 503); const order = await get(env, 'order:' + clean(url.searchParams.get('orderId'), 120)); return order ? json({ success: true, order: { orderId: order.orderId, status: order.status, provider: order.provider, amount: order.amount, paidAt: order.paidAt || null, fulfillmentStatus: order.fulfillmentStatus || 'NOT_READY' } }) : json({ success: false, code: 'ORDER_NOT_FOUND' }, 404); }
-  if (request.method === 'GET' && action === 'wompi-return') { try { const c = requireConfig(env); const orderId = clean(url.searchParams.get('identificadorEnlaceComercio') || url.searchParams.get('orderId'), 120); const transactionId = clean(url.searchParams.get('idTransaccion'), 120); const linkId = clean(url.searchParams.get('idEnlace'), 120); const amount = clean(url.searchParams.get('monto'), 50); const hash = clean(url.searchParams.get('hash'), 200); if (!await equalHmac(orderId + transactionId + linkId + amount, hash, c.apiSecret)) return json({ success: false, code: 'INVALID_REDIRECT_HASH' }, 401); const order = await get(env, 'order:' + orderId); if (!order) return json({ success: false, code: 'ORDER_NOT_FOUND' }, 404); const result = await verifyPaid(c, order, { transactionId, linkId, amount: Number(amount), productive: c.env === 'production', result: 'APPROVED' }); if (!result.ok) return json({ success: false, code: 'PROVIDER_MISMATCH' }, 422); order.status = 'PAID'; order.providerTransactionId = transactionId; order.paidAt = order.paidAt || new Date().toISOString(); order.fulfillmentStatus = 'READY_FOR_MANUAL_PROVISIONING'; await put(env, 'order:' + orderId, order); return Response.redirect(c.base + '/?payment=verified&orderId=' + encodeURIComponent(orderId), 302); } catch (error) { return json({ success: false, code: clean(error.code || error.message || 'PAYMENT_RETURN_FAILED') }, Number(error.status) || 400); } }
+  if (request.method === 'GET' && action === 'status') { if (!cfg(env).storage) return json({ success: false, code: 'COMMERCE_STORAGE_NOT_CONFIGURED' }, 503); const order = await get(env, 'order:' + clean(url.searchParams.get('orderId'), 120)); return order ? json({ success: true, order: { orderId: order.orderId, status: order.status, provider: order.provider, amount: order.amount, paidAt: order.paidAt || null, fulfillmentStatus: order.fulfillmentStatus || 'NOT_READY', tenantId: order.tenantId || null } }) : json({ success: false, code: 'ORDER_NOT_FOUND' }, 404); }
+  if (request.method === 'GET' && action === 'wompi-return') { try { const c = requireConfig(env); const orderId = clean(url.searchParams.get('identificadorEnlaceComercio') || url.searchParams.get('orderId'), 120); const transactionId = clean(url.searchParams.get('idTransaccion'), 120); const linkId = clean(url.searchParams.get('idEnlace'), 120); const amount = clean(url.searchParams.get('monto'), 50); const hash = clean(url.searchParams.get('hash'), 200); if (!await equalHmac(orderId + transactionId + linkId + amount, hash, c.apiSecret)) return json({ success: false, code: 'INVALID_REDIRECT_HASH' }, 401); const order = await get(env, 'order:' + orderId); if (!order) return json({ success: false, code: 'ORDER_NOT_FOUND' }, 404); const result = await verifyPaid(c, order, { transactionId, linkId, amount: Number(amount), productive: c.env === 'production', result: 'APPROVED' }); if (!result.ok) return json({ success: false, code: 'PROVIDER_MISMATCH' }, 422); order.status = 'PAID'; order.providerTransactionId = transactionId; order.paidAt = order.paidAt || new Date().toISOString(); const tenant = await provisionTenant(env, order); order.tenantId = tenant.tenantId; order.fulfillmentStatus = 'TENANT_ACTIVE_INTEGRATIONS_PENDING_AUTH'; await put(env, 'order:' + orderId, order); return Response.redirect(c.base + '/?payment=verified&orderId=' + encodeURIComponent(orderId), 302); } catch (error) { return json({ success: false, code: clean(error.code || error.message || 'PAYMENT_RETURN_FAILED') }, Number(error.status) || 400); } }
   if (request.method !== 'POST') return json({ success: false, code: 'METHOD_NOT_ALLOWED' }, 405);
   try {
     const c = requireConfig(env);
@@ -89,7 +95,42 @@ export async function onRequest({ request, env = {} }) {
       const link = await createLink(c, order); order.status = 'PENDING_PAYMENT'; Object.assign(order, link); await put(env, 'order:' + orderId, order); return json({ success: true, order: { orderId, status: order.status, checkoutUrl: order.checkoutUrl, provider: order.provider, amount: order.amount, currency: 'USD' } }, 201);
     }
     if (action === 'wompi-webhook') {
-      const { raw, data } = await parseBody(request); const signature = request.headers.get('wompi_hash') || request.headers.get('Wompi-Hash') || ''; if (!await equalHmac(raw, signature, c.apiSecret)) return json({ success: false, code: 'INVALID_WEBHOOK_SIGNATURE' }, 401); const parts = webhookParts(data); const order = parts.orderId ? await get(env, 'order:' + parts.orderId) : null; if (!order) return json({ success: false, code: 'ORDER_NOT_FOUND' }, 404); if (order.status === 'PAID') return json({ success: true, duplicate: true }); const verified = await verifyPaid(c, order, { ...parts, linkId: data?.EnlacePago?.Id || data?.enlacePago?.id }); if (!verified.ok) return json({ success: false, code: 'PROVIDER_MISMATCH', checks: verified.checks }, 422); order.status = 'PAID'; order.providerTransactionId = parts.transactionId; order.providerEvidence = verified.tx; order.paidAt = new Date().toISOString(); order.fulfillmentStatus = 'READY_FOR_MANUAL_PROVISIONING'; await put(env, 'order:' + order.orderId, order); return json({ success: true, paid: true, orderId: order.orderId, fulfillment: order.fulfillmentStatus });
+      const { raw, data } = await parseBody(request);
+      const fingerprint = await sha256(raw);
+      const signature = request.headers.get('wompi_hash') || request.headers.get('Wompi-Hash') || '';
+      if (!await equalHmac(raw, signature, c.apiSecret)) {
+        await recordEvent(env, fingerprint, { fingerprint, provider: 'WOMPI_SV', status: 'REJECTED', reason: 'INVALID_SIGNATURE', receivedAt: new Date().toISOString() });
+        return json({ success: false, code: 'INVALID_WEBHOOK_SIGNATURE' }, 401);
+      }
+      const prior = await get(env, 'event:wompi:' + fingerprint);
+      if (prior) return json({ success: true, duplicate: true, event: { fingerprint, status: prior.status } });
+      await recordEvent(env, fingerprint, { fingerprint, provider: 'WOMPI_SV', status: 'PROCESSING', receivedAt: new Date().toISOString() });
+      const parts = webhookParts(data);
+      const order = parts.orderId ? await get(env, 'order:' + parts.orderId) : null;
+      if (!order) {
+        await recordEvent(env, fingerprint, { fingerprint, provider: 'WOMPI_SV', status: 'REJECTED', reason: 'ORDER_NOT_FOUND', receivedAt: new Date().toISOString() });
+        return json({ success: false, code: 'ORDER_NOT_FOUND' }, 404);
+      }
+      if (order.status === 'PAID') {
+        const tenant = await provisionTenant(env, order);
+        await recordEvent(env, fingerprint, { fingerprint, provider: 'WOMPI_SV', status: 'DONE', orderId: order.orderId, tenantId: tenant.tenantId, receivedAt: new Date().toISOString() });
+        return json({ success: true, duplicate: true, tenantId: tenant.tenantId });
+      }
+      const verified = await verifyPaid(c, order, { ...parts, linkId: data?.EnlacePago?.Id || data?.enlacePago?.id });
+      if (!verified.ok) {
+        await recordEvent(env, fingerprint, { fingerprint, provider: 'WOMPI_SV', status: 'REJECTED', reason: 'PROVIDER_MISMATCH', orderId: order.orderId, checks: verified.checks, receivedAt: new Date().toISOString() });
+        return json({ success: false, code: 'PROVIDER_MISMATCH', checks: verified.checks }, 422);
+      }
+      order.status = 'PAID';
+      order.providerTransactionId = parts.transactionId;
+      order.providerEvidence = verified.tx;
+      order.paidAt = new Date().toISOString();
+      const tenant = await provisionTenant(env, order);
+      order.tenantId = tenant.tenantId;
+      order.fulfillmentStatus = 'TENANT_ACTIVE_INTEGRATIONS_PENDING_AUTH';
+      await put(env, 'order:' + order.orderId, order);
+      await recordEvent(env, fingerprint, { fingerprint, provider: 'WOMPI_SV', status: 'DONE', orderId: order.orderId, tenantId: tenant.tenantId, transactionId: parts.transactionId, receivedAt: new Date().toISOString() });
+      return json({ success: true, paid: true, orderId: order.orderId, tenantId: tenant.tenantId, fulfillment: order.fulfillmentStatus });
     }
     return json({ success: false, code: 'ACTION_NOT_ALLOWED' }, 403);
   } catch (error) { return json({ success: false, code: clean(error.code || error.message || 'PAYMENT_FAILED') }, Number(error.status) || 400); }
