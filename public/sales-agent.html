@@ -6,15 +6,16 @@ const chat=document.getElementById('chat'),input=document.getElementById('messag
 const mic=document.getElementById('mic'),voiceStatus=document.getElementById('voice-status');
 const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 let recognition=null,listening=false,autoListen=true,voiceEnabled=true,voiceTurn=false;const sound=document.getElementById('sound');
-let leoAudio=null,leoObjectUrl=null,leoVoiceRequest=0;
+let leoAudio=null,leoObjectUrl=null,leoVoiceRequest=0,audioUnlocked=false;
+function unlockLeoAudio(){if(audioUnlocked)return;const audio=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIABAAgAAAAAAABAAZGF0YQAAAAA=');audio.volume=0;audio.play().then(()=>{audio.pause();audioUnlocked=true;}).catch(()=>{});}
 function stopLeoSpeech(){leoVoiceRequest++;window.speechSynthesis?.cancel();if(leoAudio){leoAudio.pause();leoAudio.removeAttribute('src');leoAudio=null;}if(leoObjectUrl){URL.revokeObjectURL(leoObjectUrl);leoObjectUrl=null;}document.querySelector('.mascot')?.classList.remove('speaking');}
 function leoSpokenText(value){return String(value||'').replace(/[^\w\s.,!?¿¡:;()'’-]/g,' ').replace(/\s+/g,' ').trim();}
 async function speak(text){if(!voiceEnabled)return;stopLeoSpeech();const request=leoVoiceRequest,clean=leoSpokenText(text);if(!clean)return;voiceStatus.textContent='Preparando la voz de Leo.';try{const resp=await fetch('/api?leo_speech=1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:clean.slice(0,800)})});if(request!==leoVoiceRequest)return;if(!resp.ok)throw Error((await resp.json().catch(()=>({}))).error||'LEO_VOICE_UNAVAILABLE');const blob=await resp.blob();if(request!==leoVoiceRequest)return;leoObjectUrl=URL.createObjectURL(blob);leoAudio=new Audio(leoObjectUrl);leoAudio.onplay=()=>{stopVoice();document.querySelector('.mascot')?.classList.add('speaking');};leoAudio.onended=()=>{document.querySelector('.mascot')?.classList.remove('speaking');startAutoListening();};await leoAudio.play();voiceStatus.textContent='';}catch(error){if(request===leoVoiceRequest){voiceStatus.textContent='';document.querySelector('.mascot')?.classList.remove('speaking');startAutoListening();}}}
 sound.onclick=()=>{voiceEnabled=!voiceEnabled;sound.setAttribute('aria-pressed',String(voiceEnabled));sound.textContent=voiceEnabled?(language==='es'?'🔊 Voz':'🔊 Voice'):(language==='es'?'🔇 Silencio':'🔇 Muted');if(!voiceEnabled)stopLeoSpeech();};
-document.getElementById('voice-test').onclick=()=>{if(!voiceEnabled){voiceEnabled=true;sound.setAttribute('aria-pressed','true');}speak('Hola, soy Leo.');};
+document.getElementById('voice-test').onclick=()=>{if(!voiceEnabled){voiceEnabled=true;sound.setAttribute('aria-pressed','true');}unlockLeoAudio();speak('Hola, soy Leo.');};
 function stopVoice(){if(recognition&&listening){try{recognition.stop();}catch{}listening=false;}}
 function startAutoListening(){if(!autoListen||!recognition||listening||busy)return;try{recognition.lang=language==='es'?'es-SV':'en-US';recognition.start();listening=true;}catch{}}
-if(SpeechRecognition){recognition=new SpeechRecognition();recognition.interimResults=false;recognition.continuous=false;recognition.onresult=e=>{const transcript=Array.from(e.results).map(r=>r[0].transcript).join(' ').trim();if(transcript){input.value=transcript;voiceTurn=true;document.getElementById('form').requestSubmit();}};recognition.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')voiceStatus.textContent='';};recognition.onend=()=>{listening=false;if(autoListen&&!busy)window.setTimeout(startAutoListening,350);};document.addEventListener('click',startAutoListening,{once:true});window.setTimeout(startAutoListening,700);}
+if(SpeechRecognition){recognition=new SpeechRecognition();recognition.interimResults=false;recognition.continuous=false;recognition.onresult=e=>{const transcript=Array.from(e.results).map(r=>r[0].transcript).join(' ').trim();if(transcript){input.value=transcript;voiceTurn=true;document.getElementById('form').requestSubmit();}};recognition.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')voiceStatus.textContent='';};recognition.onend=()=>{listening=false;if(autoListen&&!busy)window.setTimeout(startAutoListening,350);};document.addEventListener('pointerdown',()=>{unlockLeoAudio();startAutoListening();},{passive:true});window.setTimeout(startAutoListening,700);}
 else{autoListen=false;voiceStatus.textContent='';}const objectiveToken=document.getElementById('objective-token');
 const objectivePattern=/^(?:objetivo|objective):\\s*(.+?)\\s*\\|\\s*(.+)$/i;
 const intentPattern=/(?:quiero|necesito|ay[uú]dame a|puedes|pod[eé]s|please|i want|i need|help me)\\s+.{0,140}(?:automatiz|integr|conect|configur|habilit|implement|whatsapp|automate|integrate|connect|configure|enable)/i;
@@ -45,5 +46,5 @@ const code=err?.name==='AbortError'?'TIMEOUT':String(err?.message||'NETWORK_ERRO
 add((language==='es'?'Leo no pudo responder en este momento. Inténtalo de nuevo. Código: ':'Leo could not respond. Please retry. Code: ')+code,'agent')
 }
 finally{busy=false;send.disabled=false;input.focus();startAutoListening()}
-};start();
+};document.addEventListener('keydown',unlockLeoAudio,{once:true});start();
 </script></body></html>
