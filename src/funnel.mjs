@@ -220,10 +220,11 @@ export function validateFunnel(config) {
   if (offers.length === 0) fail('Pricing must list at least one entry offer');
   for (const offer of offers) {
     if (!offer.id || !offer.name || !offer.description) fail(`Pricing offer ${offer.id} is incomplete`);
+    if (offer.reference !== true) fail(`Offer ${offer.id} publishes an amount without marking it a reference`);
+    if (offer.quoteRequired !== true) fail(`Offer ${offer.id} publishes an amount without requiring a quote`);
     // A published amount is allowed only as a reference that still requires a quote.
     if (typeof offer.referencePrice === 'string' && AMOUNT.test(offer.referencePrice)) {
-      if (offer.reference !== true) fail(`Offer ${offer.id} publishes an amount without marking it a reference`);
-      if (offer.quoteRequired !== true) fail(`Offer ${offer.id} publishes an amount without requiring a quote`);
+      if (!offer.referencePrice.trim()) fail(`Offer ${offer.id} has an empty reference price`);
     }
   }
   if (!pricing.note || !isNotFinalOffer(pricing.note)) {

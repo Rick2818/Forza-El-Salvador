@@ -156,7 +156,7 @@
         "id": "prebuilt",
         "name": "Agentes listos para configurar",
         "description": "Especialidades como ventas, servicio al cliente, mercadeo, finanzas, logística y registros.",
-        "referencePrice": "Desde US$69/mes, sujeto a alcance y cuotas.",
+        "referencePrice": "Precio según alcance aprobado; no hay mensualidad publicada.",
         "reference": true,
         "quoteRequired": true,
         "cta": "Conocer la Fábrica"
@@ -356,3 +356,4 @@
     }
   ]
 }
+

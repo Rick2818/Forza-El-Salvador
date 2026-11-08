@@ -6,7 +6,7 @@ _Precios de referencia, no ofertas finales. Contratación sujeta a cotización a
 
 Especialidades como ventas, servicio al cliente, mercadeo, finanzas, logística y registros.
 
-**Desde US$69/mes, sujeto a alcance y cuotas.**
+**Precio según alcance aprobado; no hay mensualidad publicada.**
 
 - Conocer la Fábrica
 
@@ -45,4 +45,5 @@ La validación de un flujo y una integración simple. Lo que no está incluido a
 ### ¿Cómo se protegen los datos?
 
 Se declara qué datos se leen, dónde se guardan y quién puede verlos antes de firmar.
+
 

@@ -54,3 +54,4 @@ Landing ya generada incluida: `.clonador/funnel/build-6CRzAR/index.html` (españ
 - `REVIEW_REQUIRED` para publicación: sin dominio, sin formulario público conectado,
   sin analítica y sin campañas.
 - Nada se envía, publica ni gasta desde este proyecto.
+

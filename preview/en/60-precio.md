@@ -6,7 +6,7 @@ _Reference prices, not final offers. Contracting is subject to an approved quote
 
 Specialties such as sales, customer service, marketing, finance, logistics and registrations.
 
-**From US$69/month, subject to scope and quotas.**
+**Price follows approved scope; no monthly fee is published.**
 
 - Visit the Factory
 
@@ -45,4 +45,5 @@ The validation of one flow and one simple integration. Anything not included is 
 ### How is data protected?
 
 We declare which data is read, where it is stored and who can see it before you sign.
+
 

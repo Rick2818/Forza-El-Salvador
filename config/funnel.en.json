@@ -156,7 +156,7 @@
         "id": "prebuilt",
         "name": "Agents ready to configure",
         "description": "Specialties such as sales, customer service, marketing, finance, logistics and registrations.",
-        "referencePrice": "From US$69/month, subject to scope and quotas.",
+        "referencePrice": "Price follows approved scope; no monthly fee is published.",
         "reference": true,
         "quoteRequired": true,
         "cta": "Visit the Factory"
@@ -356,3 +356,4 @@
     }
   ]
 }
+
