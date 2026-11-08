@@ -107,7 +107,7 @@ export async function onRequest(context) {
   if (url.searchParams.has('leo_sales')) {
     try {
       const result = await respondAsLeo(
-        { message: body.message, history: body.history, language },
+        { message: body.message, history: body.history, language, salesDot: body.salesDot === true },
         { env }
       );
       return json({ success: true, ...result });

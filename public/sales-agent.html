@@ -36,11 +36,11 @@ try{
 const controller=new AbortController();
 const timeout=setTimeout(()=>controller.abort(),20000);
 let resp;
-try{resp=await fetch('/api?leo_sales=1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,language,history:history.slice(-12)}),signal:controller.signal})}
+try{resp=await fetch('/api?leo_sales=1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,language,salesDot:true,history:history.slice(-12)}),signal:controller.signal})}
 finally{clearTimeout(timeout)}
 const data=await resp.json().catch(()=>null);
 if(!resp.ok||!data?.success||typeof data.reply!=='string'||!data.reply.trim())throw Error('LEO_HTTP_'+resp.status);
-const reply=data.reply.trim();add(reply,'agent');speak(reply);history.push({role:'user',text:msg},{role:'assistant',text:reply});history=history.slice(-12)
+const reply=data.reply.trim();add(reply,'agent');if(data.summary){document.getElementById('summary').textContent=(language==='es'?'Resumen listo — cotización pendiente de aprobación. Responsable: Agente 1. Fábrica: no ordenada.':'Summary ready — quote pending approval. Owner: Agent 1. Factory: not ordered.')+'\n\n'+JSON.stringify(data.summary,null,2);}speak(reply);history.push({role:'user',text:msg},{role:'assistant',text:reply});history=history.slice(-12)
 }catch(err){
 const code=err?.name==='AbortError'?'TIMEOUT':String(err?.message||'NETWORK_ERROR').replace(/[^A-Z0-9_]/gi,'').slice(0,35);
 add((language==='es'?'Leo no pudo responder en este momento. Inténtalo de nuevo. Código: ':'Leo could not respond. Please retry. Code: ')+code,'agent')
@@ -48,3 +48,4 @@ add((language==='es'?'Leo no pudo responder en este momento. Inténtalo de nuevo
 finally{busy=false;send.disabled=false;input.focus();startAutoListening()}
 };document.addEventListener('keydown',unlockLeoAudio,{once:true});start();
 </script></body></html>
+

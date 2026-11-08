@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {
   LEO_SYSTEM,
   applyLeoSkillGuards,
-  respondAsLeo
+  respondAsLeo,
+  salesDotReply
 } from '../src/leo_sales_runtime.mjs';
 
 const ai = text => async () => ({ text });
@@ -96,4 +97,38 @@ test('10. Groq backs up Gemini without inventing a success', async () => {
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('11. Sales Dot qualifies sequentially and completes only with a valid email', async () => {
+  let history = [];
+  const answers = ['orders', 'CRM and Excel', '150 requests/month', 'respond within one hour this month'];
+  for (const message of answers) {
+    const result = await respondAsLeo({ message, history, language: 'en', salesDot: true });
+    assert.equal(result.mode, 'SALES_DOT_QUALIFICATION');
+    assert.equal(result.qualified, false);
+    history.push({ role: 'user', text: message }, { role: 'assistant', text: result.reply });
+  }
+  const invalid = await respondAsLeo({ message: 'not-an-email', history, language: 'en', salesDot: true });
+  assert.match(invalid.reply, /valid email/i);
+  history.push({ role: 'user', text: 'not-an-email' }, { role: 'assistant', text: invalid.reply });
+  const complete = await respondAsLeo({ message: 'buyer@example.test', history, language: 'en', salesDot: true });
+  assert.equal(complete.mode, 'SALES_DOT_COMPLETE');
+  assert.equal(complete.qualified, true);
+  assert.deepEqual(complete.summary, {
+    problem: 'orders',
+    tools: 'CRM and Excel',
+    volume: '150 requests/month',
+    goal: 'respond within one hour this month',
+    email: 'buyer@example.test',
+    quoteStatus: 'PENDING_APPROVAL',
+    commercialOwner: 'AGENT_1',
+    factoryStatus: 'NOT_ORDERED'
+  });
+  assert.deepEqual(complete.authorizedActions, []);
+});
+
+test('12. Sales Dot helper preserves the approved five-question order', () => {
+  const first = salesDotReply('orders', [], 'es');
+  assert.match(first.reply, /herramientas/i);
+  assert.equal(first.step, 1);
 });
