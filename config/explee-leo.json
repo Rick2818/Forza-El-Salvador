@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "status": "review_only",
+  "provider": "explee_official_api",
+  "countries": ["United States", "Mexico", "Colombia"],
+  "languages": ["en", "es"],
+  "companySize": { "minEmployees": 1, "maxEmployees": 50 },
+  "prioritySegment": { "minEmployees": 1, "maxEmployees": 20, "buyer": "founder_owner_general_manager" },
+  "secondarySegment": { "minEmployees": 21, "maxEmployees": 50, "buyer": "operations_finance_sales_manager" },
+  "workingConcept": "Boltech ayuda a pequeñas empresas activas a ordenar y automatizar pedidos, facturas y stock con un piloto de alcance definido.",
+  "problems": [
+    "orders_from_email_or_whatsapp",
+    "manual_invoice_review",
+    "inventory_and_stock_control"
+  ],
+  "tools": ["email", "whatsapp", "excel", "google_sheets", "crm", "erp", "forms"],
+  "decisionMakerTitles": ["Founder", "Owner", "CEO", "General Manager", "Operations Manager", "Finance Manager", "Administrative Manager", "Sales Operations Manager"],
+  "exclusions": ["inactive_business", "students_without_customers", "over_50_employees", "current_customer", "existing_opportunity", "competitor", "do_not_contact"],
+  "offer": {
+    "pilotReferenceUsd": 600,
+    "customStartingReferenceUsd": 900,
+    "approvalRequired": true,
+    "promiseResults": false
+  },
+  "outreach": { "searchEnabled": false, "sendEnabled": false, "budgetUsd": 0 }
+}

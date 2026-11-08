@@ -39,4 +39,12 @@ Fecha: 2026-11-08
 5. Exclusiones: clientes, oportunidades, contactos previos, bajas, competidores y dominios excluidos.
 6. Condiciones: piloto de US$600 y custom desde US$900 como referencias sujetas a aprobación; ningún descuento automático.
 
-Hasta recibir estas decisiones y una API key cargada como secret, las pruebas son sintéticas y la producción permanece sin prospección.
+La API key ya está cargada como secret. Hasta seleccionar el proyecto Explee y activar explícitamente la búsqueda, las pruebas son sintéticas y la producción permanece sin prospección.
+
+## Concepto operativo adoptado
+
+Para no cambiar lo que ya funciona ni inventar una oferta nueva, el concepto de prospección queda definido así:
+
+> **Boltech ayuda a pequeñas empresas activas a ordenar y automatizar pedidos, facturas y stock con un piloto de alcance definido.**
+
+Prioridad: fundadores y dueños de empresas de 1–20 empleados. Segmento secundario: responsables de operaciones, finanzas o administración en empresas de 21–50 empleados. Países: Estados Unidos, México y Colombia. La configuración revisable está en `config/explee-leo.json`; búsqueda y envíos continúan desactivados.
