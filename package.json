@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/funnel.mjs && node --check src/seo.mjs && node --check src/cli.mjs && node --check src/marketing.mjs && node --check src/commercial.mjs && node --check src/offer.mjs && node --check src/content.mjs && node --check src/metrics.mjs && node --check src/opportunities.mjs && node --check src/channels.mjs && node --check src/rea.mjs && node --check src/agent.mjs && node --check src/a2a-client.mjs && node --check src/leo_platform_connectors.mjs && node --check src/leo_skills_bundle.mjs && node --check src/leo_skills_runtime.mjs && node --check src/leo_conversion_runtime.mjs && node --check src/leo_sales_runtime.mjs",
+    "check": "node --check src/funnel.mjs && node --check src/seo.mjs && node --check src/cli.mjs && node --check src/marketing.mjs && node --check src/commercial.mjs && node --check src/offer.mjs && node --check src/content.mjs && node --check src/metrics.mjs && node --check src/opportunities.mjs && node --check src/channels.mjs && node --check src/rea.mjs && node --check src/agent.mjs && node --check src/a2a-client.mjs && node --check src/leo_platform_connectors.mjs && node --check src/leo_skills_bundle.mjs && node --check src/leo_skills_runtime.mjs && node --check src/leo_conversion_runtime.mjs && node --check src/explee_client.mjs && node --check src/leo_sales_runtime.mjs",
     "funnel:build": "node src/cli.mjs funnel-build",
     "funnel:check": "node src/cli.mjs funnel-check",
     "seo:check": "node src/cli.mjs seo-check",
