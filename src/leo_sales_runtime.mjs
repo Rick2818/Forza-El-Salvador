@@ -2,6 +2,7 @@
 // Deterministic guards first, then an optional AI model. No writes, sends,
 // payments or publishing. Without credentials it degrades to guided text.
 import { getLeoSkillPrompt, LEO_SKILL_ALLOWLIST } from './leo_skills_runtime.mjs';
+import { conversionAddendum, deriveLeoConversion } from './leo_conversion_runtime.mjs';
 
 const clean = value => typeof value === 'string' ? value.trim().slice(0, 900) : '';
 
@@ -25,6 +26,7 @@ const skillKnowledge = getLeoSkillPrompt();
 
 export const LEO_SYSTEM = SYSTEM_BASE
   + leoSkillSystemAddendum
+  + conversionAddendum()
   + (skillKnowledge ? '\n\n' + skillKnowledge : '');
 
 const answer = (lang, es, en, extra = {}) => ({
@@ -197,18 +199,20 @@ export async function respondAsLeo({ message, history = [], language = 'es' } = 
   }
 
   const lang = language === 'en' ? 'en' : 'es';
+  const conversion = deriveLeoConversion({ message: msg, history });
+  const withConversion = result => ({ ...result, conversion });
   if (/whats?app/i.test(msg) && /(autoriza|conect|integr|habilit|activ|authorize|connect|integrat|enable)/i.test(msg)) {
-    return {
+    return withConversion({
       mode: 'INTEGRATION_GUIDANCE',
       reply: guidedReply(msg, lang),
       authorizedActions: [],
       qualified: false,
       requiresOwnerAuthorization: true
-    };
+    });
   }
 
   const guard = applyLeoSkillGuards({ message: msg, history, language: lang, providerConfigured: true });
-  if (guard && !['COMMERCIAL_PRICE_REVIEW', 'AI_PROVIDER_NOT_CONFIGURED'].includes(guard.guard)) return guard;
+  if (guard && !['COMMERCIAL_PRICE_REVIEW', 'AI_PROVIDER_NOT_CONFIGURED'].includes(guard.guard)) return withConversion(guard);
 
   const historyText = history
     .map(item => item.role.toUpperCase() + ': ' + item.text.replace(/[\u0000-\u001f]/g, ' '))
@@ -227,7 +231,7 @@ export async function respondAsLeo({ message, history = [], language = 'es' } = 
   if (workersAI) providers.push({ name: 'workers-ai', run: () => callWorkersAI({ env, system: LEO_SYSTEM, prompt, temperature: 0.3, maxTokens: 280 }) });
 
   if (!providers.length) {
-    return { mode: 'GUIDED_FALLBACK', reply: guidedReply(msg, lang), authorizedActions: [], qualified: false };
+    return withConversion({ mode: 'GUIDED_FALLBACK', reply: guidedReply(msg, lang), authorizedActions: [], qualified: false });
   }
 
   const failures = [];
@@ -240,20 +244,20 @@ export async function respondAsLeo({ message, history = [], language = 'es' } = 
       }
       const result = { mode: 'AI_CONSULTATIVE', reply: text, authorizedActions: [], qualified: false };
       if (provider.name) result.provider = provider.name;
-      return result;
+      return withConversion(result);
     } catch (error) {
       // Try the next provider; never claim an action ran.
       failures.push((provider.name || 'primary') + ':' + String(error?.code || error?.name || 'ERROR') + ':' + String(error?.message || '').slice(0, 160));
     }
   }
 
-  return {
+  return withConversion({
     mode: 'MODEL_UNAVAILABLE',
     reply: guidedReply(msg, lang),
     authorizedActions: [],
     qualified: false,
     providerFailures: failures
-  };
+  });
 }
 
 function safeText(value) {
