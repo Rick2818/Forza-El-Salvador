@@ -46,6 +46,8 @@ test('5. a price question reaches the model with the skills loaded', async () =>
   assert.match(result.reply, /600/);
   assert.ok(seen.system.includes('never claim a sale'));
   assert.ok(seen.system.includes('[leo-copywriting]'));
+  assert.ok(seen.system.includes('Approved Boltech marketing context'));
+  assert.ok(seen.system.includes('orders arriving through email or WhatsApp'));
 });
 
 test('6. without any key Leo degrades to guided text', async () => {
@@ -131,4 +133,10 @@ test('12. Sales Dot helper preserves the approved five-question order', () => {
   const first = salesDotReply('orders', [], 'es');
   assert.match(first.reply, /herramientas/i);
   assert.equal(first.step, 1);
+});
+
+test('13. fallback uses an approved interest hook without claiming campaign activity', async () => {
+  const result = await respondAsLeo({ message: 'necesito automatizar algo', language: 'es' }, { env: {} });
+  assert.match(result.reply, /pedidos, facturas o el stock/i);
+  assert.doesNotMatch(result.reply, /campaña enviada|resultado garantizado/i);
 });

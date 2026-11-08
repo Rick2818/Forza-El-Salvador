@@ -3,6 +3,7 @@
 // payments or publishing. Without credentials it degrades to guided text.
 import { getLeoSkillPrompt, LEO_SKILL_ALLOWLIST } from './leo_skills_runtime.mjs';
 import { conversionAddendum, deriveLeoConversion } from './leo_conversion_runtime.mjs';
+import { LEO_MARKETING_CONTEXT, LEO_MARKETING_HOOKS } from './leo_marketing_context.mjs';
 
 const clean = value => typeof value === 'string' ? value.trim().slice(0, 900) : '';
 
@@ -26,6 +27,7 @@ const skillKnowledge = getLeoSkillPrompt();
 
 export const LEO_SYSTEM = SYSTEM_BASE
   + leoSkillSystemAddendum
+  + '\n' + LEO_MARKETING_CONTEXT
   + conversionAddendum()
   + (skillKnowledge ? '\n\n' + skillKnowledge : '');
 
@@ -118,11 +120,11 @@ const guidedReply = (message, lang) => {
   if (lang === 'en') {
     if (/price|cost|how much|budget/.test(lower)) return 'Our pilot starts at USD 600 for one workflow and one simple integration. Custom implementations start at USD 900, subject to a confirmed quote. The AI model and usage are separate. What process would you like to automate?';
     if (/hello|hi|hey/.test(lower)) return "Hello! I am Leo, Boltech Group's sales assistant. I can help you explore AI agents and automation. What does your business need?";
-    return 'I can help you scope an AI sales agent, customer support assistant or workflow automation. What task do you want to automate, and which tools do you use?';
+    return LEO_MARKETING_HOOKS.en;
   }
   if (/precio|cu[aá]nto|costo|vale|tarifa|presupuesto/.test(lower)) return 'Nuestro piloto comienza en US$600 por un flujo y una integración sencilla. Las implementaciones personalizadas comienzan en US$900, sujetos a cotización aprobada. El modelo de IA y su consumo se cotizan aparte. ¿Qué proceso querés automatizar?';
   if (/hola|buenas|saludos/.test(lower)) return '¡Hola! Soy Leo, el asistente comercial de Boltech Group. Te ayudo a conocer nuestros agentes de IA y automatizaciones. ¿Qué necesita tu empresa?';
-  return 'Podemos ayudarte con agentes de ventas, atención al cliente y automatización de procesos. ¿Qué tarea querés automatizar y qué herramientas utiliza tu empresa?';
+  return LEO_MARKETING_HOOKS.es;
 };
 
 const DOT_QUESTIONS = Object.freeze({
