@@ -8,3 +8,4 @@ content/
 .dev.vars
 .vercel
 .env*
+.secrets/
