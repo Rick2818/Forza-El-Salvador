@@ -194,7 +194,8 @@ export function salesDotReply(message, history = [], language = 'es') {
 async function callGemini({ env, system, prompt, temperature, maxTokens }) {
   const key = String(env.GEMINI_API_KEY || env.GOOGLE_GENERATIVE_AI_API_KEY || '').trim();
   if (!key) throw Object.assign(new Error('GEMINI_NOT_CONFIGURED'), { statusCode: 503 });
-  const model = /^gemini-[a-z0-9.-]+$/.test(String(env.LEO_MODEL_NAME || '')) ? env.LEO_MODEL_NAME : 'gemini-2.5-flash';
+  // gemini-2.5-flash fue retirado para claves nuevas; Google indica gemini-3.8-flash como sucesor.
+  const model = /^gemini-[a-z0-9.-]+$/.test(String(env.LEO_MODEL_NAME || '')) ? env.LEO_MODEL_NAME : 'gemini-3.8-flash';
   const response = await fetch(
     'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
     {
