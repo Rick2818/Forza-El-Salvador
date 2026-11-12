@@ -1,0 +1,9 @@
+name = "boltech-group-revenue-cron"
+main = "workers/revenue-cron.js"
+compatibility_date = "2026-11-09"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+REVENUE_ENGINE_ENDPOINT = "https://boltech-group.pages.dev/api/revenue-engine"

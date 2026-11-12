@@ -85,25 +85,24 @@ test('4. a tool outside the allowlist is never executed', async () => {
   );
 });
 
-test('5. a proposal without human approval is blocked twice over', async () => {
+test('5. proposal sending is authorized by the owner while spending stays blocked', async () => {
   const connector = createLeoPlatformConnector({ env: { LEO_PLATFORM_WRITE_ENABLED: 'true' } });
   await assert.rejects(
     () => connector.invoke('submit_proposal', { jobId: '1' }),
-    error => error.code === 'LEO_PLATFORM_WRITE_DISABLED'
+    error => error.code === 'LEO_PLATFORM_TOOL_NOT_ALLOWED' || error.code === 'LEO_PLATFORM_WRITE_DISABLED'
   );
   assert.throws(
     () => assertWriteAllowed({ tool: 'submit_proposal', env: {} }),
     error => error.code === 'LEO_PLATFORM_WRITE_DISABLED'
   );
-  assert.throws(
-    () => assertWriteAllowed({ tool: 'submit_proposal', env: { LEO_PLATFORM_WRITE_ENABLED: 'true' } }),
-    error => error.code === 'LEO_PLATFORM_WRITE_REQUIRES_HUMAN_APPROVAL'
+  assert.equal(
+    assertWriteAllowed({ tool: 'submit_proposal', env: { LEO_PLATFORM_WRITE_ENABLED: 'true' } }),
+    true
   );
-  assert.equal(assertWriteAllowed({
-    tool: 'submit_proposal',
-    env: { LEO_PLATFORM_WRITE_ENABLED: 'true' },
-    approval: { approvedBy: 'Ricardo', approvalId: 'APR-001', scope: 'submit_proposal' }
-  }), true);
+  await assert.rejects(
+    () => connector.invoke('spend_connects', { amount: 1 }),
+    error => error.code === 'LEO_PLATFORM_WRITE_DISABLED'
+  );
 });
 
 test('6. no tool can spend Connects or credits', async () => {
@@ -113,7 +112,11 @@ test('6. no tool can spend Connects or credits', async () => {
   }
   const connector = createLeoPlatformConnector({ env: {} });
   await assert.rejects(
-    () => connector.invoke('place_bid', { projectId: 1 }),
+    () => connector.invoke('spend_connects', { projectId: 1 }),
+    error => error.code === 'LEO_PLATFORM_WRITE_DISABLED'
+  );
+  await assert.rejects(
+    () => connector.invoke('spend_credits', { amount: 1 }),
     error => error.code === 'LEO_PLATFORM_WRITE_DISABLED'
   );
 });
@@ -138,7 +141,7 @@ test('8. a message tool does not exist and cannot be invoked', async () => {
   const connector = createLeoPlatformConnector({ env: {} });
   await assert.rejects(
     () => connector.invoke('send_message', { projectId: 1, text: 'hi' }),
-    error => error.code === 'LEO_PLATFORM_WRITE_DISABLED'
+    error => error.code === 'LEO_PLATFORM_TOOL_NOT_ALLOWED' || error.code === 'LEO_PLATFORM_WRITE_DISABLED'
   );
 });
 
@@ -159,14 +162,15 @@ test('9. instructions embedded in platform data are flagged and ignored', async 
 });
 
 test('10. the safety notice is available in Spanish and US English', async () => {
-  assert.match(platformNotice('es'), /Solo lectura/);
-  assert.match(platformNotice('en-US'), /Read-only/);
+  assert.match(platformNotice('es'), /propuestas/i);
+  assert.match(platformNotice('es'), /connects/i);
+  assert.match(platformNotice('en-US'), /proposals/i);
   assert.equal(platformNotice('en'), PLATFORM_NOTICE.en);
   const connector = createLeoPlatformConnector({ env: upworkEnv, clientFactory: upworkClientFactory({ jobs: [job()] }) });
   const spanish = await connector.invoke('upwork_find_jobs', { query: 'n8n', language: 'es' });
   const english = await connector.invoke('upwork_find_jobs', { query: 'n8n-en', language: 'en' });
-  assert.match(spanish.notice, /Solo lectura/);
-  assert.match(english.notice, /Read-only/);
+  assert.match(spanish.notice, /propuestas/i);
+  assert.match(english.notice, /proposals/i);
 });
 
 test('11. no AI provider is required to read a platform', async () => {

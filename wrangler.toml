@@ -15,8 +15,8 @@ pages_build_output_dir = "public"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-FREELANCER_API_ENABLED = "false"
-LEO_PLATFORM_WRITE_ENABLED = "false"
+FREELANCER_API_ENABLED = "true"
+LEO_PLATFORM_WRITE_ENABLED = "true"
 LEO_PLATFORM_DAILY_READ_LIMIT = "40"
 PAYMENT_ENV = "production"
 

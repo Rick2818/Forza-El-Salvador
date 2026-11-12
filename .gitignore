@@ -6,3 +6,5 @@ content/
 *.log
 .DS_Store
 .dev.vars
+.vercel
+.env*
