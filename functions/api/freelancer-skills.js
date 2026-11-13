@@ -17,8 +17,11 @@ const SKILL_ALLOWLIST = Object.freeze([
   { id: 2380, name: 'Telegram API', evidence: 'webhook with secret validation' }
 ]);
 
-// Declared now, kept in the profile. Listed only so the receipt can show them.
-const KEPT_SKILLS = Object.freeze([38, 500, 1023, 1977, 2164, 2165]);
+// The only skills this endpoint is allowed to remove, by explicit owner request.
+const REMOVABLE_SKILLS = Object.freeze([
+  { id: 38, name: 'SEO' },
+  { id: 1023, name: 'Digital Marketing' }
+]);
 
 // Not declared yet: n8n (3112) needs a recorded demo before it becomes a public claim.
 const PENDING_SKILLS = Object.freeze([{ id: 3112, name: 'n8n', reason: 'requires a 2-minute recorded demo' }]);
@@ -116,12 +119,32 @@ export async function onRequest({ request, env }) {
       return json({ ...base, mode: 'PREVIEW', written: false, code: 'LEO_PLATFORM_WRITE_DISABLED' }, 403);
     }
 
-    // Nothing to add: report without touching the provider.
-    if (missing.length === 0) {
+    // Optional, explicitly authorised removals. Only these IDs can ever be
+    // removed; anything else is rejected before touching the provider.
+    let removeIds = [];
+    if (request.headers.get('content-length') !== '0') {
+      let body = {};
+      try { body = await request.json(); } catch { body = {}; }
+      if (Array.isArray(body?.remove) && body.remove.length > 0) {
+        const requested = body.remove.map((value) => Number(value));
+        const invalid = requested.filter((id) => !REMOVABLE_SKILLS.some((skill) => skill.id === id));
+        if (invalid.length > 0) {
+          return json({ success: false, code: 'FREELANCER_SKILL_REMOVAL_NOT_ALLOWED', invalid }, 400);
+        }
+        removeIds = [...new Set(requested)];
+      }
+    }
+
+    const removeSet = new Set(removeIds);
+    const targetIds = [...new Set([...currentIds, ...SKILL_ALLOWLIST.map((skill) => skill.id)])]
+      .filter((id) => !removeSet.has(id));
+    const toRemove = current.filter((job) => removeSet.has(job.id));
+
+    // Nothing to add and nothing to remove: report without touching the provider.
+    if (missing.length === 0 && toRemove.length === 0) {
       return json({ ...base, mode: 'APPLY', written: false, code: 'FREELANCER_SKILLS_ALREADY_PRESENT' });
     }
 
-    const targetIds = [...new Set([...currentIds, ...SKILL_ALLOWLIST.map((skill) => skill.id)])];
     const attempts = [];
 
     const attempt = async (label, init, path = '/users/0.1/self/jobs') => {
@@ -139,52 +162,77 @@ export async function onRequest({ request, env }) {
 
     // Documented route: /users/0.1/self/jobs. Freelancer rejects JSON on this
     // endpoint: it expects application/x-www-form-urlencoded with repeated
-    // "jobs[]" keys. POST adds, PUT replaces. Both attempts send the full target
-    // list, so no already declared skill can be dropped.
+    // "jobs[]" keys. POST adds, PUT replaces, DELETE removes.
     const formBody = (ids) => {
       const params = new URLSearchParams();
       for (const id of ids) params.append('jobs[]', String(id));
       return params.toString();
     };
 
-    let result = await attempt('POST_SELF_JOBS_FORM', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formBody(targetIds)
-    });
-    let formUsed = true;
+    let result;
 
-    if (!result.ok) {
+    if (toRemove.length > 0) {
+      // Replace semantics: send the exact final list. Verified afterwards by
+      // re-reading the profile, never by trusting the response alone.
       result = await attempt('PUT_SELF_JOBS_FORM', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody(targetIds)
       });
-    }
 
-    if (!result.ok) {
-      result = await attempt('PUT_SELF_JOBS_JSON', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 'jobs[]': targetIds })
+      if (!result.ok) {
+        result = await attempt('DELETE_SELF_JOBS_FORM', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody(removeIds)
+        });
+      }
+    } else {
+      result = await attempt('POST_SELF_JOBS_FORM', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody(targetIds)
       });
-      formUsed = false;
+
+      if (!result.ok) {
+        result = await attempt('PUT_SELF_JOBS_FORM', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody(targetIds)
+        });
+      }
+
+      if (!result.ok) {
+        result = await attempt('PUT_SELF_JOBS_JSON', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 'jobs[]': targetIds })
+        });
+      }
     }
 
     const after = await readSelf();
     const afterJobs = readJobs(after.profile);
     const afterIds = new Set(afterJobs.map((job) => job.id));
     const applied = SKILL_ALLOWLIST.filter((skill) => afterIds.has(skill.id));
+    const stillPresent = toRemove.filter((job) => afterIds.has(job.id));
+    const complete = afterIds.size > 0
+      && stillPresent.length === 0
+      && SKILL_ALLOWLIST.every((skill) => afterIds.has(skill.id));
 
-    if (!result?.ok) {
+    if (!result?.ok || !complete) {
       return json({
         ...base,
         mode: 'APPLY',
         written: false,
-        code: 'FREELANCER_PROFILE_WRITE_REJECTED',
+        code: stillPresent.length > 0
+          ? 'FREELANCER_SKILL_REMOVAL_NOT_REFLECTED'
+          : 'FREELANCER_PROFILE_WRITE_REJECTED',
         httpStatus: result?.httpStatus ?? null,
         errorCode: result?.body?.error_code ?? attempts[attempts.length - 1]?.errorCode ?? null,
         message: result?.body?.message ?? null,
+        requestedRemoval: toRemove,
+        stillPresent,
         attempts,
         verification: { httpStatus: after.http, skillsNow: afterJobs, appliedCount: applied.length }
       }, 502);
@@ -195,7 +243,6 @@ export async function onRequest({ request, env }) {
       mode: 'APPLY',
       written: true,
       code: 'FREELANCER_SKILLS_WRITTEN',
-      usedFormEncoding: formUsed,
       attempts,
       verification: { httpStatus: after.http, skillsNow: afterJobs, appliedCount: applied.length },
       receipt: {
@@ -204,6 +251,7 @@ export async function onRequest({ request, env }) {
         profileId: before.profile.id ?? null,
         requestedIds: targetIds,
         appliedIds: applied.map((skill) => skill.id),
+        removedIds: toRemove.map((job) => job.id),
         beforeIds: [...currentIds],
         afterIds: [...afterIds],
         receivedAt: new Date().toISOString()
