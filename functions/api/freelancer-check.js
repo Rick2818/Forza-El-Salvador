@@ -57,6 +57,30 @@ export async function onRequest({ request, env }) {
     const self = await call('/api/users/0.1/self/');
     const bids = await call('/api/projects/0.1/bids/', { limit: 1, offset: 0 });
 
+    let projectsProbe = null;
+    try {
+      const projectUrl = new URL('https://www.freelancer.com/api/projects/0.1/projects/active/');
+      projectUrl.searchParams.set('query', 'automation');
+      projectUrl.searchParams.set('limit', '3');
+      const projectRes = await fetch(projectUrl, {
+        redirect: 'error',
+        headers: { 'Freelancer-OAuth-V1': token, Accept: 'application/json' },
+        signal: AbortSignal.timeout(15000)
+      });
+      const text = await projectRes.text();
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch { parsed = null; }
+      projectsProbe = {
+        http: projectRes.status,
+        contentType: projectRes.headers.get('content-type'),
+        isJson: Boolean(parsed),
+        projectsFound: parsed?.result?.projects?.length ?? null,
+        firstChars: parsed ? null : text.slice(0, 160)
+      };
+    } catch (error) {
+      projectsProbe = { error: String(error?.message || error).slice(0, 200) };
+    }
+
     const me = self.body?.result || {};
     return json({
       success: true,
@@ -73,7 +97,8 @@ export async function onRequest({ request, env }) {
         errorCode: bids.body?.error_code ?? null,
         message: bids.body?.message ?? null,
         canReadBids: bids.http === 200 && bids.body?.status === 'success'
-      }
+      },
+      projectsProbe
     });
   } catch (error) {
     return json({ success: false, code: 'FREELANCER_PROBE_FAILED', detail: String(error?.message || error).slice(0, 200) }, 502);

@@ -146,7 +146,7 @@ async function openUpworkClient(token) {
   await client.connect(new StreamableHTTPClientTransport(new URL(UPWORK_MCP_URL), {
     requestInit: {
       headers: { Authorization: `Bearer ${token}` },
-      redirect: 'error',
+      redirect: 'manual',
       signal: AbortSignal.timeout(25000)
     }
   }), { timeout: 10000 });
@@ -296,7 +296,7 @@ export function createLeoPlatformConnector(options = {}) {
     }
     const response = await fetcher(url, {
       method: 'GET',
-      redirect: 'error',
+      redirect: 'manual',
       signal: AbortSignal.timeout(10000),
       headers: { 'Freelancer-OAuth-V1': String(env.FREELANCER_OAUTH_TOKEN).trim(), Accept: 'application/json' }
     });
