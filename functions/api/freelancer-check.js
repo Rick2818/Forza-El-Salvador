@@ -54,9 +54,10 @@ export async function onRequest({ request, env }) {
   };
 
   try {
-    const self = await call('/api/users/0.1/self/');
+    const self = await call('/api/users/0.1/self/', { jobs: 'true', country: 'true', currency: 'true' });
     const me = self.body?.result || {};
     const bidderId = Number(me.id) || null;
+    const selfJobs = (me.jobs || []).map((job) => ({ id: job?.id ?? null, name: job?.name ?? null }));
 
     let projectsProbe = null;
     let bidsProbe = null;
@@ -135,6 +136,7 @@ export async function onRequest({ request, env }) {
         country: me.country?.name ?? null,
         primaryCurrency: me.primary_currency?.code ?? null
       },
+      selfJobs,
       projectsProbe,
       sampleProject,
       bidsProbe

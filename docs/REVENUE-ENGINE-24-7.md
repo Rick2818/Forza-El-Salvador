@@ -37,12 +37,28 @@ Estado verificado el 13 de noviembre de 2026:
 
 | Proveedor | Lectura | Envío | Bloqueo actual |
 |---|---|---|---|
-| Freelancer | ✅ `/api/platform` acción `freelancer_projects` | ⏳ `/api/freelancer-bid` (1 crédito gratis) | permiso de Bid sin verificar |
+| Freelancer | ✅ `/api/platform` acción `freelancer_projects` | ⛔ bloqueado por el proveedor | exige saldo de USD 19 en la cuenta |
 | Upwork | ✅ `/api/platform` acción `upwork_jobs` | ❌ | 18 Connects por propuesta, saldo insuficiente |
 
 En Freelancer el conector entrega `projectId`, `budget` (mínimo, máximo, moneda y
 equivalente en USD) y `bidCount`. Los importes se convierten con la tasa que
 devuelve el proveedor; no se inventan rangos.
+
+### Bloqueos verificados en Freelancer (13 nov 2026)
+
+Dos intentos reales de postulación. Ninguno consumió crédito ni envió nada:
+
+1. Proyecto 40816675 (Spa Email Automation) → `403 SKILLS_REQUIREMENT_NOT_MET`.
+   El perfil `ricardob971` solo declara SEO, Node.js, Digital Marketing,
+   Automation, API Development y API Integration; el proyecto pide PHP,
+   WordPress, HTML, Email Marketing, Mailchimp, WooCommerce y Customer Retention.
+2. Proyecto 40814472 (scraper 1688) → `422 BID_MINIMUM_REQUIREMENT_NOT_MET`:
+   "To bid on this project, you must have at least $19 USD or equivalent in your
+   account balance."
+
+Consecuencia: en Freelancer el canal **no es de costo 0.00**. Exige un saldo
+mínimo de USD 19, además de los créditos gratis. No se deposita nada sin
+autorización explícita.
 
 ## Envío de propuestas en Freelancer
 

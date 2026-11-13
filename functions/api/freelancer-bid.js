@@ -151,11 +151,17 @@ export async function onRequest({ request, env }) {
     const bidBody = await bidRes.json().catch(() => null);
 
     if (!bidRes.ok || bidBody?.status !== 'success') {
+      const providerCode = bidBody?.error_code ?? null;
+      const code = bidRes.status === 401 || bidRes.status === 403
+        ? 'FREELANCER_SCOPE_OR_AUTH_REJECTED'
+        : bidRes.status === 422
+          ? 'FREELANCER_PRECONDITION_NOT_MET'
+          : 'FREELANCER_BID_FAILED';
       return json({
         success: false,
-        code: bidRes.status === 401 || bidRes.status === 403 ? 'FREELANCER_SCOPE_OR_AUTH_REJECTED' : 'FREELANCER_BID_FAILED',
+        code,
         httpStatus: bidRes.status,
-        errorCode: bidBody?.error_code ?? null,
+        errorCode: providerCode,
         message: bidBody?.message ?? null,
         submitted: false
       }, 502);
