@@ -60,6 +60,21 @@ Consecuencia: en Freelancer el canal **no es de costo 0.00**. Exige un saldo
 mínimo de USD 19, además de los créditos gratis. No se deposita nada sin
 autorización explícita.
 
+### Escritura del perfil (sí funciona, 13 nov 2026)
+
+`POST /api/freelancer-skills` carga una lista **fija** de skills demostrables y
+verifica el resultado leyendo el perfil de nuevo. `GET` devuelve solo la vista
+previa. Requiere `LEO_PLATFORM_TOKEN`, `LEO_PLATFORM_WRITE_ENABLED=true` y
+`FREELANCER_API_ENABLED=true`.
+
+Resultado real: 6 skills agregadas (AI Agents, AI Chatbot, LLM Integration,
+Supabase, Cloudflare, Telegram API), perfil con 12 skills, verificado por
+`GET /users/0.1/self/?jobs=true`. Costo USD 0.00.
+
+Detalle técnico: `/users/0.1/self/jobs` exige cuerpo `x-www-form-urlencoded` con
+claves repetidas `jobs[]=<id>`; con JSON responde `400 Must specify an action to
+perform`.
+
 ## Envío de propuestas en Freelancer
 
 `POST /api/freelancer-bid` con `Authorization: Bearer <LEO_PLATFORM_TOKEN>`.

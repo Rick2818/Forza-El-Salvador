@@ -23,20 +23,32 @@ quedan fuera de alcance técnico antes de que un humano lea la propuesta.
 Regla: **solo lo que se pueda demostrar en una llamada o con un archivo**. Cada
 una de estas tiene respaldo en el código de este repositorio.
 
-| Skill | Respaldo verificable |
-|---|---|
-| Node.js | todo el motor y las funciones de Cloudflare |
-| API Development | `functions/api/*` con autenticación, validación y recibos |
-| API Integration | conectores Upwork/Freelancer, MCP, Airtable, Supabase REST |
-| Automation | colas durables en Supabase, cron de 5 minutos, reintentos |
-| AI Agents | cadena Gemini → Groq → Workers AI con herramientas y límites |
-| AI Chatbot | función de WhatsApp Cloud API y bot de Telegram |
-| LLM Integration | proveedores múltiples con respaldo y degradación controlada |
-| Supabase | migraciones, RPC con `FOR UPDATE SKIP LOCKED`, permisos por rol |
-| Cloudflare Workers | Pages Functions, Worker programado, KV |
-| WhatsApp API | webhook de Meta con verificación y consentimiento |
-| Telegram Bot | webhook y secreto de validación |
-| n8n | flujos de contenido y automatización descritos en los playbooks |
+| Skill | ID Freelancer | Respaldo verificable |
+|---|---|---|
+| Node.js | 500 | todo el motor y las funciones de Cloudflare |
+| API Development | 2164 | `functions/api/*` con autenticación, validación y recibos |
+| API Integration | 2165 | conectores Upwork/Freelancer, MCP, Airtable, Supabase REST |
+| Automation | 1977 | colas durables en Supabase, cron de 5 minutos, reintentos |
+| AI Agents | 3028 | cadena Gemini → Groq → Workers AI con herramientas y límites |
+| AI Chatbot | 2917 | función de WhatsApp Cloud API y bot de Telegram |
+| LLM Integration | 3101 | proveedores múltiples con respaldo y degradación controlada |
+| Supabase | 3283 | migraciones, RPC con `FOR UPDATE SKIP LOCKED`, permisos por rol |
+| Cloudflare | 2205 | Pages Functions, Worker programado, KV |
+| Telegram API | 2380 | webhook y secreto de validación |
+| n8n | 3112 | ⏳ pendiente: exige demo grabada de 2 minutos |
+
+Los IDs se verificaron contra `GET /api/projects/0.1/jobs/` (3.490 skills
+registradas) el 13 de noviembre de 2026. Corrección: `AI Chatbot` es **2917**,
+no 2920.
+
+**Cargadas en producción el 13 nov 2026** con `POST /api/freelancer-skills`
+(perfil 95363726 / ricardob971): 6 skills nuevas, verificación posterior por
+`GET /users/0.1/self/?jobs=true` → 12 skills en el perfil. Costo: USD 0.00.
+
+Nota técnica: `/users/0.1/self/jobs` **rechaza JSON**; hay que enviar
+`application/x-www-form-urlencoded` con claves repetidas `jobs[]=<id>`. `POST`
+agrega, `PUT` reemplaza.
+
 
 **No declarar** (sin respaldo real hoy): PHP, WordPress, WooCommerce, Mailchimp,
 SolidWorks, Flutter, diseño gráfico, edición de audio.
@@ -134,7 +146,8 @@ postulación en frío.
 
 ## 8. Checklist antes de publicar
 
-- [ ] Skills de la tabla cargadas en Freelancer y Upwork.
+- [x] Skills de la tabla cargadas en Freelancer (6 de 12 declaradas hoy; ver sección 2).
+- [ ] Skills de la tabla cargadas en Upwork (pendiente, no cuesta Connects).
 - [ ] Titular y resumen pegados, revisados en inglés.
 - [ ] Foto de perfil profesional (no logo).
 - [ ] 3 casos de portafolio publicados con captura o video.
