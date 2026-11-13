@@ -55,33 +55,76 @@ export async function onRequest({ request, env }) {
 
   try {
     const self = await call('/api/users/0.1/self/');
-    const bids = await call('/api/projects/0.1/bids/', { limit: 1, offset: 0 });
+    const me = self.body?.result || {};
+    const bidderId = Number(me.id) || null;
 
     let projectsProbe = null;
+    let bidsProbe = null;
+    let sampleProject = null;
+
     try {
       const projectUrl = new URL('https://www.freelancer.com/api/projects/0.1/projects/active/');
       projectUrl.searchParams.set('query', 'automation');
       projectUrl.searchParams.set('limit', '3');
+      projectUrl.searchParams.set('full_description', 'true');
+      projectUrl.searchParams.set('job_details', 'true');
       const projectRes = await fetch(projectUrl, {
-        redirect: 'error',
+        redirect: 'manual',
         headers: { 'Freelancer-OAuth-V1': token, Accept: 'application/json' },
         signal: AbortSignal.timeout(15000)
       });
       const text = await projectRes.text();
       let parsed = null;
       try { parsed = JSON.parse(text); } catch { parsed = null; }
+      const projects = parsed?.result?.projects || [];
       projectsProbe = {
         http: projectRes.status,
         contentType: projectRes.headers.get('content-type'),
         isJson: Boolean(parsed),
-        projectsFound: parsed?.result?.projects?.length ?? null,
+        projectsFound: projects.length,
         firstChars: parsed ? null : text.slice(0, 160)
       };
+      const first = projects[0];
+      if (first) {
+        sampleProject = {
+          projectId: String(first.id ?? ''),
+          title: String(first.title || '').slice(0, 120),
+          budgetMin: first.budget?.minimum ?? null,
+          budgetMax: first.budget?.maximum ?? null,
+          currency: first.budget?.currency?.code ?? null,
+          bidCount: first.bid_stats?.bid_count ?? null
+        };
+      }
+
+      if (first?.id) {
+        const bids = await call('/api/projects/0.1/bids/', {
+          'projects[]': first.id,
+          limit: 1
+        });
+        const mine = bidderId
+          ? await call('/api/projects/0.1/bids/', { 'bidders[]': bidderId, limit: 5 })
+          : null;
+        bidsProbe = {
+          byProject: {
+            http: bids.http,
+            errorCode: bids.body?.error_code ?? null,
+            message: bids.body?.message ?? null,
+            bidsFound: bids.body?.result?.bids?.length ?? null
+          },
+          byBidder: mine
+            ? {
+                http: mine.http,
+                errorCode: mine.body?.error_code ?? null,
+                message: mine.body?.message ?? null,
+                myBidsFound: mine.body?.result?.bids?.length ?? null
+              }
+            : null
+        };
+      }
     } catch (error) {
       projectsProbe = { error: String(error?.message || error).slice(0, 200) };
     }
 
-    const me = self.body?.result || {};
     return json({
       success: true,
       self: {
@@ -92,13 +135,9 @@ export async function onRequest({ request, env }) {
         country: me.country?.name ?? null,
         primaryCurrency: me.primary_currency?.code ?? null
       },
-      bidsScope: {
-        http: bids.http,
-        errorCode: bids.body?.error_code ?? null,
-        message: bids.body?.message ?? null,
-        canReadBids: bids.http === 200 && bids.body?.status === 'success'
-      },
-      projectsProbe
+      projectsProbe,
+      sampleProject,
+      bidsProbe
     });
   } catch (error) {
     return json({ success: false, code: 'FREELANCER_PROBE_FAILED', detail: String(error?.message || error).slice(0, 200) }, 502);

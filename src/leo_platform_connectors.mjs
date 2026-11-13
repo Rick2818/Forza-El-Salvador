@@ -197,12 +197,42 @@ function shapeFreelancerProjects(payload, { limit = 5 } = {}) {
   if (!Array.isArray(projects)) fail('FREELANCER_RESPONSE_INVALID');
   const items = projects.slice(0, Math.min(Math.max(Number(limit) || 5, 1), 10)).map(project => {
     const description = sanitizePlatformText(project.preview_description || project.description || '');
+    const budget = project.budget || {};
+    const money = value => (Number.isFinite(Number(value)) ? Number(value) : null);
+    const currencyCode = project.currency?.code ? String(project.currency.code).toUpperCase() : null;
+    const rate = Number(project.currency?.exchange_rate);
+    const toUsd = value => {
+      const amount = money(value);
+      if (amount === null) return null;
+      if (!currencyCode || currencyCode === 'USD') return Math.round(amount * 100) / 100;
+      if (!Number.isFinite(rate) || rate <= 0) return null;
+      return Math.round(amount * rate * 100) / 100;
+    };
     return {
       platform: 'FREELANCER',
       projectId: String(project.id || ''),
       title: sanitizePlatformText(project.title, 240),
       url: project.seo_url ? 'https://www.freelancer.com/projects/' + String(project.seo_url).replace(/^\/+/, '') : null,
       publishedAt: project.time_submitted ? new Date(Number(project.time_submitted) * 1000).toISOString() : null,
+      budget: {
+        type: String(project.type || budget.type || '').toLowerCase() || null,
+        min: money(budget.minimum),
+        max: money(budget.maximum),
+        currency: currencyCode,
+        usdMin: toUsd(budget.minimum),
+        usdMax: toUsd(budget.maximum)
+      },
+      bidCount: Number.isFinite(Number(project.bid_stats?.bid_count)) ? Number(project.bid_stats.bid_count) : null,
+      bidAverageUSD: (() => {
+        const avg = Number(project.bid_stats?.bid_avg);
+        if (!Number.isFinite(avg) || avg <= 0) return null;
+        if (!currencyCode || currencyCode === 'USD') return Math.round(avg * 100) / 100;
+        if (!Number.isFinite(rate) || rate <= 0) return null;
+        return Math.round(avg * rate * 100) / 100;
+      })(),
+      skills: Array.isArray(project.jobs)
+        ? project.jobs.map(job => sanitizePlatformText(job?.name || '', 60)).filter(Boolean).slice(0, 8)
+        : [],
       summary: redactContactInfo(description),
       ...inspectPlatformContent(description)
     };
