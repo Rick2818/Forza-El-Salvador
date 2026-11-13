@@ -89,8 +89,50 @@ export async function onRequest({ request, env }) {
       signal: AbortSignal.timeout(12000)
     });
     const existing = await existingRes.json().catch(() => null);
-    if (existingRes.ok && Array.isArray(existing?.result?.bids) && existing.result.bids.length > 0) {
+    if (existingRes.status === 401 || existingRes.status === 403) {
+      return json({
+        success: false,
+        code: 'FREELANCER_SCOPE_OR_AUTH_REJECTED',
+        httpStatus: existingRes.status,
+        message: existing?.message ?? null,
+        submitted: false
+      }, 403);
+    }
+    if (!existingRes.ok) {
+      return json({
+        success: false,
+        code: 'FREELANCER_DUPLICATE_CHECK_FAILED',
+        httpStatus: existingRes.status,
+        errorCode: existing?.error_code ?? null,
+        message: existing?.message ?? null,
+        submitted: false
+      }, 503);
+    }
+    if (Array.isArray(existing?.result?.bids) && existing.result.bids.length > 0) {
       return json({ success: false, code: 'FREELANCER_DUPLICATE_BID', bidId: existing.result.bids[0].id ?? null }, 409);
+    }
+
+    // Tope mensual: cuenta las propuestas del mes en curso antes de gastar el crédito.
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    const monthStartSeconds = Math.floor(monthStart.getTime() / 1000);
+    const historyRes = await fetch(`${API}/projects/0.1/bids/?bidders[]=${bidderId}&limit=100&offset=0`, {
+      headers,
+      signal: AbortSignal.timeout(12000)
+    });
+    const history = await historyRes.json().catch(() => null);
+    const bidsThisMonth = Array.isArray(history?.result?.bids)
+      ? history.result.bids.filter((bid) => Number(bid?.time_submitted) >= monthStartSeconds).length
+      : null;
+    if (bidsThisMonth !== null && bidsThisMonth >= MAX_MONTHLY_BIDS) {
+      return json({
+        success: false,
+        code: 'FREELANCER_MONTHLY_LIMIT_REACHED',
+        bidsThisMonth,
+        limit: MAX_MONTHLY_BIDS,
+        submitted: false
+      }, 429);
     }
 
     const bidRes = await fetch(`${API}/projects/0.1/bids/`, {

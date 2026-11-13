@@ -27,6 +27,38 @@ automáticamente entre servicios).
 
 ## Límites operativos
 
-El motor mantiene cerradas las escrituras de plataformas:
-`LEO_PLATFORM_WRITE_ENABLED=false` y `FREELANCER_API_ENABLED=false`.
-Los jobs deben producir observaciones, scoring y borradores para revisión humana.
+Estado verificado el 13 de noviembre de 2026:
+
+- `LEO_PLATFORM_WRITE_ENABLED=true` y `FREELANCER_API_ENABLED=true` en Cloudflare Pages.
+- La lectura de plataformas sigue limitada por `LEO_PLATFORM_DAILY_READ_LIMIT`.
+- El motor observa, puntúa y prepara borradores. **No** envía propuestas por sí solo.
+
+### Proveedores
+
+| Proveedor | Lectura | Envío | Bloqueo actual |
+|---|---|---|---|
+| Freelancer | ✅ `/api/platform` acción `freelancer_projects` | ⏳ `/api/freelancer-bid` (1 crédito gratis) | permiso de Bid sin verificar |
+| Upwork | ✅ `/api/platform` acción `upwork_jobs` | ❌ | 18 Connects por propuesta, saldo insuficiente |
+
+En Freelancer el conector entrega `projectId`, `budget` (mínimo, máximo, moneda y
+equivalente en USD) y `bidCount`. Los importes se convierten con la tasa que
+devuelve el proveedor; no se inventan rangos.
+
+## Envío de propuestas en Freelancer
+
+`POST /api/freelancer-bid` con `Authorization: Bearer <LEO_PLATFORM_TOKEN>`.
+
+Controles aplicados antes de enviar:
+
+1. Método `POST` y token válido.
+2. `LEO_PLATFORM_WRITE_ENABLED=true` y `FREELANCER_API_ENABLED=true`.
+3. `projectId` numérico, importe mayor que cero y descripción de 40+ caracteres.
+4. Consulta previa de ofertas existentes del usuario en ese proyecto (anti-duplicado).
+5. Tope de 8 propuestas por ejecución de control; el crédito consumido es 1.
+
+La respuesta solo se considera éxito si el proveedor devuelve `status: success`;
+entonces se registra `receipt` con `bidId`, `projectId`, importe, período y
+`receivedAt`. Sin recibo, el envío se reporta como fallido y no se reintenta solo.
+
+La aprobación humana sigue siendo obligatoria: el endpoint no se expone como
+herramienta del bucle autónomo.
