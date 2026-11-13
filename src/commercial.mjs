@@ -58,7 +58,7 @@ export async function buildCommercialKit(config, stateDir) {
       playbookId: asset.playbookId, assetId: asset.id, offerId: asset.offerId || 'implementation',
       channel: 'demo_request', payload: { requestId: 'REPLACE-WITH-UNIQUE-REQUEST-ID', company: 'REPLACE-WITH-COMPANY',
         name: 'REPLACE-WITH-NAME', email: 'example@example.test', consent: false,
-        topic: 'REPLACE-WITH-REQUEST', pageUrl: 'https://boltech-group.vercel.app' } };
+        topic: 'REPLACE-WITH-REQUEST', pageUrl: 'https://boltech-group.pages.dev' } };
     const sources = (asset.sourceIds || playbookFor(config, asset.playbookId).sourceIds)
       .map(id => config.sources.find(source => source.id === id));
     const sourceLines = sources.map(source => `- ${source.url} (consulta pública ${source.observedAt}; no acredita ingresos ni conversión).`);
