@@ -3,6 +3,19 @@ param(
     [string]$ProjectRoot = "C:\Users\Ricardo\Documents\Boltech Group\Plan Comercial tipo Relevance AI\Horizon-REA-2026"
 )
 $ErrorActionPreference = "Stop"
+function Invoke-LoggedNative {
+    param([string]$Executable, [string[]]$Arguments, [string]$LogPath)
+    $PreviousPreference = $ErrorActionPreference
+    try {
+        # In Windows PowerShell 5.1, warnings on stderr are ErrorRecords.
+        # Judge native commands by exit status instead of treating warnings as failure.
+        $ErrorActionPreference = "Continue"
+        & $Executable @Arguments 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $LogPath
+        $script:LastNativeExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $PreviousPreference
+    }
+}
 $BlenderExe = "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe"
 if (!(Test-Path -LiteralPath $BlenderExe)) { throw "No se encontro Blender 5.3." }
 if (!(Test-Path -LiteralPath (Join-Path $ProjectRoot "package.json"))) { throw "No se encontro Horizon." }
@@ -35,9 +48,8 @@ Write-Host "Preparando el carro aprobado..." -ForegroundColor Cyan
 $AssetRelative = "public/models/california-ruby-game.glb"
 $StagedAsset = Join-Path $Stage $AssetRelative
 New-Item -ItemType Directory -Path (Split-Path $StagedAsset) -Force | Out-Null
-& $BlenderExe --background --python-exit-code 1 --python (Join-Path $Stage "tools/blender/export-ruby-game.py") -- --source $Scene --output $StagedAsset 2>&1 |
-    Tee-Object -FilePath (Join-Path $BackupRoot "export.log")
-if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $StagedAsset)) {
+Invoke-LoggedNative -Executable $BlenderExe -Arguments @("--background", "--python-exit-code", "1", "--python", (Join-Path $Stage "tools/blender/export-ruby-game.py"), "--", "--source", $Scene, "--output", $StagedAsset) -LogPath (Join-Path $BackupRoot "export.log")
+if ($script:LastNativeExit -ne 0 -or !(Test-Path -LiteralPath $StagedAsset)) {
     throw "Fallo la exportacion. El juego no se modifico. Log: $BackupRoot\export.log"
 }
 & $NodeExe (Join-Path $Stage "tools/blender/prepare-ruby-integration.mjs") $ProjectRoot $Stage
@@ -71,11 +83,11 @@ try {
     Push-Location -LiteralPath $ProjectRoot
     try {
         Write-Host "Comprobando compilacion..." -ForegroundColor Cyan
-        & $NpmExe run build 2>&1 | Tee-Object -FilePath (Join-Path $BackupRoot "build.log")
-        if ($LASTEXITCODE -ne 0) { throw "Fallo la compilacion. Revisa build.log." }
+        Invoke-LoggedNative -Executable $NpmExe -Arguments @("run", "build") -LogPath (Join-Path $BackupRoot "build.log")
+        if ($script:LastNativeExit -ne 0) { throw "Fallo la compilacion. Revisa build.log." }
         Write-Host "Ejecutando pruebas..." -ForegroundColor Cyan
-        & $NpmExe test 2>&1 | Tee-Object -FilePath (Join-Path $BackupRoot "tests.log")
-        if ($LASTEXITCODE -ne 0) { throw "Fallaron las pruebas. Revisa tests.log." }
+        Invoke-LoggedNative -Executable $NpmExe -Arguments @("test") -LogPath (Join-Path $BackupRoot "tests.log")
+        if ($script:LastNativeExit -ne 0) { throw "Fallaron las pruebas. Revisa tests.log." }
     } finally {
         Pop-Location
     }
