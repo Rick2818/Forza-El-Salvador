@@ -1,6 +1,6 @@
 # Evidencia REA — Horizon-REA-2026
 
-**Fecha:** 14 de noviembre de 2026
+**Fecha:** 14 de noviembre de 2026 (ronda 1) · **16 de noviembre de 2026** (ronda 2, ver §8)
 **Herramienta:** REA 6.8.0 (MCP `rea`)
 **Alcance:** análisis estático del proyecto real y diagnóstico en tiempo de ejecución del bug de física.
 **Proyecto:** `C:\Users\Ricardo\Documents\Boltech Group\Plan Comercial tipo Relevance AI\Horizon-REA-2026`
@@ -137,3 +137,73 @@ HORIZON.stats()   // velocidad, marcha, altura, ruedas, FPS, draw calls
 ## 7. Conclusión
 
 REA aportó la garantía estática (0 fallos de parseo, inventario y grafo de 18 archivos y del bundle) y delimitó lo que no puede probar. El defecto real era de semántica en ejecución y se localizó con telemetría del rigid body en Chrome. Tras las correcciones, el coche acelera, frena, gira y completa vueltas sin volcar ni salir disparado.
+
+---
+
+## 8. Ronda 2 — 16 de noviembre de 2026
+
+Segundo pase completo tras los cambios de MCP Pitstop, circuito visual, entorno, audio y título del menú. El árbol de trabajo ya no es el del 14 de noviembre.
+
+### 8.1 Artefactos analizados
+
+| Objetivo | Operación | SHA-256 del sujeto | Evidence ID |
+|---|---|---|---|
+| `src/` (25 archivos TS) | `analyze_javascript_application` (`detail: summary`) | raíz del directorio (ver recepción) | recepción `ev_ee8c27a35459c81039df5d0228b308712676be44ba942d4297a74487dd91cfa7` · padre `ev_aef638e735a868a3e5e78101e5cedfc967f2c3c48e228e9be828809a6ab681df` |
+| `dist/` (bundle de producción) | `analyze_javascript_application` (`detail: summary`) | `6ccf8dd2d5ab69795ef444d1dddce1a2ca3870151219aaf02636322f0bac826f` | `ev_30ce0cd435b0678e6d32f8b49152025b8d6bebfd9847dac985550936051be856` |
+
+> Nota de uso de REA: la evidencia devuelta por `analyze_javascript_application` con `detail: summary` es un **recibo**. Las vistas (`inspect_analysis_view`) deben pedirse con el `parent_evidence_id` del recibo, y la vista de módulos exige `projection: "references"`.
+
+### 8.2 `src/` — resultados
+
+| Métrica | Valor |
+|---|---|
+| Archivos JS/TS relevantes | 25 |
+| Archivos parseados | 25 (0 fallos, 0 recuperados) |
+| Bytes de texto leídos | 218 623 |
+| Nodos AST visitados | 38 816 |
+| Hallazgos | 323 |
+| Fuentes con semántica desconocida | 8 de 25 |
+
+Relaciones semánticas retenidas por familia:
+
+| Familia | Retenidas | Incógnitas |
+|---|---|---|
+| boundary | 22 | 0 |
+| call-flow | 1 236 | 2 117 |
+| closure | 1 027 | 0 |
+| data-flow | 14 007 | 2 336 |
+| object-flow | 2 056 | 3 665 |
+| promise-ownership | 40 | 30 |
+| request | 10 | 2 |
+| timer | 2 | 0 |
+| child-process / configuration / event / resource-lifecycle | 0 | 0 |
+
+Hechos concretos verificables:
+
+- **Endpoints de red: 2**, ambos `endpoint_kind: network`, `mechanism: call:fetch`, `resolution: partial`, valor `PITSTOP_URL`. La única salida de red del juego es el cliente MCP; REA la marca como parcial porque la URL es una constante de módulo y no un literal en la llamada.
+- **Almacenamiento: 0** (`localStorage` / `sessionStorage` / IndexedDB no aparecen). No hay persistencia de puntuaciones ni de estado: coherente con el diseño actual, todo vive en memoria de la sesión.
+- Las incógnitas se concentran en `call-flow` y `object-flow`, lo esperable en código Three.js/Rapier donde casi todo pasa por propiedades de objetos de terceros.
+
+### 8.3 `dist/` — resultados
+
+| Métrica | Valor |
+|---|---|
+| Archivos relevantes | 2 (`index.html` + 1 bundle JS) |
+| Bytes de texto leídos | 4 983 880 |
+| Nodos AST visitados | 210 245 |
+| Hallazgos | 126 |
+| Fallos de parseo | 0 |
+| Semántica | `partial`, truncada en el tope por archivo (`max_semantic_nodes_per_file` = 20 000) |
+
+Incógnitas omitidas declaradas por REA en el bundle: 9 676 `call-flow/dynamic-call`, 18 496 `object-flow/ambiguous-target`, 1 454 `object-flow/dynamic-property`, 1 `timer/ambiguous-target`.
+
+### 8.4 Limitaciones de esta ronda
+
+1. El bundle de producción está minificado: el valor marginal de REA sobre `dist/` es bajo comparado con `src/`.
+2. REA no ejecuta el código: no puede afirmar que el MCP Pitstop responda ni que el circuito se dibuje. Eso solo se verifica en navegador.
+3. Los topes por archivo truncaron parte del grafo del bundle; subirlos no cambia la conclusión.
+4. "0 almacenamiento" y "2 endpoints" valen para lo que el análisis retuvo, no son prueba de ausencia de efectos dinámicos.
+
+### 8.5 Conclusión de la ronda 2
+
+El código sigue siendo estáticamente sano (0 fallos de parseo en 25 fuentes y en el bundle de 4,98 MB), la superficie de red se limita al cliente MCP y no hay persistencia oculta. Nada de esto decide si el juego se juega bien: para eso siguen valiendo las mediciones en Chrome (`HORIZON.stats()`) descritas en §4–§5.
