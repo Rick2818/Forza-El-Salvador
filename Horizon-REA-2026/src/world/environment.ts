@@ -1,34 +1,25 @@
 import * as THREE from "three";
-import { createGlowTexture } from "./textures";
 import { Track } from "./track";
 import { NightSky } from "./nightSky";
-import { clamp, deg, makeRng, smoothstep } from "../core/mathx";
-import {
-  distanceToTrack,
-  fbm,
-  TERRAIN_CENTER_X,
-  TERRAIN_CENTER_Z,
-  TerrainField
-} from "./terrain";
-import { Forest } from "./vegetation";
+import { deg } from "../core/mathx";
+import { TerrainField } from "./terrain";
 
 /**
  * Night-time circuit surroundings: starry dome, analytic moon, layered ridge
- * silhouettes, a real branching forest with alpha-cut foliage and trackside
- * lighting. Everything is procedural; no external meshes or textures.
+ * silhouettes and trackside markers. Everything is procedural; no external
+ * meshes or textures. The forest was removed so the circuit reads as an open
+ * raceway rather than a forest.
  */
 export class Environment {
   readonly moon: THREE.DirectionalLight;
   readonly moonDirection = new THREE.Vector3();
   readonly terrain: TerrainField;
-  readonly forest: Forest;
   private readonly sky: NightSky;
   private readonly shadowSize = 34;
   private time = 0;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
-    // Moon a little higher than before: the car body and the tree crowns need
-    // a readable top light, not only a rim from behind the ridge.
+    // Moon a little high so car body and props get a readable top light.
     this.moonDirection.setFromSphericalCoords(1, deg(90 - 25), deg(208));
 
     this.sky = new NightSky(this.moonDirection);
@@ -46,13 +37,14 @@ export class Environment {
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
-    this.moon.shadow.camera.far = 240;
+    this.moon.shadow.camera.far = 260;
     this.moon.shadow.camera.left = -this.shadowSize;
     this.moon.shadow.camera.right = this.shadowSize;
     this.moon.shadow.camera.top = this.shadowSize;
     this.moon.shadow.camera.bottom = -this.shadowSize;
     this.moon.shadow.bias = -0.0006;
     this.moon.shadow.normalBias = 0.04;
+    this.moon.position.copy(this.moonDirection).multiplyScalar(140);
     scene.add(this.moon);
     scene.add(this.moon.target);
 
@@ -65,81 +57,79 @@ export class Environment {
     fill.position.set(-0.42, 0.55, -0.72);
     scene.add(fill);
 
-    // ---- Terrain. One shared height field feeds the mesh, the forest and the
-    // rocks, so nothing floats above or sinks into the ground.
+    // ---- Terrain. One shared height field feeds the mesh and the props.
     this.terrain = new TerrainField(track);
     scene.add(this.terrain.buildMesh());
 
     // ---- Layered mountain ridges, centred on the circuit.
     this.buildRidges(scene);
+  }
 
-    // ---- Forest: 700 trees with near/far LOD. Commented out for urban circuit.
-    // this.forest = new Forest(track, this.terrain);
-    // scene.add(this.forest.group);
+  setPixelRatio(ratio: number): void {
+    this.sky.setPixelRatio(ratio);
+  }
 
-    // ---- Rocks. They sit on the sampled ground instead of a fixed y.
-    // const rockGeo = new THREE.DodecahedronGeometry(1.5, 0);
-    // const rockCount = 90;
-    // const rocks = new THREE.InstancedMesh(
-    //   rockGeo,
-    //   new THREE.MeshLambertMaterial({ color: 0x252c36, flatShading: true }),
-    //   rockCount
-    // );
-    // const rockRng = makeRng(909);
-    // const rm = new THREE.Matrix4();
-    // const rq = new THREE.Quaternion();
-    // const rs = new THREE.Vector3();
-    // for (let i = 0; i < rockCount; i++) {
-    //   const f = rockRng() * track.samples.length;
-    //   const si = Math.floor(f);
-    //   const s = track.samples[si];
-    //   const r = track.rights[si];
-    //   const side = rockRng() < 0.5 ? -1 : 1;
-    //   const lateral = 30 + rockRng() * 260;
-    //   const x = s.x + r.x * lateral * side;
-    //   const z = s.z + r.z * lateral * side;
-    //   if (distanceToTrack(x, z, track, 8) < 26) {
-    //     rm.makeScale(0, 0, 0);
-    //   } else {
-    //     const sc = 0.5 + rockRng() * 2.2;
-    //     const y = this.terrain.heightAt(x, z) + sc * 0.22;
-    //     rq.setFromEuler(new THREE.Euler(rockRng(), rockRng() * 6.28, rockRng()));
-    //     rs.set(sc, sc * 0.62, sc);
-    //     rm.compose(new THREE.Vector3(x, y, z), rq, rs);
-    //   }
-    // }
-    // rocks.receiveShadow = false;
-    // scene.add(rocks);
-
-    this.buildTracksideDetails(scene, track);
+  /** Follow the player with the sky dome and the shadow frustum. */
+  update(center: THREE.Vector3, dt: number): void {
+    this.time += dt;
+    this.sky.update(center, this.time);
+    this.moon.position.copy(center).addScaledVector(this.moonDirection, 140);
+    this.moon.target.position.copy(center);
+    this.moon.target.updateMatrixWorld();
   }
 
   private buildRidges(scene: THREE.Scene): void {
     const layers = [
-      { radius: 900, maxH: 150, seed: 11, tint: 0.55 },
-      { radius: 1500, maxH: 200, seed: 33, tint: 0.45 },
-      { radius: 600, maxH: 100, seed: 77, tint: 0.35 },
+      { radius: 900, maxH: 150, seed: 11, color: 0x162234 },
+      { radius: 1300, maxH: 210, seed: 33, color: 0x111a29 },
+      { radius: 620, maxH: 95, seed: 77, color: 0x1b2740 }
     ];
 
     for (const layer of layers) {
-      const points = [];
-      for (let i = 0; i < 100; i++) {
-        const angle = (i / 100) * Math.PI * 2;
-        const r = layer.radius + layer.tint * Math.random() * 200;
-        const h = layer.maxH * Math.random();
-        const x = Math.cos(angle) * r;
-        const z = Math.sin(angle) * r;
-        points.push(new THREE.Vector3(x, h, z));
+      const segments = 180;
+      const baseY = -40;
+      const positions: number[] = [];
+      const indices: number[] = [];
+
+      for (let i = 0; i <= segments; i++) {
+        const idx = i % segments;
+        const angle = (idx / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * layer.radius;
+        const z = Math.sin(angle) * layer.radius;
+        const h =
+          layer.maxH *
+          (0.45 +
+            0.3 * Math.sin(angle * 3 + layer.seed) +
+            0.15 * Math.sin(angle * 7 + layer.seed * 2) +
+            0.1 * Math.sin(angle * 13 + layer.seed * 3));
+        // bottom vertex then top vertex
+        positions.push(x, baseY, z);
+        positions.push(x, Math.max(2, h), z);
       }
-      const curve = new THREE.CatmullRomCurve3(points, true);
-      const material = new THREE.MeshLambertMaterial({ color: layer.tint * 0xffffff });
-      const mesh = new THREE.Mesh(curve, material);
-      mesh.receiveShadow = true;
+
+      for (let i = 0; i < segments; i++) {
+        const b0 = i * 2;
+        const t0 = i * 2 + 1;
+        const b1 = (i + 1) * 2;
+        const t1 = (i + 1) * 2 + 1;
+        indices.push(b0, b1, t1);
+        indices.push(b0, t1, t0);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+
+      const material = new THREE.MeshLambertMaterial({
+        color: layer.color,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geo, material);
+      mesh.name = `ridge-${layer.seed}`;
+      mesh.frustumCulled = false;
+      mesh.receiveShadow = false;
       scene.add(mesh);
     }
-  }
-
-  private buildTracksideDetails(scene: THREE.Scene, track: Track): void {
-    // Trackside props and details can be added here
   }
 }

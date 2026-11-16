@@ -145,9 +145,9 @@ export class TerrainField {
     geo.translate(this.centerX, 0, this.centerZ);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(0x2b2b2f);
-    const dryGrass = new THREE.Color(0x3a3a42);
-    const rock = new THREE.Color(0x484858);
+    const grass = new THREE.Color(0x4a4d55);
+    const dryGrass = new THREE.Color(0x565a63);
+    const rock = new THREE.Color(0x6d717a);
     const tmp = new THREE.Color();
 
     for (let i = 0; i < pos.count; i++) {

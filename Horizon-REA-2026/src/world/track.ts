@@ -7,6 +7,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
 import { clamp } from "../core/mathx";
+import { createAsphaltMaps, createBannerTexture, createCheckerTexture } from "./textures";
 
 export interface Segment {
   straight?: number;
@@ -157,6 +158,308 @@ export class Track {
       }
     }
     this.targetSpeeds = rawSpeed;
+
+    this.buildVisuals();
+  }
+
+  /**
+   * Build the visible circuit: asphalt ribbon, kerbs, edge lines, barriers,
+   * start/finish gantry and trackside lamps. Without this the track exists
+   * only as a mathematical curve and the world reads as empty ground.
+   */
+  buildVisuals(): void {
+    const N = this.samples.length;
+    if (N === 0) return;
+    this.group.name = "track-visuals";
+    const halfW = this.halfWidth;
+    const barrierOffset = halfW + (SETTINGS.track.barrierOffset ?? 2) - 2;
+    const surfaceY = 0.02;
+
+    // ---- Asphalt surface.
+    const asphalt = createAsphaltMaps();
+    for (const tex of [asphalt.map, asphalt.normalMap, asphalt.roughnessMap]) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2.2, 1);
+    }
+    const roadMat = new THREE.MeshStandardMaterial({
+      map: asphalt.map,
+      normalMap: asphalt.normalMap,
+      roughnessMap: asphalt.roughnessMap,
+      normalScale: new THREE.Vector2(0.7, 0.7),
+      roughness: 0.86,
+      metalness: 0.05,
+      color: 0x9aa0a8
+    });
+    const road = new THREE.Mesh(this.ribbonGeometry(-halfW, halfW, surfaceY, 12), roadMat);
+    road.name = "asphalt";
+    road.receiveShadow = true;
+    this.group.add(road);
+
+    // ---- White edge lines just inside the kerbs.
+    const lineMat = new THREE.MeshStandardMaterial({
+      color: 0xf4f6fa,
+      emissive: 0x8d949e,
+      emissiveIntensity: 0.5,
+      roughness: 0.7
+    });
+    for (const side of [-1, 1]) {
+      const inner = side * (halfW - 0.55);
+      const outer = side * (halfW - 0.12);
+      const line = new THREE.Mesh(
+        this.ribbonGeometry(Math.min(inner, outer), Math.max(inner, outer), surfaceY + 0.012, 12),
+        lineMat
+      );
+      line.name = `edge-line-${side}`;
+      this.group.add(line);
+    }
+
+    // ---- Kerbs: red/white striped strip outside the tarmac.
+    const kerbTex = this.kerbTexture();
+    const kerbMat = new THREE.MeshStandardMaterial({ map: kerbTex, roughness: 0.65, metalness: 0.04 });
+    for (const side of [-1, 1]) {
+      const a = side * halfW;
+      const b = side * (halfW + 1.2);
+      const kerb = new THREE.Mesh(
+        this.ribbonGeometry(Math.min(a, b), Math.max(a, b), surfaceY + 0.006, 6),
+        kerbMat
+      );
+      kerb.name = `kerb-${side}`;
+      this.group.add(kerb);
+    }
+
+    // ---- Barriers. Same offset as the physics colliders so the car stops
+    // exactly where the wall is drawn.
+    const barrierMat = new THREE.MeshStandardMaterial({
+      color: 0x39404c,
+      roughness: 0.85,
+      metalness: 0.1,
+      side: THREE.DoubleSide
+    });
+    const railMat = new THREE.MeshStandardMaterial({
+      color: 0xd9dde4,
+      emissive: 0x5c636d,
+      emissiveIntensity: 0.45,
+      roughness: 0.55,
+      side: THREE.DoubleSide
+    });
+    for (const side of [-1, 1]) {
+      const wall = new THREE.Mesh(
+        this.wallGeometry(side * barrierOffset, SETTINGS.track.barrierHeight ?? 1.05, surfaceY),
+        barrierMat
+      );
+      wall.name = `barrier-${side}`;
+      wall.receiveShadow = true;
+      this.group.add(wall);
+
+      const rail = new THREE.Mesh(
+        this.railGeometry(side * barrierOffset, SETTINGS.track.barrierHeight ?? 1.05, surfaceY),
+        railMat
+      );
+      rail.name = `barrier-rail-${side}`;
+      this.group.add(rail);
+    }
+
+    // ---- Start/finish chequered line + gantry.
+    const checker = createCheckerTexture();
+    checker.repeat.set(3, 1);
+    const startLine = new THREE.Mesh(
+      this.startLineGeometry(3.2),
+      new THREE.MeshStandardMaterial({
+        map: checker,
+        emissive: 0x6f747c,
+        emissiveIntensity: 0.55,
+        roughness: 0.6
+      })
+    );
+    startLine.name = "start-line";
+    this.group.add(startLine);
+    this.buildGantry();
+
+    // ---- Trackside lamps: instanced poles with glowing heads.
+    this.buildLamps(barrierOffset);
+  }
+
+  /** Ribbon that follows the centreline between two lateral offsets. */
+  private ribbonGeometry(from: number, to: number, y: number, vScale: number): THREE.BufferGeometry {
+    const N = this.samples.length;
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    for (let i = 0; i < N; i++) {
+      const s = this.samples[i];
+      const r = this.rights[i];
+      positions.push(s.x + r.x * from, y, s.z + r.z * from);
+      positions.push(s.x + r.x * to, y, s.z + r.z * to);
+      const v = (i * this.segmentLength) / vScale;
+      uvs.push(0, v, 1, v);
+    }
+    for (let i = 0; i < N; i++) {
+      const a = i * 2;
+      const b = ((i + 1) % N) * 2;
+      indices.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /** Thin horizontal cap on top of the barrier walls. */
+  private railGeometry(offset: number, height: number, baseY: number): THREE.BufferGeometry {
+    const N = this.samples.length;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const half = 0.14;
+
+    for (let i = 0; i < N; i++) {
+      const s = this.samples[i];
+      const r = this.rights[i];
+      const y = baseY + height;
+      positions.push(s.x + r.x * (offset - half), y, s.z + r.z * (offset - half));
+      positions.push(s.x + r.x * (offset + half), y, s.z + r.z * (offset + half));
+    }
+    for (let i = 0; i < N; i++) {
+      const a = i * 2;
+      const b = ((i + 1) % N) * 2;
+      indices.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  private startLineGeometry(depth: number): THREE.BufferGeometry {
+    const i = this.startIndex % this.samples.length;
+    const s = this.samples[i];
+    const t = this.tangents[i];
+    const r = this.rights[i];
+    const half = this.halfWidth;
+    const halfD = depth / 2;
+    const y = 0.035;
+
+    const corners = [
+      new THREE.Vector3(s.x - r.x * half - t.x * halfD, y, s.z - r.z * half - t.z * halfD),
+      new THREE.Vector3(s.x + r.x * half - t.x * halfD, y, s.z + r.z * half - t.z * halfD),
+      new THREE.Vector3(s.x - r.x * half + t.x * halfD, y, s.z - r.z * half + t.z * halfD),
+      new THREE.Vector3(s.x + r.x * half + t.x * halfD, y, s.z + r.z * half + t.z * halfD)
+    ];
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(corners.flatMap((c) => [c.x, c.y, c.z]), 3)
+    );
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2));
+    geo.setIndex([0, 1, 2, 2, 1, 3]);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  private kerbTexture(): THREE.CanvasTexture {
+    const c = document.createElement("canvas");
+    c.width = 16;
+    c.height = 64;
+    const ctx = c.getContext("2d")!;
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i % 2 === 0 ? "#c8372a" : "#eef0f4";
+      ctx.fillRect(0, i * 16, 16, 16);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    return t;
+  }
+
+  /** Start/finish gantry with a lit banner over the track. */
+  private buildGantry(): void {
+    const i = this.startIndex % this.samples.length;
+    const s = this.samples[i];
+    const t = this.tangents[i];
+    const r = this.rights[i];
+    const half = this.halfWidth + 2.4;
+    const height = 7.2;
+
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x2c333d, roughness: 0.7, metalness: 0.35 });
+    const postGeo = new THREE.BoxGeometry(0.45, height, 0.45);
+
+    const bannerTex = createBannerTexture("HORIZON EL SALVADOR", "META · HORIZON GP");
+    const beamMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: bannerTex,
+      emissive: 0xffffff,
+      emissiveMap: bannerTex,
+      emissiveIntensity: 0.75,
+      roughness: 0.5,
+      side: THREE.DoubleSide
+    });
+    const beam = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 2.1), beamMat);
+    beam.position.set(s.x, height - 1.3, s.z);
+    beam.rotation.y = Math.atan2(t.x, t.z) + Math.PI;
+    beam.name = "start-banner";
+    this.group.add(beam);
+
+    for (const side of [-1, 1]) {
+      const post = new THREE.Mesh(postGeo, postMat);
+      post.position.set(s.x + r.x * half * side, height / 2, s.z + r.z * half * side);
+      post.castShadow = false;
+      this.group.add(post);
+    }
+  }
+
+  /** Instanced trackside lamps so the asphalt stays readable at night. */
+  private buildLamps(barrierOffset: number): void {
+    const N = this.samples.length;
+    const stride = 55;
+    const perSide = Math.floor(N / stride);
+    if (perSide < 2) return;
+
+    const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 6.4, 6);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x2a303a, roughness: 0.8 });
+    const headGeo = new THREE.SphereGeometry(0.42, 8, 6);
+    const headMat = new THREE.MeshStandardMaterial({
+      color: 0xfff3d0,
+      emissive: 0xffe9b0,
+      emissiveIntensity: 2.4,
+      roughness: 0.4
+    });
+
+    const poles = new THREE.InstancedMesh(poleGeo, poleMat, perSide * 2);
+    const heads = new THREE.InstancedMesh(headGeo, headMat, perSide * 2);
+    poles.frustumCulled = false;
+    heads.frustumCulled = false;
+
+    const m = new THREE.Matrix4();
+    let n = 0;
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < perSide; k++) {
+        const i = (k * stride + (side > 0 ? Math.floor(stride / 2) : 0)) % N;
+        const s = this.samples[i];
+        const r = this.rights[i];
+        const x = s.x + r.x * barrierOffset * side * 1.12;
+        const z = s.z + r.z * barrierOffset * side * 1.12;
+        m.makeTranslation(x, 3.2, z);
+        poles.setMatrixAt(n, m);
+        m.makeTranslation(x, 6.5, z);
+        heads.setMatrixAt(n, m);
+        n++;
+      }
+    }
+    poles.instanceMatrix.needsUpdate = true;
+    heads.instanceMatrix.needsUpdate = true;
+    poles.name = "lamp-poles";
+    heads.name = "lamp-heads";
+    this.group.add(poles);
+    this.group.add(heads);
   }
 
   /** Add physics colliders to the track. */

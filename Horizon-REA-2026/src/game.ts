@@ -120,9 +120,6 @@ this.scene.add(spotLight);
 const helper = new THREE.SpotLightHelper(spotLight, 0xff0000);
 this.scene.add(helper);
 
-const axesHelper = new THREE.AxesHelper(5);
-this.scene.add(axesHelper);
-
 this.environment = new Environment(this.scene, this.renderer, this.track);
     this.applyResolution();
     this.race = new Race(this.world, this.scene, this.track);
