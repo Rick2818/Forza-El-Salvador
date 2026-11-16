@@ -239,7 +239,15 @@ for s in (-1,1):
         rod("Exhaust",(-2.12,s*.63,z),(-2.34,s*.63,z),.045,chrome)
 box("Rear diffuser",(-2.20,0,.24),(.19,1.2,.09),black,.015)
 
-# Export only the car. Evaluated modifiers and curves become glTF meshes.
+# Convert trim curves explicitly: glTF exports mesh geometry.
+for i, obj in enumerate(parts):
+    if obj.type == "CURVE":
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.convert(target="MESH")
+        parts[i] = bpy.context.view_layer.objects.active
+# Export only the car.
 bpy.ops.object.select_all(action="DESELECT")
 for o in parts:
     o.select_set(True)
