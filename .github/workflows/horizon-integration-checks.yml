@@ -1,0 +1,29 @@
+name: Horizon integration checks
+on:
+  push:
+    branches: ["design/convertible-reference-v1"]
+    paths:
+      - "Horizon-REA-2026/**"
+      - ".github/workflows/horizon-integration-checks.yml"
+  pull_request:
+    paths:
+      - "Horizon-REA-2026/**"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
