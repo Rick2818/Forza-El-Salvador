@@ -1,6 +1,6 @@
 import type { RaceSnapshot } from "../race/race";
 import { formatTime } from "../core/mathx";
-import { pitstop } from "../integrations/pitstop";
+import { pitstop, toolText } from "../integrations/pitstop";
 
 export interface MenuCallbacks {
   onStart: () => void;
@@ -68,7 +68,7 @@ export class Menu {
     this.overlay.innerHTML = `
       <div class="menu-card">
         <div class="brand">Horizon Motorsport · Edición técnica</div>
-        <h1 class="title">Horizon <em>REA 2026</em></h1>
+        <h1 class="title">Horizon <em>El Salvador</em></h1>
         <p class="sub">
           Carreras 3D en tiempo real directamente en Chrome. Circuito original
           de ${trackLengthKm.toFixed(2)} km, cuatro coches en pista, física de
@@ -112,13 +112,31 @@ export class Menu {
     const box = this.overlay.querySelector<HTMLElement>("#mcp-circuits");
     if (!box) return;
     try {
-      const res = await pitstop.getCircuits(2026) as { content?: Array<{ text?: string }> };
-      const text = res?.content?.map((c) => c.text).join("\n") ?? JSON.stringify(res);
-      box.innerHTML = `<div class="brand" style="margin-bottom:6px">Circuitos reales (MCP Pitstop · F1 2026)</div>
-        <pre style="white-space:pre-wrap;font-size:11px;max-height:180px;overflow:auto">${text.slice(0, 1800)}</pre>`;
-    } catch (e) {
-      box.innerHTML = `<div class="brand" style="margin-bottom:6px">MCP Pitstop</div>
-        <div style="font-size:12px;opacity:.7">No se pudo cargar en navegador (CORS/red). Módulo listo en src/integrations/pitstop.ts.</div>`;
+      const info = await pitstop.initialize();
+      let body: string;
+      try {
+        body = toolText(await pitstop.getCircuits(2025));
+      } catch (circuitError) {
+        const tools = await pitstop.listTools();
+        const reason = circuitError instanceof Error ? circuitError.message : String(circuitError);
+        body =
+          `Herramientas disponibles (${tools.length}): ${tools.map((t) => t.name).join(", ")}\n\n` +
+          `Datos de circuitos no disponibles ahora: ${reason}`;
+      }
+      const preview = body.length > 1500 ? `${body.slice(0, 1500)}…` : body;
+      box.innerHTML = `
+        <div class="brand" style="margin-bottom:6px">
+          MCP Pitstop · ${escapeHtml(info.name)} v${escapeHtml(info.version)} · protocolo ${escapeHtml(info.protocolVersion)}
+        </div>
+        <pre style="white-space:pre-wrap;font-size:11px;max-height:180px;overflow:auto">${escapeHtml(preview)}</pre>`;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      box.innerHTML = `
+        <div class="brand" style="margin-bottom:6px">MCP Pitstop · sin conexión</div>
+        <div style="font-size:12px;opacity:.75">${escapeHtml(detail)}</div>
+        <div style="font-size:11px;opacity:.55;margin-top:6px">
+          El juego funciona con el circuito procedural; el MCP solo aporta datos reales.
+        </div>`;
     }
   }
 
@@ -179,4 +197,14 @@ export class Menu {
     this.overlay.classList.remove("hidden");
     this.visible = true;
   }
+}
+
+/** Minimal HTML escaping for text that comes from a remote MCP server. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

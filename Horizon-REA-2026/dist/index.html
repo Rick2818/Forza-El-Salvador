@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08090c" />
     <title>Horizon El Salvador</title>
-    <script type="module" crossorigin src="./assets/index-WmFFOWcz.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DEH2CR9B.css">
+    <script type="module" crossorigin src="./assets/index-BFNJNXZ5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BnO0Rvrn.css">
   </head>
   <body>
     <canvas id="game-canvas" tabindex="0"></canvas>
     <div id="ui"></div>
+    <button
+      id="reload-btn"
+      class="reload-btn"
+      type="button"
+      title="Recargar el juego (no hace falta F5)"
+      onclick="location.href = location.pathname + '?r=' + Date.now();"
+    >⟳</button>
   </body>
 </html>

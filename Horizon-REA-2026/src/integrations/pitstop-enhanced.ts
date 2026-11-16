@@ -2,31 +2,10 @@
 // Fetches real F1 circuit layouts and extracts centerline points, elevations,
 // and sector data to replace the procedural track with a real circuit.
 
-const PITSTOP_URL = "https://praneeth1025-pitstop.hf.space/mcp";
+import { pitstop } from "./pitstop";
 
-let rpcId = 0;
-let sessionId: string | null = null;
-
-async function rpc(method: string, params?: unknown): Promise<unknown> {
-  const body = {
-    jsonrpc: "2.0",
-    id: ++rpcId,
-    method,
-    params: params ?? {},
-  };
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (sessionId) headers["Mcp-Session-Id"] = sessionId;
-
-  const res = await fetch(PITSTOP_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-  const sid = res.headers.get("mcp-session-id");
-  if (sid) sessionId = sid;
-  const json = (await res.json()) as { result?: unknown; error?: { message: string } };
-  if (json.error) throw new Error(json.error.message);
-  return json.result;
+async function callTool(name: string, args: Record<string, unknown> = {}): Promise<unknown> {
+  return pitstop.callTool(name, args);
 }
 
 export interface CircuitPoint {
@@ -63,18 +42,13 @@ export interface F1CircuitData {
 export class PitstopCircuit {
   /** Fetch real circuit data for the given GP, or return fallback procedural data. */
   static async fetchCircuit(year: number, gp: string): Promise<F1CircuitData> {
-    // 1) Initialize session
-    await rpc("initialize", {
-      protocolVersion: "2024-11-05",
-      capabilities: {},
-      clientInfo: { name: "horizon-el-salvador", version: "0.1.0" },
-    });
-    await rpc("notifications/initialized");
+    // 1) Session handshake (idempotent; shared with the main client)
+    await pitstop.initialize();
 
     // 2) Get reference data for circuits
-    const refResult: any = await rpc("tools/call", {
-      name: "get_reference_data",
-      arguments: { reference_type: "circuit", year },
+    const refResult: any = await callTool("get_reference_data", {
+      reference_type: "circuit",
+      year,
     });
     const ref = refResult?.content ? { content: refResult.content } : {};
 

@@ -9,6 +9,13 @@
   <body>
     <canvas id="game-canvas" tabindex="0"></canvas>
     <div id="ui"></div>
+    <button
+      id="reload-btn"
+      class="reload-btn"
+      type="button"
+      title="Recargar el juego (no hace falta F5)"
+      onclick="location.href = location.pathname + '?r=' + Date.now();"
+    >⟳</button>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
