@@ -1,0 +1,32 @@
+HORIZON EL SALVADOR - COMO INICIAR EL JUEGO
+========================================
+
+1. Haz doble clic en:  INICIAR-HORIZON.bat
+
+   - Se abre una ventana negra llamada "Horizon El Salvador - Servidor".
+     Esa ventana es el servidor local; no la cierres mientras juegas.
+   - Despues se abre Chrome en modo aplicacion con el juego.
+
+2. Para jugar: haz clic dentro de la ventana del juego y usa W/A/S/D.
+   Si el teclado no responde, haz clic una vez sobre el juego.
+
+3. Para detenerlo:
+   - Cierra la ventana "Horizon El Salvador - Servidor", o
+   - ejecuta DETENER-HORIZON.bat
+
+Tambien existe el acceso directo del escritorio:
+   "Horizon El Salvador.lnk"
+Ese acceso hace lo mismo de forma invisible.
+
+POR QUE NECESITA UN SERVIDOR LOCAL
+----------------------------------
+El juego se compila como modulos ES. Los navegadores bloquean esos modulos
+cuando la pagina se abre como archivo (file://). Por eso se sirve desde
+http://localhost:4173/. Todo es local: no se envia nada a internet, no hay
+cuenta, no hay hosting y no hay costo.
+
+REQUISITOS
+----------
+- Node.js instalado (ya esta en este equipo).
+- La carpeta "dist" compilada. Si falta, ejecuta en esta carpeta:
+     npm run build

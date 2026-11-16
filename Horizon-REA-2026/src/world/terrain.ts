@@ -1,0 +1,183 @@
+import * as THREE from "three";
+import { createGrassTexture } from "./textures";
+import { clamp, smoothstep } from "../core/mathx";
+
+/**
+ * Shared ground field. The terrain mesh, the trees and the trackside props all
+ * sample this one function, so nothing floats above or sinks into the ground.
+ *
+ * The circuit sits in the +X/+Z quadrant (bounds roughly x[-53..554],
+ * z[0..464]), so the hills are centred on the track centre instead of the
+ * world origin. With the old origin-centred rings the mountains started inside
+ * the far side of the lap.
+ */
+export const TERRAIN_SIZE = 2800;
+export const TERRAIN_SEGMENTS = 150;
+export const TERRAIN_CENTER_X = 250;
+export const TERRAIN_CENTER_Z = 232;
+export const TERRAIN_BASE_Y = -2.4;
+export const TERRAIN_NEAR_Y = -0.14;
+
+export const hash = (x: number, y: number): number => {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+};
+
+export const noise2 = (x: number, y: number): number => {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi);
+  const b = hash(xi + 1, yi);
+  const c = hash(xi, yi + 1);
+  const d = hash(xi + 1, yi + 1);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+};
+
+export const fbm = (x: number, y: number, octaves = 4): number => {
+  let sum = 0;
+  let amp = 0.5;
+  let freq = 1;
+  let norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += amp * noise2(x * freq, y * freq);
+    norm += amp;
+    amp *= 0.5;
+    freq *= 2.05;
+  }
+  return sum / norm;
+};
+
+export interface TrackLike {
+  samples: THREE.Vector3[];
+}
+
+/** Distance from (x,z) to the nearest centreline sample, in metres. */
+export function distanceToTrack(x: number, z: number, track: TrackLike, stride = 4): number {
+  let best = Infinity;
+  const samples = track.samples;
+  for (let i = 0; i < samples.length; i += stride) {
+    const s = samples[i];
+    const dx = s.x - x;
+    const dz = s.z - z;
+    const d = dx * dx + dz * dz;
+    if (d < best) best = d;
+  }
+  return Math.sqrt(best);
+}
+
+export class TerrainField {
+  readonly size = TERRAIN_SIZE;
+  readonly segments = TERRAIN_SEGMENTS;
+  readonly step = TERRAIN_SIZE / TERRAIN_SEGMENTS;
+  readonly centerX = TERRAIN_CENTER_X;
+  readonly centerZ = TERRAIN_CENTER_Z;
+  private readonly heights: Float32Array;
+  private readonly count = TERRAIN_SEGMENTS + 1;
+
+  constructor(track: TrackLike) {
+    const count = this.count;
+    const heights = new Float32Array(count * count);
+    for (let iz = 0; iz < count; iz++) {
+      const z = this.centerZ - TERRAIN_SIZE / 2 + iz * this.step;
+      for (let ix = 0; ix < count; ix++) {
+        const x = this.centerX - TERRAIN_SIZE / 2 + ix * this.step;
+        const d = distanceToTrack(x, z, track, 4);
+        heights[iz * count + ix] = this.computeHeight(x, z, d);
+      }
+    }
+    this.heights = heights;
+  }
+
+  private computeHeight(x: number, z: number, trackDistance: number): number {
+    // Flat and just below the road next to the circuit; the bank then falls
+    // away to the valley floor before the hills start.
+    const flat = smoothstep(15, 88, trackDistance);
+    const r = Math.hypot(x - this.centerX, z - this.centerZ);
+    const rise = smoothstep(440, 1020, r);
+    const ridge = Math.pow(fbm(x * 0.0019 + 4.2, z * 0.0019 - 8.1, 4), 1.35);
+    const hills = rise * (ridge * 112 + 18);
+    const bumps = fbm(x * 0.012, z * 0.012, 3) * 4.2 * smoothstep(300, 600, r);
+    return (
+      TERRAIN_NEAR_Y +
+      (TERRAIN_BASE_Y - TERRAIN_NEAR_Y) * flat +
+      (hills + bumps) * flat
+    );
+  }
+
+  /** Bilinear sample. Used by trees, rocks and the camera-side props. */
+  heightAt(x: number, z: number): number {
+    const half = this.size / 2;
+    const gx = clamp((x - (this.centerX - half)) / this.step, 0, this.segments - 1e-4);
+    const gz = clamp((z - (this.centerZ - half)) / this.step, 0, this.segments - 1e-4);
+    const ix = Math.floor(gx);
+    const iz = Math.floor(gz);
+    const fx = gx - ix;
+    const fz = gz - iz;
+    const count = this.count;
+    const h = this.heights;
+    const h00 = h[iz * count + ix];
+    const h10 = h[iz * count + ix + 1];
+    const h01 = h[(iz + 1) * count + ix];
+    const h11 = h[(iz + 1) * count + ix + 1];
+    const a = h00 + (h10 - h00) * fx;
+    const b = h01 + (h11 - h01) * fx;
+    return a + (b - a) * fz;
+  }
+
+  /** Height above the valley floor, for rock/snow tinting. */
+  elevationAt(x: number, z: number): number {
+    return this.heightAt(x, z) - TERRAIN_BASE_Y;
+  }
+
+  buildMesh(): THREE.Mesh {
+    const geo = new THREE.PlaneGeometry(
+      this.size,
+      this.size,
+      this.segments,
+      this.segments
+    );
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(this.centerX, 0, this.centerZ);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    const colors = new Float32Array(pos.count * 3);
+    const grass = new THREE.Color(0x2b2b2f);
+    const dryGrass = new THREE.Color(0x3a3a42);
+    const rock = new THREE.Color(0x484858);
+    const tmp = new THREE.Color();
+
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const y = this.heightAt(x, z);
+      pos.setY(i, y);
+
+      const height = y - TERRAIN_BASE_Y;
+      const rocky = smoothstep(26, 55, height) * 0.72;
+      const dryness = fbm(x * 0.003, z * 0.003, 2);
+      tmp.copy(grass).lerp(dryGrass, dryness * 0.55).lerp(rock, rocky);
+      const shade = 0.72 + fbm(x * 0.05, z * 0.05, 2) * 0.34;
+      colors[i * 3] = tmp.r * shade;
+      colors[i * 3 + 1] = tmp.g * shade;
+      colors[i * 3 + 2] = tmp.b * shade;
+    }
+    pos.needsUpdate = true;
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+
+    const grassTex = createGrassTexture();
+    grassTex.repeat.set(160, 160);
+    const material = new THREE.MeshLambertMaterial({
+      map: grassTex,
+      vertexColors: true
+    });
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.name = "terrain";
+    mesh.receiveShadow = true;
+    return mesh;
+  }
+}

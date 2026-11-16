@@ -1,0 +1,69 @@
+/**
+ * Pure vehicle math kernel.
+ *
+ * Origin: this module began as `rea-lab/vehicle-core.js`, a standalone artifact
+ * analysed with REA 6.8.0 (open_binary sha256 37750ab8…, analyze_javascript_application
+ * evidence ev_b1d1bbff…). The static graph confirmed 7 call-flow findings and 0 parse
+ * failures, so the kernel was promoted to TypeScript and extended here. See
+ * REA-EVIDENCE.md for the recorded evidence and the limitations REA reported.
+ */
+
+export const GEAR_RATIOS = [3.42, 2.21, 1.56, 1.19, 0.97, 0.81] as const;
+export const FINAL_DRIVE = 3.55;
+export const WHEEL_RADIUS = 0.36;
+export const ENGINE_PEAK_TORQUE = 520;
+export const ENGINE_IDLE_RPM = 950;
+export const ENGINE_REDLINE_RPM = 7600;
+export const ENGINE_PEAK_RPM = 3100;
+
+export function engineTorqueAt(rpm: number): number {
+  const clamped = Math.min(Math.max(rpm, ENGINE_IDLE_RPM), ENGINE_REDLINE_RPM);
+  const x = (clamped - ENGINE_PEAK_RPM) / (ENGINE_REDLINE_RPM - ENGINE_IDLE_RPM);
+  const shape = 1.0 - 0.62 * x * x;
+  return Math.max(ENGINE_PEAK_TORQUE * shape, ENGINE_PEAK_TORQUE * 0.32);
+}
+
+export function rpmForSpeed(speedMs: number, gear: number): number {
+  const ratio = GEAR_RATIOS[gear] * FINAL_DRIVE;
+  const wheelRpm = (Math.abs(speedMs) / (2 * Math.PI * WHEEL_RADIUS)) * 60;
+  return Math.max(ENGINE_IDLE_RPM, wheelRpm * ratio);
+}
+
+export function gearForSpeed(speedMs: number): number {
+  const wheelRpm = (Math.abs(speedMs) / (2 * Math.PI * WHEEL_RADIUS)) * 60;
+  for (let i = 0; i < GEAR_RATIOS.length; i++) {
+    const rpm = wheelRpm * GEAR_RATIOS[i] * FINAL_DRIVE;
+    if (rpm < ENGINE_REDLINE_RPM * 0.94) return i;
+  }
+  return GEAR_RATIOS.length - 1;
+}
+
+export function wheelForce(_speedMs: number, throttle: number, gear: number, rpm: number): number {
+  const ratio = GEAR_RATIOS[gear] * FINAL_DRIVE;
+  const torque = engineTorqueAt(rpm) * throttle;
+  return (torque * ratio) / WHEEL_RADIUS;
+}
+
+/** Simplified combined-slip tire curve (Pacejka-shaped, normalised). */
+export function tireForce(slip: number, peakSlip: number, peakMu: number, load: number): number {
+  const s = Math.abs(slip);
+  if (s < 0.01) return 0;
+  const normalised = s / peakSlip;
+  const curve = Math.sin(1.55 * Math.atan(normalised * 1.9));
+  return Math.sign(slip) * curve * peakMu * load;
+}
+
+export function steeringAngleAt(speedMs: number, steerInput: number, maxAngle = 0.52): number {
+  const speedFactor = 1 / (1 + Math.abs(speedMs) * 0.055);
+  const angle = steerInput * maxAngle * speedFactor;
+  return Math.max(Math.min(angle, maxAngle), -maxAngle);
+}
+
+export function dragForce(speedMs: number, area = 1.92, cd = 0.31): number {
+  const rho = 1.225;
+  return 0.5 * rho * cd * area * speedMs * speedMs;
+}
+
+export function downforceN(speedMs: number, coefficient = 3.15): number {
+  return coefficient * speedMs * speedMs;
+}
