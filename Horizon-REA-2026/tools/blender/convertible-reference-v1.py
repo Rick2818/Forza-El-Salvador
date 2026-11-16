@@ -17,18 +17,33 @@ bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
 parts = []
 
+def principled(mat):
+    node = next((n for n in mat.node_tree.nodes
+                 if n.bl_idname == "ShaderNodeBsdfPrincipled"), None)
+    if node is None:
+        node = mat.node_tree.nodes.new("ShaderNodeBsdfPrincipled")
+        out = next((n for n in mat.node_tree.nodes
+                    if n.bl_idname == "ShaderNodeOutputMaterial"), None)
+        if out is None:
+            out = mat.node_tree.nodes.new("ShaderNodeOutputMaterial")
+        mat.node_tree.links.new(node.outputs[0], out.inputs[0])
+    return node
+
+def socket(node, identifier):
+    return next(s for s in node.inputs if s.identifier == identifier)
+
 def material(name, color, metallic=0.0, roughness=0.4):
     m = bpy.data.materials.new(name)
     m.diffuse_color = (*color, 1)
     m.use_nodes = True
-    p = m.node_tree.nodes.get("Principled BSDF")
-    p.inputs["Base Color"].default_value = (*color, 1)
-    p.inputs["Metallic"].default_value = metallic
-    p.inputs["Roughness"].default_value = roughness
+    p = principled(m)
+    socket(p, "Base Color").default_value = (*color, 1)
+    socket(p, "Metallic").default_value = metallic
+    socket(p, "Roughness").default_value = roughness
     return m
 
 paint = material("paint_ruby_red", (0.38, 0.009, 0.018), .72, .22)
-paint.node_tree.nodes.get("Principled BSDF").inputs["Coat Weight"].default_value = .45
+socket(principled(paint), "Coat Weight").default_value = .45
 black = material("trim_dark", (.012, .015, .019), .15, .3)
 rubber = material("rubber", (.014, .016, .019), 0, .65)
 chrome = material("alloy_silver", (.52, .56, .6), .86, .22)
@@ -37,7 +52,7 @@ red = material("brake_red", (.65, .015, .008), .3, .3)
 lamp = material("headlamp", (.72, .83, .9), .5, .16)
 tail = material("tail_lens", (.5, .003, .007), .3, .18)
 glass = material("glass", (.055, .11, .14), .1, .12)
-glass.node_tree.nodes.get("Principled BSDF").inputs["Transmission Weight"].default_value = .68
+socket(principled(glass), "Transmission Weight").default_value = .68
 
 def finish(obj, name, mat, bevel=0):
     obj.name = name
@@ -267,8 +282,14 @@ scene.render.resolution_x = 1100
 scene.render.resolution_y = 700
 scene.render.resolution_percentage = 100
 scene.world.use_nodes = True
-scene.world.node_tree.nodes["Background"].inputs[0].default_value = (.23,.26,.32,1)
-scene.world.node_tree.nodes["Background"].inputs[1].default_value = .5
+world_background = next((n for n in scene.world.node_tree.nodes
+                         if n.bl_idname == "ShaderNodeBackground"), None)
+if world_background is None:
+    world_background = scene.world.node_tree.nodes.new("ShaderNodeBackground")
+    world_output = scene.world.node_tree.nodes.new("ShaderNodeOutputWorld")
+    scene.world.node_tree.links.new(world_background.outputs[0], world_output.inputs[0])
+world_background.inputs[0].default_value = (.23,.26,.32,1)
+world_background.inputs[1].default_value = .5
 for loc,power,size in [((3,-4,6),1800,5),((-3,-1,4),1300,4),((0,4,5),2000,5)]:
     bpy.ops.object.light_add(type="AREA",location=loc)
     light = bpy.context.object
