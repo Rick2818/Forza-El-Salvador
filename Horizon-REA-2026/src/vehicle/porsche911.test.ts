@@ -29,7 +29,7 @@ describe("Porsche 911 preproduction visual", () => {
       if (!(object instanceof THREE.Mesh)) return;
       const mat = object.material;
       if (mat instanceof THREE.MeshPhysicalMaterial && mat.transparent) glass++;
-      if (mat instanceof THREE.MeshPhysicalMaterial && mat.color.getHex() === 0x333438) painted++;
+      if (mat instanceof THREE.MeshPhysicalMaterial && mat.color.getHex() === 0x414246) painted++;
       if (mat instanceof THREE.MeshStandardMaterial) colors.push(mat.color.getHexString());
       const geo = object.geometry;
       triangles += geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
