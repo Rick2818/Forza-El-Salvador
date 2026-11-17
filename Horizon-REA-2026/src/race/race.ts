@@ -6,6 +6,7 @@ import { AIDriver } from "../vehicle/ai";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
 
+export type Difficulty = "facil" | "normal" | "dificil";
 export type RaceState = "idle" | "countdown" | "racing" | "finished";
 
 export interface Racer {
