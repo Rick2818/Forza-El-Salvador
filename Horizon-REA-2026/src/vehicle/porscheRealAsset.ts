@@ -91,6 +91,71 @@ export function createRealPorsche911Visual(opts: CarOptions): CarVisual {
     });
     mesh.material = Array.isArray(mesh.material) ? next : next[0];
   });
+
   visual.bodyRoot.add(group);
+
+  // The licensed Blender GLB already includes four tyre assemblies. Reusing
+  // the procedural tyres as well made the car look like it had eight wheels.
+  // Split the source tyre mesh by wheel quadrant and attach each quarter to
+  // Horizon's existing steer + spin hierarchy (Rapier suspension is unchanged).
+  const tyreSource = group.getObjectByName("Object_10") as THREE.Mesh | undefined;
+  if (tyreSource?.isMesh) {
+    visual.root.updateMatrixWorld(true);
+    const bodyInverse = visual.bodyRoot.matrixWorld.clone().invert();
+    const toBody = bodyInverse.multiply(tyreSource.matrixWorld);
+    const original = tyreSource.geometry;
+    const positions = original.getAttribute("position") as THREE.BufferAttribute;
+    const srcIndex = original.index;
+    const counts = [0, 0, 0, 0];
+    const triangles: number[][] = [[], [], [], []];
+    const low = Array.from({length: 4}, () => new THREE.Vector3(Infinity,Infinity,Infinity));
+    const high = Array.from({length: 4}, () => new THREE.Vector3(-Infinity,-Infinity,-Infinity));
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+    const count = srcIndex ? srcIndex.count : positions.count;
+    const getVertex = (i: number, p: THREE.Vector3) =>
+      p.fromBufferAttribute(positions, i).applyMatrix4(toBody);
+    for (let t = 0; t + 2 < count; t += 3) {
+      const i0 = srcIndex ? srcIndex.getX(t) : t;
+      const i1 = srcIndex ? srcIndex.getX(t+1) : t+1;
+      const i2 = srcIndex ? srcIndex.getX(t+2) : t+2;
+      getVertex(i0, a); getVertex(i1, b); getVertex(i2, d);
+      const side = (a.x+b.x+d.x) > 0 ? 0 : 1;
+      const axle = (a.z+b.z+d.z) > 0 ? 0 : 1;
+      const k = axle * 2 + side;
+      triangles[k].push(i0,i1,i2);
+      counts[k]++;
+      low[k].min(a).min(b).min(d);
+      high[k].max(a).max(b).max(d);
+    }
+    // An unexpected source-model topology should never hide the wheels.
+    if (counts.every(n => n > 500)) {
+      tyreSource.visible = false;
+      for (let k = 0; k < 4; k++) {
+        const wheel = visual.wheels[k];
+        // Remove the old chunky procedural rim and tyre from this 911 only.
+        wheel.spin.clear();
+        const center = low[k].clone().add(high[k]).multiplyScalar(0.5);
+        wheel.steer.position.x = center.x;
+        wheel.steer.position.z = center.z;
+        const geo = original.clone();
+        geo.setIndex(triangles[k]);
+        geo.applyMatrix4(toBody);
+        // bodyRoot has a -0.62m offset, while the wheel controller places
+        // each steering pivot around -0.255m from the physical chassis.
+        geo.translate(-center.x, -0.62 - wheel.steer.position.y, -center.z);
+        geo.computeBoundingSphere();
+        const part = new THREE.Mesh(geo,tyreSource.material);
+        part.name = `Blender_Porsche_Tyre_${k}`;
+        part.castShadow = true;
+        wheel.spin.add(part);
+      }
+    } else {
+      // The original source wheels remain visible; suppress duplicate tyres.
+      for (const wheel of visual.wheels) wheel.spin.visible = false;
+    }
+  } else {
+    // Future GLB variants may name their tyre mesh differently.
+    for (const wheel of visual.wheels) wheel.spin.visible = false;
+  }
   return visual;
 }
