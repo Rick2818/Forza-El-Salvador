@@ -1,6 +1,8 @@
 name: Horizon Porsche 911 · preproduction checks
 
 on:
+  push:
+    branches: [feature/porsche-911-preproduction]
   pull_request:
     paths:
       - 'Horizon-REA-2026/**'
