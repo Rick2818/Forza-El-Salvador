@@ -94,8 +94,12 @@ export function cloneCarAsset(
       if (name.includes("paint")) return materials.paint ?? mat;
       if (name.includes("glass")) return materials.glass ?? mat;
       if (name.includes("carbon")) return materials.carbon ?? mat;
-      if (name.includes("trim")) return materials.trim ?? mat;
-      return materials.trim ?? mat;
+      if (name.includes("trim") || name.includes("vent") || name.includes("well")) {
+        return materials.trim ?? mat;
+      }
+      // Keep specialist materials authored in Blender (lights, leather,
+      // chrome, badges, decals). Unrecognised names are not generic trim.
+      return mat;
     });
     mesh.material = Array.isArray(original) ? mapped : mapped[0];
   });
