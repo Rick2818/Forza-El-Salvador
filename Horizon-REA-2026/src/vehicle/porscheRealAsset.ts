@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { createPorsche911Visual } from "./porsche911";
 import type { CarOptions, CarVisual } from "./carModel";
 
@@ -19,6 +20,7 @@ export async function preloadRealPorsche911(): Promise<boolean> {
   if (asset) return true;
   if (inFlight) return inFlight;
   inFlight = new GLTFLoader()
+    .setMeshoptDecoder(MeshoptDecoder)
     .loadAsync(PORSCHE_911_GLB)
     .then((gltf) => {
       let count = 0;
