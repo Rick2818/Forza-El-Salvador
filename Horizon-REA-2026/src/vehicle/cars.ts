@@ -9,7 +9,7 @@
  * drops: the reward for a race is a fixed formula (see `race/rewards.ts`).
  */
 
-import type { Silhouette } from "./carModel";
+export type Silhouette = "coupe" | "muscle" | "rally";
 
 export interface CarTuning {
   /** Multiplier on engine force. */
