@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { createPorsche911Visual } from "./vehicle/porsche911";
+import { preloadRealPorsche911, createRealPorsche911Visual, hasRealPorsche911 } from "./vehicle/porscheRealAsset";
 
 const canvas = document.getElementById("preview-canvas") as HTMLCanvasElement | null;
 if (!canvas) throw new Error("Falta #preview-canvas");
@@ -46,7 +46,8 @@ grid.material.transparent = true;
 grid.material.opacity = 0.18;
 scene.add(grid);
 
-const car = createPorsche911Visual({
+await preloadRealPorsche911();
+const car = createRealPorsche911Visual({
   paintColor: 0x333438, accentColor: 0xffc900, number: 11, isPlayer: false
 });
 car.root.position.y = 0.62;
@@ -74,7 +75,7 @@ car.root.traverse(obj => {
   const geo = obj.geometry;
   tris += geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
 });
-if (geoEl) geoEl.textContent = `${objects} mallas · ${Math.round(tris).toLocaleString("es-SV")} triángulos`;
+if (geoEl) geoEl.textContent = `Modelo: ${hasRealPorsche911() ? "Blender 911" : "procedural"} · ` + `${objects} mallas · ${Math.round(tris).toLocaleString("es-SV")} triángulos`;
 
 function resize(): void {
   const w = window.innerWidth, h = window.innerHeight;
