@@ -1,5 +1,10 @@
 # Integración experimental de los siete vehículos
 
+El segundo pase de cabinas, aberturas y renders Cycles se documenta en
+[PREART-2026-11-17.md](PREART-2026-11-17.md). Sus capturas están en
+`review/preart-studio/`; las 42 vistas geométricas se regeneraron para los GLB
+actualizados. Se mantienen pendientes la aprobación visual y 60 FPS.
+
 ## Resultado comprobado
 
 - Siete GLB independientes generados por Blender, con fuentes `.blend` comprimidas.

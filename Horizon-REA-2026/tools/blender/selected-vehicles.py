@@ -84,6 +84,37 @@ def panel(name, points, mat):
     return mesh(name, points, [tuple(range(len(points)))], mat, False)
 
 
+def front_recess(name, points, shell, mat, depth=.18):
+    """Cut a real opening through the coachwork, with a recessed dark backing.
+
+    Points describe the aperture in Y/Z; the cutter extends beyond the nose.
+    A flat black decal on the uncut body is not an intake.
+    """
+    nose=max(p[0] for p in points)
+    back=nose-depth
+    outline=[(nose+.12,p[1],p[2]) for p in points]
+    inside=[(back,p[1],p[2]) for p in points]
+    n=len(points)
+    faces=[tuple(range(n-1,-1,-1)),tuple(range(n,2*n))]
+    faces += [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
+    cutter=mesh(name+' cutter',outline+inside,faces,mat,False)
+    def volume(obj):
+        bm=bmesh.new();bm.from_mesh(obj.data)
+        result=abs(bm.calc_volume());bm.free();return result
+    original_volume=volume(shell)
+    bpy.context.view_layer.objects.active=shell
+    mod=shell.modifiers.new(name+' cavity','BOOLEAN')
+    mod.operation='DIFFERENCE';mod.solver='FAST';mod.object=cutter
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.data.objects.remove(cutter,do_unlink=True)
+    if volume(shell)<original_volume*.80:
+        raise RuntimeError(name+': intake Boolean removed too much coachwork; refusing export')
+    panel(name+' backing',inside,mat)
+    # The cavity walls follow the opening to keep the backing visibly inset.
+    mesh(name+' reveal',[(nose-.01,p[1],p[2]) for p in points]+inside,
+      [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)],mat,False)
+
+
 def catmull(a,b,c,d,t):
     return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)
 
@@ -176,17 +207,31 @@ def cabin(d,m):
     belt=.77 if d['style']!='aventador' else .70
     wid=W*.74
     def arch(x,top,w):
-        return [(x*L,-w,belt),(x*L,-w*.97,top-.14),
+        # Smooth the original landmarks, keeping the glazing against its rails.
+        anchors=[(x*L,-w,belt),(x*L,-w*.97,top-.14),
           (x*L,-w*.70,top-.035),(x*L,0,top),(x*L,w*.70,top-.035),
           (x*L,w*.97,top-.14),(x*L,w,belt)]
+        result=[]
+        for j,(a,b) in enumerate(zip(anchors,anchors[1:])):
+            prev=anchors[max(0,j-1)];nxt=anchors[min(len(anchors)-1,j+2)]
+            for step in range(4):
+                result.append(tuple(catmull(prev[k],a[k],b[k],nxt[k],step/4) for k in range(3)))
+        return result+[anchors[-1]]
     rings=[arch(rear,belt+.035,wid*.94),arch(rb,H-.018,wid),
       arch((rb+rf)/2,H,wid),arch(rf,H-.025,wid*.96),arch(front,belt+.035,wid*.91)]
     if d['style']=='aventador':
         # Windshield only; the cockpit remains open.
         rings=rings[-2:]
-    n=7
-    mesh('glazing',[p for r in rings for p in r],
-      [(j*n+i,j*n+i+1,(j+1)*n+i+1,(j+1)*n+i) for j in range(len(rings)-1) for i in range(n-1)],m['glass'])
+    dense=[]
+    for j,(a,b) in enumerate(zip(rings,rings[1:])):
+        for step in range(6):
+            t=step/6
+            prev=rings[max(0,j-1)];nxt=rings[min(len(rings)-1,j+2)]
+            dense.append([tuple(catmull(prev[v][k],p[k],q[k],nxt[v][k],t)
+              for k in range(3)) for v,(p,q) in enumerate(zip(a,b))])
+    dense.append(rings[-1]);n=len(dense[0])
+    mesh('glazing',[p for r in dense for p in r],
+      [(j*n+i,j*n+i+1,(j+1)*n+i+1,(j+1)*n+i) for j in range(len(dense)-1) for i in range(n-1)],m['glass'])
     for side in [-1,1]:
         tube('A pillar',[(front*L,side*wid*.91,belt),(rf*L,side*wid*.93,H-.14),
           (rf*L,side*wid*.70,H-.035)],.022,m['paint'])
@@ -196,8 +241,12 @@ def cabin(d,m):
               (rear*L,side*wid*.94,belt)],.018,m['paint'])
             tube('Window sill',[(rear*L,side*wid,belt),(front*L,side*wid*.92,belt)],.012,m['trim'])
     if d['style']!='aventador':
-        roof=[arch(x,top,w)[2:5] for x,top,w in [(rb,H-.010,wid),( (rb+rf)/2,H+.003,wid),(rf,H-.018,wid*.96)]]
-        mesh('roof',[p for r in roof for p in r],[(j*3+i,j*3+i+1,(j+1)*3+i+1,(j+1)*3+i) for j in range(2) for i in range(2)],m['trim'] if d['style'] in ('u9','amg') else m['paint'])
+        roof=[]
+        for j in range(13):
+            t=j/12;x=rb+(rf-rb)*t
+            roof.append(arch(x,H-.014+.020*math.sin(t*math.pi),wid*(1-.04*t))[8:17])
+        nr=len(roof[0])
+        mesh('roof',[p for r in roof for p in r],[(j*nr+i,j*nr+i+1,(j+1)*nr+i+1,(j+1)*nr+i) for j in range(len(roof)-1) for i in range(nr-1)],m['trim'] if d['style'] in ('u9','amg') else m['paint'])
     else:
         box('Open cockpit',(L*(-.065),0,.74),(L*.29,W*1.37,.025),m['trim'])
         for s in [-1,1]:
@@ -249,7 +298,7 @@ def wheels(d,m):
             box('Brake caliper',(x+.15,s*(d['track']/2+.10),R+.06),(.07,.05,.20),m['accent'])
 
 
-def details(d,m):
+def details(d,m,shell):
     L,W,S=d['length']/2,d['width']/2,d['style']
     # Front and rear carbon undertrays stay inside body width.
     box('Front splitter',(L-.15,0,.155),(.30,W*1.86,.035),m['trim'])
@@ -258,7 +307,7 @@ def details(d,m):
         box('Side skirt',(0,s*W*.94,.19),(d['wheelbase']-.65,.10,.06),m['trim'])
     if S=='ferrari':
         grille=[(L+.005,-.62,.48),(L+.005,.62,.48),(L+.005,.48,.25),(L+.005,-.48,.25)]
-        panel('Ferrari grille',grille,m['trim']);tube('Grille surround',grille,.012,m['chrome'],True)
+        front_recess('Ferrari grille',grille,shell,m['trim']);tube('Grille surround',grille,.012,m['chrome'],True)
         for yy in [-.4,-.2,0,.2,.4]: tube('Grille bar',[(L+.015,yy,.29),(L+.015,yy,.45)],.005,m['chrome'])
         for s in [-1,1]:
             panel('Headlight housing',[(L-.14,s*.54,.59),(L-.46,s*.83,.75),(L-.73,s*.79,.78),(L-.30,s*.60,.64)],m['trim'])
@@ -270,7 +319,7 @@ def details(d,m):
         # Horseshoe grille and four modules on each side.
         pts=[(L+.01,.27*math.cos(a),.39+.29*math.sin(a)) for a in [i*math.pi/24 for i in range(25)]]
         pts.extend([(L+.01,-.23,.21),(L+.01,.23,.21)])
-        panel('Horseshoe grille',pts,m['trim']); tube('Horseshoe surround',pts,.018,m['accent'],True)
+        front_recess('Horseshoe grille',pts,shell,m['trim']); tube('Horseshoe surround',pts,.018,m['accent'],True)
         for s in [-1,1]:
             box('Lamp black surround',(L-.08,s*.67,.60),(.10,.55,.10),m['trim'])
             for i in range(4):
@@ -289,13 +338,13 @@ def details(d,m):
             panel('Oval lamp lens',points,m['trim']);tube('headlight',points,.012,m['headlight'],True)
             for xx,yy in [(-.06,-.05),(-.06,.05),(.06,-.05),(.06,.05)]:
                 box('Four point LED',(c[0]+xx,c[1]+yy,c[2]+.006-xx*.44),(.035,.033,.014),m['headlight'],.005)
-            box('Front side intake',(L-.025,s*.67,.35),(.05,.35,.21),m['trim'])
+            front_recess('Front side intake',[(L+.01,s*.67-.175,.245),(L+.01,s*.67+.175,.245),(L+.01,s*.67+.175,.455),(L+.01,s*.67-.175,.455)],shell,m['trim'])
             panel('Turbo side intake',[(-.72,s*W,.46),(-.89,s*W,.77),(-.65,s*W,.83),(-.51,s*W,.67)],m['trim'])
-        box('Central cooling',(L+.005,0,.34),(.04,.76,.16),m['trim'])
+        front_recess('Central cooling',[(L+.01,-.38,.26),(L+.01,.38,.26),(L+.01,.38,.42),(L+.01,-.38,.42)],shell,m['trim'])
         tube('taillight',[(-L+.02,-W*.83,.70),(-L+.02,W*.83,.70)],.016,m['taillight'])
         box('Rear lip spoiler',(-L+.30,0,.88),(.20,W*1.4,.04),m['paint'])
     elif S=='amg':
-        panel('Panamericana grille',[(L+.008,-.73,.62),(L+.008,.73,.62),(L+.008,.67,.24),(L+.008,-.67,.24)],m['trim'])
+        front_recess('Panamericana grille',[(L+.008,-.73,.62),(L+.008,.73,.62),(L+.008,.67,.24),(L+.008,-.67,.24)],shell,m['trim'])
         for i in range(-6,7): tube('Vertical grille slat',[(L+.022,i*.105,.27),(L+.022,i*.105,.60)],.009,m['chrome'])
         ellipse('Grille emblem frame',(L+.035,0,.44),.12,.12,m['chrome'])
         for s in [-1,1]:
@@ -323,7 +372,7 @@ def details(d,m):
                 pts=[(L-.18,s*.43,.43),(L-.56,s*.86,.66),(L-.80,s*.77,.71)]
                 panel('Jesko lamp housing',pts,m['trim']);tube('headlight',pts[:2]+[pts[2]],.012,m['headlight'])
             panel('Side intake',[(-.35,s*(W*.96),.29),(-.75,s*(W*1.003),.77),(-1.14,s*(W*1.003),.80),(-1.05,s*(W*.97),.32)],m['trim'])
-            panel('Lower front intake',[(L-.02,s*.18,.22),(L-.02,s*.78,.24),(L-.08,s*.75,.40),(L-.02,s*.27,.38)],m['trim'])
+            front_recess('Lower front intake',[(L+.01,s*.18,.22),(L+.01,s*.78,.24),(L+.01,s*.75,.40),(L+.01,s*.27,.38)],shell,m['trim'])
             tube('taillight',[(-L+.01,s*.32,.69),(-L+.01,s*.78,.69)],.020,m['taillight'])
             if S=='jesko':
                 tube('Golden front lip',[(L-.1,s*.16,.17),(L-.02,s*.55,.18),(L-.24,s*.87,.19)],.012,m['accent'])
@@ -367,7 +416,7 @@ def build(d):
         image.pixels=pixels;image.pack()
         n=mats['paint'].node_tree.nodes.new('ShaderNodeTexImage');n.image=image
         mats['paint'].node_tree.links.new(n.outputs['Color'],mats['paint'].node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
-    body(d,mats);cabin(d,mats);wheels(d,mats);details(d,mats)
+    shell=body(d,mats);cabin(d,mats);wheels(d,mats);details(d,mats,shell)
     for obj in list(bpy.context.scene.objects):
         if obj.type in ('CURVE','FONT'):
             bpy.ops.object.select_all(action='DESELECT');obj.select_set(True)

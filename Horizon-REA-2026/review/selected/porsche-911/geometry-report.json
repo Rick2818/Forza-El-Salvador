@@ -2,9 +2,9 @@
   "assetType": "full-vehicle-declared",
   "status": "REVIEW_REQUIRED",
   "observedBoundsMeters": {
-    "length": 4.576,
+    "length": 4.551,
     "width": 2.19,
-    "height": 1.308
+    "height": 1.329
   },
   "referenceDimensionsMeters": {
     "length": 4.551,
@@ -13,12 +13,12 @@
     "wheelbase": 2.45
   },
   "differencesPercent": {
-    "length": 0.55,
+    "length": 0.0,
     "width": 15.26,
-    "height": 0.23
+    "height": 1.84
   },
   "meshCount": 22,
-  "approximateTriangleCount": 32824,
+  "approximateTriangleCount": 33830,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -64,7 +64,7 @@
   },
   "observedWheelbaseMeters": 2.45,
   "asset": "public/models/selected/porsche-911.glb",
-  "assetSha256": "308e498cad6cbe6e84de56cc40480e72a9e9a7bd5851a56dcfcc93dda50e1c2d",
+  "assetSha256": "ecf7ac7e36ed852b9dc61e2359b861bbbd9a5955858e6df38b27f3db1fc684e6",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

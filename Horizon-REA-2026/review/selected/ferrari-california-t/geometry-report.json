@@ -4,7 +4,7 @@
   "observedBoundsMeters": {
     "length": 4.608,
     "width": 2.2,
-    "height": 1.325
+    "height": 1.3472
   },
   "referenceDimensionsMeters": {
     "length": 4.57,
@@ -15,10 +15,10 @@
   "differencesPercent": {
     "length": 0.83,
     "width": 15.18,
-    "height": 0.23
+    "height": 1.91
   },
   "meshCount": 23,
-  "approximateTriangleCount": 35750,
+  "approximateTriangleCount": 37062,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -65,7 +65,7 @@
   },
   "observedWheelbaseMeters": 2.67,
   "asset": "public/models/selected/ferrari-california-t.glb",
-  "assetSha256": "ed662d26449cb63ff4382cc5905511c74a237a5ccca4f3a094fff269ae9b1832",
+  "assetSha256": "c0bcbe6364b51386633b4643b6faadccde3da161cca22e57551a8daa252531c7",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

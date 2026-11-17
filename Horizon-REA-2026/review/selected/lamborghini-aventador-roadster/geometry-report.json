@@ -18,7 +18,7 @@
     "height": 0.0
   },
   "meshCount": 23,
-  "approximateTriangleCount": 30652,
+  "approximateTriangleCount": 30860,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -65,7 +65,7 @@
   },
   "observedWheelbaseMeters": 2.7,
   "asset": "public/models/selected/lamborghini-aventador-roadster.glb",
-  "assetSha256": "dedbb17524ba8029f8d340a91705b3274bd11ae7306d4359bcd541da63fd9fcf",
+  "assetSha256": "638d25467ceae1e97a4f87366d97a5f6c0fd989ea9e0dee9c0316880871bbc51",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

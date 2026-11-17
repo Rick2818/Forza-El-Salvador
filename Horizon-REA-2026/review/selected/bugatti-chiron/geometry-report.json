@@ -4,7 +4,7 @@
   "observedBoundsMeters": {
     "length": 4.594,
     "width": 2.328,
-    "height": 1.215
+    "height": 1.2291
   },
   "referenceDimensionsMeters": {
     "length": 4.544,
@@ -15,10 +15,10 @@
   "differencesPercent": {
     "length": 1.1,
     "width": 14.23,
-    "height": 0.25
+    "height": 1.41
   },
   "meshCount": 22,
-  "approximateTriangleCount": 31313,
+  "approximateTriangleCount": 32709,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -64,7 +64,7 @@
   },
   "observedWheelbaseMeters": 2.711,
   "asset": "public/models/selected/bugatti-chiron.glb",
-  "assetSha256": "7c2179a653500a7d1a2bcca61002f0dfb4131eb8cdbb1c452b949c736944457e",
+  "assetSha256": "e285b50306b2dcf653598793ce94ae787e61a9fae3a7ebbfbe42c2c537bd47ec",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

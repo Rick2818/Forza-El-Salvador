@@ -6,6 +6,10 @@ no se importan mallas, texturas ni datos de Forza Horizon ni de ningún otro jue
 
 ## Garaje: selección de Rick
 
+**Revisión de prearte:** cabinas suavizadas y tomas delanteras con profundidad.
+La lámina y el índice de estudio están en `review/preart-studio/`.
+Informe del pase: `docs/vehicle-fidelity/PREART-2026-11-17.md`.
+
 El menú inicial incluye **Garaje · 7 autos**, con la selección de vehículos,
 sus acabados y las fotografías aportadas para modelado. Las fotos pueden abrirse
 a tamaño completo. La ficha del Ferrari todavía no tiene fotografía adjunta.

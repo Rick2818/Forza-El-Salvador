@@ -4,7 +4,7 @@
   "observedBoundsMeters": {
     "length": 4.636,
     "width": 2.32,
-    "height": 1.213
+    "height": 1.2269
   },
   "referenceDimensionsMeters": {
     "length": 4.626,
@@ -15,10 +15,10 @@
   "differencesPercent": {
     "length": 0.22,
     "width": 14.29,
-    "height": 0.25
+    "height": 1.4
   },
   "meshCount": 22,
-  "approximateTriangleCount": 26532,
+  "approximateTriangleCount": 27682,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -64,7 +64,7 @@
   },
   "observedWheelbaseMeters": 2.7,
   "asset": "public/models/selected/koenigsegg-jesko-odin.glb",
-  "assetSha256": "3796a138a60c3925a59225c69c9b1ef06a664f4b80cbd1ac119ecc9b417057ef",
+  "assetSha256": "9a5fcd574b9ce288ee776612b67247b5d5e83656da0ae53fa9eda0f7d0e393f6",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

@@ -4,7 +4,7 @@
   "observedBoundsMeters": {
     "length": 4.666,
     "width": 2.313,
-    "height": 1.283
+    "height": 1.3021
   },
   "referenceDimensionsMeters": {
     "length": 4.604,
@@ -15,10 +15,10 @@
   "differencesPercent": {
     "length": 1.35,
     "width": 14.34,
-    "height": 0.23
+    "height": 1.73
   },
   "meshCount": 25,
-  "approximateTriangleCount": 33564,
+  "approximateTriangleCount": 34790,
   "materialNames": [
     "accent",
     "amber",
@@ -67,7 +67,7 @@
   },
   "observedWheelbaseMeters": 2.635,
   "asset": "public/models/selected/mercedes-amg-gt-black-series.glb",
-  "assetSha256": "32e8259fda3c8652e62c812903fc06d5838abf7f878b36c5b7f2279aa7ea484e",
+  "assetSha256": "d2c549d4e413159bf9fad45deac54099d8c7ed162fae662ab8bb7c12951eccfa",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

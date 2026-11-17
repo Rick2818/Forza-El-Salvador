@@ -1,0 +1,63 @@
+{
+  "status": "PREART_REVIEW_REQUIRED",
+  "visualFidelityApproved": false,
+  "fps60Verified": false,
+  "vehicles": [
+    {
+      "vehicleId": "ferrari-california-t",
+      "assetSha256": "c0bcbe6364b51386633b4643b6faadccde3da161cca22e57551a8daa252531c7",
+      "image": "ferrari-california-t.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    },
+    {
+      "vehicleId": "yangwang-u9",
+      "assetSha256": "3458901809e7df52fd2864ba8fe9bdd9add025c4cc627b1b2ff3504a69011e43",
+      "image": "yangwang-u9.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    },
+    {
+      "vehicleId": "koenigsegg-jesko-odin",
+      "assetSha256": "9a5fcd574b9ce288ee776612b67247b5d5e83656da0ae53fa9eda0f7d0e393f6",
+      "image": "koenigsegg-jesko-odin.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    },
+    {
+      "vehicleId": "bugatti-chiron",
+      "assetSha256": "e285b50306b2dcf653598793ce94ae787e61a9fae3a7ebbfbe42c2c537bd47ec",
+      "image": "bugatti-chiron.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    },
+    {
+      "vehicleId": "porsche-911",
+      "assetSha256": "ecf7ac7e36ed852b9dc61e2359b861bbbd9a5955858e6df38b27f3db1fc684e6",
+      "image": "porsche-911.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    },
+    {
+      "vehicleId": "lamborghini-aventador-roadster",
+      "assetSha256": "638d25467ceae1e97a4f87366d97a5f6c0fd989ea9e0dee9c0316880871bbc51",
+      "image": "lamborghini-aventador-roadster.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    },
+    {
+      "vehicleId": "mercedes-amg-gt-black-series",
+      "assetSha256": "d2c549d4e413159bf9fad45deac54099d8c7ed162fae662ab8bb7c12951eccfa",
+      "image": "mercedes-amg-gt-black-series.png",
+      "engine": "Cycles CPU",
+      "samples": 64,
+      "productionApproved": false
+    }
+  ]
+}
