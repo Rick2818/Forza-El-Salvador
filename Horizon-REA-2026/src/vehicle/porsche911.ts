@@ -15,7 +15,7 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
   root.add(bodyRoot);
 
   const paint = new THREE.MeshPhysicalMaterial({
-    color: 0x333438, metalness: 0.82, roughness: 0.21,
+    color: 0x414246, metalness: 0.67, roughness: 0.25,
     clearcoat: 1, clearcoatRoughness: 0.09, envMapIntensity: 1.35
   });
   const carbon = new THREE.MeshStandardMaterial({ color: 0x101216, metalness: 0.27, roughness: 0.46 });
@@ -120,14 +120,18 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
     if(z< -1.38) return 0.78 + 0.06*Math.min(1,(-z-1.38)/0.92);
     return 0.81;
   };
-  const stations = Array.from({length:59},(_,i)=> -2.28 + i*4.56/58);
+  const wheelArchY = (z: number): number => {
+    const d = Math.min(Math.abs(z - 1.34), Math.abs(z + 1.34));
+    return d < 0.43 ? 0.365 + Math.sqrt(0.43 * 0.43 - d * d) : 0;
+  };
+  const stations = Array.from({length:93},(_,i)=> -2.28 + i*4.56/92);
   surf("paint", stations, z => {
     const w = halfWidth(z), y = hoodHeight(z);
     return [
-      [-w*.90,.22],[-w,.38],[-w*1.005,.55],[-w*.97,y+.07],
+      [-w*.90,Math.max(.22,wheelArchY(z))],[-w,Math.max(.38,wheelArchY(z))],[-w*1.005,Math.max(.55,wheelArchY(z))],[-w*.97,y+.07],
       [-w*.81,y+.11],[-w*.55,y+.015],[0,y-.035],
       [w*.55,y+.015],[w*.81,y+.11],[w*.97,y+.07],
-      [w*1.005,.55],[w,.38],[w*.90,.22]
+      [w*1.005,Math.max(.55,wheelArchY(z))],[w,Math.max(.38,wheelArchY(z))],[w*.90,Math.max(.22,wheelArchY(z))]
     ];
   });
   for (const s of [-1,1]) {
@@ -142,6 +146,30 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
     [-.56,1.39,.19],[.56,1.39,.19],[.62,1.39,-.79],[-.62,1.39,-.79]
   ];
   quad("paint",roofTop[0],roofTop[1],roofTop[2],roofTop[3]);
+
+  // Continuously curved roof crown — not a flat pickup-truck lid.
+  surf("paint",Array.from({length:24},(_,i)=>-.79+i*.98/23), z => {
+    const w = .60 - .055 * Math.abs(z+.30);
+    const h = 1.385 - .035 * ((z+.30)/.52)**2;
+    return Array.from({length:15},(_,i) => {
+      const u = -1+i/7;
+      return [w*u, h + .040*(1-u*u)] as [number,number];
+    });
+  },true);
+  // Tapered rear-quarter panels link the curved 911 fastback to the deck.
+  for(const s of [-1,1]){
+    quad("paint",[s*.60,1.388,-.79],[s*.78,1.01,-1.22],
+       [s*.85,.865,-1.63],[s*.68,1.38,-.80]);
+    rod("paint",new THREE.Vector3(s*.64,1.38,-.79),new THREE.Vector3(s*.86,.84,-1.64),.068);
+    rod("black",new THREE.Vector3(s*.62,1.38,-.79),new THREE.Vector3(s*.84,.87,-1.53),.016);
+  }
+  // Wheel arch lips preserve the 911's muscular fender openings.
+  for (const s of [-1,1]) for (const z of [1.34,-1.34]) {
+    const arch = new THREE.TorusGeometry(.441,.023,6,32,Math.PI);
+    arch.rotateY(Math.PI/2);
+    arch.translate(s*1.023,.365,z);
+    add(arch,"paint");
+  }
   for(const s of [-1,1]) {
     const p0: [number,number,number]=[s*.83,.85,.79];
     const p1: [number,number,number]=[s*.56,1.39,.19];
@@ -166,7 +194,7 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
   for (const s of [-1,1]) {
     cube("seat",s*.34,1.01,-.50,.42,.36,.45);
     ellipsoid("seat",s*.34,1.18,-.66,.205,.285,.145,-.1);
-    ellipsoid("seat",s*.34,1.39,-.70,.095,.135,.085);
+    ellipsoid("seat",s*.34,1.27,-.70,.095,.105,.085);
     cube("seat",s*.34,.835,-.18,.40,.09,.46);
     rod("chrome",new THREE.Vector3(s*.25,.96,-.64),new THREE.Vector3(s*.25,1.34,-.69),.01);
   }
@@ -179,14 +207,14 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
   cube("black",0,.92,-1.14,1.29,.16,.28);
 
   for (const s of [-1,1]) {
-    ellipsoid("black",s*.728,.861,1.77,.292,.057,.385,-.17);
-    ellipsoid("charcoal",s*.728,.906,1.77,.259,.018,.336,-.17);
+    ellipsoid("black",s*.728,.773,1.77,.292,.030,.385,-.17);
+    ellipsoid("charcoal",s*.728,.800,1.77,.259,.009,.336,-.17);
     const bulb = new THREE.TorusGeometry(1,.054,6,48);
     bulb.scale(.211,.308,1);
     bulb.rotateX(Math.PI/2+.17);
-    bulb.translate(s*.728,.922,1.77);
+    bulb.translate(s*.728,.822,1.77);
     add(bulb,"headlightMat");
-    for(let i=0;i<3;i++)ellipsoid("headlightMat",s*.728,.938,1.58+i*.165,.070,.013,.032);
+    for(let i=0;i<3;i++)ellipsoid("headlightMat",s*.728,.829,1.58+i*.165,.070,.009,.032);
     cube("chrome",s*.908,.624,1.34,.052,.022,.20);
     ellipsoid("black",s*.69,.385,2.14,.264,.172,.090);
     for(let i=0;i<4;i++)cube("carbon",s*(.55+i*.085),.38,2.232,.023,.23,.013);
@@ -198,7 +226,7 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
     ellipsoid("paint",s*1.08,.99,.52,.17,.089,.145);
     cube("chrome",s*1.218,.982,.52,.009,.042,.103);
   }
-  cube("black",0,.34,2.275,.81,.19,.055);
+  cube("black",0,.34,2.275,.76,.12,.033);
   for(let i=-5;i<=5;i++)cube("carbon",i*.067,.34,2.314,.012,.158,.012);
   cube("carbon",0,.183,2.265,1.75,.068,.155);
   ribbon("chrome",[[-.89,.215,2.235],[0,.190,2.34],[.89,.215,2.235]],.013);
