@@ -45,7 +45,21 @@ export function createRealPorsche911Visual(opts: CarOptions): CarVisual {
   group.name = "Porsche_911_C4S_Blender_Real";
   // Blender export: +X is the nose, +Z up; glTF/Three: +X nose, +Y up.
   // The physics engine is forward +Z, hence a 90-degree yaw.
-  group.rotation.y = -Math.PI / 2;
+  const rawBounds = new THREE.Box3().setFromObject(group);
+  const rawSize = rawBounds.getSize(new THREE.Vector3());
+  // Both source and Blender GLBs are normalized at runtime to the existing
+  // 2.68m wheelbase envelope; this also protects previews during pipeline QA.
+  group.rotation.y = rawSize.x > rawSize.z ? -Math.PI / 2 : 0;
+  group.updateMatrixWorld(true);
+  const aligned = new THREE.Box3().setFromObject(group);
+  const alignedSize = aligned.getSize(new THREE.Vector3());
+  const scale = Math.min(4.64 / alignedSize.z, 2.02 / alignedSize.x);
+  if (Number.isFinite(scale) && scale > 0) group.scale.multiplyScalar(scale);
+  group.updateMatrixWorld(true);
+  const fitted = new THREE.Box3().setFromObject(group);
+  const center = fitted.getCenter(new THREE.Vector3());
+  group.position.set(-center.x, -fitted.min.y, -center.z);
+  group.updateMatrixWorld(true);
   group.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (!mesh.isMesh) return;
