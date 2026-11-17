@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { preloadRealPorsche911, createRealPorsche911Visual, hasRealPorsche911 } from "./vehicle/porscheRealAsset";
 
 const canvas = document.getElementById("preview-canvas") as HTMLCanvasElement | null;
@@ -17,6 +18,8 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x22252a);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.07).texture;
 scene.fog = new THREE.Fog(0x22252a, 14, 28);
 scene.add(new THREE.HemisphereLight(0xf5f6ff, 0x41434a, 3.5));
 const key = new THREE.DirectionalLight(0xffffff, 6);
@@ -35,7 +38,7 @@ scene.add(fill);
 
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(160, 160),
-  new THREE.MeshStandardMaterial({ color: 0x34373b, metalness: 0.16, roughness: 0.64 })
+  new THREE.MeshStandardMaterial({ color: 0x1c1d20, metalness: 0.12, roughness: 0.66 })
 );
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
@@ -53,8 +56,8 @@ const car = createRealPorsche911Visual({
 car.root.position.y = 0.62;
 scene.add(car.root);
 
-const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 150);
-camera.position.set(6.3, 3.1, 7.6);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 150);
+camera.position.set(4.65, 2.45, 5.25);
 const orbit = new OrbitControls(camera, canvas);
 orbit.target.set(0, 0.87, 0);
 orbit.enableDamping = true;
