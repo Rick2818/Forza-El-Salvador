@@ -5,12 +5,12 @@ Run from the Horizon-REA-2026 directory (Blender 4.x):
     --asset public/models/car-body.glb --out-dir review/california-t
 
 This is a geometry review, NOT a 95/100 likeness certification.
-The current GLB exports only a body shell; bounds must not be treated as
-complete-vehicle dimensions, and wheels need separate verification.
+Asset completeness must be checked visually; bounds alone do not establish
+complete-vehicle dimensions, and wheel centers need separate verification.
 """
 import argparse
 import json
-import math
+import hashlib
 import os
 import sys
 
@@ -52,14 +52,15 @@ def inspect(meshes, spec, full_vehicle):
     triangles = sum(sum(max(0, len(poly.vertices) - 2)
                         for poly in obj.data.polygons) for obj in meshes)
     warnings = ["Visual resemblance cannot be determined from bounding boxes.",
-                "Wheelbase cannot be derived without wheel-center landmarks."]
+                "Wheelbase cannot be derived without wheel-center landmarks.",
+                "Workbench renders show shape and diffuse colors, not PBR material fidelity."]
     if not full_vehicle:
-        warnings.append("Shell-only assessment: overall dimension differences are informational, not pass/fail.")
+        warnings.append("Asset completeness unverified: dimension differences are informational, not pass/fail.")
     elif any(abs(d) > spec["tolerance"]["dimensionFraction"] * 100
              for d in differences.values()):
         warnings.append("Full-vehicle dimensions exceed the preliminary tolerance.")
     return {
-        "assetType": "full-vehicle" if full_vehicle else "shell-only",
+        "assetType": "full-vehicle-declared" if full_vehicle else "completeness-unverified",
         "status": "REVIEW_REQUIRED",
         "observedBoundsMeters": observed,
         "referenceDimensionsMeters": expected,
@@ -129,7 +130,11 @@ def main():
     center = Vector([(low + high) / 2 for low, high in zip(min_corner, max_corner)])
     dims = [high - low for low, high in zip(min_corner, max_corner)]
     report = inspect(meshes, spec, args.full_vehicle)
-    report["asset"] = asset
+    report["asset"] = os.path.relpath(asset, os.getcwd()).replace(os.sep, "/")
+    with open(asset, "rb") as f:
+        report["assetSha256"] = hashlib.file_digest(f, "sha256").hexdigest()
+    report["blenderVersion"] = bpy.app.version_string
+    report["renderEngine"] = "BLENDER_WORKBENCH"
     capture(bpy.context.scene, output, center, dims)
     report["reviewImages"] = [
         name + ".png" for name in

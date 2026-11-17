@@ -1,0 +1,48 @@
+{
+  "assetType": "completeness-unverified",
+  "status": "REVIEW_REQUIRED",
+  "observedBoundsMeters": {
+    "length": 4.6954,
+    "width": 2.24,
+    "height": 1.1691
+  },
+  "referenceDimensionsMeters": {
+    "length": 4.57,
+    "width": 1.91,
+    "height": 1.322,
+    "wheelbase": 2.67
+  },
+  "differencesPercent": {
+    "length": 2.74,
+    "width": 17.28,
+    "height": -11.57
+  },
+  "meshCount": 25,
+  "approximateTriangleCount": 18864,
+  "materialNames": [
+    "carbon",
+    "glass",
+    "paint",
+    "trim"
+  ],
+  "warnings": [
+    "Visual resemblance cannot be determined from bounding boxes.",
+    "Wheelbase cannot be derived without wheel-center landmarks.",
+    "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+    "Asset completeness unverified: dimension differences are informational, not pass/fail."
+  ],
+  "visualFidelityScore": null,
+  "approvedForProduction": false,
+  "asset": "public/models/car-body.glb",
+  "assetSha256": "f565873da0a95d1fe7dc1ea067a01b199200e79e15421893506770f09bc8ea45",
+  "blenderVersion": "4.3.2",
+  "renderEngine": "BLENDER_WORKBENCH",
+  "reviewImages": [
+    "front.png",
+    "rear.png",
+    "left.png",
+    "right.png",
+    "front34.png",
+    "rear34.png"
+  ]
+}

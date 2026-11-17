@@ -42,7 +42,7 @@
     "currentMaxBodyHalfWidthMeters": 1.048,
     "currentRoofControlMaxMeters": 1.11,
     "currentWheelbaseMeters": 2.68,
-    "qualifier": "These are numbers read from source control points, NOT measurements of the evaluated GLB mesh. Wheels are excluded from the shell export."
+    "qualifier": "These are numbers read from source control points, NOT measurements of the evaluated GLB mesh. The inspected public GLB includes simplified wheel cylinders; source control points do not establish exported geometry."
   },
   "qualityGates": {
     "visualReferenceReviewed": false,
