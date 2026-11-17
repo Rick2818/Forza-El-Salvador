@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "project": "Horizon El Salvador",
+  "vehicle": {
+    "manufacturer": "Ferrari",
+    "model": "California T",
+    "modelYear": 2015,
+    "bodyStyle": "retractable-hardtop grand tourer",
+    "roofState": "closed"
+  },
+  "officialDimensionsMeters": {
+    "length": 4.57,
+    "width": 1.91,
+    "height": 1.322,
+    "wheelbase": 2.67
+  },
+  "tolerance": {
+    "dimensionFraction": 0.02,
+    "meaning": "preliminary full-vehicle geometry warning threshold; not a visual fidelity score"
+  },
+  "sources": [
+    {
+      "name": "Car and Driver - 2015 California T specifications",
+      "url": "https://www.caranddriver.com/reviews/a15107849/2015-ferrari-california-t-test-review/"
+    },
+    {
+      "name": "Ferrari California T technical brochure (Ferrari S.p.A.)",
+      "url": "https://www.centuryu.com/uploads/1/4/4/6/144698822/2014_california_t.pdf"
+    }
+  ],
+  "referenceRequiredViews": [
+    "front",
+    "rear",
+    "left",
+    "right",
+    "front-three-quarter",
+    "rear-three-quarter"
+  ],
+  "preliminaryCodeObservations": {
+    "source": "tools/blender/car-body.py",
+    "currentBodyProfileLengthMeters": 4.7,
+    "currentMaxBodyHalfWidthMeters": 1.048,
+    "currentRoofControlMaxMeters": 1.11,
+    "currentWheelbaseMeters": 2.68,
+    "qualifier": "These are numbers read from source control points, NOT measurements of the evaluated GLB mesh. Wheels are excluded from the shell export."
+  },
+  "qualityGates": {
+    "visualReferenceReviewed": false,
+    "bodyProportionsVerified": false,
+    "sixRenderedViewsVerified": false,
+    "geometryAndMaterialsVerified": false,
+    "inGamePerformanceMeasured": false,
+    "authorizedForProduction": false
+  },
+  "overallStatus": "NOT_APPROVED",
+  "notes": "Do not equate source-control-point comparisons, GLB metadata, or an AI-generated subjective score with a verified 95/100 visual acceptance."
+}
