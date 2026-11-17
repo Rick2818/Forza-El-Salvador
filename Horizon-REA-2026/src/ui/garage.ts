@@ -1,11 +1,12 @@
 import { SELECTED_VEHICLES, referenceUrl } from "../vehicle/roster";
 
-export function garageMarkup(): string {
+export function garageMarkup(selectedId?: string): string {
   return `<section class="vehicle-garage" aria-labelledby="garage-title">
     <div class="brand">Colección elegida · ${SELECTED_VEHICLES.length} autos</div>
     <h2 id="garage-title">Garaje de Horizon El Salvador</h2>
-    <p class="garage-intro">Referencias de los próximos vehículos. Sus modelos 3D están en preparación;
-      la carrera actual utiliza el prototipo de pruebas.</p>
+    <p class="garage-intro">Siete modelos 3D disponibles para pruebas de conducción.
+      La fidelidad visual y el rendimiento siguen en revisión; los ajustes de manejo son experimentales.</p>
+    <p id="garage-status" role="status" aria-live="polite"></p>
     <div class="vehicle-grid">${SELECTED_VEHICLES.map((car) => {
       const src = referenceUrl(car);
       return `<article class="vehicle-card" data-vehicle-id="${car.id}">
@@ -15,10 +16,13 @@ export function garageMarkup(): string {
             </a>`
           : `<div class="vehicle-image vehicle-image-pending">Fotografía pendiente</div>`}
         <div class="vehicle-copy">
-          <span class="vehicle-status">Modelo 3D pendiente</span>
+          <span class="vehicle-status">Prototipo 3D · en revisión</span>
           <h3>${car.name}</h3><p class="vehicle-finish">${car.finish}</p>
           <ul>${car.features.map((feature) => `<li>${feature}</li>`).join("")}</ul>
           <details><summary>Referencia de versión</summary><p>${car.variantNote}</p></details>
+          <button class="btn ${selectedId === car.id ? "primary" : "ghost"} vehicle-select"
+            data-action="select-vehicle" data-vehicle-id="${car.id}"
+            aria-pressed="${selectedId === car.id}">${selectedId === car.id ? "Seleccionado" : "Seleccionar para conducir"}</button>
         </div>
       </article>`;
     }).join("")}</div>

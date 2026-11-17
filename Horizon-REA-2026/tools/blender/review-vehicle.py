@@ -28,6 +28,7 @@ def cli_args():
         "california-t-2015.json"))
     parser.add_argument("--full-vehicle", action="store_true",
                         help="Only use when all visible exterior parts, including wheels, are included")
+    parser.add_argument("--design", help="ID from src/vehicle/vehicle-designs.json; overrides dimension targets")
     return parser.parse_args(argv)
 
 
@@ -74,7 +75,7 @@ def inspect(meshes, spec, full_vehicle):
     }
 
 
-def capture(scene, out_dir, center, dimensions):
+def capture(scene, out_dir, center, dimensions, positive_y_is_right=False):
     max_dim = max(dimensions)
     dist = max_dim * 2.3
     cam_data = bpy.data.cameras.new("FidelityReviewCamera")
@@ -84,16 +85,22 @@ def capture(scene, out_dir, center, dimensions):
     scene.render.engine = "BLENDER_WORKBENCH"
     scene.display.shading.light = "STUDIO"
     scene.display.shading.color_type = "MATERIAL"
+    scene.display.shading.background_type = "WORLD"
+    if scene.world is None:
+        scene.world = bpy.data.worlds.new("Review background")
+    scene.world.color = (.065, .075, .095)
+    scene.render.dither_intensity = 0
     scene.render.image_settings.file_format = "PNG"
     scene.render.resolution_x = 1100
     scene.render.resolution_y = 720
     scene.render.resolution_percentage = 100
 
+    left_side = -1 if positive_y_is_right else 1
     views = [
         ("front", (dist, 0, 0), "ORTHO", max(dimensions[1], dimensions[2]) * 1.7),
         ("rear", (-dist, 0, 0), "ORTHO", max(dimensions[1], dimensions[2]) * 1.7),
-        ("left", (0, dist, 0), "ORTHO", dimensions[0] * 1.25),
-        ("right", (0, -dist, 0), "ORTHO", dimensions[0] * 1.25),
+        ("left", (0, dist * left_side, 0), "ORTHO", dimensions[0] * 1.25),
+        ("right", (0, -dist * left_side, 0), "ORTHO", dimensions[0] * 1.25),
         ("front34", (dist, dist * 0.7, dist * 0.38), "PERSP", None),
         ("rear34", (-dist, dist * 0.7, dist * 0.38), "PERSP", None)
     ]
@@ -120,9 +127,25 @@ def main():
     os.makedirs(output, exist_ok=True)
     with open(args.spec, encoding="utf-8") as f:
         spec = json.load(f)
+    if args.design:
+        design_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "vehicle", "vehicle-designs.json")
+        with open(design_path, encoding="utf-8") as f:
+            design = next(d for d in json.load(f) if d["id"] == args.design)
+        spec["officialDimensionsMeters"] = {key: design[key] for key in ("length", "width", "height", "wheelbase")}
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=asset)
+    # Workbench does not evaluate PBR textures. A diffuse mean avoids depicting
+    # a dark textured carbon material as white merely because its factor is 1.
+    for mat in bpy.data.materials:
+        if mat.use_nodes:
+            images = [node.image for node in mat.node_tree.nodes
+                      if node.type == "TEX_IMAGE" and node.image]
+            if images:
+                pixels = list(images[0].pixels)
+                count = len(pixels) // 4
+                if count:
+                    mat.diffuse_color = tuple(sum(pixels[c::4]) / count for c in range(3)) + (1,)
     meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
     if not meshes:
         raise RuntimeError("No mesh objects found in the GLB")
@@ -130,12 +153,23 @@ def main():
     center = Vector([(low + high) / 2 for low, high in zip(min_corner, max_corner)])
     dims = [high - low for low, high in zip(min_corner, max_corner)]
     report = inspect(meshes, spec, args.full_vehicle)
+    if args.design:
+        report["vehicleId"] = args.design
+        report["dimensionSource"] = design["dimensionSource"]
+        report["wheelCentersMeters"] = {
+            name: [round(v, 5) for v in bpy.context.scene.objects[name].matrix_world.translation]
+            for name in ("wheel_fr", "wheel_fl", "wheel_rr", "wheel_rl")
+        }
+        report["observedWheelbaseMeters"] = round(abs(
+            report["wheelCentersMeters"]["wheel_fr"][0] - report["wheelCentersMeters"]["wheel_rr"][0]), 5)
+        report["warnings"].remove("Wheelbase cannot be derived without wheel-center landmarks.")
+        report["warnings"].append("Bounds include mirrors and aero parts; reference body width may exclude mirrors.")
     report["asset"] = os.path.relpath(asset, os.getcwd()).replace(os.sep, "/")
     with open(asset, "rb") as f:
         report["assetSha256"] = hashlib.file_digest(f, "sha256").hexdigest()
     report["blenderVersion"] = bpy.app.version_string
     report["renderEngine"] = "BLENDER_WORKBENCH"
-    capture(bpy.context.scene, output, center, dims)
+    capture(bpy.context.scene, output, center, dims, positive_y_is_right=bool(args.design))
     report["reviewImages"] = [
         name + ".png" for name in
         ("front", "rear", "left", "right", "front34", "rear34")

@@ -1,0 +1,559 @@
+{
+  "status": "PROTOTYPES_REVIEW_REQUIRED",
+  "productionApproved": false,
+  "fps60Verified": false,
+  "visualFidelityApproved": false,
+  "vehicles": [
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.608,
+        "width": 2.2,
+        "height": 1.325
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.57,
+        "width": 1.91,
+        "height": 1.322,
+        "wheelbase": 2.67
+      },
+      "differencesPercent": {
+        "length": 0.83,
+        "width": 15.18,
+        "height": 0.23
+      },
+      "meshCount": 23,
+      "approximateTriangleCount": 35750,
+      "materialNames": [
+        "accent",
+        "carbon_trim",
+        "chrome",
+        "disc",
+        "glass",
+        "headlight",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "ferrari-california-t",
+      "dimensionSource": "https://pictures.dealer.com/ferrariofsanantonio/709e4f720a0e0acb0c353895914fc451.pdf",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.335,
+          0.815,
+          0.345
+        ],
+        "wheel_fl": [
+          1.335,
+          -0.815,
+          0.345
+        ],
+        "wheel_rr": [
+          -1.335,
+          0.815,
+          0.345
+        ],
+        "wheel_rl": [
+          -1.335,
+          -0.815,
+          0.345
+        ]
+      },
+      "observedWheelbaseMeters": 2.67,
+      "asset": "public/models/selected/ferrari-california-t.glb",
+      "assetSha256": "ed662d26449cb63ff4382cc5905511c74a237a5ccca4f3a094fff269ae9b1832",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    },
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.976,
+        "width": 2.319,
+        "height": 1.314
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.966,
+        "width": 2.029,
+        "height": 1.311,
+        "wheelbase": 2.9
+      },
+      "differencesPercent": {
+        "length": 0.2,
+        "width": 14.29,
+        "height": 0.23
+      },
+      "meshCount": 22,
+      "approximateTriangleCount": 30602,
+      "materialNames": [
+        "accent",
+        "carbon_trim",
+        "disc",
+        "glass",
+        "headlight",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "yangwang-u9",
+      "dimensionSource": "https://www.yangwangauto.com/material/yangwang_cn/images/u9/2025-12-23/U9\u8f66\u4e6620251223.pdf",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.45,
+          0.8745,
+          0.365
+        ],
+        "wheel_fl": [
+          1.45,
+          -0.8745,
+          0.365
+        ],
+        "wheel_rr": [
+          -1.45,
+          0.8745,
+          0.365
+        ],
+        "wheel_rl": [
+          -1.45,
+          -0.8745,
+          0.365
+        ]
+      },
+      "observedWheelbaseMeters": 2.9,
+      "asset": "public/models/selected/yangwang-u9.glb",
+      "assetSha256": "0b723bf8becefb5e52d68928180410e41643390d877fd5762e57925b826fb196",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    },
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.636,
+        "width": 2.32,
+        "height": 1.213
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.626,
+        "width": 2.03,
+        "height": 1.21,
+        "wheelbase": 2.7
+      },
+      "differencesPercent": {
+        "length": 0.22,
+        "width": 14.29,
+        "height": 0.25
+      },
+      "meshCount": 22,
+      "approximateTriangleCount": 26532,
+      "materialNames": [
+        "accent",
+        "carbon_trim",
+        "disc",
+        "glass",
+        "headlight",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "koenigsegg-jesko-odin",
+      "dimensionSource": "https://www.koenigsegg.com/technical-specifications-jesko-attack",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.35,
+          0.875,
+          0.355
+        ],
+        "wheel_fl": [
+          1.35,
+          -0.875,
+          0.355
+        ],
+        "wheel_rr": [
+          -1.35,
+          0.875,
+          0.355
+        ],
+        "wheel_rl": [
+          -1.35,
+          -0.875,
+          0.355
+        ]
+      },
+      "observedWheelbaseMeters": 2.7,
+      "asset": "public/models/selected/koenigsegg-jesko-odin.glb",
+      "assetSha256": "3796a138a60c3925a59225c69c9b1ef06a664f4b80cbd1ac119ecc9b417057ef",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    },
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.594,
+        "width": 2.328,
+        "height": 1.215
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.544,
+        "width": 2.038,
+        "height": 1.212,
+        "wheelbase": 2.711
+      },
+      "differencesPercent": {
+        "length": 1.1,
+        "width": 14.23,
+        "height": 0.25
+      },
+      "meshCount": 22,
+      "approximateTriangleCount": 31313,
+      "materialNames": [
+        "accent",
+        "carbon_trim",
+        "disc",
+        "glass",
+        "headlight",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "bugatti-chiron",
+      "dimensionSource": "https://bugatti-newsroom.imgix.net/66703700d9bf8f4b7ce9211c/211122_BU_Chiron%20ENG.pdf",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.3555,
+          0.879,
+          0.355
+        ],
+        "wheel_fl": [
+          1.3555,
+          -0.879,
+          0.355
+        ],
+        "wheel_rr": [
+          -1.3555,
+          0.879,
+          0.355
+        ],
+        "wheel_rl": [
+          -1.3555,
+          -0.879,
+          0.355
+        ]
+      },
+      "observedWheelbaseMeters": 2.711,
+      "asset": "public/models/selected/bugatti-chiron.glb",
+      "assetSha256": "7c2179a653500a7d1a2bcca61002f0dfb4131eb8cdbb1c452b949c736944457e",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    },
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.576,
+        "width": 2.19,
+        "height": 1.308
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.551,
+        "width": 1.9,
+        "height": 1.305,
+        "wheelbase": 2.45
+      },
+      "differencesPercent": {
+        "length": 0.55,
+        "width": 15.26,
+        "height": 0.23
+      },
+      "meshCount": 22,
+      "approximateTriangleCount": 32824,
+      "materialNames": [
+        "accent",
+        "carbon_trim",
+        "disc",
+        "glass",
+        "headlight",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "porsche-911",
+      "dimensionSource": "https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3Abe13fd23-11cf-4783-b509-a702aed10df3/pag-911-turbo-s-en.pdf",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.225,
+          0.81,
+          0.345
+        ],
+        "wheel_fl": [
+          1.225,
+          -0.81,
+          0.345
+        ],
+        "wheel_rr": [
+          -1.225,
+          0.81,
+          0.345
+        ],
+        "wheel_rl": [
+          -1.225,
+          -0.81,
+          0.345
+        ]
+      },
+      "observedWheelbaseMeters": 2.45,
+      "asset": "public/models/selected/porsche-911.glb",
+      "assetSha256": "308e498cad6cbe6e84de56cc40480e72a9e9a7bd5851a56dcfcc93dda50e1c2d",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    },
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.807,
+        "width": 2.32,
+        "height": 1.136
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.797,
+        "width": 2.03,
+        "height": 1.136,
+        "wheelbase": 2.7
+      },
+      "differencesPercent": {
+        "length": 0.21,
+        "width": 14.29,
+        "height": 0.0
+      },
+      "meshCount": 23,
+      "approximateTriangleCount": 30652,
+      "materialNames": [
+        "accent",
+        "carbon_trim",
+        "disc",
+        "glass",
+        "headlight",
+        "leather",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "lamborghini-aventador-roadster",
+      "dimensionSource": "https://www.lamborghini.com/en-en/history/aventador-s-roadster",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.35,
+          0.875,
+          0.35
+        ],
+        "wheel_fl": [
+          1.35,
+          -0.875,
+          0.35
+        ],
+        "wheel_rr": [
+          -1.35,
+          0.875,
+          0.35
+        ],
+        "wheel_rl": [
+          -1.35,
+          -0.875,
+          0.35
+        ]
+      },
+      "observedWheelbaseMeters": 2.7,
+      "asset": "public/models/selected/lamborghini-aventador-roadster.glb",
+      "assetSha256": "dedbb17524ba8029f8d340a91705b3274bd11ae7306d4359bcd541da63fd9fcf",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    },
+    {
+      "assetType": "full-vehicle-declared",
+      "status": "REVIEW_REQUIRED",
+      "observedBoundsMeters": {
+        "length": 4.666,
+        "width": 2.313,
+        "height": 1.283
+      },
+      "referenceDimensionsMeters": {
+        "length": 4.604,
+        "width": 2.023,
+        "height": 1.28,
+        "wheelbase": 2.635
+      },
+      "differencesPercent": {
+        "length": 1.35,
+        "width": 14.34,
+        "height": 0.23
+      },
+      "meshCount": 25,
+      "approximateTriangleCount": 33564,
+      "materialNames": [
+        "accent",
+        "amber",
+        "carbon_trim",
+        "chrome",
+        "disc",
+        "glass",
+        "headlight",
+        "paint",
+        "rim",
+        "rubber",
+        "taillight",
+        "white"
+      ],
+      "warnings": [
+        "Visual resemblance cannot be determined from bounding boxes.",
+        "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+        "Full-vehicle dimensions exceed the preliminary tolerance.",
+        "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+      ],
+      "visualFidelityScore": null,
+      "approvedForProduction": false,
+      "vehicleId": "mercedes-amg-gt-black-series",
+      "dimensionSource": "https://static.oneweb.mercedes-benz.com/css-oom-assets/en-bd/pdf/mercedes-amg-gt-black-series-2020-june-r190-audio20-owners-manual-1.pdf",
+      "wheelCentersMeters": {
+        "wheel_fr": [
+          1.3175,
+          0.8715,
+          0.35
+        ],
+        "wheel_fl": [
+          1.3175,
+          -0.8715,
+          0.35
+        ],
+        "wheel_rr": [
+          -1.3175,
+          0.8715,
+          0.35
+        ],
+        "wheel_rl": [
+          -1.3175,
+          -0.8715,
+          0.35
+        ]
+      },
+      "observedWheelbaseMeters": 2.635,
+      "asset": "public/models/selected/mercedes-amg-gt-black-series.glb",
+      "assetSha256": "32e8259fda3c8652e62c812903fc06d5838abf7f878b36c5b7f2279aa7ea484e",
+      "blenderVersion": "4.3.2",
+      "renderEngine": "BLENDER_WORKBENCH",
+      "reviewImages": [
+        "front.png",
+        "rear.png",
+        "left.png",
+        "right.png",
+        "front34.png",
+        "rear34.png"
+      ]
+    }
+  ]
+}

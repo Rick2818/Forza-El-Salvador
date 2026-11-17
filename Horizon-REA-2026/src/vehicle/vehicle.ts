@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { createCarVisual, type CarVisual, BODY_CENTER_Y } from "./carModel";
 import { SETTINGS } from "../core/settings";
 import { damp, clamp } from "../core/mathx";
+import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
   ENGINE_REDLINE_RPM,
@@ -36,6 +37,7 @@ export interface VehicleOptions {
   accentColor: number;
   number: number;
   isPlayer?: boolean;
+  vehicleId?: string;
 }
 
 export class Vehicle {
@@ -52,9 +54,18 @@ export class Vehicle {
   controls: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
   private wheelFriction: number[] = [];
   private smoothedGrip = 1;
+  readonly vehicleId: string | undefined;
+  readonly electric: boolean;
+  private readonly wheelMounts: typeof WHEELS;
+  private readonly tuning;
 
   constructor(world: RAPIER.World, scene: THREE.Scene, opts: VehicleOptions) {
-    this.visual = createCarVisual(opts);
+    this.vehicleId = opts.vehicleId;
+    const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
+    this.electric = design?.powertrain === "electric";
+    this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
+    this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
+    this.visual = opts.vehicleId ? createSelectedVisual(opts.vehicleId) : createCarVisual(opts);
     this.isPlayer = opts.isPlayer ?? false;
     scene.add(this.visual.root);
 
@@ -68,9 +79,9 @@ export class Vehicle {
         .setAdditionalSolverIterations(4)
     );
     world.createCollider(
-      RAPIER.ColliderDesc.cuboid(0.95, 0.3, 2.1)
+      RAPIER.ColliderDesc.cuboid(design ? design.width / 2 - .04 : .95, .3, design ? design.length / 2 - .12 : 2.1)
         .setTranslation(0, 0.08, 0)
-        .setDensity(SETTINGS.physics.chassisMassDensity)
+        .setDensity(SETTINGS.physics.chassisMassDensity * this.tuning.mass)
         .setFriction(0.35)
         .setRestitution(0.05),
       this.body
@@ -80,21 +91,21 @@ export class Vehicle {
     this.controller.indexUpAxis = 1;
     this.controller.setIndexForwardAxis = 2;
 
-    for (let i = 0; i < WHEELS.length; i++) {
-      const w = WHEELS[i];
+    for (let i = 0; i < this.wheelMounts.length; i++) {
+      const w = this.wheelMounts[i];
       this.controller.addWheel(
         { x: w.x, y: w.y, z: w.z },
         { x: 0, y: -1, z: 0 },
         { x: -1, y: 0, z: 0 },
         SETTINGS.physics.suspensionRest,
-        0.36
+        design?.wheelRadius ?? .36
       );
       this.controller.setWheelSuspensionStiffness(i, SETTINGS.physics.suspensionStiffness);
       this.controller.setWheelSuspensionCompression(i, SETTINGS.physics.suspensionCompression);
       this.controller.setWheelSuspensionRelaxation(i, SETTINGS.physics.suspensionRelaxation);
       this.controller.setWheelMaxSuspensionTravel(i, SETTINGS.physics.maxSuspensionTravel);
       this.controller.setWheelMaxSuspensionForce(i, 15000);
-      const slip = w.front ? SETTINGS.physics.frictionSlipFront : SETTINGS.physics.frictionSlipRear;
+      const slip = (w.front ? SETTINGS.physics.frictionSlipFront : SETTINGS.physics.frictionSlipRear) * this.tuning.grip;
       this.wheelFriction.push(slip);
       this.controller.setWheelFrictionSlip(i, slip);
       this.controller.setWheelSideFrictionStiffness(i, SETTINGS.physics.sideFrictionStiffness);
@@ -136,8 +147,8 @@ export class Vehicle {
     const absSpeed = Math.abs(speed);
 
     // Automatic gearbox with hysteresis driven by the analytic torque curve.
-    const targetGear = gearForSpeed(absSpeed);
-    if (absSpeed < 0.7) this.gear = 0;
+    const targetGear = this.electric ? 0 : gearForSpeed(absSpeed);
+    if (this.electric || absSpeed < .7) this.gear = 0;
     else if (targetGear > this.gear && this.rpm > 6800) this.gear++;
     else if (targetGear < this.gear && this.rpm < 2750) this.gear--;
 
@@ -151,10 +162,12 @@ export class Vehicle {
     const brake = this.controls.brake;
 
     let engineForce = 0;
-    if (throttle > 0.01 && absSpeed < p.topSpeed) {
-      const total = wheelForce(absSpeed, throttle, this.gear, this.rpm) * 0.5;
-      const limiter = 1 - Math.pow(clamp(absSpeed / p.topSpeed, 0, 1), 3) * 0.55;
-      engineForce = Math.min(total * limiter * grip, p.maxEngineForce);
+    if (throttle > 0.01 && absSpeed < this.tuning.topSpeed) {
+      const total = this.electric
+        ? throttle * p.maxEngineForce * this.tuning.power
+        : wheelForce(absSpeed, throttle, this.gear, this.rpm) * .5 * this.tuning.power;
+      const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .55;
+      engineForce = Math.min(total * limiter * grip, p.maxEngineForce * this.tuning.power);
     }
     let reverseForce = 0;
     if (brake > 0.05 && speed < 0.6) {
@@ -182,8 +195,8 @@ export class Vehicle {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
     }
 
-    for (let i = 0; i < WHEELS.length; i++) {
-      const w = WHEELS[i];
+    for (let i = 0; i < this.wheelMounts.length; i++) {
+      const w = this.wheelMounts[i];
       this.controller.setWheelEngineForce(i, 0);
 
       let braking = 0;
@@ -229,7 +242,7 @@ export class Vehicle {
     this.smoothedGrip = damp(this.smoothedGrip, grip, 6, dt);
     this.onTrack = grip > 0.72;
 
-    this.steerAngle = damp(this.steerAngle, steeringAngleAt(this.speed, input.steer, 0.52), 11, dt);
+    this.steerAngle = damp(this.steerAngle, steeringAngleAt(this.speed, input.steer, this.tuning.steer), 11, dt);
     this.applyForces(dt, this.smoothedGrip);
 
     // Stability guard: a kerb strike or a hard landing must not send the car
@@ -264,7 +277,7 @@ export class Vehicle {
       const suspension = this.controller.wheelSuspensionLength(i);
       const rotation = this.controller.wheelRotation(i);
       const steering = this.controller.wheelSteering(i);
-      wheel.steer.position.y = WHEELS[i].y - (suspension ?? SETTINGS.physics.suspensionRest);
+      wheel.steer.position.y = this.wheelMounts[i].y - (suspension ?? SETTINGS.physics.suspensionRest);
       wheel.steer.rotation.y = steering ?? 0;
       wheel.spin.rotation.x = rotation ?? 0;
     }
@@ -290,5 +303,12 @@ export class Vehicle {
   get velocity(): THREE.Vector3 {
     const v = this.body.linvel();
     return _v.set(v.x, v.y, v.z);
+  }
+
+  dispose(world: RAPIER.World): void {
+    world.removeVehicleController(this.controller);
+    world.removeRigidBody(this.body);
+    if (this.vehicleId) disposeSelectedVisual(this.visual);
+    else this.visual.root.removeFromParent();
   }
 }

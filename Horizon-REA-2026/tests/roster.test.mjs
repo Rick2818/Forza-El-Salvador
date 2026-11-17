@@ -26,14 +26,16 @@ describe("selected vehicle references", () => {
     }
   });
 
-  it("shows all seven references without offering unfinished cars for racing", () => {
-    const html = garageMarkup();
+  it("offers seven explicitly experimental models with the selected one marked", () => {
+    const html = garageMarkup("ferrari-california-t");
     expect(new Set(SELECTED_VEHICLES.map((car) => car.id)).size).toBe(7);
     for (const car of SELECTED_VEHICLES) {
       expect(html).toContain(`data-vehicle-id="${car.id}"`);
-      expect(car.modelUrl).toBeNull();
+      expect(existsSync(new URL(`../public/${car.modelUrl}`, import.meta.url))).toBe(true);
     }
-    expect(html.match(/Modelo 3D pendiente/g)).toHaveLength(7);
+    expect(html.match(/Prototipo 3D · en revisión/g)).toHaveLength(7);
+    expect(html.match(/data-action="select-vehicle"/g)).toHaveLength(7);
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toContain("Fotografía pendiente");
     expect(html).not.toContain('data-action="start"');
   });

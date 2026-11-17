@@ -186,7 +186,7 @@ export class HUD {
       this.lastSpeed = speed;
     }
 
-    const gear = vehicle.speed < -0.5 ? "R" : vehicle.speed < 0.4 ? "N" : String(vehicle.gear + 1);
+    const gear = vehicle.speed < -0.5 ? "R" : vehicle.speed < 0.4 ? "N" : vehicle.electric ? "D" : String(vehicle.gear + 1);
     if (this.gearEl.textContent !== gear) this.gearEl.textContent = gear;
 
     if (this.toastTimer > 0) {

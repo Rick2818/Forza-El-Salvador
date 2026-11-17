@@ -15,6 +15,13 @@ export class GameAudio {
   private skidGain: GainNode | null = null;
   private muted = false;
   private started = false;
+  private electric = false;
+
+  setElectric(on: boolean): void {
+    this.electric = on;
+    if (this.oscA) this.oscA.type = on ? "sine" : "sawtooth";
+    if (this.oscB) this.oscB.type = on ? "triangle" : "square";
+  }
 
   get isMuted(): boolean {
     return this.muted;
@@ -106,14 +113,14 @@ export class GameAudio {
     const rev = Math.min(1, Math.max(0, rpm / 8000));
 
     // Firing frequency rises with rpm and speed, never fully silent at idle.
-    const base = 48 + rev * 150 + speed * 40;
+    const base = this.electric ? 90 + speed * 520 : 48 + rev * 150 + speed * 40;
     if (this.oscA) this.oscA.frequency.setTargetAtTime(base, now, 0.06);
     if (this.oscB) this.oscB.frequency.setTargetAtTime(base * 0.5, now, 0.06);
     if (this.engineFilter) {
       this.engineFilter.frequency.setTargetAtTime(500 + rev * 2600 + t * 900, now, 0.08);
     }
     if (this.engineGain) {
-      const level = 0.10 + t * 0.20 + rev * 0.14;
+      const level = this.electric ? (t * .08 + speed * .035) : .10 + t * .20 + rev * .14;
       this.engineGain.gain.setTargetAtTime(level, now, 0.09);
     }
     if (this.skidGain) {

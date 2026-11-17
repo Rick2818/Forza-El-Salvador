@@ -1,0 +1,79 @@
+{
+  "assetType": "full-vehicle-declared",
+  "status": "REVIEW_REQUIRED",
+  "observedBoundsMeters": {
+    "length": 4.807,
+    "width": 2.32,
+    "height": 1.136
+  },
+  "referenceDimensionsMeters": {
+    "length": 4.797,
+    "width": 2.03,
+    "height": 1.136,
+    "wheelbase": 2.7
+  },
+  "differencesPercent": {
+    "length": 0.21,
+    "width": 14.29,
+    "height": 0.0
+  },
+  "meshCount": 23,
+  "approximateTriangleCount": 30652,
+  "materialNames": [
+    "accent",
+    "carbon_trim",
+    "disc",
+    "glass",
+    "headlight",
+    "leather",
+    "paint",
+    "rim",
+    "rubber",
+    "taillight"
+  ],
+  "warnings": [
+    "Visual resemblance cannot be determined from bounding boxes.",
+    "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+    "Full-vehicle dimensions exceed the preliminary tolerance.",
+    "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+  ],
+  "visualFidelityScore": null,
+  "approvedForProduction": false,
+  "vehicleId": "lamborghini-aventador-roadster",
+  "dimensionSource": "https://www.lamborghini.com/en-en/history/aventador-s-roadster",
+  "wheelCentersMeters": {
+    "wheel_fr": [
+      1.35,
+      0.875,
+      0.35
+    ],
+    "wheel_fl": [
+      1.35,
+      -0.875,
+      0.35
+    ],
+    "wheel_rr": [
+      -1.35,
+      0.875,
+      0.35
+    ],
+    "wheel_rl": [
+      -1.35,
+      -0.875,
+      0.35
+    ]
+  },
+  "observedWheelbaseMeters": 2.7,
+  "asset": "public/models/selected/lamborghini-aventador-roadster.glb",
+  "assetSha256": "dedbb17524ba8029f8d340a91705b3274bd11ae7306d4359bcd541da63fd9fcf",
+  "blenderVersion": "4.3.2",
+  "renderEngine": "BLENDER_WORKBENCH",
+  "reviewImages": [
+    "front.png",
+    "rear.png",
+    "left.png",
+    "right.png",
+    "front34.png",
+    "rear34.png"
+  ]
+}

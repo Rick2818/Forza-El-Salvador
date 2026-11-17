@@ -5,6 +5,7 @@ import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver } from "../vehicle/ai";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
+import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS } from "../vehicle/selectedAsset";
 
 export type Difficulty = "facil" | "normal" | "dificil";
 export type RaceState = "idle" | "countdown" | "racing" | "finished";
@@ -70,13 +71,15 @@ export class Race {
   constructor(
     private readonly world: RAPIER.World,
     scene: THREE.Scene,
-    readonly track: Track
+    readonly track: Track,
+    readonly vehicleId: string = DEFAULT_SELECTED_ID
   ) {
     const playerVehicle = new Vehicle(this.world, scene, {
       paintColor: 0xff3d00,
       accentColor: 0xffc400,
       number: 7,
-      isPlayer: true
+      isPlayer: true,
+      vehicleId
     });
     this.player = this.makeRacer(playerVehicle, "TÚ", true, 1);
 
@@ -99,10 +102,12 @@ export class Race {
     for (const entry of layout) {
       if (entry.racer === this.player) continue;
       const cfg = ROSTER[rivals.length];
+      const opponent = VEHICLE_DESIGNS.filter((d) => d.id !== vehicleId)[rivals.length];
       const vehicle = new Vehicle(this.world, scene, {
         paintColor: cfg.paint,
         accentColor: cfg.accent,
-        number: 12 + rivals.length * 7
+        number: 12 + rivals.length * 7,
+        vehicleId: opponent.id
       });
       const racer = this.makeRacer(vehicle, cfg.name, false, 2 + rivals.length);
       racer.ai = new AIDriver(vehicle, this.track, cfg.lane, cfg.skill, rivals.length * 1.9);
@@ -123,6 +128,10 @@ export class Race {
       racer.progress = this.track.progress(index);
       racer.lastProgress = racer.progress;
     });
+  }
+
+  dispose(): void {
+    for (const racer of this.racers) racer.vehicle.dispose(this.world);
   }
 
   private makeRacer(vehicle: Vehicle, name: string, isPlayer: boolean, id: number): Racer {

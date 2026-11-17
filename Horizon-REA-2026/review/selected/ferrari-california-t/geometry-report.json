@@ -1,0 +1,79 @@
+{
+  "assetType": "full-vehicle-declared",
+  "status": "REVIEW_REQUIRED",
+  "observedBoundsMeters": {
+    "length": 4.608,
+    "width": 2.2,
+    "height": 1.325
+  },
+  "referenceDimensionsMeters": {
+    "length": 4.57,
+    "width": 1.91,
+    "height": 1.322,
+    "wheelbase": 2.67
+  },
+  "differencesPercent": {
+    "length": 0.83,
+    "width": 15.18,
+    "height": 0.23
+  },
+  "meshCount": 23,
+  "approximateTriangleCount": 35750,
+  "materialNames": [
+    "accent",
+    "carbon_trim",
+    "chrome",
+    "disc",
+    "glass",
+    "headlight",
+    "paint",
+    "rim",
+    "rubber",
+    "taillight"
+  ],
+  "warnings": [
+    "Visual resemblance cannot be determined from bounding boxes.",
+    "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+    "Full-vehicle dimensions exceed the preliminary tolerance.",
+    "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+  ],
+  "visualFidelityScore": null,
+  "approvedForProduction": false,
+  "vehicleId": "ferrari-california-t",
+  "dimensionSource": "https://pictures.dealer.com/ferrariofsanantonio/709e4f720a0e0acb0c353895914fc451.pdf",
+  "wheelCentersMeters": {
+    "wheel_fr": [
+      1.335,
+      0.815,
+      0.345
+    ],
+    "wheel_fl": [
+      1.335,
+      -0.815,
+      0.345
+    ],
+    "wheel_rr": [
+      -1.335,
+      0.815,
+      0.345
+    ],
+    "wheel_rl": [
+      -1.335,
+      -0.815,
+      0.345
+    ]
+  },
+  "observedWheelbaseMeters": 2.67,
+  "asset": "public/models/selected/ferrari-california-t.glb",
+  "assetSha256": "ed662d26449cb63ff4382cc5905511c74a237a5ccca4f3a094fff269ae9b1832",
+  "blenderVersion": "4.3.2",
+  "renderEngine": "BLENDER_WORKBENCH",
+  "reviewImages": [
+    "front.png",
+    "rear.png",
+    "left.png",
+    "right.png",
+    "front34.png",
+    "rear34.png"
+  ]
+}

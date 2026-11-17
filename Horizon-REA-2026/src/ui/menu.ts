@@ -10,6 +10,7 @@ export interface MenuCallbacks {
   onRestart: () => void;
   onQuit: () => void;
   onToggleQuality: () => void;
+  onSelectVehicle: (id: string) => Promise<void>;
 }
 
 const CONTROLS = `
@@ -32,6 +33,9 @@ export class Menu {
   private qualityLabel = "ALTA";
   private visible = false;
   private trackLengthKm = 0;
+  private selectedId = "ferrari-california-t";
+  private garageOpen = false;
+  private selecting = false;
 
   constructor(root: HTMLElement, callbacks: MenuCallbacks) {
     this.callbacks = callbacks;
@@ -52,13 +56,41 @@ export class Menu {
     if (action === "quality") this.callbacks.onToggleQuality();
     if (action === "garage") this.showGarage();
     if (action === "back") this.showStart(this.trackLengthKm);
+    if (action === "select-vehicle" && target.dataset.vehicleId) void this.selectVehicle(target.dataset.vehicleId);
   };
+
+  private async selectVehicle(id: string): Promise<void> {
+    if (this.selecting) return;
+    this.selecting = true;
+    const status = this.overlay.querySelector<HTMLElement>("#garage-status");
+    if (status) status.textContent = "Cargando modelo…";
+    for (const button of this.overlay.querySelectorAll<HTMLButtonElement>(".vehicle-select")) button.disabled = true;
+    try {
+      await this.callbacks.onSelectVehicle(id);
+      this.selectedId = id;
+      if (this.garageOpen) {
+        this.showGarage();
+        this.overlay.querySelector<HTMLButtonElement>(`button[data-vehicle-id="${id}"]`)?.focus();
+        const live = this.overlay.querySelector<HTMLElement>("#garage-status");
+        if (live) live.textContent = "Vehículo seleccionado. Vuelve al menú para iniciar la carrera.";
+      }
+    } catch {
+      if (status) status.textContent = "No se pudo cargar ese modelo. Conservamos tu selección anterior; vuelve a intentarlo.";
+    } finally {
+      this.selecting = false;
+      for (const button of this.overlay.querySelectorAll<HTMLButtonElement>(".vehicle-select")) button.disabled = false;
+    }
+  }
+
+  get isGarageOpen(): boolean { return this.garageOpen; }
+  setSelectedVehicle(id: string): void { this.selectedId = id; }
 
   get isVisible(): boolean {
     return this.visible;
   }
 
   hide(): void {
+    this.garageOpen = false;
     this.overlay.classList.add("hidden");
     this.visible = false;
   }
@@ -70,6 +102,7 @@ export class Menu {
   }
 
   showStart(trackLengthKm: number): void {
+    this.garageOpen = false;
     this.trackLengthKm = trackLengthKm;
     this.overlay.innerHTML = `
       <div class="menu-card">
@@ -78,9 +111,9 @@ export class Menu {
         <p class="sub">
           Carreras 3D en tiempo real directamente en Chrome. Circuito original
           de ${trackLengthKm.toFixed(2)} km, cuatro coches en pista, física de
-          suspensión y neumáticos sobre Rapier, y un motor V8 atmosférico modelado
-          con curvas de par propias.
+          suspensión y neumáticos sobre Rapier y modelos 3D de prueba seleccionables.
         </p>
+        <p class="sub">Vehículo: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong> · prototipo en revisión.</p>
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
@@ -93,9 +126,9 @@ export class Menu {
           </div>
           <div class="spec-list">
             <div class="brand" style="margin-bottom:2px">Ficha técnica</div>
-            <div class="spec"><span>Motor</span><b>V8 5.2L · 520 Nm</b></div>
-            <div class="spec"><span>Transmisión</span><b>6 marchas · RWD</b></div>
-            <div class="spec"><span>Masa</span><b>≈1.330 kg</b></div>
+            <div class="spec"><span>Conducción</span><b>Ajuste experimental</b></div>
+            <div class="spec"><span>Modelos</span><b>7 prototipos 3D</b></div>
+            <div class="spec"><span>Fidelidad visual</span><b>En revisión</b></div>
             <div class="spec"><span>Vueltas</span><b>3</b></div>
             <div class="spec"><span>Rivales IA</span><b>3</b></div>
             <div class="spec"><span>Física</span><b>Rapier 0.21</b></div>
@@ -116,9 +149,10 @@ export class Menu {
   }
 
   private showGarage(): void {
+    this.garageOpen = true;
     this.overlay.innerHTML = `<div class="menu-card garage-card">
       <button class="btn ghost garage-back" data-action="back">← Volver al menú</button>
-      ${garageMarkup()}
+      ${garageMarkup(this.selectedId)}
     </div>`;
     this.overlay.classList.remove("hidden");
     this.visible = true;

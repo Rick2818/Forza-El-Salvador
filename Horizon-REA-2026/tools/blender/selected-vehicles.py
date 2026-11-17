@@ -1,0 +1,408 @@
+"""Build seven editable, reference-guided driving prototypes, not certified replicas.
+
+blender -b -t 2 --python tools/blender/selected-vehicles.py -- [--only ID]
+Shared source of geometry/physics dimensions: src/vehicle/vehicle-designs.json.
+Coordinates: Blender X = forward, Y = right, Z = up. Wheel pivot names are
+part of the runtime contract. No wheels or accessories are supplied at runtime.
+"""
+import argparse
+import json
+import math
+import os
+import sys
+from pathlib import Path
+
+import bpy
+import bmesh
+from mathutils import Vector
+
+ROOT = Path(__file__).resolve().parents[2]
+DESIGNS = json.loads((ROOT / 'src/vehicle/vehicle-designs.json').read_text())
+
+
+def material(name, color, metal=0, rough=.35, glow=0):
+    m = bpy.data.materials.new(name)
+    m.diffuse_color = (*color, 1)
+    m.use_nodes = True
+    bs = m.node_tree.nodes.get('Principled BSDF')
+    bs.inputs['Base Color'].default_value = (*color, 1)
+    bs.inputs['Metallic'].default_value = metal
+    bs.inputs['Roughness'].default_value = rough
+    if glow:
+        bs.inputs['Emission Color'].default_value = (*color, 1)
+        bs.inputs['Emission Strength'].default_value = glow
+    if name == 'paint':
+        bs.inputs['Coat Weight'].default_value = .9
+        bs.inputs['Coat Roughness'].default_value = .1
+    return m
+
+
+def color(hex_value):
+    # Convert photographed finish swatches (sRGB) to Blender's linear values.
+    srgb = [int(hex_value[i:i+2], 16) / 255 for i in (1, 3, 5)]
+    return tuple(c / 12.92 if c <= .04045 else ((c+.055)/1.055)**2.4 for c in srgb)
+
+
+def mesh(name, vertices, faces, mat, smooth=True):
+    data = bpy.data.meshes.new(name)
+    data.from_pydata(vertices, [], faces)
+    data.update()
+    bm = bmesh.new(); bm.from_mesh(data)
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    bm.to_mesh(data); bm.free()
+    obj = bpy.data.objects.new(name, data)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(mat)
+    for poly in data.polygons: poly.use_smooth = smooth
+    return obj
+
+
+def box(name, loc, size, mat, bevel=.015):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    o = bpy.context.object; o.name = name
+    o.dimensions = size
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    o.data.materials.append(mat)
+    if bevel:
+        mod = o.modifiers.new('Edge radii', 'BEVEL'); mod.width = bevel; mod.segments = 2
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    return o
+
+
+def tube(name, points, radius, mat, cyclic=False):
+    curve = bpy.data.curves.new(name, 'CURVE'); curve.dimensions = '3D'
+    curve.bevel_depth = radius; curve.bevel_resolution = 2
+    line = curve.splines.new('POLY'); line.points.add(len(points)-1)
+    for p, co in zip(line.points, points): p.co = (*co, 1)
+    line.use_cyclic_u = cyclic
+    o = bpy.data.objects.new(name, curve); bpy.context.collection.objects.link(o)
+    o.data.materials.append(mat)
+    return o
+
+
+def panel(name, points, mat):
+    return mesh(name, points, [tuple(range(len(points)))], mat, False)
+
+
+def catmull(a,b,c,d,t):
+    return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)
+
+
+def round_ring(ring, steps=3):
+    out=[];n=len(ring)
+    for j in range(n):
+        a,b,c,d=[ring[k%n] for k in (j-1,j,j+1,j+2)]
+        for i in range(steps):
+            out.append(tuple(catmull(a[k],b[k],c[k],d[k],i/steps) for k in range(3)))
+    return out
+
+
+def ellipse(name, center, rx, ry, mat, plane='YZ', radius=.012):
+    pts=[]
+    for i in range(49):
+        a=i*math.tau/48
+        if plane == 'YZ': p=(center[0], center[1]+rx*math.cos(a), center[2]+ry*math.sin(a))
+        elif plane == 'XY': p=(center[0]+rx*math.cos(a), center[1]+ry*math.sin(a), center[2])
+        else: p=(center[0]+rx*math.cos(a), center[1], center[2]+ry*math.sin(a))
+        pts.append(p)
+    return tube(name, pts, radius, mat)
+
+
+def body(d, mats):
+    L, W = d['length'], d['width']/2
+    # Distinct longitudinal surfaces, not recolored copies of the old hypercar.
+    profiles={
+      'ferrari': [(-.5,.70,.66),(-.45,.92,.82),(-.32,1,.86),(-.15,.97,.82),(.07,.95,.79),(.28,1,.81),(.42,.93,.70),(.5,.70,.58)],
+      'u9': [(-.5,.78,.70),(-.43,.99,.84),(-.29,1,.86),(-.06,.94,.77),(.16,.95,.77),(.30,1,.81),(.43,.96,.64),(.5,.72,.49)],
+      'jesko': [(-.5,.69,.67),(-.43,.94,.81),(-.30,1,.85),(-.10,.89,.71),(.14,.93,.69),(.29,1,.78),(.43,.89,.56),(.5,.54,.39)],
+      'chiron': [(-.5,.70,.73),(-.44,.94,.84),(-.30,1,.87),(-.1,.98,.76),(.14,.95,.72),(.3,1,.78),(.44,.92,.64),(.5,.76,.54)],
+      'porsche': [(-.5,.77,.65),(-.43,.94,.78),(-.28,1,.85),(-.10,.95,.78),(.12,.91,.73),(.29,.98,.79),(.42,.91,.75),(.5,.72,.49)],
+      'aventador': [(-.5,.81,.65),(-.44,.98,.80),(-.29,1,.82),(-.10,.92,.71),(.15,.92,.65),(.29,1,.78),(.43,.90,.51),(.5,.72,.39)],
+      'amg': [(-.5,.70,.64),(-.44,.95,.82),(-.29,1,.87),(-.10,.94,.77),(.12,.94,.76),(.29,.98,.80),(.44,.94,.68),(.5,.78,.58)]
+    }
+    profile=profiles[d['style']]
+    rings=[]
+    for x,w,h in profile:
+        floor=.15
+        rings.append([(x*L, -w*W*.82, floor),(x*L,-w*W,floor+.19),
+          (x*L,-w*W,h-.06),(x*L,-w*W*.89,h),
+          (x*L,-w*W*.60,h-.020),(x*L,0,h-.025),
+          (x*L,w*W*.60,h-.020),(x*L,w*W*.89,h),
+          (x*L,w*W,h-.06),(x*L,w*W,floor+.19),(x*L,w*W*.82,floor)])
+    # Subdivide the loft along its length for smooth fenders and arch cuts.
+    dense=[]
+    for j,(a,b) in enumerate(zip(rings,rings[1:])):
+        for i in range(5):
+            t=i/5
+            prev=rings[max(0,j-1)];nxt=rings[min(len(rings)-1,j+2)]
+            ring=[tuple(p[k]*(1-t)+q[k]*t if k==0 else catmull(prev[v][k],p[k],q[k],nxt[v][k],t)
+                for k in range(3)) for v,(p,q) in enumerate(zip(a,b))]
+            dense.append(round_ring(ring))
+    dense.append(round_ring(rings[-1])); n=len(dense[0])
+    verts=[p for r in dense for p in r]
+    faces=[(i*n+k,i*n+(k+1)%n,(i+1)*n+(k+1)%n,(i+1)*n+k)
+      for i in range(len(dense)-1) for k in range(n)]
+    faces.extend([tuple(range(n-1,-1,-1)),tuple((len(dense)-1)*n+k for k in range(n))])
+    obj=mesh('coachwork',verts,faces,mats['paint'])
+    for x in [-d['wheelbase']/2,d['wheelbase']/2]:
+        for s in [-1,1]:
+            bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=d['wheelRadius']+.032,
+              depth=.64, location=(x,s*d['track']/2,d['wheelRadius']),rotation=(math.pi/2,0,0))
+            cutter=bpy.context.object
+            bpy.context.view_layer.objects.active=obj
+            mod=obj.modifiers.new('Open wheel arch','BOOLEAN'); mod.operation='DIFFERENCE'; mod.object=cutter
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+            bpy.data.objects.remove(cutter,do_unlink=True)
+    bpy.context.view_layer.objects.active=obj
+    bevel=obj.modifiers.new('Coachwork edge radii','BEVEL'); bevel.width=.012; bevel.segments=2
+    bpy.ops.object.modifier_apply(modifier=bevel.name)
+    # Planar UVs make the packed carbon pattern usable in glTF as well as Blender.
+    uv=obj.data.uv_layers.new(name='UVMap')
+    for poly in obj.data.polygons:
+        for li in poly.loop_indices:
+            p=obj.data.vertices[obj.data.loops[li].vertex_index].co
+            uv.data[li].uv=(p.x*5,p.y*5+p.z*3)
+    return obj
+
+
+def cabin(d,m):
+    L,W,H=d['length'], d['width']/2, d['height']
+    # Rear glass base, rear roof, front roof, windshield base (longitudinal fractions).
+    poses={'ferrari':(-.31,-.18,-.015,.13),'u9':(-.30,-.15,.075,.22),
+      'jesko':(-.28,-.13,.065,.22),'chiron':(-.29,-.14,.065,.22),
+      'porsche':(-.39,-.17,.045,.20),'aventador':(-.28,-.13,.04,.21),
+      'amg':(-.38,-.25,-.095,.055)}
+    rear,rb,rf,front=poses[d['style']]
+    belt=.77 if d['style']!='aventador' else .70
+    wid=W*.74
+    def arch(x,top,w):
+        return [(x*L,-w,belt),(x*L,-w*.97,top-.14),
+          (x*L,-w*.70,top-.035),(x*L,0,top),(x*L,w*.70,top-.035),
+          (x*L,w*.97,top-.14),(x*L,w,belt)]
+    rings=[arch(rear,belt+.035,wid*.94),arch(rb,H-.018,wid),
+      arch((rb+rf)/2,H,wid),arch(rf,H-.025,wid*.96),arch(front,belt+.035,wid*.91)]
+    if d['style']=='aventador':
+        # Windshield only; the cockpit remains open.
+        rings=rings[-2:]
+    n=7
+    mesh('glazing',[p for r in rings for p in r],
+      [(j*n+i,j*n+i+1,(j+1)*n+i+1,(j+1)*n+i) for j in range(len(rings)-1) for i in range(n-1)],m['glass'])
+    for side in [-1,1]:
+        tube('A pillar',[(front*L,side*wid*.91,belt),(rf*L,side*wid*.93,H-.14),
+          (rf*L,side*wid*.70,H-.035)],.022,m['paint'])
+        if d['style']!='aventador':
+            tube('Window frame',[(front*L,side*wid*.92,belt),
+              (rf*L,side*wid*.97,H-.14),(rb*L,side*wid,H-.14),
+              (rear*L,side*wid*.94,belt)],.018,m['paint'])
+            tube('Window sill',[(rear*L,side*wid,belt),(front*L,side*wid*.92,belt)],.012,m['trim'])
+    if d['style']!='aventador':
+        roof=[arch(x,top,w)[2:5] for x,top,w in [(rb,H-.010,wid),( (rb+rf)/2,H+.003,wid),(rf,H-.018,wid*.96)]]
+        mesh('roof',[p for r in roof for p in r],[(j*3+i,j*3+i+1,(j+1)*3+i+1,(j+1)*3+i) for j in range(2) for i in range(2)],m['trim'] if d['style'] in ('u9','amg') else m['paint'])
+    else:
+        box('Open cockpit',(L*(-.065),0,.74),(L*.29,W*1.37,.025),m['trim'])
+        for s in [-1,1]:
+            box('Seat cushion',(-.30,s*.36,.77),(.4,.35,.12),m['leather'],.05)
+            back=box('Seat back',(-.58,s*.36,.9),(.12,.36,.38),m['leather'],.05)
+            back.rotation_euler.y=-.15
+        tube('Windshield upper rail',[(rf*L,-wid*.7,H-.045),(rf*L,0,H-.027),(rf*L,wid*.7,H-.045)],.027,m['paint'])
+    # Door seams, handles, mirror stems and mirror housings.
+    for s in [-1,1]:
+        y=s*(W*.965)
+        tube('Door shut line',[(front*L,y,.73),(.10*L,y,.36),(-.20*L,y,.27),(-.24*L,y,.72)],.0035,m['trim'])
+        box('Door handle',(-.12*L,y+s*.012,.72),(.12,.018,.025),m['accent'],.008)
+        tube('Mirror stem',[(front*L-.06,s*wid,.79),(front*L-.02,s*(W+.025),.88)],.015,m['trim'])
+        box('Mirror',(front*L-.04,s*(W+.07),.90),(.19,.15,.085),m['paint'],.034)
+
+
+def wheels(d,m):
+    for end,x in [('f',d['wheelbase']/2),('r',-d['wheelbase']/2)]:
+        for side,s in [('r',1),('l',-1)]:
+            pivot=bpy.data.objects.new('wheel_'+end+side,None)
+            bpy.context.collection.objects.link(pivot)
+            pivot.location=(x,s*d['track']/2,d['wheelRadius'])
+            parts=[]
+            R=d['wheelRadius']
+            bpy.ops.mesh.primitive_torus_add(major_segments=40,minor_segments=12,
+              major_radius=R-.065,minor_radius=.065,rotation=(math.pi/2,0,0))
+            tire=bpy.context.object; tire.name='tire'; tire.scale.z=1.6
+            tire.data.materials.append(m['rubber']); parts.append(tire)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=40,radius=R-.105,depth=.22,rotation=(math.pi/2,0,0))
+            hub=bpy.context.object; hub.name='brake_disc'; hub.data.materials.append(m['disc']); parts.append(hub)
+            for outside in [-1,1]:
+                y=outside*.135
+                for radius in [R-.080,R-.110]:
+                    bpy.ops.mesh.primitive_torus_add(major_segments=40,minor_segments=6,
+                      major_radius=radius,minor_radius=.009,location=(0,y,0),rotation=(math.pi/2,0,0))
+                    rim=bpy.context.object; rim.name='rim_lip'; rim.data.materials.append(m['rim']);parts.append(rim)
+                count=5 if d['style'] in ('ferrari','jesko','aventador') else 10
+                for i in range(count):
+                    for twin in ([-.045,.045] if count==5 and d['style']!='jesko' else [0]):
+                        a=i*math.tau/count+twin
+                        spoke=box('Spoke',(.13*math.sin(a),y,.13*math.cos(a)),(.025,.025,.24),m['rim'],.005)
+                        spoke.rotation_euler.y=a;parts.append(spoke)
+                bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=8,radius=.044,location=(0,y,0))
+                center=bpy.context.object;center.name='wheel_lock';center.data.materials.append(m['accent']);parts.append(center)
+            for p in parts: p.parent=pivot
+            for o in parts:
+                for poly in o.data.polygons: poly.use_smooth=True
+            # Calipers do not spin with the wheels.
+            box('Brake caliper',(x+.15,s*(d['track']/2+.10),R+.06),(.07,.05,.20),m['accent'])
+
+
+def details(d,m):
+    L,W,S=d['length']/2,d['width']/2,d['style']
+    # Front and rear carbon undertrays stay inside body width.
+    box('Front splitter',(L-.15,0,.155),(.30,W*1.86,.035),m['trim'])
+    box('Rear diffuser',(-L+.15,0,.16),(.30,W*1.7,.07),m['trim'])
+    for s in [-1,1]:
+        box('Side skirt',(0,s*W*.94,.19),(d['wheelbase']-.65,.10,.06),m['trim'])
+    if S=='ferrari':
+        grille=[(L+.005,-.62,.48),(L+.005,.62,.48),(L+.005,.48,.25),(L+.005,-.48,.25)]
+        panel('Ferrari grille',grille,m['trim']);tube('Grille surround',grille,.012,m['chrome'],True)
+        for yy in [-.4,-.2,0,.2,.4]: tube('Grille bar',[(L+.015,yy,.29),(L+.015,yy,.45)],.005,m['chrome'])
+        for s in [-1,1]:
+            panel('Headlight housing',[(L-.14,s*.54,.59),(L-.46,s*.83,.75),(L-.73,s*.79,.78),(L-.30,s*.60,.64)],m['trim'])
+            tube('headlight',[(L-.15,s*.57,.61),(L-.45,s*.77,.755),(L-.68,s*.77,.79)],.014,m['headlight'])
+            for i in range(5): box('LED element',(L-.26-i*.065,s*(.62+i*.027),.65+i*.022),(.035,.035,.018),m['headlight'],.005)
+            ellipse('taillight',(-L+.015,s*.55,.58),.09,.09,m['taillight'])
+            for yy in [.57,.75]: ellipse('Exhaust',(-L-.006,s*yy,.27),.065,.055,m['chrome'])
+    elif S=='chiron':
+        # Horseshoe grille and four modules on each side.
+        pts=[(L+.01,.27*math.cos(a),.39+.29*math.sin(a)) for a in [i*math.pi/24 for i in range(25)]]
+        pts.extend([(L+.01,-.23,.21),(L+.01,.23,.21)])
+        panel('Horseshoe grille',pts,m['trim']); tube('Horseshoe surround',pts,.018,m['accent'],True)
+        for s in [-1,1]:
+            box('Lamp black surround',(L-.08,s*.67,.60),(.10,.55,.10),m['trim'])
+            for i in range(4):
+                yy=s*(.46+i*.12)
+                tube('headlight',[(L-.018,yy-.037,.57),(L-.018,yy+.037,.57),(L-.018,yy+.037,.64),(L-.018,yy-.037,.64)],.009,m['headlight'],True)
+            # Side C line curves around the door opening and the rear intake.
+            points=[(.45,s*(W*.975),.75),(.05,s*W,.92),(-.50,s*W,1.08),(-.99,s*W,.93),(-1.22,s*W,.66),(-1.1,s*W,.31),(-.6,s*W,.25),(.35,s*W,.28)]
+            tube('Copper C signature',points,.018,m['accent'])
+            panel('Rear side intake',[(-.85,s*(W+.003),.38),(-1.1,s*(W+.003),.82),(-.75,s*(W+.003),.89),(-.5,s*(W+.003),.50)],m['trim'])
+        tube('taillight',[(-L-.005,-W*.8,.68),(-L-.005,W*.8,.68)],.017,m['taillight'])
+    elif S=='porsche':
+        for s in [-1,1]:
+            # Oval lamps lean back with the front fenders rather than sitting on the bumper.
+            c=(L-.42,s*.70,.76)
+            points=[(c[0]+.19*math.cos(a),c[1]+.14*math.sin(a),c[2]-.085*math.cos(a)) for a in [i*math.tau/48 for i in range(48)]]
+            panel('Oval lamp lens',points,m['trim']);tube('headlight',points,.012,m['headlight'],True)
+            for xx,yy in [(-.06,-.05),(-.06,.05),(.06,-.05),(.06,.05)]:
+                box('Four point LED',(c[0]+xx,c[1]+yy,c[2]+.006-xx*.44),(.035,.033,.014),m['headlight'],.005)
+            box('Front side intake',(L-.025,s*.67,.35),(.05,.35,.21),m['trim'])
+            panel('Turbo side intake',[(-.72,s*W,.46),(-.89,s*W,.77),(-.65,s*W,.83),(-.51,s*W,.67)],m['trim'])
+        box('Central cooling',(L+.005,0,.34),(.04,.76,.16),m['trim'])
+        tube('taillight',[(-L+.02,-W*.83,.70),(-L+.02,W*.83,.70)],.016,m['taillight'])
+        box('Rear lip spoiler',(-L+.30,0,.88),(.20,W*1.4,.04),m['paint'])
+    elif S=='amg':
+        panel('Panamericana grille',[(L+.008,-.73,.62),(L+.008,.73,.62),(L+.008,.67,.24),(L+.008,-.67,.24)],m['trim'])
+        for i in range(-6,7): tube('Vertical grille slat',[(L+.022,i*.105,.27),(L+.022,i*.105,.60)],.009,m['chrome'])
+        ellipse('Grille emblem frame',(L+.035,0,.44),.12,.12,m['chrome'])
+        for s in [-1,1]:
+            panel('AMG lamp',[(L-.08,s*.56,.63),(L-.45,s*.88,.74),(L-.48,s*.57,.73)],m['trim'])
+            tube('headlight',[(L-.10,s*.54,.65),(L-.35,s*.81,.74),(L-.43,s*.62,.76)],.014,m['headlight'])
+            box('Hood extraction vent',(.95,s*.45,.77),(.60,.28,.018),m['trim'])
+            box('Safety beacon',(-.55,s*.36,1.24),(.27,.08,.045),m['amber'])
+            box('Front fender louvre',(1.20,s*.85,.80),(.36,.12,.028),m['trim'])
+            tube('taillight',[(-L+.01,s*.3,.68),(-L+.01,s*.79,.68)],.025,m['taillight'])
+        # Readable safety-car text; livery is intentionally a first-pass simplification.
+        text=bpy.data.curves.new('Safety Car label','FONT');text.body='SAFETY CAR';text.align_x='CENTER';text.size=.19;text.extrude=.0003
+        ob=bpy.data.objects.new('Safety Car label',text);bpy.context.collection.objects.link(ob)
+        ob.location=(.65,0,.79);ob.rotation_euler.z=math.pi/2;ob.data.materials.append(m['white'])
+    else:
+        for s in [-1,1]:
+            if S=='aventador':
+                pts=[(L-.22,s*.50,.49),(L-.69,s*.85,.64),(L-.65,s*.54,.62)]
+                panel('Angular headlamp',pts,m['trim'])
+                tube('headlight',[(L-.25,s*.54,.52),(L-.52,s*.64,.60),(L-.60,s*.79,.655)],.012,m['headlight'])
+                tube('Y lamp branch',[(L-.52,s*.64,.60),(L-.60,s*.59,.63)],.012,m['headlight'])
+            elif S=='u9':
+                tube('headlight',[(L-.11,s*.50,.52),(L-.45,s*.80,.68),(L-.72,s*.83,.76)],.015,m['headlight'])
+                tube('U9 lower light signature',[(L-.13,s*.50,.51),(L-.04,s*.63,.29),(L-.19,s*.82,.25)],.014,m['headlight'])
+            else:
+                pts=[(L-.18,s*.43,.43),(L-.56,s*.86,.66),(L-.80,s*.77,.71)]
+                panel('Jesko lamp housing',pts,m['trim']);tube('headlight',pts[:2]+[pts[2]],.012,m['headlight'])
+            panel('Side intake',[(-.35,s*(W*.96),.29),(-.75,s*(W*1.003),.77),(-1.14,s*(W*1.003),.80),(-1.05,s*(W*.97),.32)],m['trim'])
+            panel('Lower front intake',[(L-.02,s*.18,.22),(L-.02,s*.78,.24),(L-.08,s*.75,.40),(L-.02,s*.27,.38)],m['trim'])
+            tube('taillight',[(-L+.01,s*.32,.69),(-L+.01,s*.78,.69)],.020,m['taillight'])
+            if S=='jesko':
+                tube('Golden front lip',[(L-.1,s*.16,.17),(L-.02,s*.55,.18),(L-.24,s*.87,.19)],.012,m['accent'])
+    if d['wing']:
+        z=d['height']-.12 if S=='jesko' else .99
+        for s in [-1,1]:
+            box('Wing upright',(-L+.35,s*.48,(z+.70)/2),(.075,.04,z-.70),m['trim'])
+            box('Wing endplate',(-L+.32,s*W*.91,z+.035),(.40,.025,.15),m['accent'] if S=='jesko' else m['trim'])
+        box('Rear wing',(-L+.32,0,z),(.35,W*1.83,.04),m['trim'])
+    for s in [-1,1]:
+        for i in range(4):
+            box('Diffuser fin',(-L+.16,s*(.22+i*.15),.18),(.32,.018,.14),m['trim'],.004)
+
+
+def build(d):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    mats={
+      'paint':material('paint',color(d['paint']),.45,.22),
+      'accent':material('accent',color(d['accent']),.6,.27),
+      'trim':material('carbon_trim',(.009,.012,.016),.25,.35),
+      'glass':material('glass',(.012,.024,.032),.35,.13),
+      'rubber':material('rubber',(.008,.009,.011),0,.85),
+      'rim':material('rim',(.07,.08,.095) if d['style']!='ferrari' else (.55,.57,.6),.8,.25),
+      'disc':material('disc',(.15,.16,.17),.8,.5),
+      'chrome':material('chrome',(.65,.68,.72),.9,.18),
+      'headlight':material('headlight',(.7,.88,1),.1,.18,3),
+      'taillight':material('taillight',(.8,.006,.008),.2,.2,2),
+      'amber':material('amber',(1,.42,.005),.1,.2,3),
+      'white':material('white',(.9,.9,.9),0,.4),
+      'leather':material('leather',(.035,.025,.02),0,.65)
+    }
+    if d['style']=='jesko':
+        size=128
+        image=bpy.data.images.new('Packed carbon weave',width=size,height=size)
+        pixels=[]
+        for y in range(size):
+            for x in range(size):
+                v=.025 if ((x//8)+(y//8))%2 else .06
+                v*=.8+.2*math.sin((x+y)*math.pi/8)**2
+                pixels.extend([v,v,v*1.04,1])
+        image.pixels=pixels;image.pack()
+        n=mats['paint'].node_tree.nodes.new('ShaderNodeTexImage');n.image=image
+        mats['paint'].node_tree.links.new(n.outputs['Color'],mats['paint'].node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
+    body(d,mats);cabin(d,mats);wheels(d,mats);details(d,mats)
+    for obj in list(bpy.context.scene.objects):
+        if obj.type in ('CURVE','FONT'):
+            bpy.ops.object.select_all(action='DESELECT');obj.select_set(True)
+            bpy.context.view_layer.objects.active=obj;bpy.ops.object.convert(target='MESH')
+        if obj.type=='MESH':
+            mod=obj.modifiers.new('Export triangles','TRIANGULATE')
+            bpy.context.view_layer.objects.active=obj
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+    # Batch draw calls by material, independently for each wheel pivot.
+    # Wheel nodes survive for steering, suspension and spin in Three.js.
+    buckets={}
+    for obj in list(bpy.context.scene.objects):
+        if obj.type=='MESH':
+            key=(obj.parent.name if obj.parent else None,obj.data.materials[0].name)
+            buckets.setdefault(key,[]).append(obj)
+    for (parent,mat),objects in buckets.items():
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in objects: obj.select_set(True)
+        bpy.context.view_layer.objects.active=objects[0]
+        bpy.ops.object.join()
+        bpy.context.object.name=(parent or 'body')+'_'+mat
+    bpy.context.scene['vehicleId']=d['id']
+    bpy.context.scene['status']='PROTOTYPE_REVIEW_REQUIRED'
+    bpy.context.scene['visualFidelityApproved']=False
+    folder=ROOT/'public/models/selected';folder.mkdir(parents=True,exist_ok=True)
+    # Editable source files stay next to the generator rather than in the web bundle.
+    source=ROOT/'tools/blender/selected-sources';source.mkdir(exist_ok=True)
+    bpy.context.preferences.filepaths.save_version=0
+    bpy.ops.wm.save_as_mainfile(filepath=str(source/(d['id']+'.blend')),compress=True)
+    bpy.ops.export_scene.gltf(filepath=str(folder/(d['id']+'.glb')),export_format='GLB',export_extras=True,export_animations=False)
+    print('BUILT',d['id'],flush=True)
+
+
+if __name__=='__main__':
+    args=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []
+    p=argparse.ArgumentParser();p.add_argument('--only');opts=p.parse_args(args)
+    for design in DESIGNS:
+        if not opts.only or opts.only==design['id']:build(design)

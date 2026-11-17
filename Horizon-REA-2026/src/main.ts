@@ -3,6 +3,7 @@ import "./styles.css";
 import { Game } from "./game";
 import { preloadCarAsset, USE_BLENDER_SHELL } from "./vehicle/carAsset";
 import { Track } from "./world/track";
+import { VEHICLE_DESIGNS, loadSelectedVehicle } from "./vehicle/selectedAsset";
 
 const loading = document.createElement("div");
 loading.id = "loading";
@@ -39,6 +40,9 @@ async function boot(): Promise<void> {
     await Promise.all([preloadCarAsset("player"), preloadCarAsset("rival")]);
   }
   await nextFrame();
+
+  progress(38, "Cargando los siete modelos 3D de prueba…");
+  await Promise.all(VEHICLE_DESIGNS.map((d) => loadSelectedVehicle(d.id)));
 
   const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
   const ui = document.getElementById("ui") as HTMLElement;

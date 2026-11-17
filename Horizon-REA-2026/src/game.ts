@@ -12,6 +12,7 @@ import { GameAudio } from "./audio/engine";
 import { SETTINGS } from "./core/settings";
 import { clamp } from "./core/mathx";
 import type { DriveInput } from "./vehicle/vehicle";
+import { DEFAULT_SELECTED_ID, loadSelectedVehicle, vehicleDesign } from "./vehicle/selectedAsset";
 
 export type GameState = "menu" | "racing" | "paused" | "results";
 type Quality = "alta" | "equilibrada";
@@ -23,7 +24,8 @@ export class Game {
   readonly world: RAPIER.World;
   readonly track: Track;
   readonly environment: Environment;
-  readonly race: Race;
+  race: Race;
+  private selectedVehicleId = DEFAULT_SELECTED_ID;
   readonly input = new Input();
   readonly chase: ChaseCamera;
   readonly audio = new GameAudio();
@@ -122,7 +124,11 @@ this.scene.add(helper);
 
 this.environment = new Environment(this.scene, this.renderer, this.track);
     this.applyResolution();
-    this.race = new Race(this.world, this.scene, this.track);
+    try {
+      const saved = localStorage.getItem("horizon.selected-vehicle");
+      if (saved) { vehicleDesign(saved); this.selectedVehicleId = saved; }
+    } catch { /* Storage can be disabled; the default still works. */ }
+    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId);
     this.chase = new ChaseCamera(this.camera);
     this.smoke = new SmokeSystem(this.scene);
 
@@ -132,7 +138,13 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       onResume: () => this.resume(),
       onRestart: () => this.startRace(),
       onQuit: () => this.quitToMenu(),
-      onToggleQuality: () => this.toggleQuality()
+      onToggleQuality: () => this.toggleQuality(),
+      onSelectVehicle: async (id) => {
+        await loadSelectedVehicle(id);
+        this.selectedVehicleId = id;
+        this.replaceRace();
+        try { localStorage.setItem("horizon.selected-vehicle", id); } catch { /* optional persistence */ }
+      }
     });
 
     this.input.attach(canvas);
@@ -144,6 +156,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     canvas.addEventListener("pointerdown", () => this.input.focusGame());
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
 
+    this.menu.setSelectedVehicle(this.selectedVehicleId);
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
     this.installDebugApi();
@@ -159,6 +172,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       version: "0.1.0",
       stats: () => ({
         state: this.state,
+        vehicleId: this.race.vehicleId,
         raceState: this.race.state,
         fps: Number(this.fps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
@@ -199,7 +213,9 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
   }
 
   startRace(): void {
+    this.replaceRace();
     this.audio.ensure();
+    this.audio.setElectric(vehicleDesign(this.selectedVehicleId).powertrain === "electric");
         this.race.state = "countdown";
     this.race.countdown = SETTINGS.race.countdown;
     this.state = "racing";
@@ -216,6 +232,13 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
     this.input.focusGame();
+  }
+
+  private replaceRace(): void {
+    this.race.dispose();
+    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId);
+    this.physicsAccum = 0;
+    this.chase?.snap();
   }
 
   pause(): void {
@@ -427,7 +450,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       this.adaptResolution(dt);
     }
 
-    if (this.state === "menu") {
+    if (this.state === "menu" && !this.menu.isGarageOpen) {
       const center = this.race.player.vehicle.position.clone();
       center.y += 0.55;
       this.chase.menuOrbit(dt, center, this.time);

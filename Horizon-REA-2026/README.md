@@ -20,9 +20,41 @@ a tamaño completo. La ficha del Ferrari todavía no tiene fotografía adjunta.
 | Lamborghini Aventador Roadster | Azul claro, techo abierto; versión por verificar |
 | Mercedes-AMG GT Black Series | Rojo, configuración Safety Car F1 |
 
-**Estado:** incorporados como referencias en el garaje. Los siete modelos 3D
-individuales siguen pendientes de construcción y validación; la carrera usa
-el prototipo procedural. Las fotografías no son modelos 3D y no cambian la física.
+**Estado:** siete prototipos GLB diferentes, seleccionables desde el garaje.
+Pulsa **Seleccionar para conducir**, vuelve al menú e inicia la carrera.
+La selección se conserva en el navegador. Los rivales usan otros tres modelos.
+Los coches tienen sus propias dimensiones, batalla, vías, radio de rueda y
+ajustes de conducción. El U9 usa tracción experimental sin cambios de marcha
+y sonido eléctrico sintetizado; no se afirma que reproduzca su tren motriz real.
+
+**Calidad:** las carrocerías son primeras aproximaciones editables, no réplicas
+visuales terminadas ni modelos AAA. Techo, faros, parrillas, aero y acabados
+requieren refinamiento con referencias adicionales. Las cifras de manejo son
+ajustes de videojuego, no prestaciones ni masas reales certificadas.
+No se han medido 60 FPS ni validado el recorrido visual en navegador en este entorno.
+
+**Activos y fuentes:** GLB en `public/models/selected/`; fuentes comprimidas
+`.blend` en `tools/blender/selected-sources/`; geometría y dimensiones compartidas
+con física en `src/vehicle/vehicle-designs.json`. Cada entrada conserva su fuente
+publicada de dimensiones; las versiones exactas de algunas fotografías siguen
+pendientes de confirmar. Las capturas, hashes e informes están en `review/selected/`.
+
+Regeneración desde la carpeta del juego:
+
+```powershell
+blender --background --threads 2 --python tools/blender/selected-vehicles.py
+python tools/blender/review-selected.py
+blender --background --threads 2 --python tools/blender/review-vehicle.py -- --asset public/models/selected/ferrari-california-t.glb --out-dir review/selected/ferrari-california-t --full-vehicle --design ferrari-california-t
+```
+
+El segundo comando genera las 42 vistas y el resumen. Pillow es opcional para
+montar la lámina conjunta. La revisión Workbench aproxima las texturas por su
+color medio; no es una certificación de pintura ni de materiales PBR.
+
+El cargador exige los cuatro pivotes de rueda. Si falta un GLB o un pivote,
+se comunica el fallo y no se sustituye por la carrocería genérica. Reiniciar una
+carrera reconstruye parrilla, vueltas y tiempos, retirando los controladores y
+cuerpos físicos de la sesión anterior.
 
 El registro está en `src/vehicle/roster.ts`; las fotografías, en
 `public/vehicles/references/`. Procedencia e integridad:

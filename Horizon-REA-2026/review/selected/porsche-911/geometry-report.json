@@ -1,0 +1,78 @@
+{
+  "assetType": "full-vehicle-declared",
+  "status": "REVIEW_REQUIRED",
+  "observedBoundsMeters": {
+    "length": 4.576,
+    "width": 2.19,
+    "height": 1.308
+  },
+  "referenceDimensionsMeters": {
+    "length": 4.551,
+    "width": 1.9,
+    "height": 1.305,
+    "wheelbase": 2.45
+  },
+  "differencesPercent": {
+    "length": 0.55,
+    "width": 15.26,
+    "height": 0.23
+  },
+  "meshCount": 22,
+  "approximateTriangleCount": 32824,
+  "materialNames": [
+    "accent",
+    "carbon_trim",
+    "disc",
+    "glass",
+    "headlight",
+    "paint",
+    "rim",
+    "rubber",
+    "taillight"
+  ],
+  "warnings": [
+    "Visual resemblance cannot be determined from bounding boxes.",
+    "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+    "Full-vehicle dimensions exceed the preliminary tolerance.",
+    "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+  ],
+  "visualFidelityScore": null,
+  "approvedForProduction": false,
+  "vehicleId": "porsche-911",
+  "dimensionSource": "https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3Abe13fd23-11cf-4783-b509-a702aed10df3/pag-911-turbo-s-en.pdf",
+  "wheelCentersMeters": {
+    "wheel_fr": [
+      1.225,
+      0.81,
+      0.345
+    ],
+    "wheel_fl": [
+      1.225,
+      -0.81,
+      0.345
+    ],
+    "wheel_rr": [
+      -1.225,
+      0.81,
+      0.345
+    ],
+    "wheel_rl": [
+      -1.225,
+      -0.81,
+      0.345
+    ]
+  },
+  "observedWheelbaseMeters": 2.45,
+  "asset": "public/models/selected/porsche-911.glb",
+  "assetSha256": "308e498cad6cbe6e84de56cc40480e72a9e9a7bd5851a56dcfcc93dda50e1c2d",
+  "blenderVersion": "4.3.2",
+  "renderEngine": "BLENDER_WORKBENCH",
+  "reviewImages": [
+    "front.png",
+    "rear.png",
+    "left.png",
+    "right.png",
+    "front34.png",
+    "rear34.png"
+  ]
+}

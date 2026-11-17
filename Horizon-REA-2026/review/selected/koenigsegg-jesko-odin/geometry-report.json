@@ -1,0 +1,78 @@
+{
+  "assetType": "full-vehicle-declared",
+  "status": "REVIEW_REQUIRED",
+  "observedBoundsMeters": {
+    "length": 4.636,
+    "width": 2.32,
+    "height": 1.213
+  },
+  "referenceDimensionsMeters": {
+    "length": 4.626,
+    "width": 2.03,
+    "height": 1.21,
+    "wheelbase": 2.7
+  },
+  "differencesPercent": {
+    "length": 0.22,
+    "width": 14.29,
+    "height": 0.25
+  },
+  "meshCount": 22,
+  "approximateTriangleCount": 26532,
+  "materialNames": [
+    "accent",
+    "carbon_trim",
+    "disc",
+    "glass",
+    "headlight",
+    "paint",
+    "rim",
+    "rubber",
+    "taillight"
+  ],
+  "warnings": [
+    "Visual resemblance cannot be determined from bounding boxes.",
+    "Workbench renders show shape and diffuse colors, not PBR material fidelity.",
+    "Full-vehicle dimensions exceed the preliminary tolerance.",
+    "Bounds include mirrors and aero parts; reference body width may exclude mirrors."
+  ],
+  "visualFidelityScore": null,
+  "approvedForProduction": false,
+  "vehicleId": "koenigsegg-jesko-odin",
+  "dimensionSource": "https://www.koenigsegg.com/technical-specifications-jesko-attack",
+  "wheelCentersMeters": {
+    "wheel_fr": [
+      1.35,
+      0.875,
+      0.355
+    ],
+    "wheel_fl": [
+      1.35,
+      -0.875,
+      0.355
+    ],
+    "wheel_rr": [
+      -1.35,
+      0.875,
+      0.355
+    ],
+    "wheel_rl": [
+      -1.35,
+      -0.875,
+      0.355
+    ]
+  },
+  "observedWheelbaseMeters": 2.7,
+  "asset": "public/models/selected/koenigsegg-jesko-odin.glb",
+  "assetSha256": "3796a138a60c3925a59225c69c9b1ef06a664f4b80cbd1ac119ecc9b417057ef",
+  "blenderVersion": "4.3.2",
+  "renderEngine": "BLENDER_WORKBENCH",
+  "reviewImages": [
+    "front.png",
+    "rear.png",
+    "left.png",
+    "right.png",
+    "front34.png",
+    "rear34.png"
+  ]
+}
