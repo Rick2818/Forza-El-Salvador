@@ -31,3 +31,28 @@ jobs:
       - name: Unit tests including Porsche 911 dimensions and geometry
         working-directory: Horizon-REA-2026
         run: npm test
+
+      - name: Real 3D screenshot from Chromium with software WebGL
+        working-directory: Horizon-REA-2026
+        run: |
+          mkdir -p captures
+          npm run preview -- --host 127.0.0.1 > /tmp/horizon-preview.log 2>&1 &
+          sleep 5
+          BROWSER="$(command -v google-chrome || command -v chromium || true)"
+          if [ -z "$BROWSER" ]; then
+            echo "No Chromium available for preview screenshot"
+            exit 0
+          fi
+          "$BROWSER" --headless=new --no-sandbox --disable-dev-shm-usage \
+            --enable-webgl --enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader \
+            --hide-scrollbars --window-size=1440,900 --virtual-time-budget=9000 \
+            --screenshot=captures/porsche-911-3d.png \
+            http://127.0.0.1:4173/porsche-preview.html || true
+          ls -lh captures
+      - name: Save screenshot artifact for reference comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: Porsche-911-3D-Preview
+          path: Horizon-REA-2026/captures/porsche-911-3d.png
+          if-no-files-found: warn
+          retention-days: 7
