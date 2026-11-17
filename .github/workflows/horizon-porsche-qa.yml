@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         working-directory: Horizon-REA-2026
         run: npm ci
+      - name: Inspect real Porsche GLB metadata before rendering
+        run: |
+          node -e "const fs=require('fs');const f='Horizon-REA-2026/public/models/porsche-911-real.glb';if(!fs.existsSync(f)){console.log('BLENDER_GLTF_NOT_STAGED');process.exit(0)}const b=fs.readFileSync(f);const n=b.readUInt32LE(12);const j=JSON.parse(b.toString('utf8',20,20+n));console.log('HORIZON_GLTF_META',JSON.stringify({bytes:b.length,extensions:j.extensionsUsed,extensionsRequired:j.extensionsRequired,meshes:j.meshes?.length,materials:j.materials?.map(x=>x.name).slice(0,40),nodes:j.nodes?.length},null,2))"
       - name: Typecheck and build both game and 3D inspection page
         working-directory: Horizon-REA-2026
         run: npm run build
