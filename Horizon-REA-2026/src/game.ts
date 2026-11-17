@@ -210,6 +210,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.physicsAccum = 0;
     this.chase.snap();
     this.menu.hide();
+    this.input.setTouchControlsVisible(true);
     this.hud.show(true);
     this.hud.toast("Horizon GP · 3 vueltas · semáforo en verde", 3000);
     // The start button keeps DOM focus after a click; move it back to the
@@ -222,6 +223,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.state = "paused";
     this.physicsAccum = 0;
     this.audio.silence();
+    this.input.setTouchControlsVisible(false);
     this.menu.showPause(this.race.snapshot(this.input));
   }
 
@@ -230,6 +232,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.state = "racing";
     this.physicsAccum = 0;
     this.menu.hide();
+    this.input.setTouchControlsVisible(true);
     this.audio.ensure();
     this.input.focusGame();
   }
@@ -240,6 +243,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.race.state = "idle";
     this.state = "menu";
     this.menu.showStart(this.track.length / 1000);
+    this.input.setTouchControlsVisible(false);
     this.hud.setCountdown(null);
     this.hud.show(false);
     this.audio.silence();
@@ -470,6 +474,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
         this.finishDelay += dt;
         if (this.finishDelay > 1.5) {
           this.state = "results";
+          this.input.setTouchControlsVisible(false);
           this.hud.setCountdown(null);
           this.hud.show(false);
           this.audio.silence();
