@@ -43,6 +43,12 @@ export function createRealPorsche911Visual(opts: CarOptions): CarVisual {
   if (!asset) return visual; // Explicit safe fallback: no white screen on loading failure.
   // Avoid rendering both the wedge and real body.
   visual.bodyRoot.clear();
+  // Hide placeholder brake-caliper cubes from the procedural prototype. The
+  // imported mesh already contains wheel hardware; these cubes visibly poke
+  // outside its wheel arches in the Blender 911 screenshot.
+  visual.root.traverse((object) => {
+    if (object.name === "Porsche_ProceduralCaliper") object.visible = false;
+  });
   const group = asset.clone(true);
   group.name = "Porsche_911_C4S_Blender_Real";
   // Blender export: +X is the nose, +Z up; glTF/Three: +X nose, +Y up.
