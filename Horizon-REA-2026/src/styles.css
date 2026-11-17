@@ -397,3 +397,48 @@ kbd {
   .hud-timing { width: 190px; }
   .hud-speed { transform: scale(0.86); transform-origin: bottom right; }
 }
+
+/* Phone driving controls: multitouch steering and pedals. */
+.horizon-touch-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 65;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 16px;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.horizon-touch-controls[hidden] { display: none; }
+.horizon-touch-group {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.horizon-touch-key {
+  width: clamp(56px, 12vw, 84px);
+  height: clamp(56px, 12vw, 84px);
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 16px;
+  background: rgba(3,18,33,.70);
+  color: white;
+  font: 800 clamp(16px, 3.5vw, 23px)/1 system-ui, sans-serif;
+  backdrop-filter: blur(5px);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.horizon-touch-key.pressed {
+  background: rgba(20,132,199,.90);
+  transform: scale(.96);
+}
+@media (max-width: 390px) {
+  .horizon-touch-controls { padding: 0 7px; gap: 6px; }
+  .horizon-touch-group { gap: 5px; }
+  .horizon-touch-key { width: 59px; height: 59px; }
+}
