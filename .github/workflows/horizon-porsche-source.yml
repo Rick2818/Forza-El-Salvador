@@ -24,6 +24,12 @@ jobs:
            -o Horizon-REA-2026/public/models/porsche-911-real.glb
           test "$(wc -c < Horizon-REA-2026/public/models/porsche-911-real.glb)" -gt 100000
           file Horizon-REA-2026/public/models/porsche-911-real.glb
+      - name: Save original source GLB as QA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Porsche911-C4S-Source-GLB
+          path: Horizon-REA-2026/public/models/porsche-911-real.glb
+          retention-days: 14
       - name: Save source GLB to isolated review branch
         run: |
           git config user.name 'github-actions[bot]'
