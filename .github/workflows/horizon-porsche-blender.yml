@@ -4,7 +4,6 @@ on:
   push:
     branches: [feature/porsche-911-preproduction]
     paths:
-      - 'Horizon-REA-2026/tools/blender/porsche-911.py'
       - '.github/workflows/horizon-porsche-blender.yml'
   workflow_dispatch:
 
@@ -13,16 +12,15 @@ permissions:
 
 jobs:
   blender-model:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install Blender
+      - name: Install Blender and GLB importer dependencies on Ubuntu 24.04
         run: |
           export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update -qq
-          timeout 210 sudo apt-get install -y -qq blender
-          python3 -m pip install --user --break-system-packages --disable-pip-version-check numpy
-          blender --background --python-expr "import numpy; print('NumPy',numpy.__version__)"
+          timeout 60 sudo apt-get update -qq
+          timeout 180 sudo apt-get install -y -qq --no-install-recommends blender python3-numpy
+          blender --background --python-expr "import numpy; print('NumPy', numpy.__version__)"
           blender --version | head -3
       - name: Fetch CC BY Porsche 911 C4S reference mesh
         run: |
