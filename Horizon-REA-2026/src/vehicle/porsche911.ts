@@ -293,6 +293,7 @@ export function createPorsche911Visual(opts: CarOptions): CarVisual {
     }
     wheels.push({steer,spin});
     const fixed = new THREE.Group();
+    fixed.name = "Porsche_ProceduralCaliper";
     fixed.position.set(x,-.255,z);
     const brake = new THREE.Mesh(new THREE.BoxGeometry(.087,.160,.085),caliper);
     brake.position.set(Math.sign(x)*.156,.136,-.100);
