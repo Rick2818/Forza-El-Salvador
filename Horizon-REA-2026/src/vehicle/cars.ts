@@ -1,9 +1,10 @@
 /**
- * Garage.
+ * Legacy fictional profiles, currently not connected to Vehicle or the menu.
  *
  * Every car is the same physics model with different numbers: power, top speed,
  * grip, mass and steering. Nothing here is cosmetic-only — the multipliers are
- * applied by `Vehicle`, so the three cars actually drive differently.
+ * not currently applied by `Vehicle`. Do not present them as real car specs.
+ * Rick's selected real vehicles are recorded in roster.ts.
  *
  * Prices are in in-game credits earned from racing. No real money, no random
  * drops: the reward for a race is a fixed formula (see `race/rewards.ts`).

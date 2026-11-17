@@ -1,6 +1,8 @@
 import type { RaceSnapshot } from "../race/race";
 import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
+import { garageMarkup } from "./garage";
+import { SELECTED_VEHICLES } from "../vehicle/roster";
 
 export interface MenuCallbacks {
   onStart: () => void;
@@ -29,6 +31,7 @@ export class Menu {
   private callbacks: MenuCallbacks;
   private qualityLabel = "ALTA";
   private visible = false;
+  private trackLengthKm = 0;
 
   constructor(root: HTMLElement, callbacks: MenuCallbacks) {
     this.callbacks = callbacks;
@@ -47,6 +50,8 @@ export class Menu {
     if (action === "restart") this.callbacks.onRestart();
     if (action === "quit") this.callbacks.onQuit();
     if (action === "quality") this.callbacks.onToggleQuality();
+    if (action === "garage") this.showGarage();
+    if (action === "back") this.showStart(this.trackLengthKm);
   };
 
   get isVisible(): boolean {
@@ -65,6 +70,7 @@ export class Menu {
   }
 
   showStart(trackLengthKm: number): void {
+    this.trackLengthKm = trackLengthKm;
     this.overlay.innerHTML = `
       <div class="menu-card">
         <div class="brand">Horizon Motorsport · Edición técnica</div>
@@ -78,6 +84,7 @@ export class Menu {
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
+          <button class="btn ghost" data-action="garage">Garaje · ${SELECTED_VEHICLES.length} autos</button>
         </div>
         <div class="menu-grid">
           <div>
@@ -96,7 +103,7 @@ export class Menu {
           </div>
         </div>
         <div class="menu-note">
-          Contenido original · sin activos de terceros · análisis REA 6.8.0 documentado
+          Prototipo de conducción · referencias de vehículos disponibles en el garaje
         </div>
         <div id="mcp-circuits" class="spec-list" style="margin-top:14px">
           Cargando circuitos reales (MCP Pitstop)…
@@ -106,6 +113,16 @@ export class Menu {
     this.overlay.classList.remove("hidden");
     this.visible = true;
     void this.loadCircuits();
+  }
+
+  private showGarage(): void {
+    this.overlay.innerHTML = `<div class="menu-card garage-card">
+      <button class="btn ghost garage-back" data-action="back">← Volver al menú</button>
+      ${garageMarkup()}
+    </div>`;
+    this.overlay.classList.remove("hidden");
+    this.visible = true;
+    this.overlay.querySelector<HTMLButtonElement>('[data-action="back"]')?.focus();
   }
 
   private async loadCircuits(): Promise<void> {

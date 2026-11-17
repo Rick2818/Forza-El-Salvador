@@ -206,6 +206,26 @@ html, body {
 }
 .overlay.hidden { display: none; }
 
+.overlay:has(.garage-card) { overflow-y: auto; align-items: start; padding: 24px 0; }
+.menu-card.garage-card { width: min(1120px, 94vw); }
+.garage-back { margin-bottom: 26px; }
+.vehicle-garage h2 { margin: 14px 0; font-size: clamp(24px, 4vw, 36px); }
+.garage-intro { color: #c2cbd6; line-height: 1.6; max-width: 70ch; }
+.vehicle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); gap: 20px; margin-top: 24px; }
+.vehicle-card { min-width: 0; border: 1px solid #ffffff21; border-radius: 16px; overflow: hidden; background: #121a25; }
+.vehicle-image { display: block; height: 200px; background: #080d14; }
+.vehicle-image img { width: 100%; height: 100%; object-fit: contain; }
+.vehicle-image-pending { display: grid; place-items: center; color: #b9c3d0; }
+.vehicle-copy { padding: 18px; }
+.vehicle-copy h3 { margin: 12px 0 8px; font-size: 19px; line-height: 1.35; }
+.vehicle-status { display: inline-block; padding: 5px 9px; border-radius: 6px; background: #f8b44c22; color: #ffd189; font-size: 12px; }
+.vehicle-finish { margin: 0; color: #c3cbd6; font-size: 14px; }
+.vehicle-copy ul { padding-left: 18px; color: #d4dce6; font-size: 13px; line-height: 1.8; }
+.vehicle-copy details { color: #aebccd; font-size: 12px; line-height: 1.6; }
+.vehicle-copy summary { cursor: pointer; }
+.vehicle-image:focus-visible, .garage-card button:focus-visible, .vehicle-copy summary:focus-visible { outline: 3px solid #ffae60; outline-offset: -3px; }
+@media (max-width: 600px) { .menu-card.garage-card { padding: 22px 16px; } }
+
 .menu-card {
   width: min(780px, 92vw);
   padding: 38px 42px 34px;

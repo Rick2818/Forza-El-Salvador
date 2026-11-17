@@ -1,8 +1,32 @@
 # Horizon El Salvador
 
 Videojuego original de carreras 3D para Chrome. Three.js + TypeScript + Vite + Rapier.
-Todo el arte es procedural (texturas Canvas2D, coches y circuito generados por código):
+El arte de la carrera es procedural (texturas Canvas2D, coches y circuito generados por código):
 no se importan mallas, texturas ni datos de Forza Horizon ni de ningún otro juego.
+
+## Garaje: selección de Rick
+
+El menú inicial incluye **Garaje · 7 autos**, con la selección de vehículos,
+sus acabados y las fotografías aportadas para modelado. Las fotos pueden abrirse
+a tamaño completo. La ficha del Ferrari todavía no tiene fotografía adjunta.
+
+| Vehículo | Referencia visual |
+| --- | --- |
+| Ferrari California T | Rojo; ficha California T 2015 existente |
+| Yangwang U9 | Rojo y negro; archivo identificado como Xtreme, versión por verificar |
+| Koenigsegg Jesko Odin | Carbono negro y detalles dorados |
+| Bugatti Chiron | Negro y cobre |
+| Porsche 911 | Gris; posible Turbo S, por verificar |
+| Lamborghini Aventador Roadster | Azul claro, techo abierto; versión por verificar |
+| Mercedes-AMG GT Black Series | Rojo, configuración Safety Car F1 |
+
+**Estado:** incorporados como referencias en el garaje. Los siete modelos 3D
+individuales siguen pendientes de construcción y validación; la carrera usa
+el prototipo procedural. Las fotografías no son modelos 3D y no cambian la física.
+
+El registro está en `src/vehicle/roster.ts`; las fotografías, en
+`public/vehicles/references/`. Procedencia e integridad:
+[`docs/vehicle-fidelity/selected-references.json`](docs/vehicle-fidelity/selected-references.json).
 
 ## Requisitos
 

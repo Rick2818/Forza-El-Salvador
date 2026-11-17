@@ -1,0 +1,49 @@
+{
+  "purpose": "Modeling references; not playable 3D assets",
+  "files": [
+    {
+      "path": "public/vehicles/references/bugatti-chiron.jpg",
+      "originalFilename": "bugatti-chiron-1500.jpg",
+      "source": "user attachment, 2026-11-17",
+      "sha256": "8f301aec769e34d6407264f10c21983f9408a7fa078f009da20d069f27a651e9",
+      "bytes": 200399
+    },
+    {
+      "path": "public/vehicles/references/koenigsegg-jesko-odin.webp",
+      "originalFilename": "20250925194145_Koenigsegg-Jesko-Odin-delivery-3.webp",
+      "source": "user attachment, 2026-11-17",
+      "sha256": "e4f28ac335224148011b3e268382d869afa3782a379c3b12e4e5598ef0270f11",
+      "bytes": 83228
+    },
+    {
+      "path": "public/vehicles/references/lamborghini-aventador-roadster.webp",
+      "originalFilename": "Lamborghini.webp",
+      "source": "user attachment, 2026-11-17",
+      "sha256": "6298a5ce10592af1dee8cf98d07a81ee31ae448ee8f082dab9ab5a5669df6456",
+      "bytes": 70136
+    },
+    {
+      "path": "public/vehicles/references/mercedes-amg-gt-black-series.jpg",
+      "originalFilename": "Mercedes-AMG-GT-Black-Series-Safety-Car-F1.jpg",
+      "source": "user attachment, 2026-11-17",
+      "sha256": "ccea808c61349d2b1ffbdabaa78bf65177f862426dad2391e4e5b525830173cc",
+      "bytes": 491819
+    },
+    {
+      "path": "public/vehicles/references/porsche-911.jpg",
+      "originalFilename": "Porshe 911.jpg",
+      "source": "user attachment, 2026-11-17",
+      "sha256": "9435fb3bfc707ee5b07974b7cf33a6490d9141188b7f74194828f11e6245728b",
+      "bytes": 83242
+    },
+    {
+      "path": "public/vehicles/references/yangwang-u9.jpg",
+      "originalFilename": "Yangwang U9 Xtreme(1).jpg",
+      "source": "user attachment, 2026-11-17",
+      "sha256": "a65f4a4dd58438710fad4019b0b4b94c590bd878a34f66100ddf2fb13d3b5017",
+      "bytes": 21621
+    }
+  ],
+  "missingReference": "Ferrari California T photograph",
+  "modelingStatus": "All seven individual 3D models pending"
+}
