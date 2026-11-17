@@ -65,7 +65,7 @@
   },
   "observedWheelbaseMeters": 2.7,
   "asset": "public/models/selected/lamborghini-aventador-roadster.glb",
-  "assetSha256": "638d25467ceae1e97a4f87366d97a5f6c0fd989ea9e0dee9c0316880871bbc51",
+  "assetSha256": "9420aeea65db6a780b91cbe9ef8219a38a5eb8ad2190b7304dde372a721bd4ef",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

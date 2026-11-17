@@ -10,7 +10,7 @@
       "observedBoundsMeters": {
         "length": 4.608,
         "width": 2.2,
-        "height": 1.3472
+        "height": 1.3502
       },
       "referenceDimensionsMeters": {
         "length": 4.57,
@@ -21,10 +21,10 @@
       "differencesPercent": {
         "length": 0.83,
         "width": 15.18,
-        "height": 1.91
+        "height": 2.13
       },
       "meshCount": 23,
-      "approximateTriangleCount": 37062,
+      "approximateTriangleCount": 38554,
       "materialNames": [
         "accent",
         "carbon_trim",
@@ -71,7 +71,7 @@
       },
       "observedWheelbaseMeters": 2.67,
       "asset": "public/models/selected/ferrari-california-t.glb",
-      "assetSha256": "c0bcbe6364b51386633b4643b6faadccde3da161cca22e57551a8daa252531c7",
+      "assetSha256": "d576d4bbe11ad082c6213ec10ea846a3d91e5362503f725b83526631c44789c2",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [
@@ -89,7 +89,7 @@
       "observedBoundsMeters": {
         "length": 4.976,
         "width": 2.319,
-        "height": 1.3354
+        "height": 1.3384
       },
       "referenceDimensionsMeters": {
         "length": 4.966,
@@ -100,10 +100,10 @@
       "differencesPercent": {
         "length": 0.2,
         "width": 14.29,
-        "height": 1.86
+        "height": 2.09
       },
       "meshCount": 22,
-      "approximateTriangleCount": 31942,
+      "approximateTriangleCount": 31750,
       "materialNames": [
         "accent",
         "carbon_trim",
@@ -149,7 +149,7 @@
       },
       "observedWheelbaseMeters": 2.9,
       "asset": "public/models/selected/yangwang-u9.glb",
-      "assetSha256": "3458901809e7df52fd2864ba8fe9bdd9add025c4cc627b1b2ff3504a69011e43",
+      "assetSha256": "91889e6bc719851b612a75b4fda0505d9e416be7afcf929820732986a689fbf4",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [
@@ -167,7 +167,7 @@
       "observedBoundsMeters": {
         "length": 4.636,
         "width": 2.32,
-        "height": 1.2269
+        "height": 1.2299
       },
       "referenceDimensionsMeters": {
         "length": 4.626,
@@ -178,10 +178,10 @@
       "differencesPercent": {
         "length": 0.22,
         "width": 14.29,
-        "height": 1.4
+        "height": 1.64
       },
       "meshCount": 22,
-      "approximateTriangleCount": 27682,
+      "approximateTriangleCount": 27490,
       "materialNames": [
         "accent",
         "carbon_trim",
@@ -227,7 +227,7 @@
       },
       "observedWheelbaseMeters": 2.7,
       "asset": "public/models/selected/koenigsegg-jesko-odin.glb",
-      "assetSha256": "9a5fcd574b9ce288ee776612b67247b5d5e83656da0ae53fa9eda0f7d0e393f6",
+      "assetSha256": "34f799fec7a1e622fdfeb8dea5a0cd58ecf2b00f7a9e8d062ac1315518510beb",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [
@@ -245,7 +245,7 @@
       "observedBoundsMeters": {
         "length": 4.594,
         "width": 2.328,
-        "height": 1.2291
+        "height": 1.2321
       },
       "referenceDimensionsMeters": {
         "length": 4.544,
@@ -256,10 +256,10 @@
       "differencesPercent": {
         "length": 1.1,
         "width": 14.23,
-        "height": 1.41
+        "height": 1.66
       },
       "meshCount": 22,
-      "approximateTriangleCount": 32709,
+      "approximateTriangleCount": 32517,
       "materialNames": [
         "accent",
         "carbon_trim",
@@ -305,7 +305,7 @@
       },
       "observedWheelbaseMeters": 2.711,
       "asset": "public/models/selected/bugatti-chiron.glb",
-      "assetSha256": "e285b50306b2dcf653598793ce94ae787e61a9fae3a7ebbfbe42c2c537bd47ec",
+      "assetSha256": "21d0f9f7582b0f373f0b1cd1f15ced9657bef1237e8e7378e8dfd40010c45f18",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [
@@ -323,7 +323,7 @@
       "observedBoundsMeters": {
         "length": 4.551,
         "width": 2.19,
-        "height": 1.329
+        "height": 1.332
       },
       "referenceDimensionsMeters": {
         "length": 4.551,
@@ -334,10 +334,10 @@
       "differencesPercent": {
         "length": 0.0,
         "width": 15.26,
-        "height": 1.84
+        "height": 2.07
       },
       "meshCount": 22,
-      "approximateTriangleCount": 33830,
+      "approximateTriangleCount": 33638,
       "materialNames": [
         "accent",
         "carbon_trim",
@@ -383,7 +383,7 @@
       },
       "observedWheelbaseMeters": 2.45,
       "asset": "public/models/selected/porsche-911.glb",
-      "assetSha256": "ecf7ac7e36ed852b9dc61e2359b861bbbd9a5955858e6df38b27f3db1fc684e6",
+      "assetSha256": "9993b6297904253b833ce4e46325d2b5602579789c020b7ff79a47150a3c9984",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [
@@ -462,7 +462,7 @@
       },
       "observedWheelbaseMeters": 2.7,
       "asset": "public/models/selected/lamborghini-aventador-roadster.glb",
-      "assetSha256": "638d25467ceae1e97a4f87366d97a5f6c0fd989ea9e0dee9c0316880871bbc51",
+      "assetSha256": "9420aeea65db6a780b91cbe9ef8219a38a5eb8ad2190b7304dde372a721bd4ef",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [
@@ -480,7 +480,7 @@
       "observedBoundsMeters": {
         "length": 4.666,
         "width": 2.313,
-        "height": 1.3021
+        "height": 1.3051
       },
       "referenceDimensionsMeters": {
         "length": 4.604,
@@ -491,10 +491,10 @@
       "differencesPercent": {
         "length": 1.35,
         "width": 14.34,
-        "height": 1.73
+        "height": 1.96
       },
       "meshCount": 25,
-      "approximateTriangleCount": 34790,
+      "approximateTriangleCount": 34598,
       "materialNames": [
         "accent",
         "amber",
@@ -543,7 +543,7 @@
       },
       "observedWheelbaseMeters": 2.635,
       "asset": "public/models/selected/mercedes-amg-gt-black-series.glb",
-      "assetSha256": "d2c549d4e413159bf9fad45deac54099d8c7ed162fae662ab8bb7c12951eccfa",
+      "assetSha256": "7c41d97e26db335d599cf49f398392c27cf8f86deb079a5297d4d9fdb32255f1",
       "blenderVersion": "4.3.2",
       "renderEngine": "BLENDER_WORKBENCH",
       "reviewImages": [

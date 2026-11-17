@@ -84,6 +84,36 @@ def panel(name, points, mat):
     return mesh(name, points, [tuple(range(len(points)))], mat, False)
 
 
+def on_coachwork(shell, x, y, offset=.006):
+    """Locate a detail on the actual upper surface, after arch/intake cuts."""
+    hit, location, normal, _ = shell.ray_cast(Vector((x,y,3)), Vector((0,0,-1)))
+    if not hit:
+        raise RuntimeError(f'Coachwork detail has no supporting surface at {x}, {y}')
+    return tuple(location + normal * offset)
+
+
+def fitted_lamp(shell, name, outline, mat):
+    """Tessellated lens follows the curved fender instead of bridging over it."""
+    cx=sum(p[0] for p in outline)/len(outline)
+    cy=sum(p[1] for p in outline)/len(outline)
+    perimeter=[]
+    for a,b in zip(outline, outline[1:]+outline[:1]):
+        for step in range(8):
+            t=step/8
+            perimeter.append((a[0]*(1-t)+b[0]*t,a[1]*(1-t)+b[1]*t))
+    vertices=[on_coachwork(shell,cx,cy)]
+    # Radial subdivisions prevent a large planar face from cutting into a fender.
+    n=len(perimeter)
+    for ring in range(1,5):
+        for x,y in perimeter:
+            vertices.append(on_coachwork(shell,cx+(x-cx)*ring/4,cy+(y-cy)*ring/4))
+    faces=[(0,1+i,1+(i+1)%n) for i in range(n)]
+    for ring in range(3):
+        a=1+ring*n;b=a+n
+        faces.extend((a+i,b+i,b+(i+1)%n,a+(i+1)%n) for i in range(n))
+    return mesh(name,vertices,faces,mat)
+
+
 def front_recess(name, points, shell, mat, depth=.18):
     """Cut a real opening through the coachwork, with a recessed dark backing.
 
@@ -109,7 +139,9 @@ def front_recess(name, points, shell, mat, depth=.18):
     bpy.data.objects.remove(cutter,do_unlink=True)
     if volume(shell)<original_volume*.80:
         raise RuntimeError(name+': intake Boolean removed too much coachwork; refusing export')
-    panel(name+' backing',inside,mat)
+    # The Boolean leaves a coachwork face at the cut depth. Keep the dark
+    # backing just in front of it, avoiding coplanar paint/lens flicker.
+    panel(name+' backing',[(x+.004,y,z) for x,y,z in inside],mat)
     # The cavity walls follow the opening to keep the backing visibly inset.
     mesh(name+' reveal',[(nose-.01,p[1],p[2]) for p in points]+inside,
       [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)],mat,False)
@@ -208,9 +240,13 @@ def cabin(d,m):
     wid=W*.74
     def arch(x,top,w):
         # Smooth the original landmarks, keeping the glazing against its rails.
-        anchors=[(x*L,-w,belt),(x*L,-w*.97,top-.14),
-          (x*L,-w*.70,top-.035),(x*L,0,top),(x*L,w*.70,top-.035),
-          (x*L,w*.97,top-.14),(x*L,w,belt)]
+        # At the lower windshield/rear window, fixed offsets inverted the
+        # arch below the beltline. Scale the curvature with the local height.
+        shoulder=belt+(top-belt)*.73
+        crown=belt+(top-belt)*.94
+        anchors=[(x*L,-w,belt),(x*L,-w*.97,shoulder),
+          (x*L,-w*.70,crown),(x*L,0,top),(x*L,w*.70,crown),
+          (x*L,w*.97,shoulder),(x*L,w,belt)]
         result=[]
         for j,(a,b) in enumerate(zip(anchors,anchors[1:])):
             prev=anchors[max(0,j-1)];nxt=anchors[min(len(anchors)-1,j+2)]
@@ -230,8 +266,11 @@ def cabin(d,m):
             dense.append([tuple(catmull(prev[v][k],p[k],q[k],nxt[v][k],t)
               for k in range(3)) for v,(p,q) in enumerate(zip(a,b))])
     dense.append(rings[-1]);n=len(dense[0])
+    closed=d['style']!='aventador'
     mesh('glazing',[p for r in dense for p in r],
-      [(j*n+i,j*n+i+1,(j+1)*n+i+1,(j+1)*n+i) for j in range(len(dense)-1) for i in range(n-1)],m['glass'])
+      [(j*n+i,j*n+i+1,(j+1)*n+i+1,(j+1)*n+i)
+       for j in range(len(dense)-1) for i in range(n-1)
+       if not (closed and 6<=j<18 and 4<=i<20)],m['glass'])
     for side in [-1,1]:
         tube('A pillar',[(front*L,side*wid*.91,belt),(rf*L,side*wid*.93,H-.14),
           (rf*L,side*wid*.70,H-.035)],.022,m['paint'])
@@ -241,10 +280,9 @@ def cabin(d,m):
               (rear*L,side*wid*.94,belt)],.018,m['paint'])
             tube('Window sill',[(rear*L,side*wid,belt),(front*L,side*wid*.92,belt)],.012,m['trim'])
     if d['style']!='aventador':
-        roof=[]
-        for j in range(13):
-            t=j/12;x=rb+(rf-rb)*t
-            roof.append(arch(x,H-.014+.020*math.sin(t*math.pi),wid*(1-.04*t))[8:17])
+        # Reuse the glazing landmarks, remove glass under the opaque roof and
+        # cover both shoulders. The previous narrow patch lay below the glass.
+        roof=[[(x,y,z+.003) for x,y,z in ring[4:21]] for ring in dense[6:19]]
         nr=len(roof[0])
         mesh('roof',[p for r in roof for p in r],[(j*nr+i,j*nr+i+1,(j+1)*nr+i+1,(j+1)*nr+i) for j in range(len(roof)-1) for i in range(nr-1)],m['trim'] if d['style'] in ('u9','amg') else m['paint'])
     else:
@@ -310,9 +348,18 @@ def details(d,m,shell):
         front_recess('Ferrari grille',grille,shell,m['trim']);tube('Grille surround',grille,.012,m['chrome'],True)
         for yy in [-.4,-.2,0,.2,.4]: tube('Grille bar',[(L+.015,yy,.29),(L+.015,yy,.45)],.005,m['chrome'])
         for s in [-1,1]:
-            panel('Headlight housing',[(L-.14,s*.54,.59),(L-.46,s*.83,.75),(L-.73,s*.79,.78),(L-.30,s*.60,.64)],m['trim'])
-            tube('headlight',[(L-.15,s*.57,.61),(L-.45,s*.77,.755),(L-.68,s*.77,.79)],.014,m['headlight'])
-            for i in range(5): box('LED element',(L-.26-i*.065,s*(.62+i*.027),.65+i*.022),(.035,.035,.018),m['headlight'],.005)
+            outline=[(L-.17,s*.59),(L-.31,s*.71),(L-.77,s*.81),
+                     (L-.78,s*.71),(L-.37,s*.59)]
+            fitted_lamp(shell,'Fender-mounted headlamp',outline,m['trim'])
+            # A slim rising LED strip and a projector inside the lamp lens.
+            line=[on_coachwork(shell,L-.29-i*.018,s*(.68+i*.004),.017) for i in range(26)]
+            tube('headlight',line,.008,m['headlight'])
+            cx,cy=L-.33,s*.64
+            projector=[on_coachwork(shell,cx+.046*math.cos(a),cy+.038*math.sin(a),.016)
+                       for a in [i*math.tau/32 for i in range(32)]]
+            tube('Projector bezel',projector,.005,m['chrome'],True)
+            fitted_lamp(shell,'Projector lens',[(cx+.025,cy-.02),(cx+.025,cy+.02),
+                (cx-.025,cy+.02),(cx-.025,cy-.02)],m['headlight'])
             ellipse('taillight',(-L+.015,s*.55,.58),.09,.09,m['taillight'])
             for yy in [.57,.75]: ellipse('Exhaust',(-L-.006,s*yy,.27),.065,.055,m['chrome'])
     elif S=='chiron':

@@ -4,7 +4,7 @@
   "observedBoundsMeters": {
     "length": 4.551,
     "width": 2.19,
-    "height": 1.329
+    "height": 1.332
   },
   "referenceDimensionsMeters": {
     "length": 4.551,
@@ -15,10 +15,10 @@
   "differencesPercent": {
     "length": 0.0,
     "width": 15.26,
-    "height": 1.84
+    "height": 2.07
   },
   "meshCount": 22,
-  "approximateTriangleCount": 33830,
+  "approximateTriangleCount": 33638,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -64,7 +64,7 @@
   },
   "observedWheelbaseMeters": 2.45,
   "asset": "public/models/selected/porsche-911.glb",
-  "assetSha256": "ecf7ac7e36ed852b9dc61e2359b861bbbd9a5955858e6df38b27f3db1fc684e6",
+  "assetSha256": "9993b6297904253b833ce4e46325d2b5602579789c020b7ff79a47150a3c9984",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [

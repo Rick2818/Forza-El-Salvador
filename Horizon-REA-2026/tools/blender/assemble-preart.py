@@ -32,7 +32,7 @@ sheet.save(OUT/'Horizon_prearte_estudio.jpg',quality=93)
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Horizon · Prearte</title>
 <style>body{margin:24px auto;padding:0 16px;max-width:1500px;background:#101923;color:#fff;font:18px system-ui}
 main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:24px}figure{margin:0}img{width:100%;border-radius:8px}a{color:#f4c475}figcaption{padding:10px 0}p{line-height:1.5;max-width:900px}</style>
-<h1>Horizon El Salvador · Prearte</h1><p>Segundo pase de cabinas y aberturas delanteras.
+<h1>Horizon El Salvador · Prearte</h1><p>Tercer pase de techos, acristalamiento y faros del Ferrari.
 Renders de los siete GLB exportados, con iluminación y cámara comunes. Las formas siguen en revisión.</p>
 <p><a href="Horizon_prearte_estudio.jpg" download>Descargar lámina conjunta</a></p><main>'''+
     ''.join(cards)+'''</main><p>Pendientes: fidelidad fina, ópticas, interiores, decoración y prueba en navegador.

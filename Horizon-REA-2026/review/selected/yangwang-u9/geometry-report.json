@@ -4,7 +4,7 @@
   "observedBoundsMeters": {
     "length": 4.976,
     "width": 2.319,
-    "height": 1.3354
+    "height": 1.3384
   },
   "referenceDimensionsMeters": {
     "length": 4.966,
@@ -15,10 +15,10 @@
   "differencesPercent": {
     "length": 0.2,
     "width": 14.29,
-    "height": 1.86
+    "height": 2.09
   },
   "meshCount": 22,
-  "approximateTriangleCount": 31942,
+  "approximateTriangleCount": 31750,
   "materialNames": [
     "accent",
     "carbon_trim",
@@ -64,7 +64,7 @@
   },
   "observedWheelbaseMeters": 2.9,
   "asset": "public/models/selected/yangwang-u9.glb",
-  "assetSha256": "3458901809e7df52fd2864ba8fe9bdd9add025c4cc627b1b2ff3504a69011e43",
+  "assetSha256": "91889e6bc719851b612a75b4fda0505d9e416be7afcf929820732986a689fbf4",
   "blenderVersion": "4.3.2",
   "renderEngine": "BLENDER_WORKBENCH",
   "reviewImages": [
