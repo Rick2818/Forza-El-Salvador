@@ -7,6 +7,7 @@ import {
   createNumberDecal
 } from "../world/textures";
 import { cloneCarAsset, USE_BLENDER_SHELL, type CarVariant } from "./carAsset";
+import { createPorsche911Visual } from "./porsche911";
 
 /**
  * Fully procedural GT car. The body is a lofted hull (a stack of rounded
@@ -577,6 +578,11 @@ export interface CarOptions {
 }
 
 export function createCarVisual(opts: CarOptions): CarVisual {
+  // Explicitly opt in for visual review: /?car=porsche911; standard GT remains default.
+  if (opts.isPlayer && typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("car") === "porsche911") {
+    return createPorsche911Visual(opts);
+  }
   const root = new THREE.Group();
   const bodyRoot = new THREE.Group();
   bodyRoot.position.y = -BODY_CENTER_Y;
