@@ -19,7 +19,8 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq blender
+          sudo apt-get install -y -qq blender python3-numpy
+          blender --background --python-expr "import numpy; print('NumPy',numpy.__version__)"
           blender --version | head -3
       - name: Fetch CC BY Porsche 911 C4S reference mesh
         run: |
@@ -37,6 +38,8 @@ jobs:
             --output public/models/porsche-911-real.glb \
             --report /tmp/porsche-inspect.json \
             --front=-Y
+          test -s public/models/porsche-911-real.glb
+          test -s /tmp/porsche-inspect.json
           python -m json.tool /tmp/porsche-inspect.json | head -140
       - name: Retain Blender output for QA
         uses: actions/upload-artifact@v4
