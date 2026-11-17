@@ -29,12 +29,17 @@ jobs:
             -o /tmp/porsche-911-c4s.glb
           file /tmp/porsche-911-c4s.glb
           test "$(wc -c </tmp/porsche-911-c4s.glb)" -gt 100000
+      - name: Decompress meshopt GLB before Blender import
+        run: |
+          npx --yes @gltf-transform/cli@4.5.0 copy /tmp/porsche-911-c4s.glb /tmp/porsche-uncompressed.glb
+          test -s /tmp/porsche-uncompressed.glb
+          node -e "const fs=require('fs');const b=fs.readFileSync('/tmp/porsche-uncompressed.glb');const j=JSON.parse(b.toString('utf8',20,20+b.readUInt32LE(12))); console.log('EXPORTED_GLTF_EXTENSIONS',j.extensionsRequired || []); if((j.extensionsRequired||[]).includes('EXT_meshopt_compression')) process.exit(2);"
       - name: Normalize Porsche geometry in Blender and export GLB
         working-directory: Horizon-REA-2026
         run: |
           blender --background --factory-startup \
             --python tools/blender/porsche-911.py -- \
-            --input /tmp/porsche-911-c4s.glb \
+            --input /tmp/porsche-uncompressed.glb \
             --output public/models/porsche-911-real.glb \
             --report /tmp/porsche-inspect.json \
             --front=-Y
