@@ -35,23 +35,21 @@ jobs:
         working-directory: Horizon-REA-2026
         run: npm test
 
-      - name: Real 3D screenshot from Chromium with software WebGL
+      - name: Capture loaded Blender Porsche (not fallback) with CDP
         working-directory: Horizon-REA-2026
         run: |
           mkdir -p captures
           npm run preview -- --host 127.0.0.1 > /tmp/horizon-preview.log 2>&1 &
-          sleep 5
+          sleep 4
           BROWSER="$(command -v google-chrome || command -v chromium || true)"
-          if [ -z "$BROWSER" ]; then
-            echo "No Chromium available for preview screenshot"
-            exit 0
-          fi
+          if [ -z "$BROWSER" ]; then echo "Chrome/Chromium unavailable"; exit 1; fi
           "$BROWSER" --headless=new --no-sandbox --disable-dev-shm-usage \
             --enable-webgl --enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader \
-            --hide-scrollbars --window-size=1440,900 --virtual-time-budget=9000 \
-            --screenshot=captures/porsche-911-3d.png \
-            http://127.0.0.1:4173/porsche-preview.html || true
-          ls -lh captures
+            --hide-scrollbars --window-size=1440,900 --remote-debugging-port=9333 \
+            --user-data-dir=/tmp/horizon-porsche-browser \
+            http://127.0.0.1:4173/porsche-preview.html > /tmp/horizon-chrome.log 2>&1 &
+          node tools/porsche-capture.mjs captures/porsche-911-3d.png
+          ls -lh captures/porsche-911-3d.png
       - name: Save screenshot artifact for reference comparison
         uses: actions/upload-artifact@v4
         with:
