@@ -22,6 +22,8 @@ export class Input {
   private brakeValue = 0;
   private attached = false;
   private canvas: HTMLCanvasElement | null = null;
+  private touchRoot: HTMLDivElement | null = null;
+  private touchHeld = new Set<string>();
 
   attach(canvas?: HTMLCanvasElement): void {
     if (this.attached) return;
@@ -33,6 +35,75 @@ export class Input {
     // Clicking anywhere on the play area restores keyboard focus, so the game
     // keeps receiving keys after the menu buttons have been used.
     window.addEventListener("pointerdown", this.onPointerDown);
+    this.installTouchControls();
+  }
+
+
+  /** On-screen controls for phones/tablets. Hidden outside a race. */
+  private installTouchControls(): void {
+    if (!window.matchMedia("(pointer: coarse)").matches || this.touchRoot) return;
+    const root = document.createElement("div");
+    root.className = "horizon-touch-controls";
+    root.hidden = true;
+
+    const makeButton = (text: string, code: string, aria: string): HTMLButtonElement => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      button.className = "horizon-touch-key";
+      button.setAttribute("aria-label", aria);
+
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        button.setPointerCapture(event.pointerId);
+        this.touchHeld.add(code);
+        this.down.add(code);
+        button.classList.add("pressed");
+      });
+      const release = (event: PointerEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
+        this.touchHeld.delete(code);
+        this.down.delete(code);
+        button.classList.remove("pressed");
+      };
+      button.addEventListener("pointerup", release);
+      button.addEventListener("pointercancel", release);
+      button.addEventListener("lostpointercapture", () => {
+        this.touchHeld.delete(code);
+        this.down.delete(code);
+        button.classList.remove("pressed");
+      });
+      return button;
+    };
+
+    const steering = document.createElement("div");
+    steering.className = "horizon-touch-group";
+    steering.append(
+      makeButton("◀", "KeyA", "Girar a la izquierda"),
+      makeButton("▶", "KeyD", "Girar a la derecha")
+    );
+    const pedals = document.createElement("div");
+    pedals.className = "horizon-touch-group";
+    pedals.append(
+      makeButton("FRENO", "KeyS", "Frenar"),
+      makeButton("GAS", "KeyW", "Acelerar")
+    );
+    root.append(steering, pedals);
+    document.body.appendChild(root);
+    this.touchRoot = root;
+  }
+
+  setTouchControlsVisible(visible: boolean): void {
+    if (!this.touchRoot) return;
+    this.touchRoot.hidden = !visible;
+    if (!visible) {
+      for (const code of this.touchHeld) this.down.delete(code);
+      this.touchHeld.clear();
+      this.touchRoot.querySelectorAll(".pressed").forEach((node) => node.classList.remove("pressed"));
+    }
   }
 
   focusGame(): void {
@@ -48,6 +119,9 @@ export class Input {
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onBlur);
     window.removeEventListener("pointerdown", this.onPointerDown);
+    this.touchRoot?.remove();
+    this.touchRoot = null;
+    this.touchHeld.clear();
     this.attached = false;
   }
 
