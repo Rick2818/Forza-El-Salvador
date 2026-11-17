@@ -1,0 +1,31 @@
+name: Horizon Porsche 911 · preproduction checks
+
+on:
+  pull_request:
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/horizon-porsche-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Install dependencies
+        working-directory: Horizon-REA-2026
+        run: npm ci
+      - name: Typecheck and build both game and 3D inspection page
+        working-directory: Horizon-REA-2026
+        run: npm run build
+      - name: Unit tests including Porsche 911 dimensions and geometry
+        working-directory: Horizon-REA-2026
+        run: npm test
