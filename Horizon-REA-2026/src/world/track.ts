@@ -8,7 +8,8 @@ import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
 import { clamp } from "../core/mathx";
 import { createAsphaltMaps, createBannerTexture, createCheckerTexture } from "./textures";
-import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuit } from "./circuits";
+import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuitDefinition } from "./circuits";
+import { suzakaCenterline } from "./suzakaGeometry";
 
 export interface Segment {
   straight?: number;
@@ -44,14 +45,14 @@ export class Track {
   length = 0;
   segmentLength = 0;
   startIndex = 0;
-  width = SETTINGS.track.width;
-  halfWidth = SETTINGS.track.width / 2;
+  width = this.circuit.layout === "figure-eight" ? 14 : SETTINGS.track.width;
+  halfWidth = this.width / 2;
 
   constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {}
 
   /** Build the track using procedural layout (original logic). */
   build(): void {
-    const report = analyzeCircuit(this.circuit.segments);
+    const report = analyzeCircuitDefinition(this.circuit);
     if (!report.ok) throw new Error(`Circuito ${this.circuit.name}: ${report.issues.join(", ")}`);
     const SEGMENTS = this.circuit.segments;
 
@@ -96,9 +97,12 @@ export class Track {
       return pts;
     }
 
-    const centerline = buildCenterline();
+    const centerline = this.circuit.layout === "figure-eight"
+      ? suzakaCenterline().map(p => new THREE.Vector3(p.x, p.y, p.z))
+      : buildCenterline();
     const N = 1500;
     this.curve = new THREE.CatmullRomCurve3(centerline, true, "catmullrom", 0.5);
+    if (this.circuit.layout === "figure-eight") this.curve.arcLengthDivisions = 3600;
     this.length = this.curve.getLength();
     const spaced = this.curve.getSpacedPoints(N);
     this.samples = spaced.slice(0, N);
@@ -117,7 +121,10 @@ export class Track {
       const a = this.tangents[(i - 2 + N) % N];
       const b = this.tangents[(i + 2) % N];
       const angle = clamp(a.dot(b), -1, 1);
-      this.curvatures.push(angle / (4 * this.segmentLength));
+      // The figure-eight uses genuine angular curvature, not cosine; the
+      // legacy layouts retain their previous AI tuning.
+      const bend = this.circuit.layout === "figure-eight" ? Math.acos(angle) : angle;
+      this.curvatures.push(bend / (4 * this.segmentLength));
     }
     // Light smoothing
     const smoothed = this.curvatures.map((_, i) => {
@@ -132,7 +139,7 @@ export class Track {
     });
     this.curvatures = smoothed;
 
-    this.startIndex = Math.round(48 / this.segmentLength) % N;
+    this.startIndex = Math.round((this.circuit.layout === "figure-eight" ? 100 : 48) / this.segmentLength) % N;
 
     const rawSpeed = this.curvatures.map((k) =>
       clamp(Math.sqrt(13.5 / Math.max(k, 1e-4)), 20, SETTINGS.physics.topSpeed)
@@ -264,7 +271,7 @@ export class Track {
     this.buildGantry();
 
     // ---- Trackside lamps: instanced poles with glowing heads.
-    if (this.circuit.id !== "monzon") this.buildLamps(barrierOffset);
+    if (this.circuit.id !== "monzon" && this.circuit.id !== "suzaka") this.buildLamps(barrierOffset);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
@@ -277,8 +284,8 @@ export class Track {
     for (let i = 0; i < N; i++) {
       const s = this.samples[i];
       const r = this.rights[i];
-      positions.push(s.x + r.x * from, y, s.z + r.z * from);
-      positions.push(s.x + r.x * to, y, s.z + r.z * to);
+      positions.push(s.x + r.x * from, s.y + y, s.z + r.z * from);
+      positions.push(s.x + r.x * to, s.y + y, s.z + r.z * to);
       const v = (i * this.segmentLength) / vScale;
       uvs.push(0, v, 1, v);
     }
@@ -306,7 +313,7 @@ export class Track {
     for (let i = 0; i < N; i++) {
       const s = this.samples[i];
       const r = this.rights[i];
-      const y = baseY + height;
+      const y = s.y + baseY + height;
       positions.push(s.x + r.x * (offset - half), y, s.z + r.z * (offset - half));
       positions.push(s.x + r.x * (offset + half), y, s.z + r.z * (offset + half));
     }
@@ -330,7 +337,7 @@ export class Track {
     const r = this.rights[i];
     const half = this.halfWidth;
     const halfD = depth / 2;
-    const y = 0.035;
+    const y = s.y + 0.035;
 
     const corners = [
       new THREE.Vector3(s.x - r.x * half - t.x * halfD, y, s.z - r.z * half - t.z * halfD),
@@ -392,14 +399,14 @@ export class Track {
       side: THREE.DoubleSide
     });
     const beam = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 2.1), beamMat);
-    beam.position.set(s.x, height - 1.3, s.z);
+    beam.position.set(s.x, s.y + height - 1.3, s.z);
     beam.rotation.y = Math.atan2(t.x, t.z) + Math.PI;
     beam.name = "start-banner";
     this.group.add(beam);
 
     for (const side of [-1, 1]) {
       const post = new THREE.Mesh(postGeo, postMat);
-      post.position.set(s.x + r.x * half * side, height / 2, s.z + r.z * half * side);
+      post.position.set(s.x + r.x * half * side, s.y + height / 2, s.z + r.z * half * side);
       post.castShadow = false;
       this.group.add(post);
     }
@@ -436,9 +443,9 @@ export class Track {
         const r = this.rights[i];
         const x = s.x + r.x * barrierOffset * side * 1.12;
         const z = s.z + r.z * barrierOffset * side * 1.12;
-        m.makeTranslation(x, 3.2, z);
+        m.makeTranslation(x, s.y + 3.2, z);
         poles.setMatrixAt(n, m);
-        m.makeTranslation(x, 6.5, z);
+        m.makeTranslation(x, s.y + 6.5, z);
         heads.setMatrixAt(n, m);
         n++;
       }
@@ -460,6 +467,22 @@ export class Track {
       RAPIER.ColliderDesc.cuboid(1400, 2.5, 1400).setFriction(1.05),
       ground
     );
+
+    // Rapier's raycast-vehicle wheels need a solid drivable bridge surface,
+    // not a visual-only mesh. Preserve the existing flat ground beneath the
+    // flyover so vehicles on the lower branch have physical support too.
+    if (this.circuit.layout === "figure-eight") {
+      const road = this.group.getObjectByName("asphalt") as THREE.Mesh<THREE.BufferGeometry> | undefined;
+      if (!road || !road.geometry.index) throw new Error("Suzaka bridge collider: road mesh missing");
+      const pos = road.geometry.getAttribute("position") as THREE.BufferAttribute;
+      const vertexArray = new Float32Array(pos.array as ArrayLike<number>);
+      const triangleArray = new Uint32Array(road.geometry.index.array as ArrayLike<number>);
+      const deck = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+      world.createCollider(
+        RAPIER.ColliderDesc.trimesh(vertexArray, triangleArray).setFriction(1.05),
+        deck
+      );
+    }
 
     const offset = this.halfWidth + (SETTINGS.track.barrierOffset ?? 2) - 2;
     for (const side of [-1, 1]) {
@@ -510,7 +533,8 @@ export class Track {
       for (let d = -45; d <= 45; d++) {
         const i = (hint + d + N) % N;
         const p = this.samples[i];
-        const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
+        const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 +
+        (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 : 0);
         if (dist < bestDist) {
           bestDist = dist;
           best = i;
@@ -573,7 +597,7 @@ export class Track {
       const r = this.rights[i];
       const px = s.x + r.x * offset;
       const pz = s.z + r.z * offset;
-      positions.push(px, baseY, pz, px, baseY + height, pz);
+      positions.push(px, s.y + baseY, pz, px, s.y + baseY + height, pz);
     }
 
     for (let i = 0; i < N; i++) {
