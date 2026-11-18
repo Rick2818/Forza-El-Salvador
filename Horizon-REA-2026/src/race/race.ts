@@ -5,7 +5,7 @@ import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
-import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS } from "../vehicle/selectedAsset";
+import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, vehicleDesign } from "../vehicle/selectedAsset";
 
 export type Difficulty = RaceDifficulty;
 export type RaceState = "idle" | "countdown" | "racing" | "finished";
@@ -76,7 +76,7 @@ export class Race {
     readonly difficulty: Difficulty = "medio"
   ) {
     const playerVehicle = new Vehicle(this.world, scene, {
-      paintColor: 0xff3d00,
+      paintColor: Number.parseInt(vehicleDesign(vehicleId).paint.slice(1), 16),
       accentColor: 0xffc400,
       number: 7,
       isPlayer: true,
@@ -105,7 +105,7 @@ export class Race {
       const cfg = ROSTER[rivals.length];
       const opponent = VEHICLE_DESIGNS.filter((d) => d.id !== vehicleId)[rivals.length];
       const vehicle = new Vehicle(this.world, scene, {
-        paintColor: cfg.paint,
+        paintColor: Number.parseInt(opponent.paint.slice(1), 16),
         accentColor: cfg.accent,
         number: 12 + rivals.length * 7,
         vehicleId: opponent.id
