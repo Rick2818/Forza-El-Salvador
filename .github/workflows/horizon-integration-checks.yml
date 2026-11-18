@@ -1,0 +1,44 @@
+name: Horizon integration checks
+on:
+  push:
+    branches: ["design/convertible-reference-v1"]
+    paths:
+      - "Horizon-REA-2026/**"
+      - ".github/workflows/horizon-integration-checks.yml"
+  pull_request:
+    paths:
+      - "Horizon-REA-2026/**"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      - name: Check integration script syntax
+        run: |
+          node --check tools/blender/prepare-ruby-integration.mjs
+          python3 -m py_compile tools/blender/export-ruby-game.py
+      - name: Parse Windows installer
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "tools/blender/install-ruby-game.ps1"), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | Format-List
+            exit 1
+          }
