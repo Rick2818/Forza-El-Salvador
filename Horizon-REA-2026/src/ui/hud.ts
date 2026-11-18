@@ -175,7 +175,7 @@ export class HUD {
     this.currentEl.textContent = formatTime(snapshot.lapTime);
     this.bestEl.textContent = snapshot.bestLap > 0 ? formatTime(snapshot.bestLap) : "--:--.---";
     this.lastEl.textContent = snapshot.lastLap > 0 ? formatTime(snapshot.lastLap) : "--:--.---";
-    this.fpsEl.textContent = `${Math.round(fps)} FPS · V4`;
+    this.fpsEl.textContent = `${Math.round(fps)} FPS · V5`;
 
     const speed = Math.round(vehicle.speedKph);
     if (speed !== this.lastSpeed) {
