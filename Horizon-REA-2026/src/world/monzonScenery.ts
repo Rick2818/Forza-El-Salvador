@@ -139,7 +139,8 @@ export class MonzonScenery {
     );
     const crowns = new THREE.InstancedMesh(
       new THREE.IcosahedronGeometry(1, 1),
-      material(0x43835a), trees
+      // White base avoids multiplying every per-instance green into dull olive.
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.94, metalness: 0 }), trees
     );
     trunk.name = "monzon-tree-trunks";
     crowns.name = "monzon-tree-canopies";
@@ -169,7 +170,7 @@ export class MonzonScenery {
       scale.set(4.2 + rng() * 2.9, height * 0.42, 4.0 + rng() * 2.6);
       matrix.compose(position, rotation, scale);
       crowns.setMatrixAt(count, matrix);
-      color.setHSL(0.30 + rng() * 0.095, 0.31 + rng() * 0.19, 0.27 + rng() * 0.20);
+      color.setHSL(0.30 + rng() * 0.075, 0.55 + rng() * 0.18, 0.35 + rng() * 0.16);
       crowns.setColorAt(count, color);
       count++;
     }
