@@ -62,6 +62,30 @@ export interface CircuitMetrics {
 /* Circuit data                                                        */
 /* ------------------------------------------------------------------ */
 
+
+/** Montaje original: recta larga, dos chicanas y curvas de velocidad. */
+const MONZON: Segment[] = [
+  { straight: 1050 },
+  { turn: 37, radius: 58, dir: 1 },
+  { turn: 74, radius: 58, dir: -1 },
+  { turn: 37, radius: 58, dir: 1 },
+  { straight: 145 },
+  { turn: 90, radius: 115, dir: 1 },
+  { straight: 700 },
+  { turn: 36, radius: 72, dir: -1 },
+  { turn: 72, radius: 72, dir: 1 },
+  { turn: 36, radius: 72, dir: -1 },
+  { straight: 120 },
+  { turn: 90, radius: 130, dir: 1 },
+  { straight: 1462.81043 },
+  { turn: 42, radius: 110, dir: 1 },
+  { straight: 110 },
+  { turn: 48, radius: 110, dir: 1 },
+  { straight: 885.584717 },
+  { turn: 90, radius: 165, dir: 1 },
+  { straight: 170 }
+];
+
 const LIBERTAD: Segment[] = [
   { straight: 456.6 },
   { turn: 90, radius: 62, dir: 1 },
@@ -125,6 +149,7 @@ const MIRADOR: Segment[] = [
 ];
 
 export const CIRCUITS: readonly CircuitDefinition[] = [
+  { id: "monzon", name: "Circuito Monzon", discipline: "Alta velocidad · Italia", blurb: "Trazado original de 5,79 km con dos chicanas, boxes y rectas de alta velocidad.", accent: "#f05d47", segments: MONZON },
   {
     id: "libertad",
     name: "Circuito La Libertad",
