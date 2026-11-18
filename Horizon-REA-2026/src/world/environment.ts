@@ -56,7 +56,7 @@ export class Environment {
       reflectionSky.material.uniforms["sunPosition"].value.copy(this.moonDirection);
       reflectionScene.add(reflectionSky);
       scene.environment = pmrem.fromScene(reflectionScene, 0, 1, 16000).texture;
-      scene.environmentIntensity = 1.1;
+      scene.environmentIntensity = 0.55; // prevent overbright blue sky reflections on car finishes
       pmrem.dispose();
       scene.background = new THREE.Color(0x9cc7e8);
       scene.fog = new THREE.FogExp2(0xb7cddd, 0.00025);
@@ -70,7 +70,7 @@ export class Environment {
       scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
     }
 
-    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : 0xa8c2ff, isDaylight ? 2.9 : 3.15);
+    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : 0xa8c2ff, isDaylight ? 2.1 : 3.15);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
@@ -85,8 +85,8 @@ export class Environment {
     scene.add(this.moon);
     scene.add(this.moon.target);
     if (isDaylight) {
-      scene.add(new THREE.HemisphereLight(0xc4e2ff, 0x55694b, 2.0));
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      scene.add(new THREE.HemisphereLight(0xd8e3f0, 0x55694b, 1.15));
+      scene.add(new THREE.AmbientLight(0xffffff, 0.28));
     } else {
       scene.add(new THREE.HemisphereLight(0x2b4d82, 0x04060a, 1.05));
       scene.add(new THREE.AmbientLight(0x101d33, 0.45));
