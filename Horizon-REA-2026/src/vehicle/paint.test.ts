@@ -43,7 +43,10 @@ describe("approved automotive finishes", () => {
       expect(isVehicleGlass(name)).toBe(true);
       prepareSelectedMaterial(glass);
       expect(glass.transparent).toBe(true);
-      expect(glass.opacity).toBeCloseTo(.7);
+      expect(glass.opacity).toBeCloseTo(.32);
+      expect(glass.color.getHexString()).toBe("87949f");
+      expect(glass.metalness).toBe(0);
+      expect(glass.roughness).toBeCloseTo(.16);
       expect(glass.depthWrite).toBe(false);
       expect(glass.side).toBe(THREE.DoubleSide);
       glass.dispose();
