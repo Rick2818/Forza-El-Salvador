@@ -13,16 +13,16 @@
     "wing": false,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1.0,
-      "mass": 1.0,
+      "power": 1,
+      "mass": 1,
       "topSpeed": 92,
       "grip": 1,
       "steer": 0.52
     },
     "dimensionSource": "https://pictures.dealer.com/ferrariofsanantonio/709e4f720a0e0acb0c353895914fc451.pdf",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   },
   {
     "id": "yangwang-u9",
@@ -32,8 +32,8 @@
     "height": 1.311,
     "wheelbase": 2.9,
     "track": 1.749,
-    "wheelRadius": 0.365,
-    "paint": "#e91e2b",
+    "wheelRadius": 0.342688,
+    "paint": "#080809",
     "accent": "#171a23",
     "wing": true,
     "powertrain": "electric",
@@ -44,10 +44,10 @@
       "grip": 1.02,
       "steer": 0.52
     },
-    "dimensionSource": "https://www.yangwangauto.com/material/yangwang_cn/images/u9/2025-12-23/U9\u8f66\u4e6620251223.pdf",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "dimensionSource": "https://www.yangwangauto.com/material/yangwang_cn/images/u9/2025-12-23/U9车书20251223.pdf",
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   },
   {
     "id": "koenigsegg-jesko-odin",
@@ -57,7 +57,7 @@
     "height": 1.21,
     "wheelbase": 2.7,
     "track": 1.75,
-    "wheelRadius": 0.355,
+    "wheelRadius": 0.312824,
     "paint": "#25282d",
     "accent": "#d2aa3d",
     "wing": true,
@@ -70,9 +70,9 @@
       "steer": 0.52
     },
     "dimensionSource": "https://www.koenigsegg.com/technical-specifications-jesko-attack",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   },
   {
     "id": "bugatti-chiron",
@@ -82,7 +82,7 @@
     "height": 1.212,
     "wheelbase": 2.711,
     "track": 1.758,
-    "wheelRadius": 0.355,
+    "wheelRadius": 0.339068,
     "paint": "#10131a",
     "accent": "#bf8159",
     "wing": false,
@@ -95,9 +95,9 @@
       "steer": 0.52
     },
     "dimensionSource": "https://bugatti-newsroom.imgix.net/66703700d9bf8f4b7ce9211c/211122_BU_Chiron%20ENG.pdf",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   },
   {
     "id": "porsche-911",
@@ -107,7 +107,7 @@
     "height": 1.305,
     "wheelbase": 2.45,
     "track": 1.62,
-    "wheelRadius": 0.345,
+    "wheelRadius": 0.336199,
     "paint": "#555b60",
     "accent": "#e2bd2e",
     "wing": false,
@@ -120,9 +120,9 @@
       "steer": 0.52
     },
     "dimensionSource": "https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3Abe13fd23-11cf-4783-b509-a702aed10df3/pag-911-turbo-s-en.pdf",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   },
   {
     "id": "lamborghini-aventador-roadster",
@@ -132,7 +132,7 @@
     "height": 1.136,
     "wheelbase": 2.7,
     "track": 1.75,
-    "wheelRadius": 0.35,
+    "wheelRadius": 0.343686,
     "paint": "#7caacb",
     "accent": "#161a23",
     "wing": false,
@@ -145,9 +145,9 @@
       "steer": 0.52
     },
     "dimensionSource": "https://www.lamborghini.com/en-en/history/aventador-s-roadster",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   },
   {
     "id": "mercedes-amg-gt-black-series",
@@ -157,7 +157,7 @@
     "height": 1.28,
     "wheelbase": 2.635,
     "track": 1.743,
-    "wheelRadius": 0.35,
+    "wheelRadius": 0.32845,
     "paint": "#d91c32",
     "accent": "#14191e",
     "wing": true,
@@ -170,8 +170,8 @@
       "steer": 0.52
     },
     "dimensionSource": "https://static.oneweb.mercedes-benz.com/css-oom-assets/en-bd/pdf/mercedes-amg-gt-black-series-2020-june-r190-audio20-owners-manual-1.pdf",
-    "geometryStatus": "prototype",
-    "visualFidelityApproved": false,
-    "productionApproved": false
+    "geometryStatus": "approved",
+    "visualFidelityApproved": true,
+    "productionApproved": true
   }
 ]

@@ -30,6 +30,12 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
         if (!scene.getObjectByName(name)) throw new Error(`${id}: falta el pivote ${name}`);
       }
       scene.rotation.y = -Math.PI / 2;
+      if (scene.getObjectByName("Game_orientation") || scene.getObjectByName("Game orientation")) {
+        scene.updateMatrixWorld(true);
+        const size = new THREE.Box3().setFromObject(scene, true).getSize(new THREE.Vector3());
+        scene.scale.setScalar(vehicleDesign(id).length / size.z);
+      }
+      scene.updateMatrixWorld(true);
       cache.set(id, scene);
     }).finally(() => { pending.delete(id); });
   pending.set(id, task);
@@ -38,6 +44,13 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
 
 export function wheelConnections(id: string): { x: number; y: number; z: number; front: boolean }[] {
   const d = vehicleDesign(id);
+  const scene = cache.get(id);
+  if (scene) {
+    return WHEEL_NAMES.map((name, index) => {
+      const pivot = scene.getObjectByName(name)!.getWorldPosition(new THREE.Vector3());
+      return { x: pivot.x, y: pivot.y - BODY_CENTER_Y + .235, z: pivot.z, front: index < 2 };
+    });
+  }
   return [1, -1].flatMap((end) => [1, -1].map((side) => ({
     x: side * d.track / 2,
     y: d.wheelRadius - BODY_CENTER_Y + .235,
@@ -83,7 +96,7 @@ export function createSelectedVisual(id: string): CarVisual {
     const authored = imported.getObjectByName(name)!;
     const steer = new THREE.Group(); const spin = new THREE.Group();
     const w = wheelConnections(id)[i];
-    steer.position.set(w.x, d.wheelRadius - BODY_CENTER_Y, w.z);
+    steer.position.set(w.x, w.y - .235, w.z);
     root.add(steer); steer.add(spin); root.updateMatrixWorld(true);
     // Preserve the Blender-authored orientation while moving to the live pivot.
     spin.attach(authored);

@@ -26,14 +26,14 @@ describe("selected vehicle references", () => {
     }
   });
 
-  it("offers seven explicitly experimental models with the selected one marked", () => {
+  it("offers seven approved models with the selected one marked", () => {
     const html = garageMarkup("ferrari-california-t");
     expect(new Set(SELECTED_VEHICLES.map((car) => car.id)).size).toBe(7);
     for (const car of SELECTED_VEHICLES) {
       expect(html).toContain(`data-vehicle-id="${car.id}"`);
       expect(existsSync(new URL(`../public/${car.modelUrl}`, import.meta.url))).toBe(true);
     }
-    expect(html.match(/Prototipo 3D · en revisión/g)).toHaveLength(7);
+    expect(html.match(/Modelo aprobado/g)).toHaveLength(7);
     expect(html.match(/data-action="select-vehicle"/g)).toHaveLength(7);
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toContain("Fotografía pendiente");

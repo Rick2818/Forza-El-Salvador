@@ -4,8 +4,7 @@ export function garageMarkup(selectedId?: string): string {
   return `<section class="vehicle-garage" aria-labelledby="garage-title">
     <div class="brand">Colección elegida · ${SELECTED_VEHICLES.length} autos</div>
     <h2 id="garage-title">Garaje de Horizon El Salvador</h2>
-    <p class="garage-intro">Siete modelos 3D disponibles para pruebas de conducción.
-      La fidelidad visual y el rendimiento siguen en revisión; los ajustes de manejo son experimentales.</p>
+    <p class="garage-intro">Elegí tu auto para la carrera.</p>
     <p id="garage-status" role="status" aria-live="polite"></p>
     <div class="vehicle-grid">${SELECTED_VEHICLES.map((car) => {
       const src = referenceUrl(car);
@@ -16,7 +15,7 @@ export function garageMarkup(selectedId?: string): string {
             </a>`
           : `<div class="vehicle-image vehicle-image-pending">Fotografía pendiente</div>`}
         <div class="vehicle-copy">
-          <span class="vehicle-status">Prototipo 3D · en revisión</span>
+          <span class="vehicle-status">Modelo aprobado</span>
           <h3>${car.name}</h3><p class="vehicle-finish">${car.finish}</p>
           <ul>${car.features.map((feature) => `<li>${feature}</li>`).join("")}</ul>
           <details><summary>Referencia de versión</summary><p>${car.variantNote}</p></details>
