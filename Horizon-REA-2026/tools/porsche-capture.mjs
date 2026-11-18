@@ -5,15 +5,21 @@ const port = Number(process.env.CHROME_PORT || "9333");
 const outfile = process.argv[2] || "captures/porsche-911-3d.png";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-let data;
+let target;
 for (let tries = 0; tries < 50; tries++) {
-  try {
-    data = await fetch(`http://127.0.0.1:${port}/json/list`).then((r) => r.json());
-    if (Array.isArray(data)) break;
-  } catch {}
+  const entries = await fetch(`http://127.0.0.1:${port}/json/list`, {
+    signal: AbortSignal.timeout(1000),
+  }).then((response) => response.json()).catch(() => null);
+  if (Array.isArray(entries)) {
+    target = entries.find((entry) =>
+      entry.type === "page" &&
+      entry.webSocketDebuggerUrl &&
+      entry.url.includes("porsche-preview.html")
+    );
+    if (target) break;
+  }
   await sleep(200);
 }
-const target = data?.find((entry) => entry.type === "page" && entry.url.includes("porsche-preview.html"));
 if (!target) throw new Error("Porsche preview Chrome page unavailable");
 
 const socket = new WebSocket(target.webSocketDebuggerUrl);
