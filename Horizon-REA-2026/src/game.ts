@@ -144,6 +144,12 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       onRestart: () => this.startRace(),
       onQuit: () => this.quitToMenu(),
       onToggleQuality: () => this.toggleQuality(),
+      onSelectCircuit: (id) => {
+        if (id === this.track.circuit.id) return;
+        try { localStorage.setItem("horizon.circuit", id); } catch { /* optional persistence */ }
+        // Rebuild the world rather than retain barriers or terrain from the old circuit.
+        window.location.reload();
+      },
       onSelectDifficulty: (difficulty) => {
         this.difficulty = difficulty;
         try { localStorage.setItem("horizon.difficulty", difficulty); } catch { /* optional */ }
@@ -167,6 +173,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
 
     this.menu.setSelectedVehicle(this.selectedVehicleId);
+    this.menu.setSelectedCircuit(this.track.circuit.id);
     this.menu.setDifficulty(this.difficulty);
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
@@ -184,6 +191,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       stats: () => ({
         state: this.state,
         vehicleId: this.race.vehicleId,
+        circuit: this.track.circuit.id,
         difficulty: this.difficulty,
         raceState: this.race.state,
         fps: Number(this.fps.toFixed(1)),
@@ -240,7 +248,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.menu.hide();
     this.input.setTouchControlsVisible(true);
     this.hud.show(true);
-    this.hud.toast(`Horizon GP · ${this.difficulty.toUpperCase()} · 3 vueltas`, 3000);
+    this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas`, 3000);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
     this.input.focusGame();
