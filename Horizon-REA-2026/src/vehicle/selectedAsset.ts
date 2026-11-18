@@ -109,7 +109,7 @@ export function isVehicleGlass(name: string): boolean {
  * materials that looked white or pastel in the daylight sky.
  */
 export function isVehicleBodyPaint(name: string): boolean {
-  return /^(paint(?:\\.\\d+)?|carrosserie|grafito metalizado|negro brillante)$/i.test(name);
+  return /^(paint(?:[.][0-9]+)?|carrosserie|grafito metalizado|negro brillante)$/i.test(name);
 }
 
 export function isVehicleCabinMaterial(name: string): boolean {
