@@ -52,3 +52,12 @@ para evitar que los vehículos atraviesen el paisaje fuera del asfalto.
 
 **Estado de publicación:** comprobar siempre el resultado de la ejecución
 más reciente de `horizon-pages.yml` antes de anunciar el despliegue.
+
+## Verificación de exportación (18 de noviembre de 2026, UTC)
+
+El pipeline **Construir Sparda y Sakhir Horizon con Blender** terminó correctamente:
+- `sparda.blend`: 199 objetos de escena y su modelo `sparda.glb` de 1 964 008 bytes.
+- `sakhir-horizon.blend`: 155 objetos de escena y su modelo `sakhir-horizon.glb` de 1 145 584 bytes.
+- Ambos `.blend` y `.glb` están versionados en GitHub.
+- El despliegue de GitHub Pages debe recompilarse después del commit automático de Blender,
+  dado que los commits realizados con `GITHUB_TOKEN` no activan otro workflow `push`.
