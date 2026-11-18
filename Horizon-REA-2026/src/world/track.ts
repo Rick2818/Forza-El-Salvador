@@ -12,6 +12,17 @@ import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuitD
 import { suzakaCenterline } from "./suzakaGeometry";
 import { internationalCenterline, type InternationalCircuitId } from "./internationalGeometry";
 
+/** Near-black racing asphalt independent of daylight tint and exposure.
+ * Reuses the aggregate albedo texture without expensive lighting on mobile.
+ */
+export function createDarkAsphaltMaterial(map: THREE.Texture): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({
+    map,
+    color: 0x646464,
+    toneMapped: false
+  });
+}
+
 export interface Segment {
   straight?: number;
   turn?: number;
@@ -187,11 +198,7 @@ export class Track {
     // Absolute dark asphalt rather than blue-gray PBR under the very bright
     // daylight lighting/sky environment. Unlit black charcoal retains the
     // subtle aggregate map and ensures the white lines stay high-contrast.
-    const roadMat = new THREE.MeshBasicMaterial({
-      map: asphalt.map,
-      color: 0x646464,
-      toneMapped: false
-    });
+    const roadMat = createDarkAsphaltMaterial(asphalt.map);
     const road = new THREE.Mesh(this.ribbonGeometry(-halfW, halfW, surfaceY, 12), roadMat);
     road.name = "asphalt";
     road.receiveShadow = true;
