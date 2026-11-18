@@ -184,6 +184,10 @@ def body(d, mats):
       'amg': [(-.5,.70,.64),(-.44,.95,.82),(-.29,1,.87),(-.10,.94,.77),(.12,.94,.76),(.29,.98,.80),(.44,.94,.68),(.5,.78,.58)]
     }
     profile=profiles[d['style']]
+    if d['style']=='ferrari':
+        cad=json.loads((Path(__file__).parent/'ferrari-freecad-sections.json').read_text())
+        profile=[(.5-x/cad['length'], min(1,w/(2000*W)), z/1000-.035)
+                 for x,w,z in reversed(cad['body'])]
     rings=[]
     for x,w,h in profile:
         floor=.15
@@ -231,16 +235,19 @@ def body(d, mats):
     return obj
 
 
-def cabin(d,m):
+def cabin(d,m,shell):
     L,W,H=d['length'], d['width']/2, d['height']
     # Rear glass base, rear roof, front roof, windshield base (longitudinal fractions).
-    poses={'ferrari':(-.31,-.18,-.015,.13),'u9':(-.30,-.15,.075,.22),
+    poses={'ferrari':(-.3009,-.15,-.02,.1597),'u9':(-.30,-.15,.075,.22),
       'jesko':(-.28,-.13,.065,.22),'chiron':(-.29,-.14,.065,.22),
       'porsche':(-.39,-.17,.045,.20),'aventador':(-.28,-.13,.04,.21),
       'amg':(-.38,-.25,-.095,.055)}
     rear,rb,rf,front=poses[d['style']]
     belt=.77 if d['style']!='aventador' else .70
     wid=W*.74
+    if d["style"] == "ferrari":
+        H -= .075
+        wid = W * .79
     def arch(x,top,w):
         # Smooth the original landmarks, keeping the glazing against its rails.
         # At the lower windshield/rear window, fixed offsets inverted the
@@ -256,8 +263,8 @@ def cabin(d,m):
             for step in range(4):
                 result.append(tuple(catmull(prev[k],a[k],b[k],nxt[k],step/4) for k in range(3)))
         return result+[anchors[-1]]
-    rings=[arch(rear,belt+.035,wid*.94),arch(rb,H-.018,wid),
-      arch((rb+rf)/2,H,wid),arch(rf,H-.025,wid*.96),arch(front,belt+.035,wid*.91)]
+    rings=[arch(rear,belt+.035,wid*.94),arch(rb,H-(.038 if d['style']=='ferrari' else .018),wid),
+      arch((rb+rf)/2,H,wid),arch(rf,H-(.045 if d['style']=='ferrari' else .025),wid*.96),arch(front,belt+.035,wid*.91)]
     if d['style']=='aventador':
         # Windshield only; the cockpit remains open.
         rings=rings[-2:]
@@ -274,7 +281,12 @@ def cabin(d,m):
       [(j*n+i,j*n+i+1,(j+1)*n+i+1,(j+1)*n+i)
        for j in range(len(dense)-1) for i in range(n-1)
        if not (closed and 6<=j<18 and 4<=i<20)],m['glass'])
-    for side in [-1,1]:
+    if d['style']=='ferrari':
+        for i in [4,20]:
+            tube('Pillar and roof rail', [ring[i] for ring in dense], .016, m['paint'])
+        for i in [0,n-1]:
+            tube('Window sill', [ring[i] for ring in dense], .014, m['trim'])
+    for side in ([] if d['style']=='ferrari' else [-1,1]):
         tube('A pillar',[(front*L,side*wid*.91,belt),(rf*L,side*wid*.93,H-.14),
           (rf*L,side*wid*.70,H-.035)],.022,m['paint'])
         if d['style']!='aventador':
@@ -295,11 +307,45 @@ def cabin(d,m):
             back=box('Seat back',(-.58,s*.36,.9),(.12,.36,.38),m['leather'],.05)
             back.rotation_euler.y=-.15
         tube('Windshield upper rail',[(rf*L,-wid*.7,H-.045),(rf*L,0,H-.027),(rf*L,wid*.7,H-.045)],.027,m['paint'])
+    if d['style']=='ferrari':
+        x_positions=[rear*L+(front-rear)*L*i/20 for i in range(21)]
+        ys=[j*.105 for j in range(-6,7)]
+        lining=[on_coachwork(shell,x,y,.008) for x in x_positions for y in ys]
+        n=len(ys)
+        mesh('Dark cabin deck',lining,[(i*n+j,(i+1)*n+j,(i+1)*n+j+1,i*n+j+1)
+             for i in range(len(x_positions)-1) for j in range(n-1)],m['leather'])
+        box('Dashboard',(front*L-.25,0,.82),(.32,1.20,.09),m['trim'],.04)
+        for side in [-1,1]:
+            seat=box('Seat back',(-.56,side*.34,.93),(.16,.34,.28),m['leather'],.06)
+            seat.rotation_euler.y=-.15
     # Door seams, handles, mirror stems and mirror housings.
     for s in [-1,1]:
         y=s*(W*.965)
-        tube('Door shut line',[(front*L,y,.73),(.10*L,y,.36),(-.20*L,y,.27),(-.24*L,y,.72)],.0035,m['trim'])
-        box('Door handle',(-.12*L,y+s*.012,.72),(.12,.018,.025),m['accent'],.008)
+        seam=[(front*L,y,.73),(.10*L,y,.36),(-.20*L,y,.27),(-.24*L,y,.72)]
+        if d['style']=='ferrari':
+            seam=[(.13*L,y,.79),(.121*L,y,.60),(.09*L,y,.32),
+                  (.068*L,y,.27),(-.14*L,y,.26),(-.17*L,y,.30),
+                  (-.19*L,y,.43),(-.195*L,y,.68),(-.19*L,y,.80)]
+        if d['style']=='ferrari':
+            def side_point(x,z):
+                hit,loc,normal,_=shell.ray_cast(Vector((x,2*s,z)),Vector((0,-s,0)))
+                if not hit:
+                    raise RuntimeError(f'No side surface at {x:.3f}, {z:.3f}')
+                return tuple(loc+normal*.002)
+            seam=[(x,y,min(z,.76)) for x,y,z in seam]
+            fitted=[]
+            for (x0,_,z0),(x1,_,z1) in zip(seam,seam[1:]):
+                for i in range(8):
+                    t=i/8
+                    fitted.append(side_point(x0+(x1-x0)*t,z0+(z1-z0)*t))
+            fitted.append(side_point(seam[-1][0],seam[-1][2]))
+            seam=fitted
+            hx,hy,hz=side_point(-.12*L,.72)
+            handle=(hx,hy+s*.006,hz)
+        else:
+            handle=(-.12*L,y+s*.012,.72)
+        tube('Door shut line',seam,.0038,m['trim'])
+        box('Door handle',handle,(.12,.018,.025),m['accent'],.008)
         tube('Mirror stem',[(front*L-.06,s*wid,.79),(front*L-.02,s*(W+.025),.88)],.015,m['trim'])
         box('Mirror',(front*L-.04,s*(W+.07),.90),(.19,.15,.085),m['paint'],.034)
 
@@ -347,9 +393,13 @@ def details(d,m,shell):
     for s in [-1,1]:
         box('Side skirt',(0,s*W*.94,.19),(d['wheelbase']-.65,.10,.06),m['trim'])
     if S=='ferrari':
-        grille=[(L+.005,-.62,.48),(L+.005,.62,.48),(L+.005,.48,.25),(L+.005,-.48,.25)]
+        for side in [-1,1]:
+            intake=[(L+.012,side*.57,.24),(L+.012,side*.70,.28),
+                    (L+.012,side*.65,.37),(L+.012,side*.58,.34)]
+            front_recess('Outer bumper intake',intake,shell,m['trim'])
+        grille=[(L+.005,-.57,.44),(L+.005,-.40,.48),(L+.005,.40,.48),(L+.005,.57,.44),(L+.005,.51,.31),(L+.005,.37,.27),(L+.005,-.37,.27),(L+.005,-.51,.31)]
         front_recess('Ferrari grille',grille,shell,m['trim']);tube('Grille surround',grille,.012,m['chrome'],True)
-        for yy in [-.4,-.2,0,.2,.4]: tube('Grille bar',[(L+.015,yy,.29),(L+.015,yy,.45)],.005,m['chrome'])
+        for z in [.32,.37,.42]: tube('Grille slat',[(L+.015,-.49,z),(L+.015,.49,z)],.005,m['trim'])
         for s in [-1,1]:
             outline=[(L-.17,s*.59),(L-.31,s*.71),(L-.77,s*.81),
                      (L-.78,s*.71),(L-.37,s*.59)]
@@ -466,7 +516,20 @@ def build(d):
         image.pixels=pixels;image.pack()
         n=mats['paint'].node_tree.nodes.new('ShaderNodeTexImage');n.image=image
         mats['paint'].node_tree.links.new(n.outputs['Color'],mats['paint'].node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
-    shell=body(d,mats);cabin(d,mats);wheels(d,mats);details(d,mats,shell)
+    if d['style']=='ferrari':
+        paint=mats['paint'].node_tree.nodes.get('Principled BSDF')
+        paint.inputs['Base Color'].default_value=(.46,.005,.012,1)
+        paint.inputs['Metallic'].default_value=0
+        paint.inputs['Specular IOR Level'].default_value=.17
+        paint.inputs['Roughness'].default_value=.44
+        paint.inputs['Coat Weight'].default_value=.10
+        paint.inputs['Coat Roughness'].default_value=.42
+        glass=mats['glass'].node_tree.nodes.get('Principled BSDF')
+        glass.inputs['Base Color'].default_value=(.75,.81,.85,1)
+        glass.inputs['Metallic'].default_value=0
+        glass.inputs['Alpha'].default_value=.07
+        glass.inputs['Specular IOR Level'].default_value=.05
+    shell=body(d,mats);cabin(d,mats,shell);wheels(d,mats);details(d,mats,shell)
     for obj in list(bpy.context.scene.objects):
         if obj.type in ('CURVE','FONT'):
             bpy.ops.object.select_all(action='DESELECT');obj.select_set(True)
