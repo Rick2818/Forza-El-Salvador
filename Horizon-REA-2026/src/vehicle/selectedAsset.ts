@@ -111,9 +111,14 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
     // Some exported panes have alpha 0.038-0.26: almost invisible.
     // Give windows an intentional, readable tint without hiding the cockpit.
     material.transparent = true;
-    material.opacity = 0.7;
+    material.opacity = 0.32; // subtle tinted glazing: cockpit stays visible
     material.depthWrite = false;
     if (material instanceof THREE.MeshStandardMaterial) {
+      // Keep the windshield neutral rather than bright blue under daylight.
+      material.color.set("#87949f");
+      material.metalness = 0;
+      material.roughness = 0.16;
+      material.envMapIntensity = 0.35;
       material.alphaMap = null;
     }
     if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
