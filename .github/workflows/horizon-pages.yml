@@ -42,6 +42,10 @@ jobs:
         working-directory: Horizon-REA-2026
         run: npm test
 
+      - name: Auditar sólidos y materiales 3D de los siete autos
+        working-directory: Horizon-REA-2026
+        run: node tools/audit-car-glbs.mjs
+
       - name: Compilar Horizon
         working-directory: Horizon-REA-2026
         run: npm run build
