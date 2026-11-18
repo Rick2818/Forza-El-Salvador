@@ -26,12 +26,13 @@ export const SETTINGS = {
     topSpeed: 92
   },
   camera: {
-    // Cámara de persecución cercana: carrocería visible incluso a alta velocidad.
-    fov: 59,
-    fovMax: 66,
-    height: 1.85,
-    distance: 4.8,
-    lookAhead: 4.8
+    // Close camera: the player's 3D car must occupy most of the lower view.
+    // The fast camera used to pull back and aim too far down the track.
+    fov: 55,
+    fovMax: 59,
+    height: 1.55,
+    distance: 3.75,
+    lookAhead: 1.65
   },
   render: {
     // The adaptive scaler owns sharpness; capping DPR at 1 keeps a 1080p
