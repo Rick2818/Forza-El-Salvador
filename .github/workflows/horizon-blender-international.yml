@@ -1,0 +1,65 @@
+name: Construir Sparda y Sakhir Horizon con Blender
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/tools/blender/circuits/build_international.py'
+      - '.github/workflows/horizon-blender-international.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: horizon-blender-international
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar Blender 5 y exportador glTF
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender python3-numpy
+          blender --version
+
+      - name: Generar ambos circuitos en Blender
+        working-directory: Horizon-REA-2026
+        run: |
+          blender -b -t 2 --python tools/blender/circuits/build_international.py
+          test -s tools/blender/circuit-sources/sparda.blend
+          test -s tools/blender/circuit-sources/sakhir-horizon.blend
+          test -s public/circuits/sparda.glb
+          test -s public/circuits/sakhir-horizon.glb
+          ls -lah tools/blender/circuit-sources/{sparda,sakhir-horizon}.blend
+          ls -lah public/circuits/{sparda,sakhir-horizon}.glb
+
+      - name: Guardar en GitHub sin modificar los modelos de autos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/tools/blender/circuit-sources/sparda.blend
+          git add Horizon-REA-2026/tools/blender/circuit-sources/sakhir-horizon.blend
+          git add Horizon-REA-2026/public/circuits/sparda.glb
+          git add Horizon-REA-2026/public/circuits/sakhir-horizon.glb
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate Blender 3D assets for Sparda and Sakhir Horizon"
+            git push origin HEAD:main
+          fi
+
+      - name: Archivar fuentes Blender y modelos
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-sparda-sakhir-blender
+          path: |
+            Horizon-REA-2026/tools/blender/circuit-sources/sparda.blend
+            Horizon-REA-2026/tools/blender/circuit-sources/sakhir-horizon.blend
+            Horizon-REA-2026/public/circuits/sparda.glb
+            Horizon-REA-2026/public/circuits/sakhir-horizon.glb
+          retention-days: 14
