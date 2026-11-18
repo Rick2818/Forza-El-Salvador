@@ -15,8 +15,9 @@ describe("Suzaka 3D bridge and racing layout", () => {
   it("separates the crossed lanes by 12 metres in world height", () => {
     const low = suzakaPoint(0);
     const elevated = suzakaPoint(Math.PI);
-    expect(low.x).toBeCloseTo(elevated.x, 6);
-    expect(low.z).toBeCloseTo(elevated.z, 6);
+    // The editable Blender model offsets the crossing centre lines by 4m.
+    // Both 14m-wide branches still overlap in plan while remaining 12m apart.
+    expect(Math.hypot(low.x - elevated.x, low.z - elevated.z)).toBeLessThan(6);
     expect(elevated.y - low.y).toBeCloseTo(SUZAKA_BRIDGE_HEIGHT, 6);
   });
 
