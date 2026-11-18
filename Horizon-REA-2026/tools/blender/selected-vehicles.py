@@ -203,9 +203,12 @@ def body(d, mats):
             dense.append(round_ring(ring))
     dense.append(round_ring(rings[-1])); n=len(dense[0])
     verts=[p for r in dense for p in r]
-    faces=[(i*n+k,i*n+(k+1)%n,(i+1)*n+(k+1)%n,(i+1)*n+k)
+    # Cross-section runs clockwise in Y/Z. Reversing the strip winding gives
+    # outward normals. Otherwise Three.js culls the exterior, creating an
+    # apparent transparent/hollow car despite fully opaque paint materials.
+    faces=[(i*n+k,(i+1)*n+k,(i+1)*n+(k+1)%n,i*n+(k+1)%n)
       for i in range(len(dense)-1) for k in range(n)]
-    faces.extend([tuple(range(n-1,-1,-1)),tuple((len(dense)-1)*n+k for k in range(n))])
+    faces.extend([tuple(range(n)),tuple((len(dense)-1)*n+k for k in range(n-1,-1,-1))])
     obj=mesh('coachwork',verts,faces,mats['paint'])
     for x in [-d['wheelbase']/2,d['wheelbase']/2]:
         for s in [-1,1]:
