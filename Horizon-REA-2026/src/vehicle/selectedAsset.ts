@@ -75,11 +75,11 @@ export function applyVehiclePaint(
   if (id === "ferrari-california-t") {
     paint.color.set("#d90818"); // deep, vivid Rosso Corsa-like red in sRGB
     paint.map = null;
-    paint.metalness = 0.12;
-    paint.roughness = 0.46;
-    paint.clearcoat = 0.35;
-    paint.clearcoatRoughness = 0.28;
-    paint.envMapIntensity = 0.12;
+    paint.metalness = 0.02;
+    paint.roughness = 0.66;
+    paint.clearcoat = 0;
+    paint.clearcoatRoughness = 0.38;
+    paint.envMapIntensity = 0;
   } else {
     paint.map = authored.map;
     paint.color.copy(authored.color);
@@ -191,11 +191,11 @@ export function createSelectedVisual(id: string): CarVisual {
   const paint = new THREE.MeshPhysicalMaterial({
     name: "paint",
     color: id === "ferrari-california-t" ? "#d90818" : d.paint,
-    metalness: 0.12,
-    roughness: 0.46,
-    clearcoat: 0.35,
-    clearcoatRoughness: 0.28,
-    envMapIntensity: 0.12
+    metalness: 0.02,
+    roughness: 0.66,
+    clearcoat: 0,
+    clearcoatRoughness: 0.38,
+    envMapIntensity: 0
   });
   const taillightMat = new THREE.MeshStandardMaterial({ color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2 });
   const headlightMat = new THREE.MeshStandardMaterial({ color: 0xe5f4ff, emissive: 0xaaccff, emissiveIntensity: 3 });
