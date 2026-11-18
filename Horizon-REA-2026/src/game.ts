@@ -2,7 +2,7 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { Environment } from "./world/environment";
-import { Race } from "./race/race";
+import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
 import { Menu } from "./ui/menu";
 import { Input } from "./core/input";
@@ -26,6 +26,7 @@ export class Game {
   readonly environment: Environment;
   race: Race;
   private selectedVehicleId = DEFAULT_SELECTED_ID;
+  private difficulty: Difficulty = "medio";
   readonly input = new Input();
   readonly chase: ChaseCamera;
   readonly audio = new GameAudio();
@@ -127,8 +128,12 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     try {
       const saved = localStorage.getItem("horizon.selected-vehicle");
       if (saved) { vehicleDesign(saved); this.selectedVehicleId = saved; }
+      const savedDifficulty = localStorage.getItem("horizon.difficulty");
+      if (savedDifficulty === "facil" || savedDifficulty === "medio" || savedDifficulty === "dificil") {
+        this.difficulty = savedDifficulty;
+      }
     } catch { /* Storage can be disabled; the default still works. */ }
-    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId);
+    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty);
     this.chase = new ChaseCamera(this.camera);
     this.smoke = new SmokeSystem(this.scene);
 
@@ -139,6 +144,11 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       onRestart: () => this.startRace(),
       onQuit: () => this.quitToMenu(),
       onToggleQuality: () => this.toggleQuality(),
+      onSelectDifficulty: (difficulty) => {
+        this.difficulty = difficulty;
+        try { localStorage.setItem("horizon.difficulty", difficulty); } catch { /* optional */ }
+        if (this.state === "menu") this.replaceRace();
+      },
       onSelectVehicle: async (id) => {
         await loadSelectedVehicle(id);
         this.selectedVehicleId = id;
@@ -157,6 +167,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
 
     this.menu.setSelectedVehicle(this.selectedVehicleId);
+    this.menu.setDifficulty(this.difficulty);
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
     this.installDebugApi();
@@ -173,6 +184,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
       stats: () => ({
         state: this.state,
         vehicleId: this.race.vehicleId,
+        difficulty: this.difficulty,
         raceState: this.race.state,
         fps: Number(this.fps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
@@ -228,7 +240,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
     this.menu.hide();
     this.input.setTouchControlsVisible(true);
     this.hud.show(true);
-    this.hud.toast("Horizon GP · 3 vueltas · semáforo en verde", 3000);
+    this.hud.toast(`Horizon GP · ${this.difficulty.toUpperCase()} · 3 vueltas`, 3000);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
     this.input.focusGame();

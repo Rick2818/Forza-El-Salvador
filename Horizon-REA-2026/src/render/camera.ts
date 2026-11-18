@@ -54,11 +54,11 @@ export class ChaseCamera {
       _look.copy(pos).addScaledVector(_forward, 5.5);
       _look.y += 3.4;
     } else {
-      const distance = cameraSettings.distance + clamp(speed * 0.035, 0, 1.7);
-      const height = cameraSettings.height + clamp(speed * 0.012, 0, 0.5);
+      const distance = cameraSettings.distance + clamp(speed * 0.012, 0, 0.55);
+      const height = cameraSettings.height + clamp(speed * 0.006, 0, 0.22);
       _desired.copy(pos).addScaledVector(_forward, -distance).add(new THREE.Vector3(0, height, 0));
-      _look.copy(pos).addScaledVector(_forward, cameraSettings.lookAhead + speed * 0.12);
-      _look.y += 1.15;
+      _look.copy(pos).addScaledVector(_forward, cameraSettings.lookAhead + speed * 0.035);
+      _look.y += 1.05;
 
       const shake = clamp((speed - 45) / 45, 0, 1) * 0.035;
       if (shake > 0) {

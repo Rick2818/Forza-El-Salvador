@@ -1,4 +1,4 @@
-import type { RaceSnapshot } from "../race/race";
+import type { Difficulty, RaceSnapshot } from "../race/race";
 import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
@@ -10,6 +10,7 @@ export interface MenuCallbacks {
   onRestart: () => void;
   onQuit: () => void;
   onToggleQuality: () => void;
+  onSelectDifficulty: (difficulty: Difficulty) => void;
   onSelectVehicle: (id: string) => Promise<void>;
 }
 
@@ -31,6 +32,7 @@ export class Menu {
   private overlay: HTMLDivElement;
   private callbacks: MenuCallbacks;
   private qualityLabel = "ALTA";
+  private difficulty: Difficulty = "medio";
   private visible = false;
   private trackLengthKm = 0;
   private selectedId = "ferrari-california-t";
@@ -54,6 +56,18 @@ export class Menu {
     if (action === "restart") this.callbacks.onRestart();
     if (action === "quit") this.callbacks.onQuit();
     if (action === "quality") this.callbacks.onToggleQuality();
+    if (action === "difficulty") {
+      const value = target.dataset.difficulty;
+      if (value === "facil" || value === "medio" || value === "dificil") {
+        this.difficulty = value;
+        this.callbacks.onSelectDifficulty(value);
+        this.overlay.querySelectorAll<HTMLButtonElement>('[data-action="difficulty"]').forEach(button => {
+          const active = button.dataset.difficulty === value;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+      }
+    }
     if (action === "garage") this.showGarage();
     if (action === "back") this.showStart(this.trackLengthKm);
     if (action === "select-vehicle" && target.dataset.vehicleId) void this.selectVehicle(target.dataset.vehicleId);
@@ -84,6 +98,7 @@ export class Menu {
 
   get isGarageOpen(): boolean { return this.garageOpen; }
   setSelectedVehicle(id: string): void { this.selectedId = id; }
+  setDifficulty(difficulty: Difficulty): void { this.difficulty = difficulty; }
 
   get isVisible(): boolean {
     return this.visible;
@@ -114,6 +129,15 @@ export class Menu {
           suspensión y neumáticos sobre Rapier y modelos 3D de prueba seleccionables.
         </p>
         <p class="sub">Vehículo: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong> · prototipo en revisión.</p>
+        <div class="difficulty-panel">
+          <div class="brand">Dificultad de los rivales</div>
+          <div class="difficulty-choices" role="group" aria-label="Dificultad de carrera">
+            ${(["facil", "medio", "dificil"] as const).map(level =>
+              `<button class="btn difficulty-btn ${this.difficulty === level ? "is-active" : ""}" data-action="difficulty" data-difficulty="${level}" aria-pressed="${this.difficulty === level}">${level === "facil" ? "Fácil" : level === "medio" ? "Medio" : "Difícil"}</button>`
+            ).join("")}
+          </div>
+          <div class="difficulty-help">Fácil: rivales más lentos · Medio: adelantamientos y defensa · Difícil: presión constante y máxima competitividad.</div>
+        </div>
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
@@ -130,7 +154,7 @@ export class Menu {
             <div class="spec"><span>Modelos</span><b>7 prototipos 3D</b></div>
             <div class="spec"><span>Fidelidad visual</span><b>En revisión</b></div>
             <div class="spec"><span>Vueltas</span><b>3</b></div>
-            <div class="spec"><span>Rivales IA</span><b>3</b></div>
+            <div class="spec"><span>Rivales IA</span><b>3 · estilos individuales</b></div>
             <div class="spec"><span>Física</span><b>Rapier 0.21</b></div>
             <div class="spec"><span>Render</span><b>Three.js r187</b></div>
           </div>

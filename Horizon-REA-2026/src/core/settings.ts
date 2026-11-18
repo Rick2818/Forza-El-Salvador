@@ -26,11 +26,12 @@ export const SETTINGS = {
     topSpeed: 92
   },
   camera: {
-    fov: 62,
-    fovMax: 76,
-    height: 2.35,
-    distance: 6.9,
-    lookAhead: 7.5
+    // Cámara de persecución cercana: carrocería visible incluso a alta velocidad.
+    fov: 59,
+    fovMax: 66,
+    height: 1.85,
+    distance: 4.8,
+    lookAhead: 4.8
   },
   render: {
     // The adaptive scaler owns sharpness; capping DPR at 1 keeps a 1080p

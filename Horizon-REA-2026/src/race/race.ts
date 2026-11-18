@@ -2,12 +2,12 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "../world/track";
 import { Vehicle } from "../vehicle/vehicle";
-import { AIDriver } from "../vehicle/ai";
+import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
 import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS } from "../vehicle/selectedAsset";
 
-export type Difficulty = "facil" | "normal" | "dificil";
+export type Difficulty = RaceDifficulty;
 export type RaceState = "idle" | "countdown" | "racing" | "finished";
 
 export interface Racer {
@@ -54,9 +54,9 @@ export interface RaceSnapshot {
 }
 
 const ROSTER = [
-  { name: "K. VOSS", paint: 0x0057ff, accent: 0x00e5ff, lane: -2.7, skill: 0.955 },
-  { name: "A. MIRAI", paint: 0xe10600, accent: 0xffd400, lane: 2.7, skill: 0.94 },
-  { name: "R. SANTOS", paint: 0x7b00ff, accent: 0xc6ff00, lane: -2.7, skill: 0.925 }
+  { name: "K. VOSS", paint: 0x0057ff, accent: 0x00e5ff, lane: -2.7, skill: 0.955, personality: "defensor" as RivalPersonality },
+  { name: "A. MIRAI", paint: 0xe10600, accent: 0xffd400, lane: 2.7, skill: 0.94, personality: "atacante" as RivalPersonality },
+  { name: "R. SANTOS", paint: 0x7b00ff, accent: 0xc6ff00, lane: -2.7, skill: 0.925, personality: "estratega" as RivalPersonality }
 ];
 
 export class Race {
@@ -72,7 +72,8 @@ export class Race {
     private readonly world: RAPIER.World,
     scene: THREE.Scene,
     readonly track: Track,
-    readonly vehicleId: string = DEFAULT_SELECTED_ID
+    readonly vehicleId: string = DEFAULT_SELECTED_ID,
+    readonly difficulty: Difficulty = "medio"
   ) {
     const playerVehicle = new Vehicle(this.world, scene, {
       paintColor: 0xff3d00,
@@ -110,7 +111,7 @@ export class Race {
         vehicleId: opponent.id
       });
       const racer = this.makeRacer(vehicle, cfg.name, false, 2 + rivals.length);
-      racer.ai = new AIDriver(vehicle, this.track, cfg.lane, cfg.skill, rivals.length * 1.9);
+      racer.ai = new AIDriver(vehicle, this.track, cfg.lane, cfg.skill, rivals.length * 1.9, cfg.personality, difficulty);
       rivals.push(racer);
     }
     const ordered = [rivals[0], rivals[1], this.player, rivals[2]];
@@ -170,6 +171,18 @@ export class Race {
 
     if (this.state === "racing" || this.state === "finished") {
       this.elapsed += dt;
+      // Snapshot fixed positions before any rival moves; everyone sees the same pack.
+      const traffic: Array<TrafficCar & { racerId: number }> = this.racers
+        .filter(r => !r.finished)
+        .map(r => {
+          const p = r.vehicle.body.translation();
+          return {
+            racerId: r.id,
+            position: new THREE.Vector3(p.x, p.y, p.z),
+            speed: r.vehicle.speed,
+            isPlayer: r.isPlayer
+          };
+        });
       for (const racer of this.racers) {
         if (racer.finished) {
           racer.vehicle.update(dt, { throttle: 0, brake: 0.35, steer: 0, handbrake: false }, 1);
@@ -190,7 +203,7 @@ export class Race {
           racer.vehicle.update(dt, driving, grip);
           racer.vehicle.setBrakeLights(driving.brake > 0.05 || this.state === "finished");
         } else if (racer.ai) {
-          racer.ai.update(dt, this.elapsed + 1);
+          racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id));
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
           if (grip < 0.99) {
