@@ -49,6 +49,17 @@ describe("circuits", () => {
     }
   });
 
+  it("Monzon is the valid high-speed track and the default", () => {
+    const monzon = getCircuit("monzon");
+    expect(monzon?.name).toBe("Circuito Monzon");
+    expect(DEFAULT_CIRCUIT_ID).toBe("monzon");
+    const report = analyzeCircuit(monzon!.segments);
+    expect(report.ok).toBe(true);
+    expect(report.length).toBeGreaterThan(5700);
+    expect(report.length).toBeLessThan(5900);
+    expect(report.closureGap).toBeLessThan(1);
+  });
+
   it("resolves circuits by id and always has a valid default", () => {
     expect(getCircuit("libertad")?.name).toContain("La Libertad");
     expect(getCircuit("no-existe")).toBeUndefined();
