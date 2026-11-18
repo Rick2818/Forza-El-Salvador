@@ -35,6 +35,19 @@ export class Environment {
       daylight.material.uniforms["mieDirectionalG"].value = 0.85;
       daylight.material.uniforms["sunPosition"].value.copy(this.moonDirection);
       scene.add(daylight);
+      // Bake one static daylight reflection map for realistic PBR car paint.
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const reflectionScene = new THREE.Scene();
+      const reflectionSky = new Sky();
+      reflectionSky.scale.setScalar(7000);
+      for (const key of ["turbidity", "rayleigh", "mieCoefficient", "mieDirectionalG"]) {
+        reflectionSky.material.uniforms[key].value = daylight.material.uniforms[key].value;
+      }
+      reflectionSky.material.uniforms["sunPosition"].value.copy(this.moonDirection);
+      reflectionScene.add(reflectionSky);
+      scene.environment = pmrem.fromScene(reflectionScene, 0, 1, 16000).texture;
+      scene.environmentIntensity = 1.1;
+      pmrem.dispose();
       scene.background = new THREE.Color(0x9cc7e8);
       scene.fog = new THREE.FogExp2(0xb7cddd, 0.00025);
     } else {
