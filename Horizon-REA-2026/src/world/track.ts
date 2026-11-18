@@ -10,6 +10,7 @@ import { clamp } from "../core/mathx";
 import { createAsphaltMaps, createBannerTexture, createCheckerTexture } from "./textures";
 import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuitDefinition } from "./circuits";
 import { suzakaCenterline } from "./suzakaGeometry";
+import { internationalCenterline, type InternationalCircuitId } from "./internationalGeometry";
 
 export interface Segment {
   straight?: number;
@@ -49,7 +50,8 @@ export class Track {
   halfWidth: number;
 
   constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {
-    this.width = this.circuit.layout === "figure-eight" ? 14 : SETTINGS.track.width;
+    this.width = this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain" ? 14
+      : this.circuit.layout === "desert" ? 16 : SETTINGS.track.width;
     this.halfWidth = this.width / 2;
   }
 
@@ -102,10 +104,13 @@ export class Track {
 
     const centerline = this.circuit.layout === "figure-eight"
       ? suzakaCenterline().map(p => new THREE.Vector3(p.x, p.y, p.z))
-      : buildCenterline();
+      : this.circuit.layout === "mountain" || this.circuit.layout === "desert"
+        ? internationalCenterline(this.circuit.id as InternationalCircuitId)
+          .map(p => new THREE.Vector3(p.x, p.y, p.z))
+        : buildCenterline();
     const N = 1500;
     this.curve = new THREE.CatmullRomCurve3(centerline, true, "catmullrom", 0.5);
-    if (this.circuit.layout === "figure-eight") this.curve.arcLengthDivisions = 3600;
+    if (this.circuit.layout) this.curve.arcLengthDivisions = 4000;
     this.length = this.curve.getLength();
     const spaced = this.curve.getSpacedPoints(N);
     this.samples = spaced.slice(0, N);
@@ -126,7 +131,7 @@ export class Track {
       const angle = clamp(a.dot(b), -1, 1);
       // The figure-eight uses genuine angular curvature, not cosine; the
       // legacy layouts retain their previous AI tuning.
-      const bend = this.circuit.layout === "figure-eight" ? Math.acos(angle) : angle;
+      const bend = this.circuit.layout ? Math.acos(angle) : angle;
       this.curvatures.push(bend / (4 * this.segmentLength));
     }
     // Light smoothing
@@ -142,7 +147,7 @@ export class Track {
     });
     this.curvatures = smoothed;
 
-    this.startIndex = Math.round((this.circuit.layout === "figure-eight" ? 100 : 48) / this.segmentLength) % N;
+    this.startIndex = Math.round((this.circuit.layout ? 100 : 48) / this.segmentLength) % N;
 
     const rawSpeed = this.curvatures.map((k) =>
       clamp(Math.sqrt(13.5 / Math.max(k, 1e-4)), 20, SETTINGS.physics.topSpeed)
@@ -274,7 +279,7 @@ export class Track {
     this.buildGantry();
 
     // ---- Trackside lamps: instanced poles with glowing heads.
-    if (this.circuit.id !== "monzon" && this.circuit.id !== "suzaka") this.buildLamps(barrierOffset);
+    if (this.circuit.id !== "monzon" && this.circuit.id !== "suzaka" && this.circuit.id !== "sparda") this.buildLamps(barrierOffset);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
@@ -474,7 +479,7 @@ export class Track {
     // Rapier's raycast-vehicle wheels need a solid drivable bridge surface,
     // not a visual-only mesh. Preserve the existing flat ground beneath the
     // flyover so vehicles on the lower branch have physical support too.
-    if (this.circuit.layout === "figure-eight") {
+    if (this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain") {
       const road = this.group.getObjectByName("asphalt") as THREE.Mesh<THREE.BufferGeometry> | undefined;
       if (!road || !road.geometry.index) throw new Error("Suzaka bridge collider: road mesh missing");
       const pos = road.geometry.getAttribute("position") as THREE.BufferAttribute;
@@ -537,7 +542,8 @@ export class Track {
         const i = (hint + d + N) % N;
         const p = this.samples[i];
         const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 +
-        (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 : 0);
+        (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 :
+          this.circuit.layout === "mountain" ? (p.y - pos.y) ** 2 : 0);
         if (dist < bestDist) {
           bestDist = dist;
           best = i;
