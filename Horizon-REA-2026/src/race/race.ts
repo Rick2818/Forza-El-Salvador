@@ -123,7 +123,7 @@ export class Race {
       const tangent = this.track.tangentAt(index);
       racer.hint = index;
       racer.vehicle.place(
-        new THREE.Vector3(base.x + right.x * slot.lane, 0, base.z + right.z * slot.lane),
+        new THREE.Vector3(base.x + right.x * slot.lane, base.y, base.z + right.z * slot.lane),
         Math.atan2(tangent.x, tangent.z)
       );
       racer.progress = this.track.progress(index);
@@ -203,7 +203,7 @@ export class Race {
           racer.vehicle.update(dt, driving, grip);
           racer.vehicle.setBrakeLights(driving.brake > 0.05 || this.state === "finished");
         } else if (racer.ai) {
-          racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id));
+          racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id && Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5));
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
           if (grip < 0.99) {
