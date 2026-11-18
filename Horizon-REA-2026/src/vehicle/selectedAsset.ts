@@ -33,7 +33,10 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
       if (scene.getObjectByName("Game_orientation") || scene.getObjectByName("Game orientation")) {
         scene.updateMatrixWorld(true);
         const size = new THREE.Box3().setFromObject(scene, true).getSize(new THREE.Vector3());
-        scene.scale.setScalar(vehicleDesign(id).length / size.z);
+        const design = vehicleDesign(id);
+        const lengthScale = design.length / size.z;
+        const clearanceScale = design.height * 1.04 / size.y;
+        scene.scale.setScalar(Math.min(lengthScale, clearanceScale));
       }
       scene.updateMatrixWorld(true);
       cache.set(id, scene);
