@@ -2,7 +2,7 @@
  * Files in public/circuits are published by Vite with the correct Pages base.
  * Monzon and Suzaka use procedural collision geometry; the GLB contributes\n * visual landmarks only, never a second overlapping drivable road.
  */
-export type BlenderCircuitId = "monzon" | "suzaka";
+export type BlenderCircuitId = "monzon" | "suzaka" | "sparda" | "sakhir-horizon";
 
 export interface BlenderCircuitAsset {
   id: BlenderCircuitId;
@@ -28,6 +28,22 @@ export const BLENDER_CIRCUITS: Readonly<Record<BlenderCircuitId, BlenderCircuitA
     glb: "circuits/suzaka.glb",
     distanceMeters: 5636,
     bridgeHeightMeters: 12,
+    playable: true
+  },
+  sparda: {
+    id: "sparda",
+    name: "Circuito Sparda",
+    glb: "circuits/sparda.glb",
+    distanceMeters: 6419,
+    bridgeHeightMeters: 0,
+    playable: true
+  },
+  "sakhir-horizon": {
+    id: "sakhir-horizon",
+    name: "Sakhir Horizon",
+    glb: "circuits/sakhir-horizon.glb",
+    distanceMeters: 5548,
+    bridgeHeightMeters: 0,
     playable: true
   }
 };
