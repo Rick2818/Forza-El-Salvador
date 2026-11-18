@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { applyVehiclePaint, isVehicleGlass, prepareSelectedMaterial } from "./selectedAsset";
+import { applyVehiclePaint, createVehicleGlassMaterial, isVehicleGlass, prepareSelectedMaterial } from "./selectedAsset";
 
 describe("approved automotive finishes", () => {
   it("renders Ferrari California in saturated racing red, ignoring faded Blender tint", () => {
@@ -43,15 +43,29 @@ describe("approved automotive finishes", () => {
       expect(isVehicleGlass(name)).toBe(true);
       prepareSelectedMaterial(glass);
       expect(glass.transparent).toBe(true);
-      expect(glass.opacity).toBeCloseTo(.32);
-      expect(glass.color.getHexString()).toBe("87949f");
+      expect(glass.opacity).toBeCloseTo(.14);
+      expect(glass.color.getHexString()).toBe("242424");
       expect(glass.metalness).toBe(0);
-      expect(glass.roughness).toBeCloseTo(.16);
+      expect(glass.roughness).toBeCloseTo(1);
       expect(glass.depthWrite).toBe(false);
       expect(glass.side).toBe(THREE.DoubleSide);
       glass.dispose();
     }
   );
+
+  it("renders windshield without bright blue PBR sky reflection", () => {
+    const exported = new THREE.MeshStandardMaterial({name: "Cristal",color: 0xb5dfff,metalness: .9,transparent:true,opacity:.038});
+    const glass = createVehicleGlassMaterial(exported);
+    prepareSelectedMaterial(glass);
+    expect(glass.isMeshBasicMaterial).toBe(true);
+    expect(glass.transparent).toBe(true);
+    expect(glass.opacity).toBeCloseTo(.14);
+    expect(glass.color.getHexString()).toBe("242424");
+    expect(glass.toneMapped).toBe(false);
+    expect(glass.forceSinglePass).toBe(true);
+    expect(glass.depthWrite).toBe(false);
+    exported.dispose(); glass.dispose();
+  });
 
   it("does not accidentally treat Porsche graphite or cockpit leather as glass", () => {
     for (const name of ["Grafito metalizado", "Cuero gris pizarra", "Carrosserie"]) {
