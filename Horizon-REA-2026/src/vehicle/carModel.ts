@@ -555,7 +555,7 @@ function applyRimLight(material: THREE.MeshPhysicalMaterial): void {
       "#include <tonemapping_fragment>",
       `
       float hzRim = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.6);
-      gl_FragColor.rgb += vec3(0.052, 0.078, 0.125) * hzRim;
+      gl_FragColor.rgb += vec3(0.004, 0.006, 0.009) * hzRim;
       #include <tonemapping_fragment>
       `
     );
@@ -584,28 +584,28 @@ export function createCarVisual(opts: CarOptions): CarVisual {
 
   const paint = new THREE.MeshPhysicalMaterial({
     color: opts.paintColor,
-    metalness: 0.42,
-    roughness: 0.3,
-    clearcoat: 1,
-    clearcoatRoughness: 0.055,
-    envMapIntensity: 1.35
+    metalness: 0.02,
+    roughness: 0.66,
+    clearcoat: 0,
+    clearcoatRoughness: 0.38,
+    envMapIntensity: 0
   });
   applyRimLight(paint);
 
   const carbon = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: carbonMap(),
-    roughness: 0.4,
-    metalness: 0.55,
-    envMapIntensity: 1.1
+    roughness: 0.76,
+    metalness: 0.08,
+    envMapIntensity: 0.12
   });
   // The Blender shell carries no UVs, so the textured carbon above would sample
   // a single texel and read as a white plate. Solid carbon for imported meshes.
   const carbonSolid = new THREE.MeshStandardMaterial({
     color: 0x11141a,
-    roughness: 0.42,
-    metalness: 0.5,
-    envMapIntensity: 0.85
+    roughness: 0.75,
+    metalness: 0.06,
+    envMapIntensity: 0.12
   });
   const chrome = new THREE.MeshStandardMaterial({
     color: 0xd3d9e2,
@@ -619,18 +619,18 @@ export function createCarVisual(opts: CarOptions): CarVisual {
     metalness: 0.05,
     envMapIntensity: 0.25
   });
-  const glass = new THREE.MeshPhysicalMaterial({
-    color: 0x0a1822,
-    roughness: 0.055,
-    metalness: 0.35,
+  // Fallback cars must use the same neutral, low-alpha glazing as
+  // approved GLBs. The former PBR glass reflected the sky at intensity 2.3
+  // and looked like an opaque milky-blue sheet on Samsung.
+  const glass = new THREE.MeshBasicMaterial({
+    color: 0x202328,
     transparent: true,
-    opacity: 0.62,
-    clearcoat: 1,
-    clearcoatRoughness: 0.02,
-    envMapIntensity: 2.3,
+    opacity: 0.14,
+    toneMapped: false,
     side: THREE.DoubleSide,
     depthWrite: false
   });
+  glass.forceSinglePass = true;
   const headlightMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0xfff4dc,
@@ -645,13 +645,13 @@ export function createCarVisual(opts: CarOptions): CarVisual {
     roughness: 0.26,
     metalness: 0.1
   });
-  const interiorMat = new THREE.MeshLambertMaterial({ color: 0x08090b });
+  const interiorMat = new THREE.MeshBasicMaterial({ color: 0x13161b });
   const wellMat = new THREE.MeshLambertMaterial({ color: 0x050607 });
   const wheelMetal = new THREE.MeshStandardMaterial({
     vertexColors: true,
     metalness: 0.86,
     roughness: 0.3,
-    envMapIntensity: 1.2
+    envMapIntensity: 0.28
   });
 
   const paintParts: THREE.BufferGeometry[] = [];
