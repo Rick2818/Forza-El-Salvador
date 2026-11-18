@@ -103,27 +103,11 @@ export class Game {
     }
     this.scene.add(this.track.group);
 
-// Iluminación del circuito
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-this.scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(10, 20, 15);
-dirLight.castShadow = true;
-this.scene.add(dirLight);
-
-// Luz focal para resaltar la meta
-const spotLight = new THREE.SpotLight(0xffd700, 0.5);
-spotLight.position.set(0, 10, 0);
-spotLight.angle = Math.PI / 6;
-spotLight.penumbra = 0.3;
-spotLight.castShadow = true;
-this.scene.add(spotLight);
-
-const helper = new THREE.SpotLightHelper(spotLight, 0xff0000);
-this.scene.add(helper);
-
-this.environment = new Environment(this.scene, this.renderer, this.track);
+    // Environment owns the sun, moon and ambient illumination. The old
+    // debug spot light and red SpotLightHelper at the world origin produced
+    // an intrusive colored mark across the track and washed out car paint.
+    // Never add debug helpers or a second directional light in production.
+    this.environment = new Environment(this.scene, this.renderer, this.track);
     this.environment.installTerrainPhysics(this.world);
     this.applyResolution();
     try {
