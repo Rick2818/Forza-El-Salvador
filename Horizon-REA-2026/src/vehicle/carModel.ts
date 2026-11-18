@@ -45,8 +45,10 @@ type CurvePoint = [number, number];
 /* ------------------------------------------------------------------ */
 
 const tireMat = new THREE.MeshStandardMaterial({
-  color: 0x0b0b0d,
-  roughness: 0.95,
+  color: 0x303238,
+  emissive: 0x15171b,
+  emissiveIntensity: 0.25,
+  roughness: 0.8,
   metalness: 0.03,
   side: THREE.DoubleSide
 });

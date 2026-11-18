@@ -477,11 +477,15 @@ export class Track {
 
   /** Add physics colliders to the track. */
   addPhysics(world: RAPIER.World): void {
+    // Fit the safety floor to the entire circuit, including long straights.
+    const bounds = new THREE.Box3().setFromPoints(this.samples);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
     const ground = world.createRigidBody(
-      RAPIER.RigidBodyDesc.fixed().setTranslation(0, -2.5, 0)
+      RAPIER.RigidBodyDesc.fixed().setTranslation(center.x, -2.5, center.z)
     );
     world.createCollider(
-      RAPIER.ColliderDesc.cuboid(1400, 2.5, 1400).setFriction(1.05),
+      RAPIER.ColliderDesc.cuboid(size.x / 2 + 300, 2.5, size.z / 2 + 300).setFriction(1.05),
       ground
     );
 

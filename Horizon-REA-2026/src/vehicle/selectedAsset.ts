@@ -127,6 +127,14 @@ export function stabilizeVehicleFinish(material: THREE.Material): void {
     material.specularIntensity = 0.18;
     material.roughness = 0.34;
   }
+  if (/^(rubber|caucho|pneu)$/i.test(material.name)) {
+    material.color.set("#303238");
+    material.map = null;
+    material.metalness = 0;
+    material.roughness = 0.8;
+    material.emissive.set("#15171b");
+    material.emissiveIntensity = 0.25;
+  }
   if (isVehicleCabinMaterial(material.name)) {
     material.color.set("#222832");
     material.map = null;

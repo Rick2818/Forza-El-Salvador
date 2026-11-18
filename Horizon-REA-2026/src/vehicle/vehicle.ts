@@ -127,6 +127,9 @@ export class Vehicle {
     this.body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    this.body.resetForces(true);
+    this.body.resetTorques(true);
+    this.slip = 0;
     this.gear = 0;
     this.rpm = ENGINE_IDLE_RPM;
     this.speed = 0;
@@ -142,7 +145,15 @@ export class Vehicle {
   }
 
   private applyForces(dt: number, grip: number): void {
-    const speed = this.controller.currentVehicleSpeed();
+    // Falling velocity must never count as forward driving speed.
+    const velocity = this.body.linvel();
+    const rotation = this.body.rotation();
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(
+      new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
+    );
+    forward.y = 0;
+    forward.normalize();
+    const speed = velocity.x * forward.x + velocity.z * forward.z;
     this.speed = speed;
     const absSpeed = Math.abs(speed);
 

@@ -157,6 +157,18 @@ export class Race {
   }
 
   update(dt: number, input: Input): void {
+    // Recover at the last known track position before invalid physics spreads
+    // into AI, lap tracking or the camera. Preserve lap and race progress.
+    for (const racer of this.racers) {
+      const p = racer.vehicle.body.translation();
+      const v = racer.vehicle.body.linvel();
+      const anchor = this.track.sampleAt(racer.hint);
+      if (![p.x, p.y, p.z, v.x, v.y, v.z].every(Number.isFinite) ||
+          p.y < anchor.y - 8 || p.y > anchor.y + 80 || Math.hypot(v.x, v.y, v.z) > 200) {
+        const tangent = this.track.tangentAt(racer.hint);
+        racer.vehicle.place(anchor, Math.atan2(tangent.x, tangent.z));
+      }
+    }
     if (this.state === "countdown") {
       this.countdown -= dt;
       for (const racer of this.racers) {
