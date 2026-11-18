@@ -75,10 +75,11 @@ export function applyVehiclePaint(
   if (id === "ferrari-california-t") {
     paint.color.set("#d90818"); // deep, vivid Rosso Corsa-like red in sRGB
     paint.map = null;
-    paint.metalness = 0.27;
-    paint.roughness = 0.26;
-    paint.clearcoat = 1;
-    paint.clearcoatRoughness = 0.09;
+    paint.metalness = 0.12;
+    paint.roughness = 0.46;
+    paint.clearcoat = 0.35;
+    paint.clearcoatRoughness = 0.28;
+    paint.envMapIntensity = 0.12;
   } else {
     paint.map = authored.map;
     paint.color.copy(authored.color);
@@ -100,6 +101,32 @@ export function isVehicleGlass(name: string): boolean {
   // GLBs were authored in several languages: glass (Blender),
   // Cristal (Porsche), Vitrage (other selected supercars).
   return /glass|glazing|cristal|crystal|vitrage|vidrio|windshield|windscreen|window|parabrisas/i.test(name);
+}
+
+/**
+ * The seven GLBs use different material names. Previously only the Ferrari
+ * "paint" slot was recolored; most rival cars kept bright, reflective GLB
+ * materials that looked white or pastel in the daylight sky.
+ */
+export function isVehicleBodyPaint(name: string): boolean {
+  return /^(paint(?:\\.\\d+)?|carrosserie|grafito metalizado|negro brillante)$/i.test(name);
+}
+
+export function isVehicleCabinMaterial(name: string): boolean {
+  return /^(leather|cuero gris pizarra|cuir)$/i.test(name);
+}
+
+export function stabilizeVehicleFinish(material: THREE.Material): void {
+  if (!(material instanceof THREE.MeshStandardMaterial)) return;
+  // Every GLB material can otherwise reflect the bright blue PMREM sky.
+  material.envMapIntensity = 0.14;
+  if (isVehicleCabinMaterial(material.name)) {
+    material.color.set("#222832");
+    material.map = null;
+    material.metalness = 0;
+    material.roughness = 0.92;
+  }
+  material.needsUpdate = true;
 }
 
 /** No sky reflections on car glass: keep the cockpit legible even under bright sun.
@@ -160,8 +187,16 @@ export function createSelectedVisual(id: string): CarVisual {
   const bodyRoot = new THREE.Group(); bodyRoot.position.y = -BODY_CENTER_Y;
   root.add(bodyRoot);
   const imported = source.clone(true); bodyRoot.add(imported);
-  const paint = new THREE.MeshPhysicalMaterial({ color: d.paint, metalness: .45,
-    roughness: .22, clearcoat: 1, clearcoatRoughness: .10 });
+  // A saturated, low-reflection finish preserves each approved vehicle color.
+  const paint = new THREE.MeshPhysicalMaterial({
+    name: "paint",
+    color: id === "ferrari-california-t" ? "#d90818" : d.paint,
+    metalness: 0.12,
+    roughness: 0.46,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.28,
+    envMapIntensity: 0.12
+  });
   const taillightMat = new THREE.MeshStandardMaterial({ color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2 });
   const headlightMat = new THREE.MeshStandardMaterial({ color: 0xe5f4ff, emissive: 0xaaccff, emissiveIntensity: 3 });
   const materials = new Map<THREE.Material, THREE.Material>();
@@ -171,8 +206,15 @@ export function createSelectedVisual(id: string): CarVisual {
     const cloneMat = (mat: THREE.Material): THREE.Material => {
       const cached = materials.get(mat); if (cached) return cached;
       let result: THREE.Material;
-      if (mat.name === "paint" || mat.name.startsWith("paint.")) {
-        applyVehiclePaint(id, mat as THREE.MeshStandardMaterial, paint);
+      if (isVehicleBodyPaint(mat.name)) {
+        // Apply the curated body color to Carrosserie/Grafito/Negro as well,
+        // not just English 'paint' meshes.
+        if (id === "ferrari-california-t") {
+          applyVehiclePaint(id, mat as THREE.MeshStandardMaterial, paint);
+        } else {
+          paint.map = null;
+          paint.color.set(d.paint);
+        }
         result = paint;
       } else if (isVehicleGlass(mat.name)) {
         // Physical/glTF glass was reflecting the daylight sky like an opaque
@@ -181,6 +223,7 @@ export function createSelectedVisual(id: string): CarVisual {
       } else if (mat.name === "taillight") result = taillightMat;
       else if (mat.name === "headlight") result = headlightMat;
       else result = mat.clone();
+      stabilizeVehicleFinish(result);
       prepareSelectedMaterial(result);
       materials.set(mat, result);
       return result;
