@@ -2,6 +2,7 @@ import type { Difficulty, RaceSnapshot } from "../race/race";
 import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
+import { vehiclePickerMarkup } from "./vehiclePicker";
 import { SELECTED_VEHICLES } from "../vehicle/roster";
 import { analyzeCircuitDefinition, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
 
@@ -36,6 +37,7 @@ export class Menu {
   private qualityLabel = "ALTA";
   private difficulty: Difficulty = "medio";
   private selectedCircuitId = DEFAULT_CIRCUIT_ID;
+  private activeSetupTab: "autos" | "circuitos" = "autos";
   private visible = false;
   private trackLengthKm = 0;
   private selectedId = "ferrari-california-t";
@@ -71,9 +73,18 @@ export class Menu {
         });
       }
     }
+    if (action === "tab-autos" || action === "tab-circuitos") {
+      this.activeSetupTab = action === "tab-autos" ? "autos" : "circuitos";
+      this.showStart(this.trackLengthKm);
+      this.overlay.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)?.focus();
+      return;
+    }
     if (action === "circuit" && target.dataset.circuitId) this.callbacks.onSelectCircuit(target.dataset.circuitId);
     if (action === "garage") this.showGarage();
-    if (action === "back") this.showStart(this.trackLengthKm);
+    if (action === "back") {
+      this.activeSetupTab = "autos";
+      this.showStart(this.trackLengthKm);
+    }
     if (action === "select-vehicle" && target.dataset.vehicleId) void this.selectVehicle(target.dataset.vehicleId);
   };
 
@@ -91,6 +102,13 @@ export class Menu {
         this.overlay.querySelector<HTMLButtonElement>(`button[data-vehicle-id="${id}"]`)?.focus();
         const live = this.overlay.querySelector<HTMLElement>("#garage-status");
         if (live) live.textContent = "Vehículo seleccionado. Vuelve al menú para iniciar la carrera.";
+      } else if (this.visible) {
+        // Update the active tile, selected car name and start screen without
+        // requiring a detour through the full garage.
+        this.showStart(this.trackLengthKm);
+        const live = this.overlay.querySelector<HTMLElement>("#garage-status");
+        if (live) live.textContent = "¡Auto listo para correr!";
+        this.overlay.querySelector<HTMLButtonElement>(`[data-vehicle-id="${id}"]`)?.focus();
       }
     } catch {
       if (status) status.textContent = "No se pudo cargar ese modelo. Conservamos tu selección anterior; vuelve a intentarlo.";
@@ -124,15 +142,8 @@ export class Menu {
   showStart(trackLengthKm: number): void {
     this.garageOpen = false;
     this.trackLengthKm = trackLengthKm;
-    this.overlay.innerHTML = `
-      <div class="menu-card">
-        <div class="brand">Horizon Motorsport · Edición técnica</div>
-        <h1 class="title">Horizon <em>El Salvador</em></h1>
-        <p class="sub">
-          Carreras 3D en tiempo real en Chrome: ${trackLengthKm.toFixed(2)} km,
-          cuatro coches en pista, física Rapier y siete modelos 3D seleccionables.
-        </p>
-        <div class="circuit-panel">
+    const circuitPanelMarkup = `
+        <div class="circuit-panel" id="circuitos-panel" role="tabpanel" aria-labelledby="tab-circuitos">
           <div class="brand">Selecciona el circuito</div>
           <div class="circuit-choices" role="group" aria-label="Circuito">
             ${availableCircuits().map(circuit => {
@@ -145,7 +156,25 @@ export class Menu {
           </div>
           <div class="difficulty-help">Cambiar de circuito recarga la pista y sus colisiones, sin alterar tus coches.</div>
         </div>
-        <p class="sub">Vehículo: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong> · prototipo en revisión.</p>
+    `;
+    this.overlay.innerHTML = `
+      <div class="menu-card">
+        <div class="brand">Horizon Motorsport · Edición técnica</div>
+        <h1 class="title">Horizon <em>El Salvador</em></h1>
+        <p class="sub">
+          Carreras 3D en tiempo real en Chrome: ${trackLengthKm.toFixed(2)} km,
+          cuatro coches en pista, física Rapier y siete modelos 3D seleccionables.
+        </p>
+        <div class="setup-tabs" role="tablist" aria-label="Configurar la carrera">
+          <button id="tab-autos" class="setup-tab ${this.activeSetupTab === "autos" ? "is-active" : ""}"
+            type="button" role="tab" data-action="tab-autos" aria-selected="${this.activeSetupTab === "autos"}"
+            aria-controls="autos-panel">🚗 Autos · ${SELECTED_VEHICLES.length}</button>
+          <button id="tab-circuitos" class="setup-tab ${this.activeSetupTab === "circuitos" ? "is-active" : ""}"
+            type="button" role="tab" data-action="tab-circuitos" aria-selected="${this.activeSetupTab === "circuitos"}"
+            aria-controls="circuitos-panel">🏁 Circuitos</button>
+        </div>
+        ${this.activeSetupTab === "autos" ? vehiclePickerMarkup(this.selectedId) : circuitPanelMarkup}
+        <p class="sub">Auto elegido: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong></p>
         <div class="difficulty-panel">
           <div class="brand">Dificultad de los rivales</div>
           <div class="difficulty-choices" role="group" aria-label="Dificultad de carrera">
@@ -158,7 +187,7 @@ export class Menu {
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
-          <button class="btn ghost" data-action="garage">Garaje · ${SELECTED_VEHICLES.length} autos</button>
+          <button class="btn ghost" data-action="garage">Ver modelos y detalles del garaje</button>
         </div>
         <div class="menu-grid">
           <div>
