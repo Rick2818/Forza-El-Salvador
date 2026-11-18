@@ -44,8 +44,13 @@ export class MonzonScenery {
     // Pit lane, glass-fronted pit complex and a separate paddock control tower.
     // These objects sit alongside the straight, not on the racing line.
     const pitY = ground.heightAt(280, 46);
-    box("monzon-pitlane", 290, 0.021, 22, 510, 0.045, 12, asphalt);
-    box("monzon-pitlane-line", 290, 0.052, 17.5, 510, 0.02, 0.24, stripe);
+    // A thin road slab used to hover above the terrain and nearly overlap the
+    // real straight's wall, appearing as a dark obstruction/road stain.
+    // Keep this visual-only pit lane outside the collision barrier (z >= 21)
+    // and anchor it at the local ground elevation instead of world y=0.
+    const pitRoadY = ground.heightAt(290, 25);
+    box("monzon-pitlane", 290, pitRoadY - 0.09, 25.5, 510, 0.28, 9, asphalt);
+    box("monzon-pitlane-line", 290, pitRoadY + 0.065, 21.5, 510, 0.02, 0.24, stripe);
     box("monzon-boxes", 288, pitY + 8.1, 47, 484, 16.2, 31, concrete);
     box("monzon-boxes-glass", 288, pitY + 13, 30.9, 478, 5.7, 0.6, glass);
     box("monzon-boxes-roof", 288, pitY + 16.3, 47, 497, 0.85, 36, roof);
