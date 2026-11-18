@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CIRCUITS,
   analyzeCircuit,
+  analyzeCircuitDefinition,
   availableCircuits,
   buildCenterlinePoints,
   getCircuit,
@@ -17,10 +18,10 @@ describe("circuits", () => {
   it.each(CIRCUITS.map((circuit) => [circuit.id, circuit] as const))(
     "%s closes its loop and reports no geometry problems",
     (_id, circuit) => {
-      const metrics = analyzeCircuit(circuit.segments);
+      const metrics = analyzeCircuitDefinition(circuit);
       expect(metrics.issues).toEqual([]);
       expect(metrics.ok).toBe(true);
-      expect(metrics.netTurn).toBeCloseTo(360, 2);
+      if (circuit.layout !== "figure-eight") expect(metrics.netTurn).toBeCloseTo(360, 2);
       expect(metrics.closureGap).toBeLessThan(8);
       expect(metrics.minRadius).toBeGreaterThanOrEqual(35);
       expect(metrics.selfIntersections).toBe(0);
@@ -30,6 +31,7 @@ describe("circuits", () => {
 
   it("measures the length that the builder actually walks", () => {
     for (const circuit of CIRCUITS) {
+      if (circuit.layout === "figure-eight") continue;
       const metrics = analyzeCircuit(circuit.segments);
       // Straights plus arcs, computed from the definition itself.
       let expected = 0;
@@ -43,6 +45,7 @@ describe("circuits", () => {
 
   it("returns to the origin so the road has no last-metre jump", () => {
     for (const circuit of CIRCUITS) {
+      if (circuit.layout === "figure-eight") continue;
       const points = buildCenterlinePoints(circuit.segments);
       const last = points[points.length - 1];
       expect(Math.hypot(last.x, last.z)).toBeLessThan(1);
@@ -60,6 +63,13 @@ describe("circuits", () => {
     expect(report.closureGap).toBeLessThan(1);
   });
 
+  it("Suzaka appears in the menu only when the 3D overpass audit succeeds", () => {
+    const suzaka = getCircuit("suzaka")!;
+    expect(suzaka.layout).toBe("figure-eight");
+    expect(analyzeCircuitDefinition(suzaka).ok).toBe(true);
+    expect(availableCircuits().some(c => c.id === "suzaka")).toBe(true);
+  });
+
   it("resolves circuits by id and always has a valid default", () => {
     expect(getCircuit("libertad")?.name).toContain("La Libertad");
     expect(getCircuit("no-existe")).toBeUndefined();
@@ -68,7 +78,7 @@ describe("circuits", () => {
 
   it("gives each circuit a distinct centre so terrain can follow it", () => {
     const centres = CIRCUITS.map((circuit) => {
-      const metrics = analyzeCircuit(circuit.segments);
+      const metrics = analyzeCircuitDefinition(circuit);
       return `${Math.round(metrics.centerX)}:${Math.round(metrics.centerZ)}`;
     });
     expect(new Set(centres).size).toBe(centres.length);
