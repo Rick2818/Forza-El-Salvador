@@ -38,6 +38,10 @@ jobs:
         working-directory: Horizon-REA-2026
         run: npm ci
 
+      - name: Probar los vehículos y las carreras
+        working-directory: Horizon-REA-2026
+        run: npm test
+
       - name: Compilar Horizon
         working-directory: Horizon-REA-2026
         run: npm run build
