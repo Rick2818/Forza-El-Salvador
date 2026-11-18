@@ -576,14 +576,10 @@ export interface CarOptions {
   variant?: CarVariant;
 }
 
-export function createCarVisual(opts: CarOptions): CarVisual {
-  const root = new THREE.Group();
-  const bodyRoot = new THREE.Group();
-  bodyRoot.position.y = -BODY_CENTER_Y;
-  root.add(bodyRoot);
-
+/** Shared by the optional procedural fallback and its regression tests. */
+export function createProceduralPaintMaterial(color: number): THREE.MeshPhysicalMaterial {
   const paint = new THREE.MeshPhysicalMaterial({
-    color: opts.paintColor,
+    color,
     metalness: 0.02,
     roughness: 0.66,
     clearcoat: 0,
@@ -591,6 +587,29 @@ export function createCarVisual(opts: CarOptions): CarVisual {
     envMapIntensity: 0
   });
   applyRimLight(paint);
+  return paint;
+}
+
+export function createProceduralGlassMaterial(): THREE.MeshBasicMaterial {
+  const glass = new THREE.MeshBasicMaterial({
+    color: 0x202328,
+    transparent: true,
+    opacity: 0.14,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  glass.forceSinglePass = true;
+  return glass;
+}
+
+export function createCarVisual(opts: CarOptions): CarVisual {
+  const root = new THREE.Group();
+  const bodyRoot = new THREE.Group();
+  bodyRoot.position.y = -BODY_CENTER_Y;
+  root.add(bodyRoot);
+
+  const paint = createProceduralPaintMaterial(opts.paintColor);
 
   const carbon = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -622,15 +641,7 @@ export function createCarVisual(opts: CarOptions): CarVisual {
   // Fallback cars must use the same neutral, low-alpha glazing as
   // approved GLBs. The former PBR glass reflected the sky at intensity 2.3
   // and looked like an opaque milky-blue sheet on Samsung.
-  const glass = new THREE.MeshBasicMaterial({
-    color: 0x202328,
-    transparent: true,
-    opacity: 0.14,
-    toneMapped: false,
-    side: THREE.DoubleSide,
-    depthWrite: false
-  });
-  glass.forceSinglePass = true;
+  const glass = createProceduralGlassMaterial();
   const headlightMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0xfff4dc,
