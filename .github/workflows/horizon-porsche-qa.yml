@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,15 +40,22 @@ jobs:
         run: |
           mkdir -p captures
           npm run preview -- --host 127.0.0.1 > /tmp/horizon-preview.log 2>&1 &
-          sleep 4
+          PREVIEW_URL=http://127.0.0.1:4173/porsche-preview.html
+          if ! curl --fail --silent --show-error --retry 15 --retry-delay 1 --retry-connrefused --max-time 2 "$PREVIEW_URL" > /dev/null; then
+            cat /tmp/horizon-preview.log
+            exit 1
+          fi
           BROWSER="$(command -v google-chrome || command -v chromium || true)"
           if [ -z "$BROWSER" ]; then echo "Chrome/Chromium unavailable"; exit 1; fi
           "$BROWSER" --headless=new --no-sandbox --disable-dev-shm-usage \
             --enable-webgl --enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader \
             --hide-scrollbars --window-size=1440,900 --remote-debugging-port=9333 \
             --user-data-dir=/tmp/horizon-porsche-browser \
-            http://127.0.0.1:4173/porsche-preview.html > /tmp/horizon-chrome.log 2>&1 &
-          node tools/porsche-capture.mjs captures/porsche-911-3d.png
+            "$PREVIEW_URL" > /tmp/horizon-chrome.log 2>&1 &
+          if ! node tools/porsche-capture.mjs captures/porsche-911-3d.png; then
+            cat /tmp/horizon-chrome.log /tmp/horizon-preview.log
+            exit 1
+          fi
           ls -lh captures/porsche-911-3d.png
       - name: Save screenshot artifact for reference comparison
         uses: actions/upload-artifact@v4
