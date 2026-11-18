@@ -94,9 +94,10 @@ export function createAsphaltMaps(): AsphaltMaps {
       base = Math.max(12, Math.min(96, base));
 
       const i = (y * S + x) * 4;
-      aImg.data[i] = base * 0.99;
+      // Neutral carbon-black aggregate: no blue bias under daylight.
+      aImg.data[i] = base;
       aImg.data[i + 1] = base;
-      aImg.data[i + 2] = base * 1.06;
+      aImg.data[i + 2] = base;
       aImg.data[i + 3] = 255;
 
       const r = 196 + grain * 46 + speck * 18;
