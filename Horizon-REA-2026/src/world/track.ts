@@ -45,10 +45,13 @@ export class Track {
   length = 0;
   segmentLength = 0;
   startIndex = 0;
-  width = this.circuit.layout === "figure-eight" ? 14 : SETTINGS.track.width;
-  halfWidth = this.width / 2;
+  width: number;
+  halfWidth: number;
 
-  constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {}
+  constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {
+    this.width = this.circuit.layout === "figure-eight" ? 14 : SETTINGS.track.width;
+    this.halfWidth = this.width / 2;
+  }
 
   /** Build the track using procedural layout (original logic). */
   build(): void {
