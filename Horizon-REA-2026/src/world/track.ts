@@ -18,7 +18,7 @@ import { internationalCenterline, type InternationalCircuitId } from "./internat
 export function createDarkAsphaltMaterial(map: THREE.Texture): THREE.MeshBasicMaterial {
   return new THREE.MeshBasicMaterial({
     map,
-    color: 0x646464,
+    color: 0x17191c,
     toneMapped: false
   });
 }
