@@ -124,6 +124,7 @@ const helper = new THREE.SpotLightHelper(spotLight, 0xff0000);
 this.scene.add(helper);
 
 this.environment = new Environment(this.scene, this.renderer, this.track);
+    this.environment.installTerrainPhysics(this.world);
     this.applyResolution();
     try {
       const saved = localStorage.getItem("horizon.selected-vehicle");
