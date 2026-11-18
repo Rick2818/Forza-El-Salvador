@@ -16,6 +16,7 @@
  */
 
 import { auditSuzaka } from "./suzakaGeometry";
+import { auditInternational, type InternationalCircuitId } from "./internationalGeometry";
 
 export interface Segment {
   straight?: number;
@@ -35,7 +36,7 @@ export interface CircuitDefinition {
   accent: string;
   segments: Segment[];
   /** Grade-separated figure-eight layout, assembled from 3D centreline samples. */
-  layout?: "figure-eight";
+  layout?: "figure-eight" | "mountain" | "desert";
 }
 
 export interface CircuitBounds {
@@ -156,6 +157,12 @@ export const CIRCUITS: readonly CircuitDefinition[] = [
   { id: "suzaka", name: "Circuito Suzaka", discipline: "Técnico · Japón",
     blurb: "Trazado original en ocho de 5,64 km, puente elevado y curvas enlazadas.",
     accent: "#df556a", segments: [], layout: "figure-eight" },
+  { id: "sparda", name: "Circuito Sparda", discipline: "Montaña · Europa",
+    blurb: "Recorrido original de 6,42 km con crestas, bajadas y curvas entre bosques.",
+    accent: "#69b0da", segments: [], layout: "mountain" },
+  { id: "sakhir-horizon", name: "Sakhir Horizon", discipline: "Desierto · Nocturno",
+    blurb: "Recorrido original de 5,55 km bajo reflectores, con curvas y frenadas exigentes.",
+    accent: "#f2b86d", segments: [], layout: "desert" },
   {
     id: "libertad",
     name: "Circuito La Libertad",
@@ -349,7 +356,17 @@ export function analyzeCircuit(segments: Segment[]): CircuitMetrics {
  * The ordinary flat layouts keep the strict 360° and no-crossing checks.
  */
 export function analyzeCircuitDefinition(circuit: CircuitDefinition): CircuitMetrics {
-  if (circuit.layout !== "figure-eight") return analyzeCircuit(circuit.segments);
+  if (!circuit.layout) return analyzeCircuit(circuit.segments);
+  if (circuit.layout === "mountain" || circuit.layout === "desert") {
+    const a = auditInternational(circuit.id as InternationalCircuitId);
+    return {
+      length: a.length, netTurn: 360, closureGap: a.closureGap,
+      minRadius: a.minRadius, corners: circuit.layout === "mountain" ? 17 : 15,
+      bounds: a.bounds, centerX: (a.bounds.minX + a.bounds.maxX) / 2,
+      centerZ: (a.bounds.minZ + a.bounds.maxZ) / 2,
+      selfIntersections: 0, issues: a.issues, ok: a.ok
+    };
+  }
   const a = auditSuzaka();
   return {
     length: a.length,
