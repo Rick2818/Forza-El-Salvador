@@ -62,6 +62,32 @@ export function wheelConnections(id: string): { x: number; y: number; z: number;
   })));
 }
 
+/**
+ * The Ferrari California's approved race red must not be multiplied by the
+ * Blender export's albedo tint. That multiplication was washing it out.
+ * All other cars retain their authored paint colors and textures.
+ */
+export function applyVehiclePaint(
+  id: string,
+  authored: THREE.MeshStandardMaterial,
+  paint: THREE.MeshPhysicalMaterial
+): void {
+  if (id === "ferrari-california-t") {
+    paint.color.set("#d90818"); // deep, vivid Rosso Corsa-like red in sRGB
+    paint.map = null;
+    paint.metalness = 0.27;
+    paint.roughness = 0.26;
+    paint.clearcoat = 1;
+    paint.clearcoatRoughness = 0.09;
+  } else {
+    paint.map = authored.map;
+    paint.color.copy(authored.color);
+    paint.metalness = authored.metalness;
+    paint.roughness = authored.roughness;
+  }
+  paint.needsUpdate = true;
+}
+
 export function createSelectedVisual(id: string): CarVisual {
   const source = cache.get(id);
   if (!source) throw new Error(`El modelo ${id} no está cargado`);
@@ -81,10 +107,8 @@ export function createSelectedVisual(id: string): CarVisual {
     const cloneMat = (mat: THREE.Material): THREE.Material => {
       const cached = materials.get(mat); if (cached) return cached;
       let result: THREE.Material;
-      if (mat.name === "paint") {
-        const authored = mat as THREE.MeshStandardMaterial;
-        paint.map = authored.map; paint.color.copy(authored.color);
-        paint.metalness = authored.metalness; paint.roughness = authored.roughness;
+      if (mat.name === "paint" || mat.name.startsWith("paint.")) {
+        applyVehiclePaint(id, mat as THREE.MeshStandardMaterial, paint);
         result = paint;
       } else if (mat.name === "taillight") result = taillightMat;
       else if (mat.name === "headlight") result = headlightMat;
