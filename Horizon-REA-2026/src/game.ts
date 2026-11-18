@@ -256,7 +256,7 @@ this.environment = new Environment(this.scene, this.renderer, this.track);
 
   private replaceRace(): void {
     this.race.dispose();
-    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId);
+    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty);
     this.physicsAccum = 0;
     this.chase?.snap();
   }
