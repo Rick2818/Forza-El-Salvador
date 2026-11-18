@@ -12,8 +12,8 @@ describe("approved automotive finishes", () => {
     const glass = createProceduralGlassMaterial();
     expect(glass.isMeshBasicMaterial).toBe(true);
     expect(glass.transparent).toBe(true);
-    expect(glass.opacity).toBeCloseTo(.14);
-    expect(glass.color.getHexString()).toBe("202328");
+    expect(glass.opacity).toBeCloseTo(.10);
+    expect(glass.color.getHexString()).toBe("14181d");
     expect(glass.depthWrite).toBe(false);
     expect(glass.toneMapped).toBe(false);
     expect(glass.forceSinglePass).toBe(true);
@@ -23,7 +23,7 @@ describe("approved automotive finishes", () => {
   it("procedural fallback paint uses true red and no milky clearcoat", () => {
     const paint = createProceduralPaintMaterial(0xd90818);
     expect(paint.color.getHexString()).toBe("d90818");
-    expect(paint.clearcoat).toBe(0);
+    expect(paint.clearcoat).toBeCloseTo(.08);
     expect(paint.envMapIntensity).toBe(0);
     expect(paint.metalness).toBeLessThan(.1);
     paint.dispose();
@@ -34,10 +34,12 @@ describe("approved automotive finishes", () => {
     const paint = new THREE.MeshPhysicalMaterial({ color: 0xffffff });
     applyVehiclePaint("ferrari-california-t", exported, paint);
     expect(paint.color.getHexString()).toBe("d90818");
-    expect(paint.metalness).toBeCloseTo(.02);
-    expect(paint.clearcoat).toBe(0);
-    expect(paint.roughness).toBeCloseTo(.66);
+    expect(paint.metalness).toBeCloseTo(.01);
+    expect(paint.clearcoat).toBeCloseTo(.08);
+    expect(paint.roughness).toBeCloseTo(.22);
     expect(paint.envMapIntensity).toBe(0);
+    expect(paint.opacity).toBe(1);
+    expect(paint.transparent).toBe(false);
     expect(paint.map).toBeNull();
     exported.dispose(); paint.dispose();
   });
@@ -70,8 +72,8 @@ describe("approved automotive finishes", () => {
       expect(isVehicleGlass(name)).toBe(true);
       prepareSelectedMaterial(glass);
       expect(glass.transparent).toBe(true);
-      expect(glass.opacity).toBeCloseTo(.14);
-      expect(glass.color.getHexString()).toBe("242424");
+      expect(glass.opacity).toBeCloseTo(.10);
+      expect(glass.color.getHexString()).toBe("14181d");
       expect(glass.metalness).toBe(0);
       expect(glass.roughness).toBeCloseTo(1);
       expect(glass.depthWrite).toBe(false);
@@ -86,8 +88,8 @@ describe("approved automotive finishes", () => {
     prepareSelectedMaterial(glass);
     expect(glass.isMeshBasicMaterial).toBe(true);
     expect(glass.transparent).toBe(true);
-    expect(glass.opacity).toBeCloseTo(.14);
-    expect(glass.color.getHexString()).toBe("242424");
+    expect(glass.opacity).toBeCloseTo(.10);
+    expect(glass.color.getHexString()).toBe("14181d");
     expect(glass.toneMapped).toBe(false);
     expect(glass.forceSinglePass).toBe(true);
     expect(glass.depthWrite).toBe(false);
