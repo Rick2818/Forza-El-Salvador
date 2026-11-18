@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { applyVehiclePaint, createVehicleGlassMaterial, isVehicleGlass, prepareSelectedMaterial } from "./selectedAsset";
+import {
+  applyVehiclePaint, createVehicleGlassMaterial, isVehicleGlass,
+  isVehicleBodyPaint, isVehicleCabinMaterial, prepareSelectedMaterial,
+  stabilizeVehicleFinish
+} from "./selectedAsset";
 
 describe("approved automotive finishes", () => {
   it("renders Ferrari California in saturated racing red, ignoring faded Blender tint", () => {
@@ -8,9 +12,10 @@ describe("approved automotive finishes", () => {
     const paint = new THREE.MeshPhysicalMaterial({ color: 0xffffff });
     applyVehiclePaint("ferrari-california-t", exported, paint);
     expect(paint.color.getHexString()).toBe("d90818");
-    expect(paint.metalness).toBeCloseTo(.27);
-    expect(paint.clearcoat).toBe(1);
-    expect(paint.roughness).toBeLessThan(.3);
+    expect(paint.metalness).toBeCloseTo(.12);
+    expect(paint.clearcoat).toBeCloseTo(.35);
+    expect(paint.roughness).toBeCloseTo(.46);
+    expect(paint.envMapIntensity).toBeCloseTo(.12);
     expect(paint.map).toBeNull();
     exported.dispose(); paint.dispose();
   });
@@ -78,6 +83,25 @@ describe("approved automotive finishes", () => {
       mat.dispose();
     }
   });
+
+  it.each(["paint", "paint.001", "Carrosserie", "Grafito metalizado", "Negro brillante"])(
+    "recognizes %s as opaque approved coachwork, not glass", (name) => {
+      expect(isVehicleBodyPaint(name)).toBe(true);
+      expect(isVehicleGlass(name)).toBe(false);
+    }
+  );
+
+  it.each(["Cuir", "Cuero gris pizarra", "leather"])(
+    "darkens %s cabin upholstery instead of rendering milky-white seats", (name) => {
+      expect(isVehicleCabinMaterial(name)).toBe(true);
+      const seat = new THREE.MeshStandardMaterial({ name, color: 0xe3e5e8, roughness: .2, metalness: .3 });
+      stabilizeVehicleFinish(seat);
+      expect(seat.color.getHexString()).toBe("222832");
+      expect(seat.roughness).toBeCloseTo(.92);
+      expect(seat.envMapIntensity).toBeCloseTo(.14);
+      seat.dispose();
+    }
+  );
 
   it("preserves every other car's Blender-authored paint and roughness", () => {
     const exported = new THREE.MeshStandardMaterial({ color: 0x111319, metalness: .2, roughness: .6 });
