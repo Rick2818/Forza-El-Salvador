@@ -8,6 +8,7 @@ import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
 import { clamp } from "../core/mathx";
 import { createAsphaltMaps, createBannerTexture, createCheckerTexture } from "./textures";
+import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuit } from "./circuits";
 
 export interface Segment {
   straight?: number;
@@ -46,27 +47,13 @@ export class Track {
   width = SETTINGS.track.width;
   halfWidth = SETTINGS.track.width / 2;
 
+  constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {}
+
   /** Build the track using procedural layout (original logic). */
   build(): void {
-    const SEGMENTS: Segment[] = [
-      { straight: 456.6 },
-      { turn: 90, radius: 62, dir: 1 },
-      { straight: 45.8 },
-      { turn: 48, radius: 55, dir: -1 },
-      { turn: 48, radius: 55, dir: 1 },
-      { straight: 140 },
-      { turn: 90, radius: 48, dir: 1 },
-      { straight: 200 },
-      { turn: 65, radius: 75, dir: -1 },
-      { turn: 65, radius: 75, dir: 1 },
-      { straight: 110 },
-      { turn: 90, radius: 85, dir: 1 },
-      { straight: 160 },
-      { turn: 40, radius: 60, dir: -1 },
-      { turn: 40, radius: 60, dir: 1 },
-      { straight: 90 },
-      { turn: 90, radius: 52, dir: 1 }
-    ];
+    const report = analyzeCircuit(this.circuit.segments);
+    if (!report.ok) throw new Error(`Circuito ${this.circuit.name}: ${report.issues.join(", ")}`);
+    const SEGMENTS = this.circuit.segments;
 
     function buildCenterline(): THREE.Vector3[] {
       const pts: THREE.Vector3[] = [];
@@ -277,7 +264,7 @@ export class Track {
     this.buildGantry();
 
     // ---- Trackside lamps: instanced poles with glowing heads.
-    this.buildLamps(barrierOffset);
+    if (this.circuit.id !== "monzon") this.buildLamps(barrierOffset);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
@@ -392,7 +379,9 @@ export class Track {
     const postMat = new THREE.MeshStandardMaterial({ color: 0x2c333d, roughness: 0.7, metalness: 0.35 });
     const postGeo = new THREE.BoxGeometry(0.45, height, 0.45);
 
-    const bannerTex = createBannerTexture("HORIZON EL SALVADOR", "META · HORIZON GP");
+    const bannerTex = this.circuit.id === "monzon"
+      ? createBannerTexture("CIRCUITO MONZON", "HORIZON EL SALVADOR")
+      : createBannerTexture("HORIZON EL SALVADOR", "META · HORIZON GP");
     const beamMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       map: bannerTex,
