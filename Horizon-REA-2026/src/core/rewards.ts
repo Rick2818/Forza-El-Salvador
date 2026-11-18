@@ -13,7 +13,8 @@ const POSITION_CREDITS = [800, 520, 340, 220];
 
 const DIFFICULTY_MULTIPLIER: Record<Difficulty, number> = {
   facil: 0.75,
-  normal: 1,
+  normal: 1, // Legacy saved championships
+  medio: 1,
   dificil: 1.35
 };
 
