@@ -49,7 +49,7 @@ function roadsideInstancing(scene: THREE.Scene, track: Track, ground: TerrainFie
     number) : null;
   const foliage = new THREE.InstancedMesh(
     mountain ? new THREE.ConeGeometry(3, 11, 7) : new THREE.IcosahedronGeometry(1, 1),
-    new THREE.MeshLambertMaterial({ color: mountain ? 0x456f4d : 0x887358, roughness: 1 }),
+    new THREE.MeshLambertMaterial({ color: mountain ? 0x456f4d : 0x887358 }),
     number
   );
   const matrix = new THREE.Matrix4();
