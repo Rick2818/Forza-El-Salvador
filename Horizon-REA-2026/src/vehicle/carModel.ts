@@ -580,11 +580,13 @@ export interface CarOptions {
 export function createProceduralPaintMaterial(color: number): THREE.MeshPhysicalMaterial {
   const paint = new THREE.MeshPhysicalMaterial({
     color,
-    metalness: 0.02,
-    roughness: 0.66,
-    clearcoat: 0,
-    clearcoatRoughness: 0.38,
-    envMapIntensity: 0
+    metalness: 0.01,
+    roughness: 0.22,
+    clearcoat: 0.08,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 0,
+    opacity: 1,
+    transparent: false
   });
   applyRimLight(paint);
   return paint;
@@ -592,9 +594,9 @@ export function createProceduralPaintMaterial(color: number): THREE.MeshPhysical
 
 export function createProceduralGlassMaterial(): THREE.MeshBasicMaterial {
   const glass = new THREE.MeshBasicMaterial({
-    color: 0x202328,
+    color: 0x14181d,
     transparent: true,
-    opacity: 0.14,
+    opacity: 0.10,
     toneMapped: false,
     side: THREE.DoubleSide,
     depthWrite: false
