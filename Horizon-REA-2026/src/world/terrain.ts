@@ -54,6 +54,7 @@ export const fbm = (x: number, y: number, octaves = 4): number => {
 
 export interface TrackLike {
   samples: THREE.Vector3[];
+  circuit?: { id: string };
 }
 
 /** Distance from (x,z) to the nearest centreline sample, in metres. */
@@ -77,9 +78,13 @@ export class TerrainField {
   readonly centerX: number;
   readonly centerZ: number;
   private readonly heights: Float32Array;
+  private readonly isSparda: boolean;
+  private readonly roadSamples: readonly THREE.Vector3[];
   private readonly count = TERRAIN_SEGMENTS + 1;
 
   constructor(track: TrackLike) {
+    this.isSparda = track.circuit?.id === "sparda";
+    this.roadSamples = track.samples;
     // Centre the terrain on the currently selected layout. Monzon is much
     // larger than the original coastal circuits and must not run off the mesh.
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -107,6 +112,21 @@ export class TerrainField {
   }
 
   private computeHeight(x: number, z: number, trackDistance: number): number {
+    if (this.isSparda) {
+      // Terrain follows the graded mountain road, always below the tyre
+      // surface. A separate static collider supplies off-track support.
+      let closest = 0;
+      let minDistance = Infinity;
+      for (let i = 0; i < this.roadSamples.length; i += 4) {
+        const p = this.roadSamples[i];
+        const d = (p.x - x) ** 2 + (p.z - z) ** 2;
+        if (d < minDistance) { minDistance = d; closest = p.y; }
+      }
+      const valley = 1.5 + 2.0 * smoothstep(9, 85, trackDistance);
+      const ripple = (fbm(x * 0.012, z * 0.012, 2) - .5) *
+        1.2 * smoothstep(40, 220, trackDistance);
+      return closest - valley + ripple;
+    }
     // Flat and just below the road next to the circuit; the bank then falls
     // away to the valley floor before the hills start.
     const flat = smoothstep(15, 88, trackDistance);
@@ -158,9 +178,9 @@ export class TerrainField {
     geo.translate(this.centerX, 0, this.centerZ);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(0x4a4d55);
-    const dryGrass = new THREE.Color(0x565a63);
-    const rock = new THREE.Color(0x6d717a);
+    const grass = new THREE.Color(this.isSparda ? 0x315e3a : 0x4a4d55);
+    const dryGrass = new THREE.Color(this.isSparda ? 0x4a7048 : 0x565a63);
+    const rock = new THREE.Color(this.isSparda ? 0x737a6c : 0x6d717a);
     const tmp = new THREE.Color();
 
     for (let i = 0; i < pos.count; i++) {
