@@ -3,7 +3,7 @@ import { Vehicle, type DriveInput } from "./vehicle";
 import { Track } from "../world/track";
 import { angleDelta, clamp } from "../core/mathx";
 
-export type RaceDifficulty = "facil" | "medio" | "dificil";
+export type RaceDifficulty = "facil" | "medio" | "normal" | "dificil";
 export type RivalPersonality = "defensor" | "atacante" | "estratega";
 
 export interface TrafficCar {
@@ -15,6 +15,8 @@ export interface TrafficCar {
 export const DIFFICULTY_TUNING = {
   facil:   { pace: 0.79, reaction: 0.78, pressure: 0.05 },
   medio:   { pace: 0.97, reaction: 1.00, pressure: 0.55 },
+  // Backward compatibility with existing championship saves and reward tables.
+  normal:  { pace: 0.97, reaction: 1.00, pressure: 0.55 },
   dificil: { pace: 1.08, reaction: 1.14, pressure: 1.00 }
 } as const;
 
