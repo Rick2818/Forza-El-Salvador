@@ -123,7 +123,7 @@ export class Vehicle {
 
   place(position: THREE.Vector3, heading: number): void {
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
-    this.body.setTranslation({ x: position.x, y: BODY_CENTER_Y - 0.1, z: position.z }, true);
+    this.body.setTranslation({ x: position.x, y: position.y + BODY_CENTER_Y - 0.1, z: position.z }, true);
     this.body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -138,7 +138,7 @@ export class Vehicle {
     const idx = track.startIndex;
     const p = track.samples[idx];
     const t = track.tangents[idx];
-    this.place(new THREE.Vector3(p.x, 0, p.z), Math.atan2(t.x, t.z));
+    this.place(new THREE.Vector3(p.x, p.y, p.z), Math.atan2(t.x, t.z));
   }
 
   private applyForces(dt: number, grip: number): void {
