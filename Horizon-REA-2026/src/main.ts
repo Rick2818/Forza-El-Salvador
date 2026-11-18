@@ -3,6 +3,7 @@ import "./styles.css";
 import { Game } from "./game";
 import { preloadCarAsset, USE_BLENDER_SHELL } from "./vehicle/carAsset";
 import { Track } from "./world/track";
+import { DEFAULT_CIRCUIT_ID, getCircuit } from "./world/circuits";
 import { VEHICLE_DESIGNS, loadSelectedVehicle } from "./vehicle/selectedAsset";
 
 const loading = document.createElement("div");
@@ -51,7 +52,10 @@ async function boot(): Promise<void> {
   progress(42, "Construyendo circuito procedural…");
   await nextFrame();
 
-  const track = new Track();
+  let circuitId = DEFAULT_CIRCUIT_ID;
+  try { circuitId = localStorage.getItem("horizon.circuit") ?? DEFAULT_CIRCUIT_ID; } catch { /* default */ }
+  const selectedCircuit = getCircuit(circuitId) ?? getCircuit(DEFAULT_CIRCUIT_ID)!;
+  const track = new Track(selectedCircuit);
   track.build();
 
   progress(68, "Generando terreno y océanos…");
