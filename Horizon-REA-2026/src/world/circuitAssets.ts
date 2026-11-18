@@ -1,6 +1,6 @@
 /** Blender 5-approved 3D assets available for loading by the Horizon renderer.
  * Files in public/circuits are published by Vite with the correct Pages base.
- * Their presence does NOT mean a track has been wired to race physics yet.
+ * Monzon and Suzaka use procedural collision geometry; the GLB contributes\n * visual landmarks only, never a second overlapping drivable road.
  */
 export type BlenderCircuitId = "monzon" | "suzaka";
 
@@ -28,7 +28,7 @@ export const BLENDER_CIRCUITS: Readonly<Record<BlenderCircuitId, BlenderCircuitA
     glb: "circuits/suzaka.glb",
     distanceMeters: 5636,
     bridgeHeightMeters: 12,
-    playable: false
+    playable: true
   }
 };
 
