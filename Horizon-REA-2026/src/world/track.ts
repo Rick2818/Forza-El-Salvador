@@ -184,14 +184,13 @@ export class Track {
       tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(2.2, 1);
     }
-    const roadMat = new THREE.MeshStandardMaterial({
+    // Absolute dark asphalt rather than blue-gray PBR under the very bright
+    // daylight lighting/sky environment. Unlit black charcoal retains the
+    // subtle aggregate map and ensures the white lines stay high-contrast.
+    const roadMat = new THREE.MeshBasicMaterial({
       map: asphalt.map,
-      normalMap: asphalt.normalMap,
-      roughnessMap: asphalt.roughnessMap,
-      normalScale: new THREE.Vector2(0.7, 0.7),
-      roughness: 0.94,
-      metalness: 0.02,
-      color: 0x454a50 // neutral dark asphalt, distinguishable from pale cars
+      color: 0x646464,
+      toneMapped: false
     });
     const road = new THREE.Mesh(this.ribbonGeometry(-halfW, halfW, surfaceY, 12), roadMat);
     road.name = "asphalt";
