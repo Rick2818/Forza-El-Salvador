@@ -3,6 +3,7 @@ import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
 import { SELECTED_VEHICLES } from "../vehicle/roster";
+import { analyzeCircuit, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
 
 export interface MenuCallbacks {
   onStart: () => void;
@@ -11,6 +12,7 @@ export interface MenuCallbacks {
   onQuit: () => void;
   onToggleQuality: () => void;
   onSelectDifficulty: (difficulty: Difficulty) => void;
+  onSelectCircuit: (id: string) => void;
   onSelectVehicle: (id: string) => Promise<void>;
 }
 
@@ -33,6 +35,7 @@ export class Menu {
   private callbacks: MenuCallbacks;
   private qualityLabel = "ALTA";
   private difficulty: Difficulty = "medio";
+  private selectedCircuitId = DEFAULT_CIRCUIT_ID;
   private visible = false;
   private trackLengthKm = 0;
   private selectedId = "ferrari-california-t";
@@ -68,6 +71,7 @@ export class Menu {
         });
       }
     }
+    if (action === "circuit" && target.dataset.circuitId) this.callbacks.onSelectCircuit(target.dataset.circuitId);
     if (action === "garage") this.showGarage();
     if (action === "back") this.showStart(this.trackLengthKm);
     if (action === "select-vehicle" && target.dataset.vehicleId) void this.selectVehicle(target.dataset.vehicleId);
@@ -99,6 +103,7 @@ export class Menu {
   get isGarageOpen(): boolean { return this.garageOpen; }
   setSelectedVehicle(id: string): void { this.selectedId = id; }
   setDifficulty(difficulty: Difficulty): void { this.difficulty = difficulty; }
+  setSelectedCircuit(id: string): void { this.selectedCircuitId = id; }
 
   get isVisible(): boolean {
     return this.visible;
@@ -124,10 +129,22 @@ export class Menu {
         <div class="brand">Horizon Motorsport · Edición técnica</div>
         <h1 class="title">Horizon <em>El Salvador</em></h1>
         <p class="sub">
-          Carreras 3D en tiempo real directamente en Chrome. Circuito original
-          de ${trackLengthKm.toFixed(2)} km, cuatro coches en pista, física de
-          suspensión y neumáticos sobre Rapier y modelos 3D de prueba seleccionables.
+          Carreras 3D en tiempo real en Chrome: ${trackLengthKm.toFixed(2)} km,
+          cuatro coches en pista, física Rapier y siete modelos 3D seleccionables.
         </p>
+        <div class="circuit-panel">
+          <div class="brand">Selecciona el circuito</div>
+          <div class="circuit-choices" role="group" aria-label="Circuito">
+            ${availableCircuits().map(circuit => {
+              const active = circuit.id === this.selectedCircuitId;
+              const length = (analyzeCircuit(circuit.segments).length / 1000).toFixed(2);
+              return `<button class="circuit-choice ${active ? "is-active" : ""}" data-action="circuit" data-circuit-id="${circuit.id}" aria-pressed="${active}">
+                <strong>${circuit.name}</strong><span>${circuit.discipline} · ${length} km</span>
+              </button>`;
+            }).join("")}
+          </div>
+          <div class="difficulty-help">Cambiar de circuito recarga la pista y sus colisiones, sin alterar tus coches.</div>
+        </div>
         <p class="sub">Vehículo: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong> · prototipo en revisión.</p>
         <div class="difficulty-panel">
           <div class="brand">Dificultad de los rivales</div>
@@ -162,9 +179,7 @@ export class Menu {
         <div class="menu-note">
           Prototipo de conducción · referencias de vehículos disponibles en el garaje
         </div>
-        <div id="mcp-circuits" class="spec-list" style="margin-top:14px">
-          Cargando circuitos reales (MCP Pitstop)…
-        </div>
+        <div class="menu-note">Circuitos originales de Horizon · sin afiliación con autódromos reales.</div>
       </div>
     `;
     this.overlay.classList.remove("hidden");
