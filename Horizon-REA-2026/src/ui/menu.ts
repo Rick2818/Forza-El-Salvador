@@ -3,7 +3,7 @@ import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
 import { SELECTED_VEHICLES } from "../vehicle/roster";
-import { analyzeCircuit, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
+import { analyzeCircuitDefinition, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
 
 export interface MenuCallbacks {
   onStart: () => void;
@@ -137,7 +137,7 @@ export class Menu {
           <div class="circuit-choices" role="group" aria-label="Circuito">
             ${availableCircuits().map(circuit => {
               const active = circuit.id === this.selectedCircuitId;
-              const length = (analyzeCircuit(circuit.segments).length / 1000).toFixed(2);
+              const length = (analyzeCircuitDefinition(circuit).length / 1000).toFixed(2);
               return `<button class="circuit-choice ${active ? "is-active" : ""}" data-action="circuit" data-circuit-id="${circuit.id}" aria-pressed="${active}">
                 <strong>${circuit.name}</strong><span>${circuit.discipline} · ${length} km</span>
               </button>`;
