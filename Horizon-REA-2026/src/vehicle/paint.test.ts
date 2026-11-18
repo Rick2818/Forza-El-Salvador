@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { applyVehiclePaint, prepareSelectedMaterial } from "./selectedAsset";
+import { applyVehiclePaint, isVehicleGlass, prepareSelectedMaterial } from "./selectedAsset";
 
 describe("approved automotive finishes", () => {
   it("renders Ferrari California in saturated racing red, ignoring faded Blender tint", () => {
@@ -33,18 +33,33 @@ describe("approved automotive finishes", () => {
     paint.dispose();
   });
 
-  it("keeps the approved window alpha while correcting back-face visibility", () => {
-    const glass = new THREE.MeshStandardMaterial({
-      name: "glass",
-      transparent: true,
-      opacity: 0.72,
-      side: THREE.FrontSide
-    });
-    prepareSelectedMaterial(glass);
-    expect(glass.transparent).toBe(true);
-    expect(glass.opacity).toBeCloseTo(0.72);
-    expect(glass.side).toBe(THREE.DoubleSide);
-    glass.dispose();
+  it.each(["glass", "Cristal", "Vitrage", "Windshield", "glazing"])(
+    "%s: restores barely-visible windows while keeping interior legible",
+    (name) => {
+      const glass = new THREE.MeshStandardMaterial({
+        name, transparent: true, opacity: .038, side: THREE.FrontSide,
+        depthWrite: true
+      });
+      expect(isVehicleGlass(name)).toBe(true);
+      prepareSelectedMaterial(glass);
+      expect(glass.transparent).toBe(true);
+      expect(glass.opacity).toBeCloseTo(.7);
+      expect(glass.depthWrite).toBe(false);
+      expect(glass.side).toBe(THREE.DoubleSide);
+      glass.dispose();
+    }
+  );
+
+  it("does not accidentally treat Porsche graphite or cockpit leather as glass", () => {
+    for (const name of ["Grafito metalizado", "Cuero gris pizarra", "Carrosserie"]) {
+      expect(isVehicleGlass(name)).toBe(false);
+      const mat = new THREE.MeshStandardMaterial({ name, opacity: .2, transparent: true });
+      prepareSelectedMaterial(mat);
+      expect(mat.transparent).toBe(false);
+      expect(mat.opacity).toBe(1);
+      expect(mat.depthWrite).toBe(true);
+      mat.dispose();
+    }
   });
 
   it("preserves every other car's Blender-authored paint and roughness", () => {
