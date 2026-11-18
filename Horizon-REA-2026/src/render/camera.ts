@@ -54,10 +54,10 @@ export class ChaseCamera {
       _look.copy(pos).addScaledVector(_forward, 5.5);
       _look.y += 3.4;
     } else {
-      const distance = cameraSettings.distance + clamp(speed * 0.012, 0, 0.55);
-      const height = cameraSettings.height + clamp(speed * 0.006, 0, 0.22);
+      const distance = cameraSettings.distance + clamp(speed * 0.0025, 0, 0.18);
+      const height = cameraSettings.height + clamp(speed * 0.002, 0, 0.10);
       _desired.copy(pos).addScaledVector(_forward, -distance).add(new THREE.Vector3(0, height, 0));
-      _look.copy(pos).addScaledVector(_forward, cameraSettings.lookAhead + speed * 0.035);
+      _look.copy(pos).addScaledVector(_forward, cameraSettings.lookAhead + speed * 0.007);
       _look.y += 1.05;
 
       const shake = clamp((speed - 45) / 45, 0, 1) * 0.035;
@@ -95,7 +95,7 @@ export class ChaseCamera {
   }
 
   menuOrbit(dt: number, center: THREE.Vector3, time: number): void {
-    const radius = 8.5;
+    const radius = 6.2;
     const angle = time * 0.22;
     this.camera.position.set(
       center.x + Math.cos(angle) * radius,
@@ -103,7 +103,7 @@ export class ChaseCamera {
       center.z + Math.sin(angle) * radius
     );
     this.camera.lookAt(center.x, center.y + 0.55, center.z);
-    this.camera.fov = damp(this.camera.fov, 47, 4, dt);
+    this.camera.fov = damp(this.camera.fov, 45, 4, dt);
     this.camera.updateProjectionMatrix();
   }
 }
