@@ -71,21 +71,34 @@ export function distanceToTrack(x: number, z: number, track: TrackLike, stride =
 }
 
 export class TerrainField {
-  readonly size = TERRAIN_SIZE;
+  readonly size: number;
   readonly segments = TERRAIN_SEGMENTS;
-  readonly step = TERRAIN_SIZE / TERRAIN_SEGMENTS;
-  readonly centerX = TERRAIN_CENTER_X;
-  readonly centerZ = TERRAIN_CENTER_Z;
+  readonly step: number;
+  readonly centerX: number;
+  readonly centerZ: number;
   private readonly heights: Float32Array;
   private readonly count = TERRAIN_SEGMENTS + 1;
 
   constructor(track: TrackLike) {
+    // Centre the terrain on the currently selected layout. Monzon is much
+    // larger than the original coastal circuits and must not run off the mesh.
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const p of track.samples) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z);
+      maxZ = Math.max(maxZ, p.z);
+    }
+    this.centerX = Number.isFinite(minX) ? (minX + maxX) / 2 : TERRAIN_CENTER_X;
+    this.centerZ = Number.isFinite(minZ) ? (minZ + maxZ) / 2 : TERRAIN_CENTER_Z;
+    this.size = Math.max(TERRAIN_SIZE, Math.ceil((Math.max(maxX - minX, maxZ - minZ) + 600) / 100) * 100);
+    this.step = this.size / this.segments;
     const count = this.count;
     const heights = new Float32Array(count * count);
     for (let iz = 0; iz < count; iz++) {
-      const z = this.centerZ - TERRAIN_SIZE / 2 + iz * this.step;
+      const z = this.centerZ - this.size / 2 + iz * this.step;
       for (let ix = 0; ix < count; ix++) {
-        const x = this.centerX - TERRAIN_SIZE / 2 + ix * this.step;
+        const x = this.centerX - this.size / 2 + ix * this.step;
         const d = distanceToTrack(x, z, track, 4);
         heights[iz * count + ix] = this.computeHeight(x, z, d);
       }
