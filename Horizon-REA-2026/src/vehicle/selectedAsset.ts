@@ -75,11 +75,13 @@ export function applyVehiclePaint(
   if (id === "ferrari-california-t") {
     paint.color.set("#d90818"); // deep, vivid Rosso Corsa-like red in sRGB
     paint.map = null;
-    paint.metalness = 0.02;
-    paint.roughness = 0.66;
-    paint.clearcoat = 0;
-    paint.clearcoatRoughness = 0.38;
+    paint.metalness = 0.01;
+    paint.roughness = 0.22;
+    paint.clearcoat = 0.08;
+    paint.clearcoatRoughness = 0.18;
     paint.envMapIntensity = 0;
+    paint.opacity = 1;
+    paint.transparent = false;
   } else {
     paint.map = authored.map;
     paint.color.copy(authored.color);
@@ -135,9 +137,9 @@ export function stabilizeVehicleFinish(material: THREE.Material): void {
 export function createVehicleGlassMaterial(authored: THREE.Material): THREE.MeshBasicMaterial {
   const glass = new THREE.MeshBasicMaterial({
     name: authored.name,
-    color: 0x242424, // neutral smoke, never bright blue
+    color: 0x14181d, // neutral dark tint; clear view of cabin
     transparent: true,
-    opacity: 0.14,
+    opacity: 0.10,
     side: THREE.DoubleSide,
     depthWrite: false,
     toneMapped: false
@@ -155,12 +157,12 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
     // Some exported panes have alpha 0.038-0.26: almost invisible.
     // Give windows an intentional, readable tint without hiding the cockpit.
     material.transparent = true;
-    material.opacity = 0.14;
+    material.opacity = 0.10;
     material.depthWrite = false;
     material.toneMapped = false;
     material.forceSinglePass = true;
     if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.MeshStandardMaterial) {
-      material.color.set("#242424"); // smoked clear glass, not washed-out blue
+      material.color.set("#14181d"); // nearly clear charcoal; no blue haze
       material.alphaMap = null;
     }
     if (material instanceof THREE.MeshStandardMaterial) {
@@ -191,11 +193,13 @@ export function createSelectedVisual(id: string): CarVisual {
   const paint = new THREE.MeshPhysicalMaterial({
     name: "paint",
     color: id === "ferrari-california-t" ? "#d90818" : d.paint,
-    metalness: 0.02,
-    roughness: 0.66,
-    clearcoat: 0,
-    clearcoatRoughness: 0.38,
-    envMapIntensity: 0
+    metalness: 0.01,
+    roughness: 0.22,
+    clearcoat: 0.08,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 0,
+    opacity: 1,
+    transparent: false
   });
   const taillightMat = new THREE.MeshStandardMaterial({ color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2 });
   const headlightMat = new THREE.MeshStandardMaterial({ color: 0xe5f4ff, emissive: 0xaaccff, emissiveIntensity: 3 });
@@ -214,6 +218,8 @@ export function createSelectedVisual(id: string): CarVisual {
         } else {
           paint.map = null;
           paint.color.set(d.paint);
+          paint.opacity = 1;
+          paint.transparent = false;
         }
         result = paint;
       } else if (isVehicleGlass(mat.name)) {
