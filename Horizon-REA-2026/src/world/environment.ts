@@ -3,6 +3,7 @@ import { Track } from "./track";
 import { NightSky } from "./nightSky";
 import { Sky } from "three/addons/objects/Sky.js";
 import { MonzonScenery } from "./monzonScenery";
+import { createSuzakaMountain, installSuzakaScenery } from "./suzakaScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 
@@ -22,10 +23,12 @@ export class Environment {
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
     const isMonzon = track.circuit.id === "monzon";
-    this.moonDirection.setFromSphericalCoords(1, deg(isMonzon ? 90 - 53 : 90 - 25), deg(208));
+    const isSuzaka = track.circuit.id === "suzaka";
+    const isDaylight = isMonzon || isSuzaka;
+    this.moonDirection.setFromSphericalCoords(1, deg(isDaylight ? 90 - 53 : 90 - 25), deg(208));
 
-    if (isMonzon) {
-      // Clear daylight at Monzon, inspired by the approved pre-art.
+    if (isDaylight) {
+      // Clear daytime skies for the two user-approved international circuits.
       this.sky = null;
       const daylight = new Sky();
       daylight.scale.setScalar(7000);
@@ -60,7 +63,7 @@ export class Environment {
       scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
     }
 
-    this.moon = new THREE.DirectionalLight(isMonzon ? 0xfff3dc : 0xa8c2ff, isMonzon ? 2.9 : 3.15);
+    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : 0xa8c2ff, isDaylight ? 2.9 : 3.15);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
@@ -74,7 +77,7 @@ export class Environment {
     this.moon.position.copy(this.moonDirection).multiplyScalar(140);
     scene.add(this.moon);
     scene.add(this.moon.target);
-    if (isMonzon) {
+    if (isDaylight) {
       scene.add(new THREE.HemisphereLight(0xc4e2ff, 0x55694b, 2.0));
       scene.add(new THREE.AmbientLight(0xffffff, 0.55));
     } else {
@@ -91,6 +94,13 @@ export class Environment {
 
     if (isMonzon) {
       scene.add(new MonzonScenery(track, this.terrain).group);
+    } else if (isSuzaka) {
+      scene.add(createSuzakaMountain());
+      // Load only editable Blender landmarks. The driveable surface and all
+      // physical guardrails are generated in Track so physics always matches.
+      void installSuzakaScenery(scene).catch(error => {
+        console.warn("[Horizon] Suzaka scenery could not load; track remains playable", error);
+      });
     } else {
       this.buildRidges(scene);
     }
