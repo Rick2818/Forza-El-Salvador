@@ -11,10 +11,11 @@
  *   - the smallest radius must stay driveable;
  *   - the ribbon must not cross itself.
  *
- * Every circuit below was solved numerically (straight lengths come from the
- * closure equations) and then verified: net 360°, closure gap < 1 m, no
- * self-intersections.
+ * Flat circuits are solved numerically (360° net turn, no crossings);
+ * Suzaka uses a graded figure-eight with a true 12m flyover and separate checks.
  */
+
+import { auditSuzaka } from "./suzakaGeometry";
 
 export interface Segment {
   straight?: number;
@@ -33,6 +34,8 @@ export interface CircuitDefinition {
   /** Menu accent colour. */
   accent: string;
   segments: Segment[];
+  /** Grade-separated figure-eight layout, assembled from 3D centreline samples. */
+  layout?: "figure-eight";
 }
 
 export interface CircuitBounds {
@@ -150,6 +153,9 @@ const MIRADOR: Segment[] = [
 
 export const CIRCUITS: readonly CircuitDefinition[] = [
   { id: "monzon", name: "Circuito Monzon", discipline: "Alta velocidad · Italia", blurb: "Trazado original de 5,79 km con dos chicanas, boxes y rectas de alta velocidad.", accent: "#f05d47", segments: MONZON },
+  { id: "suzaka", name: "Circuito Suzaka", discipline: "Técnico · Japón",
+    blurb: "Trazado original en ocho de 5,64 km, puente elevado y curvas enlazadas.",
+    accent: "#df556a", segments: [], layout: "figure-eight" },
   {
     id: "libertad",
     name: "Circuito La Libertad",
@@ -337,7 +343,30 @@ export function analyzeCircuit(segments: Segment[]): CircuitMetrics {
   };
 }
 
-/** Circuits that pass validation. Used to populate the menu. */
+/**
+ * Special validation for a grade-separated layout. Its single projected
+ * crossing is safe because the upper surface is 12m above the underpass.
+ * The ordinary flat layouts keep the strict 360° and no-crossing checks.
+ */
+export function analyzeCircuitDefinition(circuit: CircuitDefinition): CircuitMetrics {
+  if (circuit.layout !== "figure-eight") return analyzeCircuit(circuit.segments);
+  const a = auditSuzaka();
+  return {
+    length: a.length,
+    netTurn: 0, // Opposite loops cancel, as expected for a figure-eight.
+    closureGap: a.closureGap,
+    minRadius: a.minRadius,
+    corners: 12,
+    bounds: a.bounds,
+    centerX: (a.bounds.minX + a.bounds.maxX) / 2,
+    centerZ: (a.bounds.minZ + a.bounds.maxZ) / 2,
+    selfIntersections: 0, // No at-grade crossings (the flyover is 12m high).
+    issues: a.issues,
+    ok: a.ok
+  };
+}
+
+/** All validated, playable circuits, including the grade-separated Suzaka. */
 export function availableCircuits(): CircuitDefinition[] {
-  return CIRCUITS.filter((circuit) => analyzeCircuit(circuit.segments).ok);
+  return CIRCUITS.filter((circuit) => analyzeCircuitDefinition(circuit).ok);
 }
