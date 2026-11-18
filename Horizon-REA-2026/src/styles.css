@@ -488,3 +488,69 @@ button.difficulty-btn.is-active {
 .circuit-choice span { font-size: 11px; color: #b1c2d4; }
 .circuit-choice.is-active { background: rgba(229, 76, 48, .25); border-color: #f88a63; box-shadow: 0 0 0 1px #f88a634d inset; }
 .circuit-choice:hover { border-color: #ffb38a; }
+
+/* Direct, touch-friendly car selection is the default opening tab. */
+.overlay:has(.setup-tabs) {
+  overflow-y: auto;
+  align-items: start;
+  justify-items: center;
+  padding: 12px 0 22px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.menu-card:has(.setup-tabs) {
+  box-sizing: border-box;
+  width: min(960px, 96vw);
+  padding: clamp(14px, 3vw, 30px);
+}
+.setup-tabs { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0 10px; }
+.setup-tab {
+  flex: 1 1 135px;
+  appearance: none; cursor: pointer; min-height: 48px;
+  color: #dce7f5; background: rgba(17, 31, 46, .9);
+  border: 1px solid #74849777; border-radius: 11px;
+  font: 800 14px/1.2 system-ui, sans-serif;
+  padding: 11px 15px;
+}
+.setup-tab.is-active {
+  background: rgba(215, 71, 40, .27);
+  border-color: #ff986b;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px #ff986b55;
+}
+.vehicle-picker { margin: 12px 0 14px; }
+.vehicle-picker-help { color: #bfcede; font-size: 13px; margin: 4px 0 12px; }
+.vehicle-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 8px;
+}
+.vehicle-pick {
+  cursor: pointer; width: 100%; min-width: 0; min-height: 69px;
+  display: flex; gap: 10px; align-items: center;
+  text-align: left; padding: 9px 11px;
+  color: #e9f0fa; background: rgba(11, 20, 33, .96);
+  border: 1px solid #68798a55; border-radius: 12px;
+  font: inherit;
+}
+.vehicle-pick:disabled { opacity: .5; cursor: wait; }
+.vehicle-pick.is-selected { border-color: #ff9d69; background: #482f2d; }
+.vehicle-pick-swatch {
+  display: block; flex: 0 0 18px; width: 18px; height: 38px;
+  border-radius: 6px; border: 1px solid #fff8;
+  box-shadow: inset 0 0 0 2px #0002;
+}
+.vehicle-pick-info { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.vehicle-pick-info strong { font-size: 12px; font-weight: 800; line-height: 1.2; }
+.vehicle-pick-info small { color: #bfc9d8; font-size: 11px; }
+.vehicle-pick-mark { font-weight: 900; font-size: 21px; color: #ffbb93; }
+.vehicle-picker-status { font-size: 12px; color: #c9e5df; margin: 12px 0 0; }
+.setup-tab:focus-visible,.vehicle-pick:focus-visible {
+  outline: 2px solid #ffc08d;
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .menu-card:has(.setup-tabs) { width: 98vw; padding: 14px; }
+  .vehicle-pick-grid { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+  .vehicle-pick { min-height: 66px; }
+}
