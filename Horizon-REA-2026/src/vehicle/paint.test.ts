@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { createProceduralGlassMaterial, createProceduralPaintMaterial } from "./carModel";
+import { createProceduralGlassMaterial, createSolidPaintMaterial } from "./carModel";
 import {
-  applyVehiclePaint, createVehicleGlassMaterial, isVehicleGlass,
+  createVehicleGlassMaterial, isVehicleGlass,
   isVehicleBodyPaint, isVehicleCabinMaterial, prepareSelectedMaterial,
   stabilizeVehicleFinish
 } from "./selectedAsset";
@@ -20,28 +20,14 @@ describe("approved automotive finishes", () => {
     glass.dispose();
   });
 
-  it("procedural fallback paint uses true red and no milky clearcoat", () => {
-    const paint = createProceduralPaintMaterial(0xd90818);
+  it("keeps the exact paint color opaque and independent of scene exposure", () => {
+    const paint = createSolidPaintMaterial("#d90818");
     expect(paint.color.getHexString()).toBe("d90818");
-    expect(paint.clearcoat).toBeCloseTo(.08);
-    expect(paint.envMapIntensity).toBe(0);
-    expect(paint.metalness).toBeLessThan(.1);
-    paint.dispose();
-  });
-
-  it("renders Ferrari California in saturated racing red, ignoring faded Blender tint", () => {
-    const exported = new THREE.MeshStandardMaterial({ color: 0xc07f6c, metalness: .05, roughness: .8 });
-    const paint = new THREE.MeshPhysicalMaterial({ color: 0xffffff });
-    applyVehiclePaint("ferrari-california-t", exported, paint);
-    expect(paint.color.getHexString()).toBe("d90818");
-    expect(paint.metalness).toBeCloseTo(.01);
-    expect(paint.clearcoat).toBeCloseTo(.08);
-    expect(paint.roughness).toBeCloseTo(.22);
-    expect(paint.envMapIntensity).toBe(0);
-    expect(paint.opacity).toBe(1);
+    expect(paint.isMeshBasicMaterial).toBe(true);
+    expect(paint.toneMapped).toBe(false);
     expect(paint.transparent).toBe(false);
-    expect(paint.map).toBeNull();
-    exported.dispose(); paint.dispose();
+    expect(paint.opacity).toBe(1);
+    paint.dispose();
   });
 
   it("makes imported bodywork fully opaque and renders inward-facing coachwork", () => {
@@ -59,9 +45,7 @@ describe("approved automotive finishes", () => {
     expect(paint.transmission).toBe(0);
     expect(paint.depthWrite).toBe(true);
     expect(paint.side).toBe(THREE.DoubleSide);
-    stabilizeVehicleFinish(paint);
-    expect(paint.envMapIntensity).toBe(0);
-    expect(paint.specularIntensity).toBeCloseTo(.18);
+
     paint.dispose();
   });
 
@@ -130,13 +114,4 @@ describe("approved automotive finishes", () => {
     }
   );
 
-  it("preserves every other car's Blender-authored paint and roughness", () => {
-    const exported = new THREE.MeshStandardMaterial({ color: 0x111319, metalness: .2, roughness: .6 });
-    const paint = new THREE.MeshPhysicalMaterial({ color: 0xffffff });
-    applyVehiclePaint("yangwang-u9", exported, paint);
-    expect(paint.color.getHexString()).toBe("111319");
-    expect(paint.metalness).toBe(.2);
-    expect(paint.roughness).toBe(.6);
-    exported.dispose(); paint.dispose();
-  });
 });

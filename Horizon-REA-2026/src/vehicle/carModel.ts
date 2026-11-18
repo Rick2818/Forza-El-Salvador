@@ -32,7 +32,7 @@ export interface CarVisual {
   root: THREE.Group;
   bodyRoot: THREE.Group;
   wheels: WheelVisual[];
-  paint: THREE.MeshPhysicalMaterial;
+  paint: THREE.MeshBasicMaterial;
   taillightMat: THREE.MeshStandardMaterial;
   headlightMat: THREE.MeshStandardMaterial;
 }
@@ -551,20 +551,6 @@ function box(
   return transform(new THREE.BoxGeometry(w, h, d), [x, y, z], rot);
 }
 
-function applyRimLight(material: THREE.MeshPhysicalMaterial): void {
-  material.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <tonemapping_fragment>",
-      `
-      float hzRim = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.6);
-      gl_FragColor.rgb += vec3(0.004, 0.006, 0.009) * hzRim;
-      #include <tonemapping_fragment>
-      `
-    );
-  };
-  material.customProgramCacheKey = () => "horizon-gt-rim";
-}
-
 /* ------------------------------------------------------------------ */
 /* Car                                                                 */
 /* ------------------------------------------------------------------ */
@@ -579,20 +565,9 @@ export interface CarOptions {
 }
 
 /** Shared by the optional procedural fallback and its regression tests. */
-export function createProceduralPaintMaterial(color: number): THREE.MeshPhysicalMaterial {
-  const paint = new THREE.MeshPhysicalMaterial({
-    color,
-    metalness: 0.01,
-    roughness: 0.34,
-    specularIntensity: 0.18,
-    clearcoat: 0.08,
-    clearcoatRoughness: 0.18,
-    envMapIntensity: 0,
-    opacity: 1,
-    transparent: false
-  });
-  applyRimLight(paint);
-  return paint;
+/** Keep the approved color independent of sky reflections and exposure. */
+export function createSolidPaintMaterial(color: THREE.ColorRepresentation): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({ name: "paint", color, toneMapped: false, side: THREE.DoubleSide });
 }
 
 export function createProceduralGlassMaterial(): THREE.MeshBasicMaterial {
@@ -614,7 +589,7 @@ export function createCarVisual(opts: CarOptions): CarVisual {
   bodyRoot.position.y = -BODY_CENTER_Y;
   root.add(bodyRoot);
 
-  const paint = createProceduralPaintMaterial(opts.paintColor);
+  const paint = createSolidPaintMaterial(opts.paintColor);
 
   const carbon = new THREE.MeshStandardMaterial({
     color: 0xffffff,

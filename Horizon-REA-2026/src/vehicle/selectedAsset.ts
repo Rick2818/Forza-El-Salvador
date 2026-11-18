@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
-import { BODY_CENTER_Y, type CarVisual } from "./carModel";
+import { BODY_CENTER_Y, createSolidPaintMaterial, type CarVisual } from "./carModel";
 
 export type VehicleDesign = (typeof designs)[number];
 export const VEHICLE_DESIGNS: readonly VehicleDesign[] = designs;
@@ -63,35 +63,6 @@ export function wheelConnections(id: string): { x: number; y: number; z: number;
 }
 
 /**
- * The Ferrari California's approved race red must not be multiplied by the
- * Blender export's albedo tint. That multiplication was washing it out.
- * All other cars retain their authored paint colors and textures.
- */
-export function applyVehiclePaint(
-  id: string,
-  authored: THREE.MeshStandardMaterial,
-  paint: THREE.MeshPhysicalMaterial
-): void {
-  if (id === "ferrari-california-t") {
-    paint.color.set("#d90818"); // deep, vivid Rosso Corsa-like red in sRGB
-    paint.map = null;
-    paint.metalness = 0.01;
-    paint.roughness = 0.22;
-    paint.clearcoat = 0.08;
-    paint.clearcoatRoughness = 0.18;
-    paint.envMapIntensity = 0;
-    paint.opacity = 1;
-    paint.transparent = false;
-  } else {
-    paint.map = authored.map;
-    paint.color.copy(authored.color);
-    paint.metalness = authored.metalness;
-    paint.roughness = authored.roughness;
-  }
-  paint.needsUpdate = true;
-}
-
-/**
  * Some approved Blender shells were exported with inward-facing coachwork.
  * Standard front-face culling hides those panels from the chase camera,
  * making a solid car look transparent. Double-sided rendering restores the
@@ -121,12 +92,7 @@ export function isVehicleCabinMaterial(name: string): boolean {
 export function stabilizeVehicleFinish(material: THREE.Material): void {
   if (!(material instanceof THREE.MeshStandardMaterial)) return;
   // Every GLB material can otherwise reflect the bright blue PMREM sky.
-  material.envMapIntensity = isVehicleBodyPaint(material.name) ? 0 : 0.14;
-  if (isVehicleBodyPaint(material.name) && material instanceof THREE.MeshPhysicalMaterial) {
-    // Direct sunlight also creates a white dielectric highlight, even without an env map.
-    material.specularIntensity = 0.18;
-    material.roughness = 0.34;
-  }
+  material.envMapIntensity = 0.14;
   if (/^(rubber|caucho|pneu)$/i.test(material.name)) {
     material.color.set("#303238");
     material.map = null;
@@ -202,18 +168,7 @@ export function createSelectedVisual(id: string): CarVisual {
   const bodyRoot = new THREE.Group(); bodyRoot.position.y = -BODY_CENTER_Y;
   root.add(bodyRoot);
   const imported = source.clone(true); bodyRoot.add(imported);
-  // A saturated, low-reflection finish preserves each approved vehicle color.
-  const paint = new THREE.MeshPhysicalMaterial({
-    name: "paint",
-    color: id === "ferrari-california-t" ? "#d90818" : d.paint,
-    metalness: 0.01,
-    roughness: 0.22,
-    clearcoat: 0.08,
-    clearcoatRoughness: 0.18,
-    envMapIntensity: 0,
-    opacity: 1,
-    transparent: false
-  });
+  const paint = createSolidPaintMaterial(d.paint);
   const taillightMat = new THREE.MeshStandardMaterial({ color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2 });
   const headlightMat = new THREE.MeshStandardMaterial({ color: 0xe5f4ff, emissive: 0xaaccff, emissiveIntensity: 3 });
   const materials = new Map<THREE.Material, THREE.Material>();
@@ -224,16 +179,6 @@ export function createSelectedVisual(id: string): CarVisual {
       const cached = materials.get(mat); if (cached) return cached;
       let result: THREE.Material;
       if (isVehicleBodyPaint(mat.name)) {
-        // Apply the curated body color to Carrosserie/Grafito/Negro as well,
-        // not just English 'paint' meshes.
-        if (id === "ferrari-california-t") {
-          applyVehiclePaint(id, mat as THREE.MeshStandardMaterial, paint);
-        } else {
-          paint.map = null;
-          paint.color.set(d.paint);
-          paint.opacity = 1;
-          paint.transparent = false;
-        }
         result = paint;
       } else if (isVehicleGlass(mat.name)) {
         // Physical/glTF glass was reflecting the daylight sky like an opaque
