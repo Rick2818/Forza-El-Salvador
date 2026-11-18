@@ -62,6 +62,11 @@ jobs:
         with:
           path: Horizon-REA-2026/dist
 
+      # GitHub's Actions artifact metadata is sometimes unavailable immediately
+      # after upload; allow it to propagate before Pages looks up github-pages.
+      - name: Confirmar propagación del artefacto antes de publicar
+        run: sleep 15
+
       - name: Publicar
         id: deployment
         uses: actions/deploy-pages@v4
