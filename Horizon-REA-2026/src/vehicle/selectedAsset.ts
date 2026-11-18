@@ -88,6 +88,28 @@ export function applyVehiclePaint(
   paint.needsUpdate = true;
 }
 
+/**
+ * Some approved Blender shells were exported with inward-facing coachwork.
+ * Standard front-face culling hides those panels from the chase camera,
+ * making a solid car look transparent. Double-sided rendering restores the
+ * outside without changing the mesh, physics, textures or approved paint.
+ *
+ * Bodywork and accessories are always solid; glass keeps its authored alpha.
+ */
+export function prepareSelectedMaterial(material: THREE.Material): void {
+  material.side = THREE.DoubleSide;
+  material.depthTest = true;
+  if (!material.name.toLowerCase().includes("glass")) {
+    material.transparent = false;
+    material.opacity = 1;
+    material.alphaTest = 0;
+    material.depthWrite = true;
+    material.blending = THREE.NormalBlending;
+    if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
+  }
+  material.needsUpdate = true;
+}
+
 export function createSelectedVisual(id: string): CarVisual {
   const source = cache.get(id);
   if (!source) throw new Error(`El modelo ${id} no está cargado`);
@@ -113,6 +135,7 @@ export function createSelectedVisual(id: string): CarVisual {
       } else if (mat.name === "taillight") result = taillightMat;
       else if (mat.name === "headlight") result = headlightMat;
       else result = mat.clone();
+      prepareSelectedMaterial(result);
       materials.set(mat, result);
       return result;
     };
