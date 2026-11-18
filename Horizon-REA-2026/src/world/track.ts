@@ -394,9 +394,12 @@ export class Track {
     const postMat = new THREE.MeshStandardMaterial({ color: 0x2c333d, roughness: 0.7, metalness: 0.35 });
     const postGeo = new THREE.BoxGeometry(0.45, height, 0.45);
 
-    const bannerTex = this.circuit.id === "monzon"
-      ? createBannerTexture("CIRCUITO MONZON", "HORIZON EL SALVADOR")
-      : createBannerTexture("HORIZON EL SALVADOR", "META · HORIZON GP");
+    const circuitBanner = this.circuit.id === "monzon" ? "CIRCUITO MONZON"
+      : this.circuit.id === "sparda" ? "CIRCUITO SPARDA"
+      : this.circuit.id === "sakhir-horizon" ? "SAKHIR HORIZON"
+      : this.circuit.id === "suzaka" ? "CIRCUITO SUZAKA"
+      : "HORIZON EL SALVADOR";
+    const bannerTex = createBannerTexture(circuitBanner, "HORIZON EL SALVADOR");
     const beamMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       map: bannerTex,
