@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { Track } from "./track";
 import { NightSky } from "./nightSky";
+import { Sky } from "three/addons/objects/Sky.js";
+import { MonzonScenery } from "./monzonScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 
@@ -14,26 +16,38 @@ export class Environment {
   readonly moon: THREE.DirectionalLight;
   readonly moonDirection = new THREE.Vector3();
   readonly terrain: TerrainField;
-  private readonly sky: NightSky;
+  private readonly sky: NightSky | null;
   private readonly shadowSize = 34;
   private time = 0;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
-    // Moon a little high so car body and props get a readable top light.
-    this.moonDirection.setFromSphericalCoords(1, deg(90 - 25), deg(208));
+    const isMonzon = track.circuit.id === "monzon";
+    this.moonDirection.setFromSphericalCoords(1, deg(isMonzon ? 90 - 53 : 90 - 25), deg(208));
 
-    this.sky = new NightSky(this.moonDirection);
-    this.sky.setPixelRatio(renderer.getPixelRatio());
-    this.sky.addTo(scene);
+    if (isMonzon) {
+      // Clear daylight at Monzon, inspired by the approved pre-art.
+      this.sky = null;
+      const daylight = new Sky();
+      daylight.scale.setScalar(7000);
+      daylight.material.uniforms["turbidity"].value = 3.5;
+      daylight.material.uniforms["rayleigh"].value = 2.2;
+      daylight.material.uniforms["mieCoefficient"].value = 0.005;
+      daylight.material.uniforms["mieDirectionalG"].value = 0.85;
+      daylight.material.uniforms["sunPosition"].value.copy(this.moonDirection);
+      scene.add(daylight);
+      scene.background = new THREE.Color(0x9cc7e8);
+      scene.fog = new THREE.FogExp2(0xb7cddd, 0.00025);
+    } else {
+      this.sky = new NightSky(this.moonDirection);
+      this.sky.setPixelRatio(renderer.getPixelRatio());
+      this.sky.addTo(scene);
+      scene.background = new THREE.Color(0x03060d);
+      scene.environment = this.sky.bakeEnvironment(renderer);
+      scene.environmentIntensity = 1.25;
+      scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
+    }
 
-    scene.background = new THREE.Color(0x03060d);
-    scene.environment = this.sky.bakeEnvironment(renderer);
-    scene.environmentIntensity = 1.25;
-
-    scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
-
-    // ---- Lighting: cool moonlight + deep blue sky bounce.
-    this.moon = new THREE.DirectionalLight(0xa8c2ff, 3.15);
+    this.moon = new THREE.DirectionalLight(isMonzon ? 0xfff3dc : 0xa8c2ff, isMonzon ? 2.9 : 3.15);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
@@ -47,32 +61,36 @@ export class Environment {
     this.moon.position.copy(this.moonDirection).multiplyScalar(140);
     scene.add(this.moon);
     scene.add(this.moon.target);
-
-    scene.add(new THREE.HemisphereLight(0x2b4d82, 0x04060a, 1.05));
-    scene.add(new THREE.AmbientLight(0x101d33, 0.45));
-
-    // A dim counter-light from the opposite side keeps silhouettes from
-    // collapsing into pure black without adding a second shadow map.
-    const fill = new THREE.DirectionalLight(0x8fb6ff, 0.55);
-    fill.position.set(-0.42, 0.55, -0.72);
-    scene.add(fill);
+    if (isMonzon) {
+      scene.add(new THREE.HemisphereLight(0xc4e2ff, 0x55694b, 2.0));
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    } else {
+      scene.add(new THREE.HemisphereLight(0x2b4d82, 0x04060a, 1.05));
+      scene.add(new THREE.AmbientLight(0x101d33, 0.45));
+      const fill = new THREE.DirectionalLight(0x8fb6ff, 0.55);
+      fill.position.set(-0.42, 0.55, -0.72);
+      scene.add(fill);
+    }
 
     // ---- Terrain. One shared height field feeds the mesh and the props.
     this.terrain = new TerrainField(track);
     scene.add(this.terrain.buildMesh());
 
-    // ---- Layered mountain ridges, centred on the circuit.
-    this.buildRidges(scene);
+    if (isMonzon) {
+      scene.add(new MonzonScenery(track, this.terrain).group);
+    } else {
+      this.buildRidges(scene);
+    }
   }
 
   setPixelRatio(ratio: number): void {
-    this.sky.setPixelRatio(ratio);
+    this.sky?.setPixelRatio(ratio);
   }
 
   /** Follow the player with the sky dome and the shadow frustum. */
   update(center: THREE.Vector3, dt: number): void {
     this.time += dt;
-    this.sky.update(center, this.time);
+    this.sky?.update(center, this.time);
     this.moon.position.copy(center).addScaledVector(this.moonDirection, 140);
     this.moon.target.position.copy(center);
     this.moon.target.updateMatrixWorld();
