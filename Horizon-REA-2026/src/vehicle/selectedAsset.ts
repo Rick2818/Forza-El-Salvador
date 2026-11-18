@@ -102,6 +102,23 @@ export function isVehicleGlass(name: string): boolean {
   return /glass|glazing|cristal|crystal|vitrage|vidrio|windshield|windscreen|window|parabrisas/i.test(name);
 }
 
+/** No sky reflections on car glass: keep the cockpit legible even under bright sun.
+ * A lightweight basic material also avoids expensive transparent PBR passes on Android.
+ */
+export function createVehicleGlassMaterial(authored: THREE.Material): THREE.MeshBasicMaterial {
+  const glass = new THREE.MeshBasicMaterial({
+    name: authored.name,
+    color: 0x242424, // neutral smoke, never bright blue
+    transparent: true,
+    opacity: 0.14,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    toneMapped: false
+  });
+  glass.forceSinglePass = true; // no double transparency pass for both sides
+  return glass;
+}
+
 export function prepareSelectedMaterial(material: THREE.Material): void {
   material.side = THREE.DoubleSide;
   material.depthTest = true;
@@ -111,15 +128,18 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
     // Some exported panes have alpha 0.038-0.26: almost invisible.
     // Give windows an intentional, readable tint without hiding the cockpit.
     material.transparent = true;
-    material.opacity = 0.32; // subtle tinted glazing: cockpit stays visible
+    material.opacity = 0.14;
     material.depthWrite = false;
-    if (material instanceof THREE.MeshStandardMaterial) {
-      // Keep the windshield neutral rather than bright blue under daylight.
-      material.color.set("#87949f");
-      material.metalness = 0;
-      material.roughness = 0.16;
-      material.envMapIntensity = 0.35;
+    material.toneMapped = false;
+    material.forceSinglePass = true;
+    if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.MeshStandardMaterial) {
+      material.color.set("#242424"); // smoked clear glass, not washed-out blue
       material.alphaMap = null;
+    }
+    if (material instanceof THREE.MeshStandardMaterial) {
+      material.metalness = 0;
+      material.roughness = 1;
+      material.envMapIntensity = 0;
     }
     if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
   } else {
@@ -154,6 +174,10 @@ export function createSelectedVisual(id: string): CarVisual {
       if (mat.name === "paint" || mat.name.startsWith("paint.")) {
         applyVehiclePaint(id, mat as THREE.MeshStandardMaterial, paint);
         result = paint;
+      } else if (isVehicleGlass(mat.name)) {
+        // Physical/glTF glass was reflecting the daylight sky like an opaque
+        // blue sheet. Replace it with unlit, genuinely translucent smoked glass.
+        result = createVehicleGlassMaterial(mat);
       } else if (mat.name === "taillight") result = taillightMat;
       else if (mat.name === "headlight") result = headlightMat;
       else result = mat.clone();
