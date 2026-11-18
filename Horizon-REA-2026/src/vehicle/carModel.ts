@@ -581,7 +581,8 @@ export function createProceduralPaintMaterial(color: number): THREE.MeshPhysical
   const paint = new THREE.MeshPhysicalMaterial({
     color,
     metalness: 0.01,
-    roughness: 0.22,
+    roughness: 0.34,
+    specularIntensity: 0.18,
     clearcoat: 0.08,
     clearcoatRoughness: 0.18,
     envMapIntensity: 0,
@@ -596,7 +597,7 @@ export function createProceduralGlassMaterial(): THREE.MeshBasicMaterial {
   const glass = new THREE.MeshBasicMaterial({
     color: 0x14181d,
     transparent: true,
-    opacity: 0.10,
+    opacity: 0.06,
     toneMapped: false,
     side: THREE.DoubleSide,
     depthWrite: false

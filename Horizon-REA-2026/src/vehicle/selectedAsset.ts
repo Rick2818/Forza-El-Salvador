@@ -121,7 +121,12 @@ export function isVehicleCabinMaterial(name: string): boolean {
 export function stabilizeVehicleFinish(material: THREE.Material): void {
   if (!(material instanceof THREE.MeshStandardMaterial)) return;
   // Every GLB material can otherwise reflect the bright blue PMREM sky.
-  material.envMapIntensity = 0.14;
+  material.envMapIntensity = isVehicleBodyPaint(material.name) ? 0 : 0.14;
+  if (isVehicleBodyPaint(material.name) && material instanceof THREE.MeshPhysicalMaterial) {
+    // Direct sunlight also creates a white dielectric highlight, even without an env map.
+    material.specularIntensity = 0.18;
+    material.roughness = 0.34;
+  }
   if (isVehicleCabinMaterial(material.name)) {
     material.color.set("#222832");
     material.map = null;
@@ -139,7 +144,7 @@ export function createVehicleGlassMaterial(authored: THREE.Material): THREE.Mesh
     name: authored.name,
     color: 0x14181d, // neutral dark tint; clear view of cabin
     transparent: true,
-    opacity: 0.10,
+    opacity: 0.06,
     side: THREE.DoubleSide,
     depthWrite: false,
     toneMapped: false
@@ -157,7 +162,7 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
     // Some exported panes have alpha 0.038-0.26: almost invisible.
     // Give windows an intentional, readable tint without hiding the cockpit.
     material.transparent = true;
-    material.opacity = 0.10;
+    material.opacity = 0.06;
     material.depthWrite = false;
     material.toneMapped = false;
     material.forceSinglePass = true;
