@@ -21,7 +21,7 @@ describe("circuits", () => {
       const metrics = analyzeCircuitDefinition(circuit);
       expect(metrics.issues).toEqual([]);
       expect(metrics.ok).toBe(true);
-      if (circuit.layout !== "figure-eight") expect(metrics.netTurn).toBeCloseTo(360, 2);
+      if (!circuit.layout) expect(metrics.netTurn).toBeCloseTo(360, 2);
       expect(metrics.closureGap).toBeLessThan(8);
       expect(metrics.minRadius).toBeGreaterThanOrEqual(35);
       expect(metrics.selfIntersections).toBe(0);
@@ -31,7 +31,7 @@ describe("circuits", () => {
 
   it("measures the length that the builder actually walks", () => {
     for (const circuit of CIRCUITS) {
-      if (circuit.layout === "figure-eight") continue;
+      if (circuit.layout) continue;
       const metrics = analyzeCircuit(circuit.segments);
       // Straights plus arcs, computed from the definition itself.
       let expected = 0;
@@ -68,6 +68,15 @@ describe("circuits", () => {
     expect(suzaka.layout).toBe("figure-eight");
     expect(analyzeCircuitDefinition(suzaka).ok).toBe(true);
     expect(availableCircuits().some(c => c.id === "suzaka")).toBe(true);
+  });
+
+  it("shows both additional international tracks only after their safety audits pass", () => {
+    for (const id of ["sparda", "sakhir-horizon"]) {
+      const circuit = getCircuit(id)!;
+      const audit = analyzeCircuitDefinition(circuit);
+      expect(audit.ok, id + ": " + audit.issues.join(", ")).toBe(true);
+      expect(availableCircuits().some(c => c.id === id)).toBe(true);
+    }
   });
 
   it("resolves circuits by id and always has a valid default", () => {
