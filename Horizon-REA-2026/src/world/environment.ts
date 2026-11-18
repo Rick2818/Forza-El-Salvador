@@ -1,9 +1,11 @@
 import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
 import { NightSky } from "./nightSky";
 import { Sky } from "three/addons/objects/Sky.js";
 import { MonzonScenery } from "./monzonScenery";
 import { createSuzakaMountain, installSuzakaScenery } from "./suzakaScenery";
+import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 
@@ -17,6 +19,8 @@ export class Environment {
   readonly moon: THREE.DirectionalLight;
   readonly moonDirection = new THREE.Vector3();
   readonly terrain: TerrainField;
+  private readonly terrainMesh: THREE.Mesh;
+  private readonly elevatedTerrain: boolean;
   private readonly sky: NightSky | null;
   private readonly shadowSize = 34;
   private time = 0;
@@ -24,7 +28,10 @@ export class Environment {
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
     const isMonzon = track.circuit.id === "monzon";
     const isSuzaka = track.circuit.id === "suzaka";
-    const isDaylight = isMonzon || isSuzaka;
+    const isSparda = track.circuit.id === "sparda";
+    const isSakhir = track.circuit.id === "sakhir-horizon";
+    this.elevatedTerrain = isSparda;
+    const isDaylight = isMonzon || isSuzaka || isSparda;
     this.moonDirection.setFromSphericalCoords(1, deg(isDaylight ? 90 - 53 : 90 - 25), deg(208));
 
     if (isDaylight) {
@@ -90,7 +97,8 @@ export class Environment {
 
     // ---- Terrain. One shared height field feeds the mesh and the props.
     this.terrain = new TerrainField(track);
-    scene.add(this.terrain.buildMesh());
+    this.terrainMesh = this.terrain.buildMesh();
+    scene.add(this.terrainMesh);
 
     if (isMonzon) {
       scene.add(new MonzonScenery(track, this.terrain).group);
@@ -101,9 +109,34 @@ export class Environment {
       void installSuzakaScenery(scene).catch(error => {
         console.warn("[Horizon] Suzaka scenery could not load; track remains playable", error);
       });
+    } else if (isSparda || isSakhir) {
+      installInternationalScenery(scene, track, this.terrain);
+      if (isSakhir) {
+        scene.fog = new THREE.FogExp2(0x352a26, 0.0005);
+        // Two local pools of warm light; unshadowed to preserve mobile FPS.
+        for (const index of [22, 70]) {
+          const anchor = track.sampleAt(index);
+          const light = new THREE.PointLight(0xffdcb2, 115, 160, 1.5);
+          light.position.set(anchor.x, anchor.y + 20, anchor.z);
+          scene.add(light);
+        }
+      }
     } else {
       this.buildRidges(scene);
     }
+  }
+
+  /** Add a static, lower-resolution terrain collision mesh only where the
+   * mountain road leaves the flat world plane. This prevents off-track falls. */
+  installTerrainPhysics(world: RAPIER.World): void {
+    if (!this.elevatedTerrain) return;
+    const geometry = this.terrainMesh.geometry;
+    if (!geometry.index) throw new Error("Sparda terrain collider missing triangles");
+    const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+    const vertices = new Float32Array(position.array as ArrayLike<number>);
+    const indices = new Uint32Array(geometry.index.array as ArrayLike<number>);
+    const fixed = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.92), fixed);
   }
 
   setPixelRatio(ratio: number): void {
