@@ -189,9 +189,9 @@ export class Track {
       normalMap: asphalt.normalMap,
       roughnessMap: asphalt.roughnessMap,
       normalScale: new THREE.Vector2(0.7, 0.7),
-      roughness: 0.86,
-      metalness: 0.05,
-      color: 0x9aa0a8
+      roughness: 0.94,
+      metalness: 0.02,
+      color: 0x454a50 // neutral dark asphalt, distinguishable from pale cars
     });
     const road = new THREE.Mesh(this.ribbonGeometry(-halfW, halfW, surfaceY, 12), roadMat);
     road.name = "asphalt";
