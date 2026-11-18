@@ -84,7 +84,7 @@ export class HUD {
         </div>
         <div class="hud-map panel">
           <canvas width="168" height="168" id="hud-map-canvas"></canvas>
-          <div class="map-legend"><span>HORIZON GP</span><span>1.94 KM</span></div>
+          <div class="map-legend"><span>${track.circuit.name.toUpperCase()}</span><span>${(track.length / 1000).toFixed(2)} KM</span></div>
         </div>
         <div class="hud-speed">
           <div class="gauge">
