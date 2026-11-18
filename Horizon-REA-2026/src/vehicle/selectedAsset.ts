@@ -96,15 +96,32 @@ export function applyVehiclePaint(
  *
  * Bodywork and accessories are always solid; glass keeps its authored alpha.
  */
+export function isVehicleGlass(name: string): boolean {
+  // GLBs were authored in several languages: glass (Blender),
+  // Cristal (Porsche), Vitrage (other selected supercars).
+  return /glass|glazing|cristal|crystal|vitrage|vidrio|windshield|windscreen|window|parabrisas/i.test(name);
+}
+
 export function prepareSelectedMaterial(material: THREE.Material): void {
   material.side = THREE.DoubleSide;
   material.depthTest = true;
-  if (!material.name.toLowerCase().includes("glass")) {
+  material.blending = THREE.NormalBlending;
+  material.alphaTest = 0;
+  if (isVehicleGlass(material.name)) {
+    // Some exported panes have alpha 0.038-0.26: almost invisible.
+    // Give windows an intentional, readable tint without hiding the cockpit.
+    material.transparent = true;
+    material.opacity = 0.7;
+    material.depthWrite = false;
+    if (material instanceof THREE.MeshStandardMaterial) {
+      material.alphaMap = null;
+    }
+    if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
+  } else {
+    // Never make paint, carbon, lights, cabin trim or body shells translucent.
     material.transparent = false;
     material.opacity = 1;
-    material.alphaTest = 0;
     material.depthWrite = true;
-    material.blending = THREE.NormalBlending;
     if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
   }
   material.needsUpdate = true;
