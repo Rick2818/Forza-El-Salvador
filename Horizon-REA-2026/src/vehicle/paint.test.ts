@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
+import { createProceduralGlassMaterial, createProceduralPaintMaterial } from "./carModel";
 import {
   applyVehiclePaint, createVehicleGlassMaterial, isVehicleGlass,
   isVehicleBodyPaint, isVehicleCabinMaterial, prepareSelectedMaterial,
@@ -7,15 +8,36 @@ import {
 } from "./selectedAsset";
 
 describe("approved automotive finishes", () => {
+  it("procedural fallback never exposes washed-out sky-reflective glass", () => {
+    const glass = createProceduralGlassMaterial();
+    expect(glass.isMeshBasicMaterial).toBe(true);
+    expect(glass.transparent).toBe(true);
+    expect(glass.opacity).toBeCloseTo(.14);
+    expect(glass.color.getHexString()).toBe("202328");
+    expect(glass.depthWrite).toBe(false);
+    expect(glass.toneMapped).toBe(false);
+    expect(glass.forceSinglePass).toBe(true);
+    glass.dispose();
+  });
+
+  it("procedural fallback paint uses true red and no milky clearcoat", () => {
+    const paint = createProceduralPaintMaterial(0xd90818);
+    expect(paint.color.getHexString()).toBe("d90818");
+    expect(paint.clearcoat).toBe(0);
+    expect(paint.envMapIntensity).toBe(0);
+    expect(paint.metalness).toBeLessThan(.1);
+    paint.dispose();
+  });
+
   it("renders Ferrari California in saturated racing red, ignoring faded Blender tint", () => {
     const exported = new THREE.MeshStandardMaterial({ color: 0xc07f6c, metalness: .05, roughness: .8 });
     const paint = new THREE.MeshPhysicalMaterial({ color: 0xffffff });
     applyVehiclePaint("ferrari-california-t", exported, paint);
     expect(paint.color.getHexString()).toBe("d90818");
-    expect(paint.metalness).toBeCloseTo(.12);
-    expect(paint.clearcoat).toBeCloseTo(.35);
-    expect(paint.roughness).toBeCloseTo(.46);
-    expect(paint.envMapIntensity).toBeCloseTo(.12);
+    expect(paint.metalness).toBeCloseTo(.02);
+    expect(paint.clearcoat).toBe(0);
+    expect(paint.roughness).toBeCloseTo(.66);
+    expect(paint.envMapIntensity).toBe(0);
     expect(paint.map).toBeNull();
     exported.dispose(); paint.dispose();
   });
