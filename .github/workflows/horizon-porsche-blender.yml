@@ -1,0 +1,69 @@
+name: Horizon Porsche 911 · Blender GLB pipeline
+
+on:
+  push:
+    branches: [feature/porsche-911-preproduction]
+    paths:
+      - '.github/workflows/horizon-porsche-blender.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  blender-model:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender and GLB importer dependencies on Ubuntu 24.04
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          timeout 60 sudo apt-get update -qq
+          timeout 180 sudo apt-get install -y -qq --no-install-recommends blender python3-numpy
+          blender --background --python-expr "import numpy; print('NumPy', numpy.__version__)"
+          blender --version | head -3
+      - name: Fetch CC BY Porsche 911 C4S reference mesh
+        run: |
+          curl --fail --location --retry 3 \
+            'https://raw.githubusercontent.com/nutricionistaalmeidavh-spec/assetscarros3d/main/assets/porsche-911-c4s.glb' \
+            -o /tmp/porsche-911-c4s.glb
+          file /tmp/porsche-911-c4s.glb
+          test "$(wc -c </tmp/porsche-911-c4s.glb)" -gt 100000
+      - name: Decompress meshopt GLB before Blender import
+        run: |
+          npx --yes @gltf-transform/cli@4.5.0 copy /tmp/porsche-911-c4s.glb /tmp/porsche-uncompressed.glb
+          test -s /tmp/porsche-uncompressed.glb
+          node -e "const fs=require('fs');const b=fs.readFileSync('/tmp/porsche-uncompressed.glb');const j=JSON.parse(b.toString('utf8',20,20+b.readUInt32LE(12))); console.log('EXPORTED_GLTF_EXTENSIONS',j.extensionsRequired || []); if((j.extensionsRequired||[]).includes('EXT_meshopt_compression')) process.exit(2);"
+      - name: Normalize Porsche geometry in Blender and export GLB
+        working-directory: Horizon-REA-2026
+        run: |
+          blender --background --factory-startup \
+            --python tools/blender/porsche-911.py -- \
+            --input /tmp/porsche-uncompressed.glb \
+            --output public/models/porsche-911-real.glb \
+            --report /tmp/porsche-inspect.json \
+            --front=-Y
+          test -s public/models/porsche-911-real.glb
+          test -s /tmp/porsche-inspect.json
+          python -m json.tool /tmp/porsche-inspect.json | head -140
+      - name: Retain Blender output for QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Porsche911-Blender-GLB-and-report
+          path: |
+            Horizon-REA-2026/public/models/porsche-911-real.glb
+            /tmp/porsche-inspect.json
+          retention-days: 14
+      - name: Commit generated model in review branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f Horizon-REA-2026/public/models/porsche-911-real.glb
+          if git diff --cached --quiet; then
+            echo 'Model unchanged'
+          else
+            git commit -m 'assets(horizon): Blender-built Porsche 911 992 mesh (CC BY attribution)'
+            git fetch origin feature/porsche-911-preproduction
+            git rebase origin/feature/porsche-911-preproduction
+            git push origin HEAD:feature/porsche-911-preproduction
+          fi

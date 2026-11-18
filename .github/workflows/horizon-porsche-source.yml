@@ -1,0 +1,42 @@
+name: Horizon Porsche · stage licensed source GLB
+
+on:
+  push:
+    branches: [feature/porsche-911-preproduction]
+    paths:
+      - '.github/workflows/horizon-porsche-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stage-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/porsche-911-preproduction
+      - name: Stage 2020 Porsche C4S licensed base model
+        run: |
+          curl --fail --location --retry 3 \
+           'https://raw.githubusercontent.com/nutricionistaalmeidavh-spec/assetscarros3d/main/assets/porsche-911-c4s.glb' \
+           -o Horizon-REA-2026/public/models/porsche-911-real.glb
+          test "$(wc -c < Horizon-REA-2026/public/models/porsche-911-real.glb)" -gt 100000
+          file Horizon-REA-2026/public/models/porsche-911-real.glb
+      - name: Save original source GLB as QA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Porsche911-C4S-Source-GLB
+          path: Horizon-REA-2026/public/models/porsche-911-real.glb
+          retention-days: 14
+      - name: Save source GLB to isolated review branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f Horizon-REA-2026/public/models/porsche-911-real.glb
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'assets(horizon): stage CC BY Porsche 911 2020 base for Blender refinement'
+          git fetch origin feature/porsche-911-preproduction
+          git rebase origin/feature/porsche-911-preproduction
+          git push origin HEAD:feature/porsche-911-preproduction

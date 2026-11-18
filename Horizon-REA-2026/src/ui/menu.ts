@@ -77,6 +77,7 @@ export class Menu {
         </p>
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
+          <a class="btn ghost" href="?car=porsche911">Conducir Porsche 911 (prueba)</a>
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
         </div>
         <div class="menu-grid">

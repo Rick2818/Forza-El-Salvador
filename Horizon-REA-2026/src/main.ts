@@ -2,6 +2,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import "./styles.css";
 import { Game } from "./game";
 import { preloadCarAsset, USE_BLENDER_SHELL } from "./vehicle/carAsset";
+import { preloadRealPorsche911 } from "./vehicle/porscheRealAsset";
 import { Track } from "./world/track";
 
 const loading = document.createElement("div");
@@ -35,6 +36,11 @@ async function boot(): Promise<void> {
   await nextFrame();
 
   progress(34, "Cargando carrocerías de Blender…");
+  // Only the explicit preview query loads the Porsche; the Ferrari / default is unchanged.
+  if (new URLSearchParams(window.location.search).get("car") === "porsche911") {
+    progress(34, "Cargando Porsche 911 de Blender…");
+    await preloadRealPorsche911();
+  }
   if (USE_BLENDER_SHELL) {
     await Promise.all([preloadCarAsset("player"), preloadCarAsset("rival")]);
   }

@@ -1,0 +1,66 @@
+name: Horizon Porsche 911 · preproduction checks
+
+on:
+  push:
+    branches: [feature/porsche-911-preproduction]
+  pull_request:
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/horizon-porsche-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Install dependencies
+        working-directory: Horizon-REA-2026
+        run: npm ci
+      - name: Inspect real Porsche GLB metadata before rendering
+        run: |
+          node -e "const fs=require('fs');const f='Horizon-REA-2026/public/models/porsche-911-real.glb';if(!fs.existsSync(f)){console.log('BLENDER_GLTF_NOT_STAGED');process.exit(0)}const b=fs.readFileSync(f);const n=b.readUInt32LE(12);const j=JSON.parse(b.toString('utf8',20,20+n));console.log('HORIZON_GLTF_META',JSON.stringify({bytes:b.length,extensions:j.extensionsUsed,extensionsRequired:j.extensionsRequired,meshes:j.meshes?.length,materials:j.materials?.map(x=>x.name).slice(0,40),nodes:j.nodes?.length},null,2))"
+      - name: Typecheck and build both game and 3D inspection page
+        working-directory: Horizon-REA-2026
+        run: npm run build
+      - name: Unit tests including Porsche 911 dimensions and geometry
+        working-directory: Horizon-REA-2026
+        run: npm test
+
+      - name: Capture loaded Blender Porsche (not fallback) with CDP
+        working-directory: Horizon-REA-2026
+        run: |
+          mkdir -p captures
+          npm run preview -- --host 127.0.0.1 > /tmp/horizon-preview.log 2>&1 &
+          PREVIEW_URL=http://127.0.0.1:4173/porsche-preview.html
+          if ! curl --fail --silent --show-error --retry 15 --retry-delay 1 --retry-connrefused --max-time 2 "$PREVIEW_URL" > /dev/null; then
+            cat /tmp/horizon-preview.log
+            exit 1
+          fi
+          BROWSER="$(command -v google-chrome || command -v chromium || true)"
+          if [ -z "$BROWSER" ]; then echo "Chrome/Chromium unavailable"; exit 1; fi
+          "$BROWSER" --headless=new --no-sandbox --disable-dev-shm-usage \
+            --enable-webgl --enable-unsafe-swiftshader --use-gl=angle --use-angle=swiftshader \
+            --hide-scrollbars --window-size=1440,900 --remote-debugging-port=9333 \
+            --user-data-dir=/tmp/horizon-porsche-browser \
+            "$PREVIEW_URL" > /tmp/horizon-chrome.log 2>&1 &
+          if ! node tools/porsche-capture.mjs captures/porsche-911-3d.png; then
+            cat /tmp/horizon-chrome.log /tmp/horizon-preview.log
+            exit 1
+          fi
+          ls -lh captures/porsche-911-3d.png
+      - name: Save screenshot artifact for reference comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: Porsche-911-3D-Preview
+          path: Horizon-REA-2026/captures/porsche-911-3d.png
+          if-no-files-found: warn
+          retention-days: 7
