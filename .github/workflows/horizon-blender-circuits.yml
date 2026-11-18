@@ -1,0 +1,62 @@
+name: Construir Monzon y Suzaka con Blender
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/tools/blender/circuits/build_circuits.py'
+      - '.github/workflows/horizon-blender-circuits.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: horizon-blender-circuits
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Obtener proyecto
+        uses: actions/checkout@v4
+
+      - name: Instalar Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender
+          blender --version
+
+      - name: Construir fuentes y modelos 3D
+        working-directory: Horizon-REA-2026
+        run: |
+          blender -b -t 2 --python tools/blender/circuits/build_circuits.py
+          test -s tools/blender/circuit-sources/monzon.blend
+          test -s tools/blender/circuit-sources/suzaka.blend
+          test -s public/circuits/monzon.glb
+          test -s public/circuits/suzaka.glb
+          ls -lah tools/blender/circuit-sources/ public/circuits/
+
+      - name: Guardar modelos en repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/tools/blender/circuit-sources/monzon.blend
+          git add Horizon-REA-2026/tools/blender/circuit-sources/suzaka.blend
+          git add Horizon-REA-2026/public/circuits/monzon.glb
+          git add Horizon-REA-2026/public/circuits/suzaka.glb
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate approved Monzon and Suzaka 3D circuits in Blender"
+            git push origin HEAD:main
+          fi
+
+      - name: Conservar entregables Blender
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizonte-circuitos-blender
+          path: |
+            Horizon-REA-2026/tools/blender/circuit-sources/*.blend
+            Horizon-REA-2026/public/circuits/*.glb
+          retention-days: 14
