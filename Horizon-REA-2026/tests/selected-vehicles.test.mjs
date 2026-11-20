@@ -52,9 +52,16 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
   it.each([
     ["ferrari-california-t", "body_taillight", "Ferrari rear trim"],
     ["porsche-911", null, null]
-  ])("%s uses lit paint and has visible rear lighting attached to the body", (id, lamp, trim) => {
+  ])("%s uses its approved paint and has visible rear lighting attached to the body", (id, lamp, trim) => {
     const visual = createSelectedVisual(id);
-    expect(visual.paint.isMeshPhysicalMaterial).toBe(true);
+    if (id === "ferrari-california-t") {
+      expect(visual.paint.isMeshBasicMaterial).toBe(true);
+      expect(visual.paint.color.getHexString()).toBe("501221");
+      expect(visual.paint.toneMapped).toBe(false);
+      expect(visual.paint.opacity).toBe(1);
+    } else {
+      expect(visual.paint.isMeshPhysicalMaterial).toBe(true);
+    }
     expect(visual.paint.transparent).toBe(false);
     const lights = [];
     visual.bodyRoot.traverse((object) => {

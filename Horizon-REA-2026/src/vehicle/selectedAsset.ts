@@ -192,13 +192,12 @@ export function createSelectedVisual(id: string): CarVisual {
   const isFerrari = id === DEFAULT_SELECTED_ID;
   const isPorsche = id === "porsche-911";
   const hasRevisedFinish = isFerrari || isPorsche;
-  // Deep red sampled from the approved Ferrari artwork, away from reflections.
-  const paint = hasRevisedFinish ? new THREE.MeshPhysicalMaterial({
-    name: "paint", color: isFerrari ? 0x501221 : 0x15171c,
-    metalness: isFerrari ? 0 : .12, roughness: isFerrari ? .34 : .28,
-    clearcoat: isFerrari ? .12 : .55, clearcoatRoughness: .23,
-    specularIntensity: isFerrari ? .12 : .36, toneMapped: !isFerrari
-  }) : createSolidPaintMaterial(d.paint);
+  // Use the red sampled from the approved artwork without sky reflections.
+  const paint = isPorsche ? new THREE.MeshPhysicalMaterial({
+    name: "paint", color: 0x15171c,
+    metalness: .12, roughness: .28,
+    clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
+  }) : createSolidPaintMaterial(isFerrari ? 0x501221 : d.paint);
   const taillightMat = new THREE.MeshStandardMaterial({
     color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2,
     toneMapped: !hasRevisedFinish
