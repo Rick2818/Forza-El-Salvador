@@ -192,12 +192,12 @@ export function createSelectedVisual(id: string): CarVisual {
   const isFerrari = id === DEFAULT_SELECTED_ID;
   const isPorsche = id === "porsche-911";
   const hasRevisedFinish = isFerrari || isPorsche;
-  // Use the red sampled from the approved artwork without sky reflections.
+  // Candy Apple Red in sRGB, independent of sky reflections.
   const paint = isPorsche ? new THREE.MeshPhysicalMaterial({
     name: "paint", color: 0x15171c,
     metalness: .12, roughness: .28,
     clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
-  }) : createSolidPaintMaterial(isFerrari ? 0x501221 : d.paint);
+  }) : createSolidPaintMaterial(isFerrari ? 0xff0800 : d.paint);
   const taillightMat = new THREE.MeshStandardMaterial({
     color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2,
     toneMapped: !hasRevisedFinish

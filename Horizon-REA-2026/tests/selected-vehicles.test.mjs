@@ -56,7 +56,7 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
     const visual = createSelectedVisual(id);
     if (id === "ferrari-california-t") {
       expect(visual.paint.isMeshBasicMaterial).toBe(true);
-      expect(visual.paint.color.getHexString()).toBe("501221");
+      expect(visual.paint.color.getHexString()).toBe("ff0800");
       expect(visual.paint.toneMapped).toBe(false);
       expect(visual.paint.opacity).toBe(1);
     } else {
