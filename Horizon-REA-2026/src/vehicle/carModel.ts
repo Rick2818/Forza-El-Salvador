@@ -32,7 +32,7 @@ export interface CarVisual {
   root: THREE.Group;
   bodyRoot: THREE.Group;
   wheels: WheelVisual[];
-  paint: THREE.MeshBasicMaterial;
+  paint: THREE.MeshBasicMaterial | THREE.MeshPhysicalMaterial;
   taillightMat: THREE.MeshStandardMaterial;
   headlightMat: THREE.MeshStandardMaterial;
 }

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { BODY_CENTER_Y, createSolidPaintMaterial, type CarVisual } from "./carModel";
@@ -161,6 +162,34 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
   material.needsUpdate = true;
 }
 
+// Positions in the California T GLB's local axes, with the rear along -X.
+const ferrariRearTrim = (() => {
+  const parts: THREE.BufferGeometry[] = [
+    new THREE.BoxGeometry(.035, .15, .45).translate(-2.276, .41, 0),
+    new THREE.BoxGeometry(.035, .07, 1.34).translate(-2.273, .204, 0)
+  ];
+  for (const side of [-1, 1]) {
+    parts.push(new THREE.CylinderGeometry(.11, .11, .025, 24)
+      .rotateZ(Math.PI / 2).translate(-2.295, .58, side * .55));
+    for (const lateral of [.57, .75]) {
+      parts.push(new THREE.CylinderGeometry(.047, .047, .012, 20)
+        .rotateZ(Math.PI / 2).translate(-2.301, .27, side * lateral));
+    }
+  }
+  const trim = mergeGeometries(parts);
+  parts.forEach((part) => part.dispose());
+  return trim;
+})();
+
+// Match the curvature of the 911's rear panel so the strip stays outside the paint.
+const porscheRearLightPath = new THREE.CatmullRomCurve3(
+  [[-1.83, -.78], [-1.98, -.72], [-2.16, -.55], [-2.26, -.30],
+    [-2.28, 0], [-2.26, .30], [-2.16, .55], [-1.98, .72], [-1.83, .78]]
+    .map(([x, z]) => new THREE.Vector3(x, .58, z))
+);
+const porscheRearLight = new THREE.TubeGeometry(porscheRearLightPath, 48, .017, 8, false);
+const porscheRearHousing = new THREE.TubeGeometry(porscheRearLightPath, 48, .033, 8, false);
+
 export function createSelectedVisual(id: string): CarVisual {
   const source = cache.get(id);
   if (!source) throw new Error(`El modelo ${id} no está cargado`);
@@ -169,8 +198,18 @@ export function createSelectedVisual(id: string): CarVisual {
   const bodyRoot = new THREE.Group(); bodyRoot.position.y = -BODY_CENTER_Y;
   root.add(bodyRoot);
   const imported = source.clone(true); bodyRoot.add(imported);
-  const paint = createSolidPaintMaterial(d.paint);
-  const taillightMat = new THREE.MeshStandardMaterial({ color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2 });
+  const isFerrari = id === DEFAULT_SELECTED_ID;
+  const isPorsche = id === "porsche-911";
+  const hasRevisedFinish = isFerrari || isPorsche;
+  const paint = hasRevisedFinish ? new THREE.MeshPhysicalMaterial({
+    name: "paint", color: isFerrari ? 0xb70b1a : 0x15171c,
+    metalness: .12, roughness: isFerrari ? .34 : .28,
+    clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
+  }) : createSolidPaintMaterial(d.paint);
+  const taillightMat = new THREE.MeshStandardMaterial({
+    color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2,
+    toneMapped: !hasRevisedFinish
+  });
   const headlightMat = new THREE.MeshStandardMaterial({ color: 0xe5f4ff, emissive: 0xaaccff, emissiveIntensity: 3 });
   const materials = new Map<THREE.Material, THREE.Material>();
   imported.traverse((obj) => {
@@ -179,7 +218,7 @@ export function createSelectedVisual(id: string): CarVisual {
     const cloneMat = (mat: THREE.Material): THREE.Material => {
       const cached = materials.get(mat); if (cached) return cached;
       let result: THREE.Material;
-      if (isVehicleBodyPaint(mat.name)) {
+      if (isVehicleBodyPaint(mat.name) || (isPorsche && mat.name === "Porsche_Deep_Black_Paint")) {
         result = paint;
       } else if (isVehicleGlass(mat.name)) {
         // Physical/glTF glass was reflecting the daylight sky like an opaque
@@ -190,11 +229,36 @@ export function createSelectedVisual(id: string): CarVisual {
       else result = mat.clone();
       stabilizeVehicleFinish(result);
       prepareSelectedMaterial(result);
+      if (hasRevisedFinish && isVehicleGlass(mat.name)) result.opacity = .23;
+      if (isFerrari && mat.name === "rim" && result instanceof THREE.MeshStandardMaterial) {
+        result.color.set(0x85878a);
+        result.metalness = .55;
+        result.roughness = .38;
+      }
       materials.set(mat, result);
       return result;
     };
     obj.material = Array.isArray(obj.material) ? obj.material.map(cloneMat) : cloneMat(obj.material);
   });
+  if (isFerrari) {
+    // The original lenses sat inside the painted bumper and disappeared in race view.
+    const lenses = imported.getObjectByName("body_taillight");
+    if (lenses) lenses.position.x -= .055;
+    const trim = new THREE.Mesh(ferrariRearTrim, new THREE.MeshStandardMaterial({
+      color: 0x202126, roughness: .68, metalness: .14
+    }));
+    trim.name = "Ferrari rear trim";
+    imported.add(trim);
+  } else if (isPorsche) {
+    const housing = new THREE.Mesh(porscheRearHousing, new THREE.MeshStandardMaterial({
+      color: 0x1b171a, roughness: .56
+    }));
+    housing.position.x = .031;
+    housing.name = "Porsche rear light housing";
+    const strip = new THREE.Mesh(porscheRearLight, taillightMat);
+    strip.name = "Porsche rear light strip";
+    imported.add(housing, strip);
+  }
   root.updateMatrixWorld(true);
   const wheels = WHEEL_NAMES.map((name, i) => {
     const authored = imported.getObjectByName(name)!;

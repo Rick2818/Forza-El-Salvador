@@ -49,6 +49,18 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
     }
     world.free();
   });
+  it.each([
+    ["ferrari-california-t", "body_taillight", "Ferrari rear trim"],
+    ["porsche-911", "Porsche rear light strip", "Porsche rear light housing"]
+  ])("%s uses lit paint and has visible rear lighting attached to the body", (id, lamp, trim) => {
+    const visual = createSelectedVisual(id);
+    expect(visual.paint.isMeshPhysicalMaterial).toBe(true);
+    expect(visual.paint.transparent).toBe(false);
+    expect(visual.bodyRoot.getObjectByName(lamp).material).toBe(visual.taillightMat);
+    expect(visual.bodyRoot.getObjectByName(trim).geometry.attributes.position.count).toBeGreaterThan(0);
+    disposeSelectedVisual(visual);
+  });
+
   for (const design of VEHICLE_DESIGNS) {
     it(`${design.id}: correct pivots, bounded geometry and independent brake materials`, () => {
       const a = createSelectedVisual(design.id), b = createSelectedVisual(design.id);

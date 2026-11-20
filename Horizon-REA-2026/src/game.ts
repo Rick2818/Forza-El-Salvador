@@ -310,11 +310,11 @@ export class Game {
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.
     if (!document.hasFocus()) return;
-    const max = this.quality === "alta" ? 1 : 0.8;
+    const max = this.quality === "alta" ? 1 : 0.9;
     let s = this.renderScale;
     if (this.fps < 57) s -= this.fps < 48 ? 0.12 : 0.06;
     else if (this.fps > 59.5) s += 0.03;
-    s = clamp(s, 0.5, max);
+    s = clamp(s, 0.7, max);
     if (s !== this.renderScale) {
       this.renderScale = s;
       this.applyResolution();
@@ -329,7 +329,8 @@ export class Game {
       moon.shadow.map.dispose();
       moon.shadow.map = null;
     }
-    this.renderer.shadowMap.type = high ? THREE.PCFShadowMap : THREE.BasicShadowMap;
+    this.renderer.shadowMap.enabled = high;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.needsUpdate = true;
     this.applyResolution();
   }
@@ -531,6 +532,7 @@ export class Game {
     if (this.lowFpsTime > 5) {
       this.degraded = true;
       this.quality = "equilibrada";
+      this.renderScale = Math.max(this.renderScale, 0.8);
       this.applyQuality();
       this.hud.toast("Calidad ajustada automáticamente para mantener fluidez", 3200);
     }
