@@ -41,7 +41,7 @@ export const SELECTED_VEHICLES: readonly SelectedVehicle[] = [
   },
   {
     id: "porsche-911", name: "Porsche 911",
-    finish: "Gris oscuro", referenceImage: "vehicles/references/porsche-911.jpg",
+    finish: "Negro con pinzas amarillas", referenceImage: "vehicles/references/porsche-911.jpg",
     variantNote: "Parece Turbo S; versión y año pendientes de verificar.",
     features: ["Faros redondos", "Silueta 911", "Entradas laterales y pinzas amarillas"],
     modelStatus: "approved", modelUrl: "models/selected/porsche-911.glb"

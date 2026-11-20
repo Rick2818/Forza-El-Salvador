@@ -86,14 +86,14 @@ export function isVehicleBodyPaint(name: string): boolean {
 }
 
 export function isVehicleCabinMaterial(name: string): boolean {
-  return /^(leather|cuero gris pizarra|cuir)$/i.test(name);
+  return /^(leather|cuero gris pizarra|cuir|interior_charcoal)$/i.test(name);
 }
 
 export function stabilizeVehicleFinish(material: THREE.Material): void {
   if (!(material instanceof THREE.MeshStandardMaterial)) return;
   // Every GLB material can otherwise reflect the bright blue PMREM sky.
   material.envMapIntensity = 0.14;
-  if (/^(rubber|caucho|pneu)$/i.test(material.name)) {
+  if (/^(rubber|tire rubber|caucho|pneu)$/i.test(material.name)) {
     material.color.set("#303238");
     material.map = null;
     material.metalness = 0;
