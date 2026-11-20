@@ -31,8 +31,8 @@ export const SETTINGS = {
     fovMax: 59,
     height: 1.15,
     distance: 4.8,
-    lateralOffset: 1.9,
-    lookAhead: 0.9
+    lateralOffset: 2.25,
+    lookAhead: 0.45
   },
   render: {
     // The adaptive scaler owns sharpness; capping DPR at 1 keeps a 1080p
