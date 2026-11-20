@@ -57,8 +57,11 @@ export class ChaseCamera {
       const distance = cameraSettings.distance + clamp(speed * 0.0025, 0, 0.18);
       const height = cameraSettings.height + clamp(speed * 0.002, 0, 0.10);
       _desired.copy(pos).addScaledVector(_forward, -distance).add(new THREE.Vector3(0, height, 0));
+      // Show the sidewall that the rear bumper hides in a straight-on view.
+      _desired.x += _forward.z * cameraSettings.lateralOffset;
+      _desired.z -= _forward.x * cameraSettings.lateralOffset;
       _look.copy(pos).addScaledVector(_forward, cameraSettings.lookAhead + speed * 0.007);
-      _look.y += 1.05;
+      _look.y += 0.4;
 
       const shake = clamp((speed - 45) / 45, 0, 1) * 0.035;
       if (shake > 0) {

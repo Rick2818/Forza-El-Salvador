@@ -26,13 +26,13 @@ export const SETTINGS = {
     topSpeed: 92
   },
   camera: {
-    // Close camera: the player's 3D car must occupy most of the lower view.
-    // The fast camera used to pull back and aim too far down the track.
+    // Keep the rear tires in frame while retaining a close view of the car.
     fov: 55,
     fovMax: 59,
-    height: 1.55,
-    distance: 3.75,
-    lookAhead: 1.65
+    height: 1.15,
+    distance: 4.8,
+    lateralOffset: 1.9,
+    lookAhead: 0.9
   },
   render: {
     // The adaptive scaler owns sharpness; capping DPR at 1 keeps a 1080p

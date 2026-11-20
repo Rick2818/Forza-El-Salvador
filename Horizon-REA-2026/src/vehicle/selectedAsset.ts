@@ -94,12 +94,13 @@ export function stabilizeVehicleFinish(material: THREE.Material): void {
   // Every GLB material can otherwise reflect the bright blue PMREM sky.
   material.envMapIntensity = 0.14;
   if (/^(rubber|tire rubber|caucho|pneu)$/i.test(material.name)) {
-    material.color.set("#303238");
+    material.color.set("#373a41");
     material.map = null;
     material.metalness = 0;
     material.roughness = 0.8;
-    material.emissive.set("#15171b");
-    material.emissiveIntensity = 0.25;
+    // Lift the darkest parts of the sidewall against the unlit asphalt.
+    material.emissive.set("#353840");
+    material.emissiveIntensity = 0.45;
   }
   if (isVehicleCabinMaterial(material.name)) {
     material.color.set("#222832");

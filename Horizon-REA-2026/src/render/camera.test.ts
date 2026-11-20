@@ -15,12 +15,18 @@ function fakeCar(speed: number): Vehicle {
 }
 
 describe("close-up chase camera for driver and vehicle details", () => {
-  it("starts within four metres of the vehicle", () => {
+  it("frames the rear tire contact points from the close camera", () => {
     const camera = new THREE.PerspectiveCamera(SETTINGS.camera.fov, 16 / 9, .1, 2000);
     const chase = new ChaseCamera(camera);
     chase.update(1 / 60, fakeCar(0), 0);
     expect(camera.position.z).toBeCloseTo(200 - SETTINGS.camera.distance, 4);
-    expect(camera.position.z).toBeGreaterThan(196);
+    expect(camera.position.x).toBeCloseTo(100 + SETTINGS.camera.lateralOffset, 4);
+    camera.updateMatrixWorld(true);
+    for (const side of [-1, 1]) {
+      const contact = new THREE.Vector3(100 + side * .95, 1.4 - .62, 200 - 1.35).project(camera);
+      expect(Math.abs(contact.x)).toBeLessThan(.9);
+      expect(contact.y).toBeGreaterThan(-.95);
+    }
     expect(camera.fov).toBeLessThanOrEqual(59);
   });
 
@@ -28,8 +34,8 @@ describe("close-up chase camera for driver and vehicle details", () => {
     const camera = new THREE.PerspectiveCamera(SETTINGS.camera.fov, 16 / 9, .1, 2000);
     const chase = new ChaseCamera(camera);
     chase.update(1 / 60, fakeCar(95), 1);
-    expect(camera.position.z).toBeGreaterThan(195.9);
-    expect(camera.position.z).toBeLessThan(196.4);
+    expect(camera.position.z).toBeGreaterThan(194.95);
+    expect(camera.position.z).toBeLessThan(195.3);
     for (let i = 0; i < 120; i++) chase.update(1/60, fakeCar(95), i / 60);
     expect(camera.fov).toBeLessThanOrEqual(59.01);
   });
