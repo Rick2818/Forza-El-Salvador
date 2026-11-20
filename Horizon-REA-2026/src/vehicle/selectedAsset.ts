@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { BODY_CENTER_Y, createSolidPaintMaterial, type CarVisual } from "./carModel";
@@ -25,7 +24,8 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
   if (cache.has(id)) return Promise.resolve();
   const running = pending.get(id);
   if (running) return running;
-  const task = new GLTFLoader().loadAsync(url ?? `${import.meta.env.BASE_URL}models/selected/${id}.glb`)
+  const revision = id === DEFAULT_SELECTED_ID ? "?rev=cherry" : "";
+  const task = new GLTFLoader().loadAsync(url ?? `${import.meta.env.BASE_URL}models/selected/${id}.glb${revision}`)
     .then(({ scene }) => {
       for (const name of WHEEL_NAMES) {
         if (!scene.getObjectByName(name)) throw new Error(`${id}: falta el pivote ${name}`);
@@ -162,25 +162,6 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
   material.needsUpdate = true;
 }
 
-// Positions in the California T GLB's local axes, with the rear along -X.
-const ferrariRearTrim = (() => {
-  const parts: THREE.BufferGeometry[] = [
-    new THREE.BoxGeometry(.035, .15, .45).translate(-2.276, .41, 0),
-    new THREE.BoxGeometry(.035, .07, 1.34).translate(-2.273, .204, 0)
-  ];
-  for (const side of [-1, 1]) {
-    parts.push(new THREE.CylinderGeometry(.11, .11, .025, 24)
-      .rotateZ(Math.PI / 2).translate(-2.295, .58, side * .55));
-    for (const lateral of [.57, .75]) {
-      parts.push(new THREE.CylinderGeometry(.047, .047, .012, 20)
-        .rotateZ(Math.PI / 2).translate(-2.301, .27, side * lateral));
-    }
-  }
-  const trim = mergeGeometries(parts);
-  parts.forEach((part) => part.dispose());
-  return trim;
-})();
-
 export function createSelectedVisual(id: string): CarVisual {
   const source = cache.get(id);
   if (!source) throw new Error(`El modelo ${id} no está cargado`);
@@ -192,12 +173,16 @@ export function createSelectedVisual(id: string): CarVisual {
   const isFerrari = id === DEFAULT_SELECTED_ID;
   const isPorsche = id === "porsche-911";
   const hasRevisedFinish = isFerrari || isPorsche;
-  // Candy Apple Red in sRGB, independent of sky reflections.
-  const paint = isPorsche ? new THREE.MeshPhysicalMaterial({
+  // Keep the Cherry base color and soft coat authored in Blender.
+  const ferrariPaint = isFerrari ? source.getObjectsByProperty("isMesh", true)
+    .flatMap((object) => (object as THREE.Mesh).material)
+    .find((material): material is THREE.MeshPhysicalMaterial =>
+      material instanceof THREE.MeshPhysicalMaterial && isVehicleBodyPaint(material.name)) : undefined;
+  const paint = isFerrari && ferrariPaint ? ferrariPaint.clone() : isPorsche ? new THREE.MeshPhysicalMaterial({
     name: "paint", color: 0x15171c,
     metalness: .12, roughness: .28,
     clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
-  }) : createSolidPaintMaterial(isFerrari ? 0xff0800 : d.paint);
+  }) : createSolidPaintMaterial(d.paint);
   const taillightMat = new THREE.MeshStandardMaterial({
     color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2,
     toneMapped: !hasRevisedFinish
@@ -232,16 +217,6 @@ export function createSelectedVisual(id: string): CarVisual {
     };
     obj.material = Array.isArray(obj.material) ? obj.material.map(cloneMat) : cloneMat(obj.material);
   });
-  if (isFerrari) {
-    // The original lenses sat inside the painted bumper and disappeared in race view.
-    const lenses = imported.getObjectByName("body_taillight");
-    if (lenses) lenses.position.x -= .055;
-    const trim = new THREE.Mesh(ferrariRearTrim, new THREE.MeshStandardMaterial({
-      color: 0x202126, roughness: .68, metalness: .14
-    }));
-    trim.name = "Ferrari rear trim";
-    imported.add(trim);
-  }
   root.updateMatrixWorld(true);
   const wheels = WHEEL_NAMES.map((name, i) => {
     const authored = imported.getObjectByName(name)!;

@@ -50,14 +50,14 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
     world.free();
   });
   it.each([
-    ["ferrari-california-t", "body_taillight", "Ferrari rear trim"],
+    ["ferrari-california-t", "Ferrari_rear_brake_ring", "Sculpted_rear_valance"],
     ["porsche-911", null, null]
   ])("%s uses its approved paint and has visible rear lighting attached to the body", (id, lamp, trim) => {
     const visual = createSelectedVisual(id);
     if (id === "ferrari-california-t") {
-      expect(visual.paint.isMeshBasicMaterial).toBe(true);
-      expect(visual.paint.color.getHexString()).toBe("ff0800");
-      expect(visual.paint.toneMapped).toBe(false);
+      expect(visual.paint.isMeshPhysicalMaterial).toBe(true);
+      expect(visual.paint.color.r).toBeCloseTo(.3375, 5);
+      expect(visual.paint.clearcoat).toBeCloseTo(.17, 5);
       expect(visual.paint.opacity).toBe(1);
     } else {
       expect(visual.paint.isMeshPhysicalMaterial).toBe(true);
@@ -68,7 +68,7 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
       if ([object.material].flat().includes(visual.taillightMat)) lights.push(object);
     });
     expect(lights.length).toBeGreaterThan(0);
-    if (lamp) expect(lights.some((light) => light.name === lamp)).toBe(true);
+    if (lamp) expect(lights.some((light) => light.name.startsWith(lamp))).toBe(true);
     if (trim) expect(visual.bodyRoot.getObjectByName(trim).geometry.attributes.position.count).toBeGreaterThan(0);
     disposeSelectedVisual(visual);
   });
