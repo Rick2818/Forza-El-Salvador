@@ -287,7 +287,8 @@ export class Game {
   }
 
   private applyResolution(): void {
-    const base = Math.min(window.devicePixelRatio, SETTINGS.render.maxPixelRatio);
+    const limit = this.quality === "alta" ? SETTINGS.render.maxPixelRatio : 1;
+    const base = Math.min(window.devicePixelRatio, limit);
     const ratio = Math.max(0.5, base * this.renderScale);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -311,10 +312,10 @@ export class Game {
     if (!document.hasFocus()) return;
     const max = this.quality === "alta" ? 1 : 0.8;
     let s = this.renderScale;
-    if (this.fps < 50) s -= 0.08;
-    else if (this.fps > 59) s += 0.05;
-    s = clamp(s, 0.75, max);
-    if (Math.abs(s - this.renderScale) >= 0.03) {
+    if (this.fps < 57) s -= this.fps < 48 ? 0.12 : 0.06;
+    else if (this.fps > 59.5) s += 0.03;
+    s = clamp(s, 0.5, max);
+    if (s !== this.renderScale) {
       this.renderScale = s;
       this.applyResolution();
     }
@@ -322,10 +323,6 @@ export class Game {
 
   private applyQuality(): void {
     const high = this.quality === "alta";
-    this.renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, high ? SETTINGS.render.maxPixelRatio : 1.0)
-    );
-    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     const moon = this.environment.moon;
     moon.shadow.mapSize.set(high ? 2048 : 1024, high ? 2048 : 1024);
     if (moon.shadow.map) {
