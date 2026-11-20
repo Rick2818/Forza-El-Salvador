@@ -192,9 +192,10 @@ export function createSelectedVisual(id: string): CarVisual {
   const isFerrari = id === DEFAULT_SELECTED_ID;
   const isPorsche = id === "porsche-911";
   const hasRevisedFinish = isFerrari || isPorsche;
+  // Pantone 485 C screen approximation for the Rosso Corsa bodywork.
   const paint = hasRevisedFinish ? new THREE.MeshPhysicalMaterial({
-    name: "paint", color: isFerrari ? 0xb70b1a : 0x15171c,
-    metalness: .12, roughness: isFerrari ? .34 : .28,
+    name: "paint", color: isFerrari ? 0xda291c : 0x15171c,
+    metalness: isFerrari ? 0 : .12, roughness: isFerrari ? .34 : .28,
     clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
   }) : createSolidPaintMaterial(d.paint);
   const taillightMat = new THREE.MeshStandardMaterial({
