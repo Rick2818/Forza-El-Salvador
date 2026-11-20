@@ -60,6 +60,10 @@ export class Track {
   width: number;
   halfWidth: number;
 
+  get barrierLateralOffset(): number {
+    return this.halfWidth + (SETTINGS.track.barrierOffset ?? 2) - 2;
+  }
+
   constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {
     this.width = this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain" ? 14
       : this.circuit.layout === "desert" ? 16 : SETTINGS.track.width;
@@ -185,7 +189,7 @@ export class Track {
     if (N === 0) return;
     this.group.name = "track-visuals";
     const halfW = this.halfWidth;
-    const barrierOffset = halfW + (SETTINGS.track.barrierOffset ?? 2) - 2;
+    const barrierOffset = this.barrierLateralOffset;
     const surfaceY = 0.02;
 
     // ---- Asphalt surface.
@@ -505,7 +509,7 @@ export class Track {
       );
     }
 
-    const offset = this.halfWidth + (SETTINGS.track.barrierOffset ?? 2) - 2;
+    const offset = this.barrierLateralOffset;
     for (const side of [-1, 1]) {
       const geo = this.wallGeometry(side * offset, 1.35);
       const pos = geo.attributes.position as THREE.BufferAttribute;

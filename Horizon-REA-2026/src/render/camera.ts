@@ -31,7 +31,7 @@ export class ChaseCamera {
     this.initialized = false;
   }
 
-  update(dt: number, vehicle: Vehicle, time: number): void {
+  update(dt: number, vehicle: Vehicle, time: number, constrain?: (position: THREE.Vector3) => void): void {
     const t = vehicle.body.translation();
     const pos = new THREE.Vector3(t.x, t.y, t.z);
     _quat.set(vehicle.body.rotation().x, vehicle.body.rotation().y, vehicle.body.rotation().z, vehicle.body.rotation().w);
@@ -87,6 +87,7 @@ export class ChaseCamera {
       this.lookAt.z = damp(this.lookAt.z, _look.z, lookLag, dt);
     }
 
+    if (this.mode !== "hood") constrain?.(this.position);
     this.camera.position.copy(this.position);
     this.camera.lookAt(this.lookAt);
 

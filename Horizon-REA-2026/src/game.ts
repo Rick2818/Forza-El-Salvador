@@ -474,7 +474,7 @@ export class Game {
       for (const racer of this.race.racers) racer.vehicle.syncVisual();
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.environment.update(this.race.player.vehicle.position, dt);
-      if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time);
+      if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall);
 
       const player = this.race.player.vehicle;
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
@@ -518,6 +518,12 @@ export class Game {
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender) this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
+  };
+
+  private keepCameraInsideWall = (position: THREE.Vector3): void => {
+    const { index, lateral } = this.track.locate(position, this.race.player.hint);
+    const limit = this.track.barrierLateralOffset - .5;
+    position.addScaledVector(this.track.rightAt(index), clamp(lateral, -limit, limit) - lateral);
   };
 
   private trackPerformance(dt: number): void {

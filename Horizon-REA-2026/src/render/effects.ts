@@ -40,10 +40,12 @@ export class SmokeSystem {
         varying float vLife;
         varying vec3 vColor;
         void main() {
-          vLife = aLife;
           vColor = aColor;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = aSize * (260.0 / max(0.001, -mv.z));
+          float distanceToCamera = -mv.z;
+          // Keep particles from blanketing the view as the chase camera crosses them.
+          vLife = aLife * smoothstep(1.4, 4.5, distanceToCamera);
+          gl_PointSize = clamp(aSize * 125.0 / max(1.0, distanceToCamera), 1.0, 36.0);
           gl_Position = projectionMatrix * mv;
         }
       `,
@@ -54,8 +56,8 @@ export class SmokeSystem {
           vec2 d = gl_PointCoord - 0.5;
           float r = length(d);
           if (r > 0.5) discard;
-          float soft = smoothstep(0.5, 0.08, r);
-          gl_FragColor = vec4(vColor, soft * vLife * 0.42);
+          float soft = 1.0 - smoothstep(0.08, 0.5, r);
+          gl_FragColor = vec4(vColor, soft * vLife * 0.17);
         }
       `
     });
@@ -94,7 +96,7 @@ export class SmokeSystem {
     const intensity = clamp((dust ? speed / 26 : slip / 6) + (vehicle.controls.handbrake ? speed / 30 : 0), 0, 1);
 
     if (intensity > 0.06 && speed > 2.5) {
-      const count = Math.round(intensity * 5);
+      const count = Math.round(intensity * 2);
       for (let w = 2; w < 4; w++) {
         vehicle.visual.wheels[w].spin.getWorldPosition(this.wheelPos);
         for (let n = 0; n < count; n++) {
@@ -104,9 +106,9 @@ export class SmokeSystem {
             0.14 + Math.random() * 0.1,
             this.wheelPos.z + (Math.random() - 0.5) * jitter,
             (Math.random() - 0.5) * 1.6,
-            0.6 + Math.random() * 1.1,
+            0.22 + Math.random() * 0.38,
             (Math.random() - 0.5) * 1.6,
-            2.2 + Math.random() * 2.4 + (dust ? 1.4 : 0),
+            1.1 + Math.random() * 1.2,
             dust
           );
         }
@@ -119,7 +121,7 @@ export class SmokeSystem {
 
     for (let i = 0; i < this.capacity; i++) {
       if (this.lives[i] <= 0) continue;
-      this.lives[i] -= dt * 1.35;
+      this.lives[i] -= dt * 2.4;
       if (this.lives[i] <= 0) {
         this.lives[i] = 0;
         this.positions[i * 3 + 1] = -100;
@@ -131,7 +133,7 @@ export class SmokeSystem {
       this.velocities[i * 3] *= 1 - dt * 1.6;
       this.velocities[i * 3 + 1] *= 1 - dt * 0.9;
       this.velocities[i * 3 + 2] *= 1 - dt * 1.6;
-      this.sizes[i] += dt * 3.4;
+      this.sizes[i] += dt * 1.4;
     }
 
     const geo = this.points.geometry;

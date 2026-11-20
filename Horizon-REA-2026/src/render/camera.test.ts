@@ -40,6 +40,16 @@ describe("close-up chase camera for driver and vehicle details", () => {
     expect(camera.fov).toBeLessThanOrEqual(59.01);
   });
 
+  it("keeps the final chase camera inside a trackside boundary", () => {
+    const camera = new THREE.PerspectiveCamera();
+    const chase = new ChaseCamera(camera);
+    chase.update(1 / 60, fakeCar(25), 0, (position) => {
+      position.x = Math.min(position.x, 101);
+    });
+    expect(camera.position.x).toBe(101);
+    expect(camera.position.z).toBeLessThan(200);
+  });
+
   it("offers a wider view on C while close-up is the default", () => {
     const camera = new THREE.PerspectiveCamera();
     const chase = new ChaseCamera(camera);

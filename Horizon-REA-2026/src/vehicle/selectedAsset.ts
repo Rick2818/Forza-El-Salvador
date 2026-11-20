@@ -181,15 +181,6 @@ const ferrariRearTrim = (() => {
   return trim;
 })();
 
-// Match the curvature of the 911's rear panel so the strip stays outside the paint.
-const porscheRearLightPath = new THREE.CatmullRomCurve3(
-  [[-1.83, -.78], [-1.98, -.72], [-2.16, -.55], [-2.26, -.30],
-    [-2.28, 0], [-2.26, .30], [-2.16, .55], [-1.98, .72], [-1.83, .78]]
-    .map(([x, z]) => new THREE.Vector3(x, .58, z))
-);
-const porscheRearLight = new THREE.TubeGeometry(porscheRearLightPath, 48, .017, 8, false);
-const porscheRearHousing = new THREE.TubeGeometry(porscheRearLightPath, 48, .033, 8, false);
-
 export function createSelectedVisual(id: string): CarVisual {
   const source = cache.get(id);
   if (!source) throw new Error(`El modelo ${id} no está cargado`);
@@ -218,7 +209,7 @@ export function createSelectedVisual(id: string): CarVisual {
     const cloneMat = (mat: THREE.Material): THREE.Material => {
       const cached = materials.get(mat); if (cached) return cached;
       let result: THREE.Material;
-      if (isVehicleBodyPaint(mat.name) || (isPorsche && mat.name === "Porsche_Deep_Black_Paint")) {
+      if (isVehicleBodyPaint(mat.name)) {
         result = paint;
       } else if (isVehicleGlass(mat.name)) {
         // Physical/glTF glass was reflecting the daylight sky like an opaque
@@ -229,7 +220,7 @@ export function createSelectedVisual(id: string): CarVisual {
       else result = mat.clone();
       stabilizeVehicleFinish(result);
       prepareSelectedMaterial(result);
-      if (hasRevisedFinish && isVehicleGlass(mat.name)) result.opacity = .23;
+      if (hasRevisedFinish && isVehicleGlass(mat.name)) result.opacity = .13;
       if (isFerrari && mat.name === "rim" && result instanceof THREE.MeshStandardMaterial) {
         result.color.set(0x85878a);
         result.metalness = .55;
@@ -249,15 +240,6 @@ export function createSelectedVisual(id: string): CarVisual {
     }));
     trim.name = "Ferrari rear trim";
     imported.add(trim);
-  } else if (isPorsche) {
-    const housing = new THREE.Mesh(porscheRearHousing, new THREE.MeshStandardMaterial({
-      color: 0x1b171a, roughness: .56
-    }));
-    housing.position.x = .031;
-    housing.name = "Porsche rear light housing";
-    const strip = new THREE.Mesh(porscheRearLight, taillightMat);
-    strip.name = "Porsche rear light strip";
-    imported.add(housing, strip);
   }
   root.updateMatrixWorld(true);
   const wheels = WHEEL_NAMES.map((name, i) => {
