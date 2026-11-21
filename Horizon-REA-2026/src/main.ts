@@ -42,8 +42,13 @@ async function boot(): Promise<void> {
   }
   await nextFrame();
 
-  progress(38, "Cargando los cuatro modelos 3D…");
-  await Promise.all(VEHICLE_DESIGNS.map((d) => loadSelectedVehicle(d.id)));
+  progress(38, "Cargando los modelos 3D de la parrilla…");
+  // The four race slots keep the same initial download as V9. The additional
+  // approved cars load on selection, including a remembered player choice.
+  let savedVehicle: string | null = null;
+  try { savedVehicle = localStorage.getItem("horizon.selected-vehicle"); } catch { /* optional */ }
+  const initialModels = VEHICLE_DESIGNS.filter((d, i) => i < 4 || d.id === savedVehicle);
+  await Promise.all(initialModels.map((d) => loadSelectedVehicle(d.id)));
 
   const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
   const ui = document.getElementById("ui") as HTMLElement;

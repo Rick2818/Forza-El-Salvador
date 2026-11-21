@@ -496,6 +496,7 @@ export class Game {
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
         this.race.update(this.fixedStep, drive as Input);
         this.world.step();
+        for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep();
         this.physicsAccum -= this.fixedStep;
         steps++;
       }

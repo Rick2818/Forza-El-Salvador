@@ -43,11 +43,11 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
       tangentAt: () => new THREE.Vector3(0, 0, 1), progress: (i) => i / 100 };
     for (const design of VEHICLE_DESIGNS) {
       const race = new Race(world, scene, track, design.id);
-      expect(world.bodies.len()).toBe(VEHICLE_DESIGNS.length);
+      expect(world.bodies.len()).toBe(4);
       expect(race.player.vehicle.vehicleId).toBe(design.id);
-      expect(new Set(race.racers.map((r) => r.vehicle.vehicleId)).size).toBe(VEHICLE_DESIGNS.length);
+      expect(new Set(race.racers.map((r) => r.vehicle.vehicleId)).size).toBe(4);
       const rivals = race.racers.filter((racer) => !racer.isPlayer);
-      expect(rivals).toHaveLength(VEHICLE_DESIGNS.length - 1);
+      expect(rivals).toHaveLength(3);
       expect(rivals.every((racer) => racer.ai?.vehicle === racer.vehicle)).toBe(true);
       expect(race.elapsed).toBe(0);
       expect(race.player.lap).toBe(1);
@@ -171,6 +171,7 @@ it.each(["monzon", "suzaka"].flatMap(circuit => ["facil", "medio", "dificil"].ma
     }));
     race.update(1 / 60, pilot.plan(1 / 60, frame / 60, traffic));
     world.step();
+    for (const r of race.racers) r.vehicle.afterPhysicsStep();
     for(const r of race.racers)peakSpeeds.set(r.id,Math.max(peakSpeeds.get(r.id)??0,r.vehicle.speedKph));
     if(frame%30===0 && !race.racers.some(r=>r.finished)) {
       const leader=[...race.racers].sort((a,b)=>(b.lap+b.progress)-(a.lap+a.progress))[0].id;
@@ -211,10 +212,13 @@ it.each(VEHICLE_DESIGNS)("reaches the requested straight-line speed for $id", (d
   for (let frame = 0; frame < 60 * 180; frame++) {
     car.update(1 / 60, {throttle: 1, brake: 0, steer: 0, handbrake: false}, 1);
     world.step();
+    car.afterPhysicsStep();
     peak = Math.max(peak, Math.abs(car.speed) / .44704);
   }
   console.log("SPEED_MPH", design.id, peak);
-  expect(peak).toBeGreaterThanOrEqual(design.id === "bugatti-chiron" ? 230 : 200);
+  const limit = design.id === "bugatti-chiron" ? 230 : 200;
+  expect(peak).toBeGreaterThanOrEqual(limit - .01);
+  expect(peak).toBeLessThanOrEqual(limit + .001);
   car.dispose(world);
   world.free();
 }, 60000);
@@ -248,3 +252,54 @@ it("times each lap independently and retains the fastest lap",()=>{
  expect(race.player.bestLap).toBe(80);expect(race.player.finishTime).toBe(270);
  race.dispose();world.free();
 });
+
+it.each(VEHICLE_DESIGNS)("enforces $id speed without rendering and cancels nitro under braking", design => {
+  const world = new RAPIER.World({x:0,y:-13.5,z:0});
+  const car = new Vehicle(world, new THREE.Scene(), {
+    vehicleId:design.id,paintColor:0,accentColor:0,number:7,isPlayer:true
+  });
+  car.place(new THREE.Vector3(0,0,0),0);
+  car.body.setLinvel({x:35,y:-17,z:150},true);
+  car.afterPhysicsStep();
+  const velocity=car.body.linvel();
+  expect(Math.hypot(velocity.x,velocity.z)).toBeCloseTo(design.tuning.topSpeed,4);
+  expect(velocity.y).toBe(-17);
+  car.body.setLinvel({x:0,y:0,z:45},true);
+  car.update(1/60,{throttle:1,brake:0,steer:.5,handbrake:false},1);
+  expect(car.turboActive).toBe(true);
+  car.syncVisual(1/60);
+  expect(car.visual.root.getObjectByName('turbo-exhaust-flames').visible).toBe(true);
+  const wheels=car.wheelVisualDebug();
+  expect(wheels.slice(0,2).every(w=>w.steer>0 && Math.abs(w.roll)>.1)).toBe(true);
+  expect(wheels.slice(2).every(w=>w.steer===0 && Math.abs(w.roll)>.1)).toBe(true);
+  car.update(1/60,{throttle:1,brake:1,steer:0,handbrake:false},1);
+  expect(car.turboActive).toBe(false);
+  car.syncVisual(1/60);
+  expect(car.visual.root.getObjectByName('turbo-exhaust-flames').visible).toBe(false);
+  car.dispose(world);world.free();
+});
+
+// Keep the original six competitive-race assertions above. Extend endurance
+// coverage to every other selectable player car without requiring a scripted
+// overtake or a particular winner in each additional matchup.
+it.each(VEHICLE_DESIGNS.filter(d=>d.id!=='ferrari-california-t').flatMap(design=>
+  ['monzon','suzaka'].flatMap(circuit=>['facil','medio','dificil'].map(difficulty=>
+    [design.id,circuit,difficulty]))))('finishes three laps with %s on %s at %s', (id,circuit,difficulty)=>{
+  const world=new RAPIER.World({x:0,y:-13.5,z:0});world.timestep=1/60;
+  const track=new Track(getCircuit(circuit));
+  track.buildVisuals=()=>{const mesh=new THREE.Mesh(track.ribbonGeometry(-track.halfWidth,track.halfWidth,.02,12));mesh.name='asphalt';track.group.add(mesh);};
+  track.build();track.addPhysics(world);
+  const race=new Race(world,new THREE.Scene(),track,id,difficulty);race.state='racing';
+  const pilot=new AIDriver(race.player.vehicle,track,-2.7,.94,1,'estratega',difficulty);
+  let recoveries=0;
+  for(const r of race.racers){const place=r.vehicle.place.bind(r.vehicle);r.vehicle.place=(...args)=>{recoveries++;return place(...args);};}
+  for(let frame=0;frame<60*900 && !race.racers.every(r=>r.finished);frame++){
+    const traffic=race.racers.filter(r=>!r.isPlayer&&!r.finished).map(r=>({position:r.vehicle.position.clone(),speed:r.vehicle.speed,isPlayer:false,racerId:r.id}));
+    race.update(1/60,pilot.plan(1/60,frame/60,traffic));world.step();
+    for(const r of race.racers)r.vehicle.afterPhysicsStep();
+  }
+  appendFileSync('review/quality/race-validation.jsonl',JSON.stringify({playerCar:id,circuit,difficulty,physicsHz:60,rendering:false,recoveries,
+    drivers:race.racers.map(r=>({car:r.vehicle.vehicleId,finished:r.finished,finishSeconds:r.finishTime,bestLapSeconds:r.bestLap}))})+'\n');
+  try {expect(race.racers.every(r=>r.finished)).toBe(true);expect(recoveries).toBe(0);}
+  finally {race.dispose();world.free();}
+},180000);

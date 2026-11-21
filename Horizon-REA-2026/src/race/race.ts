@@ -85,7 +85,8 @@ export class Race {
     this.player = this.makeRacer(playerVehicle, "TÚ", true, 1);
 
     const playerSlot = 2;
-    const rivals = VEHICLE_DESIGNS.filter((design) => design.id !== vehicleId).map((opponent, i) => {
+    const rivals = VEHICLE_DESIGNS.filter((design) => design.id !== vehicleId)
+      .slice(0, SETTINGS.race.rivals).map((opponent, i) => {
       const cfg = ROSTER[i];
       const vehicle = new Vehicle(this.world, scene, {
         paintColor: Number.parseInt(opponent.paint.slice(1), 16),
