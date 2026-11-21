@@ -188,6 +188,8 @@ export class HUD {
   }
 
   update(dt: number, snapshot: RaceSnapshot, vehicle: Vehicle, racers: Racer[], fps: number): void {
+    const fpsLabel = Number.isFinite(fps) ? `${Math.round(fps)} FPS · V6` : "CAPTURA · V6";
+    if (this.fpsEl.textContent !== fpsLabel) this.fpsEl.textContent = fpsLabel;
     // DOM and minimap work do not need to run at the physics/render rate.
     this.uiElapsed += dt;
     if (this.uiElapsed < .1) return;
@@ -200,7 +202,6 @@ export class HUD {
     this.currentEl.textContent = formatTime(snapshot.lapTime * 1000);
     this.bestEl.textContent = snapshot.bestLap > 0 ? formatTime(snapshot.bestLap * 1000) : "--:--.---";
     this.lastEl.textContent = snapshot.lastLap > 0 ? formatTime(snapshot.lastLap * 1000) : "--:--.---";
-    this.fpsEl.textContent = Number.isFinite(fps) ? `${Math.round(fps)} FPS · V6` : "CAPTURA · V6";
 
     const speed = Math.round(vehicle.speedKph / 1.609344);
     if (speed !== this.lastSpeed) {
