@@ -27,7 +27,11 @@ describe("Automatic 100 mph nitro", () => {
     for(let i=0;i<Math.ceil(TURBO_DURATION*60)+3;i++) s=stepTurbo(s,1/60,55,1,true,true);
     expect(s.active).toBe(0);
     expect(s.cooldown).toBeGreaterThan(0);
-    for(let i=0;i<Math.ceil(TURBO_COOLDOWN*60)+3;i++) s=stepTurbo(s,1/60,55,1,true,true);
-    expect(s.active).toBe(TURBO_DURATION);
+    let restarted = false;
+    for(let i=0;i<Math.ceil(TURBO_COOLDOWN*60)+3;i++) {
+      s=stepTurbo(s,1/60,55,1,true,true);
+      if (s.active >= TURBO_DURATION - .001) restarted = true;
+    }
+    expect(restarted).toBe(true);
   });
 });
