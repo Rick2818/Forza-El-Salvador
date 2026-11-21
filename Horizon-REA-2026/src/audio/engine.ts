@@ -46,6 +46,23 @@ function createCombustionLoop(ctx: AudioContext, cylinders: number): AudioBuffer
   return buffer;
 }
 
+/** The body harmonics use the SAME loop length, start time and playback-rate
+ * automation as combustion. Independent oscillators drifted in phase during
+ * RPM transitions and could cancel the firing fundamental unpredictably. */
+function createBodyLoop(ctx: AudioContext, cylinders: number): AudioBuffer {
+  const length = Math.max(32, Math.round(ctx.sampleRate / 3));
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  if (cylinders <= 0) return buffer;
+  const pcm = buffer.getChannelData(0), revolutions = REF_RPM / 60 / 3;
+  const firings = revolutions * cylinders / 2;
+  for (let i = 0; i < pcm.length; i++) {
+    const t = i / pcm.length;
+    const triangle = 2 / Math.PI * Math.asin(Math.sin(t * revolutions * 2 * Math.PI * 2));
+    pcm[i] = .5 * (triangle + Math.sin(t * firings * Math.PI * 2));
+  }
+  return buffer;
+}
+
 export interface RivalEngineState {
   id: string;
   vehicleId: string;
@@ -108,10 +125,12 @@ export class GameAudio {
   private oscA: OscillatorNode | null = null;
   private oscB: OscillatorNode | null = null;
   private combustion: AudioBufferSourceNode | null = null;
+  private bodyCombustion: AudioBufferSourceNode | null = null;
   private combustionGain: GainNode | null = null;
   private crankGain: GainNode | null = null;
   private intakeGain: GainNode | null = null;
   private readonly loops = new Map<number, AudioBuffer>();
+  private readonly bodyLoops = new Map<number, AudioBuffer>();
   private profile: EngineSoundProfile = "v10";
   private skidGain: GainNode | null = null;
   private muted = false;
@@ -164,12 +183,20 @@ export class GameAudio {
       this.combustion.stop();
       this.combustion.disconnect();
     }
+    if (this.bodyCombustion) { this.bodyCombustion.stop(); this.bodyCombustion.disconnect(); }
+    const cylinders = this.effectiveCylinders(this.vehicleId);
     const source = this.ctx.createBufferSource();
-    source.buffer = this.combustionBuffer(this.effectiveCylinders(this.vehicleId));
+    source.buffer = this.combustionBuffer(cylinders);
     source.loop = true;
     source.connect(this.combustionGain);
-    source.start();
+    const body = this.ctx.createBufferSource();
+    let bodyBuffer = this.bodyLoops.get(cylinders);
+    if (!bodyBuffer) { bodyBuffer = createBodyLoop(this.ctx, cylinders); this.bodyLoops.set(cylinders, bodyBuffer); }
+    body.buffer = bodyBuffer; body.loop = true; body.connect(this.crankGain!);
+    const start = this.ctx.currentTime + .01;
+    source.start(start); body.start(start);
     this.combustion = source;
+    this.bodyCombustion = body;
   }
   private stopRival(voice: RivalVoice): void {
     for (const oscillator of voice.oscillators) {
@@ -205,6 +232,8 @@ export class GameAudio {
     this.electric = on;
     if (this.oscA) this.oscA.type = on ? "sine" : "triangle";
     if (this.oscB) this.oscB.type = "sine";
+    this.oscA?.disconnect(); this.oscB?.disconnect();
+    if (on && this.crankGain) { this.oscA?.connect(this.crankGain); this.oscB?.connect(this.crankGain); }
   }
 
   /** Dynamics reduction in dB for diagnostics and safe race mixing. */
@@ -349,6 +378,7 @@ export class GameAudio {
     this.crankGain = crankGain;
     this.intakeGain = intakeGain;
     this.combustionGain = combustionGain;
+    if (!this.electric) { oscA.disconnect(); oscB.disconnect(); }
     this.installCombustion();
 
     // ---- Tyre scrub: looping noise through a band-pass, gain driven by slip.
@@ -397,6 +427,7 @@ export class GameAudio {
     const crankHz = engineRpm / 60;
     if (this.combustion) this.combustion.playbackRate.setTargetAtTime(
       this.electric ? Math.max(.65, speed * 2.4) : rpmSpeed, now, .07);
+    this.bodyCombustion?.playbackRate.setTargetAtTime(this.electric ? 1 : rpmSpeed, now, .07);
     if (this.oscA) this.oscA.frequency.setTargetAtTime(
       this.electric ? 28 + speed * 105 : crankHz * 2, now, .06);
     if (this.oscB) this.oscB.frequency.setTargetAtTime(
@@ -409,7 +440,7 @@ export class GameAudio {
     if (this.combustionGain) this.combustionGain.gain.setTargetAtTime(
       this.electric ? .02 : .76 + t * .48, now, .1);
     if (this.crankGain) this.crankGain.gain.setTargetAtTime(
-      this.electric ? .08 : .30 + (1 - rev) * .14, now, .1);
+      this.electric ? .08 : 2 * (.30 + (1 - rev) * .14), now, .1);
     if (this.intakeGain) this.intakeGain.gain.setTargetAtTime(
       this.electric ? .01 : .06 + t * .16, now, .1);
     if (this.engineGain) {

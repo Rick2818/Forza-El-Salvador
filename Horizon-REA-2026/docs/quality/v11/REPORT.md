@@ -7,10 +7,11 @@
 - Sombras: contacto proyectado de cuatro autos en una sola llamada de dibujo, ocho triángulos y sin textura adicional. Sigue el plano de la pista, incluido el puente, y se desvanece cuando el auto está en el aire. No se presenta como trazado de rayos.
 - Suzaka: el GLB original del paddock atravesaba el asfalto. Los grupos aprobados se reorientan y colocan fuera del trazado; separaciones al centro de pista de 24.50 m y 23.53 m en la revisión inicial. Se conserva la geometría y la publicidad conceptual.
 - Audio: se reprodujo la pérdida de dinámica también en OfflineAudioContext. Se corrigen las frecuencias de cuerpo y se recupera la dinámica después de compresión, conservando master 0.96, recuperación 4x y los umbrales de volumen y clipping. La envolvente final se limita a 1.04; con el waveshaper 0.985 la cota teórica es inferior a 0.984.
+- Sincronización: el cuerpo del motor y la combustión comparten longitud de bucle, instante de inicio y automatización de velocidad. Así se evita la cancelación aleatoria entre capas al cambiar las RPM.
 - Modelos sonoros: Lamborghini 12 cilindros, Jesko 8; Yangwang tiene búfer de combustión silencioso y tonos de motor eléctrico incluso como rival. V10 sigue como opción estética, con preferencias y controles independientes conservados.
 - Trazabilidad: build-info.json identifica el commit compilado y el HUD identifica V10. Las siete opciones de automóvil tienen miniaturas reales; no se añadieron pagos, servicios externos o dependencias de producción.
 
-La validación local ejecuta 178 pruebas, incluidas las 42 carreras de tres vueltas sin recolocación. Los controles se repiten para el ajuste final de conservación del piso y margen sonoro; los resultados definitivos están en Actions y el SHA servido se comprueba tras publicar.
+La validación local ejecuta 179 pruebas, incluidas las 42 carreras de tres vueltas sin recolocación. Los controles se repiten para el ajuste final de conservación del piso y margen sonoro; los resultados definitivos están en Actions y el SHA servido se comprueba tras publicar.
 
 ## Evidencia y reproducción
 

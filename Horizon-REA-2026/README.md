@@ -9,7 +9,7 @@ Repositorio: **Rick2818/Forza-El-Salvador**. Juego publicado: https://rick2818.g
 | Área | Estado |
 | --- | --- |
 | Versión V10 | Siete autos seleccionables; física y conducción de Suzaka corregidas |
-| Validación local V10 | 178/178 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
+| Validación local V10 | 179/179 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
 | Integración | Rama `quality/v10-race-stability`, PR #13; integración y publicación sujetas a los controles de calidad y verificación del SHA público |
 | Publicación | GitHub Pages solo despliega si pasan pruebas, auditorías y compilación; `build-info.json` identifica el commit servido |
 | 60 FPS en la laptop | Objetivo pendiente de medir en hardware real |
