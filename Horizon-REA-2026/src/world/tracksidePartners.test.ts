@@ -48,7 +48,8 @@ describe("trackside partner billboards", () => {
   }
 
   it("omits signage if there is no built track", () => {
-    const track = { ...circuitFixture("monzon"), samples: [] } as Track;
+    const track = circuitFixture("monzon");
+    track.samples = [];
     expect(planTracksidePartners(track, ground)).toHaveLength(0);
   });
 });
