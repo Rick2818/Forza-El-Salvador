@@ -28,6 +28,7 @@ try {
     // Pause game physics/audio writes: the normal animation loop otherwise
     // overrides manually tested RPM on every frame, corrupting loudness QA.
     game.state = "paused";
+    game.prepareCapture(); // freeze rendering as well as physics during audio QA
     const audio = game.audio;
     if (audio.getEngineProfile() !== "v10")
       throw Error("V10 mode is not active");
@@ -49,7 +50,9 @@ try {
     // racing master. The victory bus is silent during this test.
     audio.masterGain.connect(destination);
     const meter = ctx.createAnalyser();
-    meter.fftSize = 2048;
+    // Cover multiple bass cycles; a 46-ms window exaggerated idle phase.
+    // Keep every existing loudness, dynamic-range and clipping threshold.
+    meter.fftSize = 16384;
     audio.masterGain.connect(meter);
     const measures = [];
     const recordLevel = async rpm => {

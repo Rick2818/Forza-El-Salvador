@@ -85,6 +85,12 @@ export class Vehicle {
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
     this.wheelRadius = design?.wheelRadius ?? .36;
     this.visual = opts.vehicleId ? createSelectedVisual(opts.vehicleId) : createCarVisual(opts);
+    if (opts.vehicleId === "ferrari-california-t" && this.visual.paint instanceof THREE.MeshPhysicalMaterial &&
+        scene.userData.vehicleReflectionEnvironment instanceof THREE.Texture) {
+      this.visual.paint.envMap = scene.userData.vehicleReflectionEnvironment;
+      this.visual.paint.envMapIntensity = .65;
+      this.visual.paint.needsUpdate = true;
+    }
     this.isPlayer = opts.isPlayer ?? false;
     this.turboFlames = this.isPlayer
       ? new TurboFlames(this.visual.root, design?.length ?? 4.5, design?.width ?? 1.9)

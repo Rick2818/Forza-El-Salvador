@@ -2,6 +2,7 @@ import { RacePerformance, GPUFrameTimer } from "./render/performance";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import { RELEASE_LABEL } from "./core/version";
+import { ContactShadows } from "./render/contactShadows";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { Environment } from "./world/environment";
@@ -127,6 +128,8 @@ export class Game {
       }
     } catch { /* Storage can be disabled; the default still works. */ }
     this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty);
+    const contacts = new ContactShadows(this.scene);
+    this.scene.onBeforeRender = () => contacts.update(this.race.racers, this.track, this.environment.terrain);
     this.chase = new ChaseCamera(this.camera);
     this.smoke = new SmokeSystem(this.scene);
 

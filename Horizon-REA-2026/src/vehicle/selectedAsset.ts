@@ -254,6 +254,7 @@ export function createSelectedVisual(id: string): CarVisual {
           object.material.transparent || object instanceof THREE.SkinnedMesh) return;
       // Keep the named, approved Ferrari rear details individually inspectable.
       if (/^(Ferrari_rear_brake_ring|Sculpted_rear_valance)/.test(object.name)) return;
+      if (/^Cockpit_V11_steering_rim/.test(object.name)) return;
       const attributes = Object.keys(object.geometry.attributes).sort().map(name => {
         const a = object.geometry.getAttribute(name);
         return `${name}:${a.itemSize}:${a.normalized}`;

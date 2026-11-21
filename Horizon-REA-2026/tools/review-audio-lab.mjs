@@ -1,10 +1,11 @@
 import {chromium} from 'playwright';
 import {mkdir,writeFile} from 'node:fs/promises';
 await mkdir('review/audio-lab',{recursive:true});
+const label=process.env.AUDIO_REFERENCE==='1'?'reference':'production';
 const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:720}});
- await page.goto('http://127.0.0.1:4173/');
+ await page.goto(process.env.LAB_URL??'http://127.0.0.1:4173/');
  await page.getByRole('button',{name:'Iniciar carrera',exact:true}).waitFor({timeout:120000});
  await page.getByRole('button',{name:'Iniciar carrera',exact:true}).click();
  const result=await page.evaluate(async()=>{
@@ -26,7 +27,7 @@ try{
   const AudioClass=a.constructor,Original=window.AudioContext;
   const sampleRate=48000,seconds=7.5,variants=[];
   let finalPCM;
-  for(const variant of ['original','envelope','audible-bass','audible-bass-envelope']){
+  for(const variant of ['production']){
    const offline=new OfflineAudioContext(1,sampleRate*seconds,sampleRate);
    let clock=0;Object.defineProperty(offline,'currentTime',{get:()=>clock});
    let probe;
@@ -60,6 +61,10 @@ try{
   const arr=new Uint8Array(bytes);let binary='';for(let i=0;i<arr.length;i+=8192)binary+=String.fromCharCode(...arr.subarray(i,i+8192));
   return {levels,variants,wav:btoa(binary),note:'Actual WebAudio DSP; procedural source, not a licensed recording'};
  });
- const {wav,...report}=result;await writeFile('review/audio-lab/baseline.json',JSON.stringify(report,null,2));
- await writeFile('review/audio-lab/baseline.wav',Buffer.from(wav,'base64'));console.log('AUDIO_LAB',JSON.stringify(report));
+ const {wav,...report}=result;await writeFile(`review/audio-lab/${label}.json`,JSON.stringify(report,null,2));
+ await writeFile(`review/audio-lab/${label}.wav`,Buffer.from(wav,'base64'));console.log('AUDIO_LAB',label,JSON.stringify(report));
+ if(label==='production'){
+  const stages=report.variants[0].segments;
+  if(stages[0].rms<.3198*1.5||stages[3].rms<.4114*1.5||stages[3].rms<=stages[0].rms*1.25||stages.some(s=>s.peak>=.99))throw Error('Deterministic final-output audio acceptance failed');
+ }
 }finally{await browser.close();}

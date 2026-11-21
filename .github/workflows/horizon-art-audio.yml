@@ -14,6 +14,8 @@ jobs:
         working-directory: Horizon-REA-2026
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -26,6 +28,16 @@ jobs:
       - run: npm run preview > /tmp/horizon-art-preview.log 2>&1 &
       - run: node tools/review-audio-lab.mjs
       - run: node tools/review-engine-audio.mjs
+      - run: node tools/review-art-ferrari.mjs
+      - name: Compilar referencia V10 para comparación idéntica
+        run: |
+          git worktree add --detach /tmp/horizon-reference 3de9b8baf12508849940e42bdf8f5ce26d8ef935
+          ln -s "$GITHUB_WORKSPACE/Horizon-REA-2026/node_modules" /tmp/horizon-reference/Horizon-REA-2026/node_modules
+          cd /tmp/horizon-reference/Horizon-REA-2026
+          npm run build
+          npm run preview -- --port 4174 > /tmp/horizon-reference.log 2>&1 &
+      - run: ART_LABEL=reference ART_URL=http://127.0.0.1:4174/ node tools/review-art-ferrari.mjs
+      - run: AUDIO_REFERENCE=1 LAB_URL=http://127.0.0.1:4174/ node tools/review-audio-lab.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -33,3 +45,4 @@ jobs:
           path: |
             Horizon-REA-2026/review/audio-lab
             Horizon-REA-2026/review/audio
+            Horizon-REA-2026/review/art-ferrari
