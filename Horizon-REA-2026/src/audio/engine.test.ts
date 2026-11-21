@@ -4,6 +4,9 @@ import { GameAudio, enginePulseHz, type RivalEngineState } from "./engine";
 class Param {
   value = 0;
   setTargetAtTime(value: number) { this.value = value; }
+  setValueAtTime(value: number) { this.value = value; }
+  linearRampToValueAtTime(value: number) { this.value = value; }
+  exponentialRampToValueAtTime(value: number) { this.value = value; }
 }
 class Node {
   gain = new Param();
@@ -174,4 +177,31 @@ it("raises V10 idle and acceleration to a medium-strong mix with peak control", 
   expect(ctx.gains[0].gain.value).toBe(0);
   audio.setMuted(false);
   expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+});
+
+it("keeps countdown music silent and starts the full-level original victory only at results", () => {
+  vi.stubGlobal("window", {AudioContext:Context});
+  const audio = new GameAudio();
+  audio.ensure();
+  const ctx = Context.current;
+  const oscillatorsBefore = ctx.oscillators.length;
+  expect(audio.isVictoryPlaying).toBe(false);
+  audio.update(4000,.8,100,0);
+  expect(ctx.oscillators.length).toBe(oscillatorsBefore);
+  audio.playVictory();
+  expect(audio.isVictoryPlaying).toBe(true);
+  expect(ctx.oscillators.length).toBeGreaterThan(oscillatorsBefore + 25);
+  expect(ctx.gains[0].gain.value).toBe(1);
+  expect(ctx.gains[2].gain.value).toBe(1);
+  audio.setVolumes({music:.6});
+  expect(ctx.gains[2].gain.value).toBeCloseTo(.6);
+  audio.setMuted(true);
+  expect(ctx.gains[0].gain.value).toBe(0);
+  audio.setMuted(false);
+  expect(ctx.gains[0].gain.value).toBe(1);
+  audio.silence();
+  expect(audio.isVictoryPlaying).toBe(false);
+  expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+  audio.playVictory();
+  expect(audio.isVictoryPlaying).toBe(true);
 });
