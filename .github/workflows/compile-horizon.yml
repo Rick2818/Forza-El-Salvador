@@ -6,6 +6,8 @@ on:
     paths:
       - 'Horizon-REA-2026/**'
       - '.github/workflows/compile-horizon.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
