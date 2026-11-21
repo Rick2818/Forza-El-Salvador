@@ -31,6 +31,7 @@ export class Game {
   race: Race;
   private selectedVehicleId = DEFAULT_SELECTED_ID;
   private difficulty: Difficulty = "medio";
+  private oncomingEnabled = false;
   readonly input = new Input();
   readonly chase: ChaseCamera;
   readonly audio = new GameAudio();
@@ -122,12 +123,13 @@ export class Game {
       if (saved) { vehicleDesign(saved); this.selectedVehicleId = saved; }
       const savedQuality = localStorage.getItem("horizon.quality");
       if (savedQuality === "alta" || savedQuality === "equilibrada") this.quality=savedQuality;
+      this.oncomingEnabled = localStorage.getItem("horizon.oncoming-traffic") === "true";
       const savedDifficulty = localStorage.getItem("horizon.difficulty");
       if (savedDifficulty === "facil" || savedDifficulty === "medio" || savedDifficulty === "dificil") {
         this.difficulty = savedDifficulty;
       }
     } catch { /* Storage can be disabled; the default still works. */ }
-    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty);
+    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty, this.oncomingEnabled);
     const contacts = new ContactShadows(this.scene);
     this.scene.onBeforeRender = () => contacts.update(this.race.racers, this.track, this.environment.terrain);
     this.chase = new ChaseCamera(this.camera);
@@ -149,6 +151,11 @@ export class Game {
         try { localStorage.setItem("horizon.circuit", id); } catch { /* optional persistence */ }
         // Rebuild the world rather than retain barriers or terrain from the old circuit.
         window.location.reload();
+      },
+      onToggleOncoming: (enabled) => {
+        this.oncomingEnabled = enabled;
+        try { localStorage.setItem("horizon.oncoming-traffic", String(enabled)); } catch { /* optional */ }
+        if (this.state === "menu") this.replaceRace();
       },
       onSelectDifficulty: (difficulty) => {
         this.difficulty = difficulty;
@@ -178,6 +185,7 @@ export class Game {
     this.menu.setSelectedVehicle(this.selectedVehicleId);
     this.menu.setSelectedCircuit(this.track.circuit.id);
     this.menu.setDifficulty(this.difficulty);
+    this.menu.setOncomingEnabled(this.oncomingEnabled);
     this.menu.setQuality(this.quality.toUpperCase());
     this.applyQuality();
     this.menu.showStart(this.track.length / 1000);
@@ -260,7 +268,7 @@ export class Game {
     this.input.setTouchControlsVisible(true);
     this.hud.show(true);
     this.hud.setStartSignal("red");
-    this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas`, 3000);
+    this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
     this.input.focusGame();
@@ -268,7 +276,7 @@ export class Game {
 
   private replaceRace(): void {
     this.race.dispose();
-    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty);
+    this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty, this.oncomingEnabled);
     this.physicsAccum = 0;
     this.chase?.snap();
   }
@@ -501,12 +509,16 @@ export class Game {
         this.race.update(this.fixedStep, drive as Input);
         this.world.step();
         for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep();
+        for (const car of this.race.oncoming) car.vehicle.afterPhysicsStep();
+        const collision = this.race.detectPlayerCarImpact();
+        if (collision > 0) this.audio.playCollision(collision);
         this.physicsAccum -= this.fixedStep;
         steps++;
       }
       if (steps === 0) this.physicsAccum = Math.min(this.physicsAccum, this.fixedStep);
 
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
+      for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.environment.update(this.race.player.vehicle.position, dt);
       if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
@@ -529,7 +541,14 @@ export class Game {
           rpm: vehicle.rpm, throttle: vehicle.controls.throttle,
           x: position.x, z: position.z, vx: motion.x, vz: motion.z
         };
-      }));
+      }).concat(this.race.oncoming.map(car => {
+        const vehicle = car.vehicle;
+        const position = vehicle.body.translation();
+        const motion = vehicle.body.linvel();
+        return { id: `traffic-${car.id}`, vehicleId: vehicle.vehicleId ?? "",
+          rpm: vehicle.rpm, throttle: vehicle.controls.throttle,
+          x: position.x, z: position.z, vx: motion.x, vz: motion.z };
+      })));
 
       if (this.race.state === "racing" && !this.goShown) {
         this.goShown = true;
