@@ -132,7 +132,6 @@ export class GameAudio {
   private readonly loops = new Map<number, AudioBuffer>();
   private readonly bodyLoops = new Map<number, AudioBuffer>();
   private profile: EngineSoundProfile = "v10";
-  private skidGain: GainNode | null = null;
   private muted = false;
   private started = false;
   private electric = false;
@@ -381,25 +380,8 @@ export class GameAudio {
     if (!this.electric) { oscA.disconnect(); oscB.disconnect(); }
     this.installCombustion();
 
-    // ---- Tyre scrub: looping noise through a band-pass, gain driven by slip.
-    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource();
-    noise.buffer = noiseBuffer;
-    noise.loop = true;
-    const band = ctx.createBiquadFilter();
-    band.type = "bandpass";
-    band.frequency.value = 1600;
-    band.Q.value = 0.8;
-    const skidGain = ctx.createGain();
-    skidGain.gain.value = 0;
-    noise.connect(band);
-    band.connect(skidGain);
-    skidGain.connect(this.enginesBus);
-    noise.start();
-
-    this.skidGain = skidGain;
+    // The former sand-like looping skid-noise source has been removed.
+    // Keep engine and passing-vehicle audio, without tyre scrub playback.
     // Restore load/RPM dynamics AFTER compression. The bounded envelope
     // stays below 1.04 and cannot alter the user's saved volume. Together
     // with the .985 waveshaper and .96 master, peaks remain below .984.
@@ -453,10 +435,7 @@ export class GameAudio {
         : .10 + rev * .10 + t * .22 + t * rev * .37;
       this.engineGain.gain.setTargetAtTime(level, now, .09);
     }
-    if (this.skidGain) {
-      const scrub = Math.min(1, Math.max(0, slip)) * 0.22;
-      this.skidGain.gain.setTargetAtTime(scrub, now, 0.07);
-    }
+    void slip; // Retain the public update signature; no skid-noise source exists.
   }
 
   /** Three lightweight synth voices share the player's context and master mute. */
@@ -625,13 +604,33 @@ export class GameAudio {
     }
   }
 
+  /** Short low-frequency impact, distinct from the removed abrasive tyre noise. */
+  playCollision(severity: number): void {
+    if (!this.ctx || !this.enginesBus || this.muted || severity <= 0) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const strength = Math.min(1, Math.max(0, severity));
+    const tone = ctx.createOscillator();
+    const envelope = ctx.createGain();
+    tone.type = "triangle";
+    tone.frequency.setValueAtTime(112, t);
+    tone.frequency.exponentialRampToValueAtTime(48, t + 0.14);
+    envelope.gain.setValueAtTime(0.0001, t);
+    envelope.gain.exponentialRampToValueAtTime(Math.max(0.0002, strength * 0.17), t + 0.012);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    tone.connect(envelope);
+    envelope.connect(this.enginesBus);
+    tone.onended = () => { tone.disconnect(); envelope.disconnect(); };
+    tone.start(t);
+    tone.stop(t + 0.16);
+  }
+
   /** Fade everything out (pause, menu, results) without closing the context. */
   silence(): void {
     this.stopVictory();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.engineGain?.gain.setTargetAtTime(0, now, 0.06);
-    this.skidGain?.gain.setTargetAtTime(0, now, 0.06);
     for (const voice of this.rivals.values()) voice.gain.gain.setTargetAtTime(0, now, .06);
   }
 

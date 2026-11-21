@@ -38,6 +38,14 @@ Cada carrera tiene un jugador, tres rivales físicos y tres vueltas. **Fácil, M
 
 La salida automática comparte el reloj de carrera entre rojo, amarillo y verde. Los cuatro autos permanecen detenidos hasta el verde. La salida es completamente silenciosa musicalmente; al finalizar la carrera se activa una celebración sonora original o el archivo local seleccionado por el jugador; los motores del jugador y los rivales se sintetizan con Web Audio. Motores/neumáticos y música tienen controles separados; `M` silencia el conjunto. No se presentan estos perfiles como grabaciones de los motores originales.
 
+## Colisiones y tráfico contrario opcional
+
+- Los coches de carrera mantienen sus **colisionadores sólidos Rapier**, con impactos carrocería contra carrocería: se transfiere el movimiento mediante la física del motor y el jugador puede perder velocidad o trayectoria.
+- El menú **Tráfico en sentido contrario** permite activar o desactivar **dos vehículos físicos adicionales**. El valor predeterminado es **desactivado** y se guarda en el navegador. Los dos autos se sitúan lejos de la parrilla al empezar, circulan contra el sentido normal y no participan en el podio ni en la clasificación.
+- Los rivales intentan evitar vehículos que se aproximan de frente. No hay inmunidad frente a colisiones; las consecuencias de un contacto dependen de las velocidades y la simulación.
+- El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
+- El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
+
 ## Turbo automático, llamas y ruedas animadas — actualización V9
 
 Configuración arcade aprobada (no son especificaciones de fábrica). La velocidad en el HUD se expresa en **MPH**:
