@@ -49,22 +49,36 @@ function clearOfRoad(track: Track, x: number, z: number, threshold: number): boo
   return true;
 }
 
-/** Two placements per brand, distributed around each active circuit. */
+// Eight distributed rotations of all ten brands, never only at the start.
+// These are targets, not a requirement to put an unsafe panel on the road.
+export const PARTNER_LAP_ROTATIONS = 8;
+export const TARGET_TRACKSIDE_SIGNS = TRACKSIDE_BRANDS.length * PARTNER_LAP_ROTATIONS;
+
+/**
+ * Place signs in uniformly spaced slots along the FULL lap. Search only near
+ * each slot; the old algorithm could move panels >1 km after a failed slot,
+ * clustering many signs in a safe section near the start/finish.
+ * Invalid/unsafe slots are skipped instead of relocating to another sector.
+ */
 export function planTracksidePartners(track: Track, ground: TerrainField): PartnerBoardPlacement[] {
   if (track.circuit.id !== "monzon" && track.circuit.id !== "suzaka") return [];
   const N = track.samples.length;
   if (!N) return [];
-  const total = TRACKSIDE_BRANDS.length * 2;
+  const total = TARGET_TRACKSIDE_SIGNS;
   const lateral = track.barrierLateralOffset + 9.5;
   const minRoadDistance = track.barrierLateralOffset + CLEARANCE_PADDING;
   const planned: PartnerBoardPlacement[] = [];
-  const step = Math.max(3, Math.floor(N / 110));
+  const separation = Math.max(42, Math.min(70, (track.length / total) * .72));
+  // Never displace a sign more than ~110 m from its assigned lap slot.
+  const step = Math.max(1, Math.round(13 / track.segmentLength));
+  const attempts = Math.min(32, 1 + 2 * Math.ceil(110 / (step * track.segmentLength)));
 
   for (let k = 0; k < total; k++) {
-    const ideal = Math.floor(((k + .35) / total) * N);
+    const ideal = Math.floor(((k + .47) / total) * N);
     let choice: PartnerBoardPlacement | null = null;
-    for (let attempt = 0; attempt < 48 && !choice; attempt++) {
-      const stride = attempt === 0 ? 0 : (attempt % 2 === 0 ? 1 : -1) * Math.ceil(attempt / 2);
+    for (let attempt = 0; attempt < attempts && !choice; attempt++) {
+      const stride = attempt === 0 ? 0
+        : (attempt % 2 === 0 ? -1 : 1) * Math.ceil(attempt / 2);
       const index = (ideal + stride * step + N * 4) % N;
       const p = track.samples[index];
       const right = track.rights[index];
@@ -73,12 +87,16 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
       for (const side of (k % 2 ? [-1, 1] : [1, -1]) as (-1 | 1)[]) {
         const x = p.x + right.x * lateral * side;
         const z = p.z + right.z * lateral * side;
-        // No panels in front of Monzon's open garages, tower or grandstand.
+        // Keep the Monzon garages/tribune/pits unobstructed.
         if (track.circuit.id === "monzon" && x > 55 && x < 730 && z > -112 && z < 110) continue;
-        const y = ground.heightAt(x, z);
-        // The flyover is too high above the terrain for a roadside sign.
-        if (Math.abs(p.y - y) > 3.2) continue;
-        if (planned.some(board => Math.hypot(board.x - x, board.z - z) < 82)) continue;
+        const groundY = ground.heightAt(x, z);
+        // Suzaka's flyover is up to 12 m above the lower road. The previous
+        // 3.2m limit emptied entire mid-lap sectors. Position the sign above
+        // its road deck, while extending both posts to actual terrain.
+        // No sign may be placed over an unexpectedly deep excavation.
+        if (p.y < groundY - 3.2 || p.y > groundY + 14.5) continue;
+        const y = Math.max(groundY, p.y);
+        if (planned.some(board => Math.hypot(board.x - x, board.z - z) < separation)) continue;
         const ax = x - tangent.x * BOARD_WIDTH * .55;
         const az = z - tangent.z * BOARD_WIDTH * .55;
         const bx = x + tangent.x * BOARD_WIDTH * .55;
@@ -86,9 +104,11 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
         if (!clearOfRoad(track, x, z, minRoadDistance) ||
             !clearOfRoad(track, ax, az, minRoadDistance) ||
             !clearOfRoad(track, bx, bz, minRoadDistance)) continue;
-        // The front fascia follows the landscape without floating supports.
-        if (Math.abs(ground.heightAt(ax, az) - y) > 1.4 ||
-            Math.abs(ground.heightAt(bx, bz) - y) > 1.4) continue;
+        // Compare footing terrain against footing terrain, NOT against the
+        // elevated bridge deck. The previous check rejected every candidate
+        // whenever bridgeY was ~12 m above ground, leaving two empty sectors.
+        if (Math.abs(ground.heightAt(ax, az) - groundY) > 1.4 ||
+            Math.abs(ground.heightAt(bx, bz) - groundY) > 1.4) continue;
         choice = { brandIndex: k % TRACKSIDE_BRANDS.length, sampleIndex: index,
           side, x, y, z, tangentX: tangent.x, tangentZ: tangent.z };
         break;
@@ -210,9 +230,14 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
       const x = board.x + board.tangentX * (halfW - .45) * side;
       const z = board.z + board.tangentZ * (halfW - .45) * side;
       const foot = ground.heightAt(x, z);
-      translation.set(x, foot + 2.125, z);
+      // Grounded posts are extended to support banners at bridge altitude,
+      // unlike suspended signage that has no plausible physical supports.
+      const postHeight = Math.max(.2, board.y + 4.25 - foot);
+      translation.set(x, foot + postHeight / 2, z);
+      scale.set(1, postHeight / 4.25, 1);
       matrix.compose(translation, new THREE.Quaternion(), scale);
       posts.setMatrixAt(i * 2 + (side + 1) / 2, matrix);
+      scale.set(1, 1, 1);
     }
   });
   backing.instanceMatrix.needsUpdate = true;
