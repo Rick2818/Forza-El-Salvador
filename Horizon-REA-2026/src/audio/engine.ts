@@ -94,6 +94,7 @@ export class GameAudio {
   private engineLimiter: DynamicsCompressorNode | null = null;
   private engineOutputBoost: GainNode | null = null;
   private enginePeakGuard: DynamicsCompressorNode | null = null;
+  private engineSoftLimiter: WaveShaperNode | null = null;
   private musicBus: GainNode | null = null;
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -205,6 +206,7 @@ export class GameAudio {
     return (this.engineLimiter?.reduction ?? 0) + (this.enginePeakGuard?.reduction ?? 0);
   }
   getEngineOutputBoost(): number { return this.engineOutputBoost?.gain.value ?? ENGINE_OUTPUT_BOOST; }
+  getEngineSoftLimitEnabled(): boolean { return this.engineSoftLimiter !== null; }
 
   get isMuted(): boolean {
     return this.muted;
@@ -260,10 +262,22 @@ export class GameAudio {
     peakGuard.release.value = .12;
     engineLimiter.connect(outputBoost);
     outputBoost.connect(peakGuard);
-    peakGuard.connect(master);
+    // Smooth post-peak limiting restores loudness to the V10's harmonic body
+    // without digital hard clipping. Oversampling reduces audible aliasing.
+    const softLimiter = ctx.createWaveShaper();
+    const curve = new Float32Array(4097);
+    for (let i = 0; i < curve.length; i++) {
+      const value = i / (curve.length - 1) * 2 - 1;
+      curve[i] = 0.985 * Math.tanh(value * 2.35) / Math.tanh(2.35);
+    }
+    softLimiter.curve = curve;
+    softLimiter.oversample = "4x";
+    peakGuard.connect(softLimiter);
+    softLimiter.connect(master);
     this.engineLimiter = engineLimiter;
     this.engineOutputBoost = outputBoost;
     this.enginePeakGuard = peakGuard;
+    this.engineSoftLimiter = softLimiter;
     // A separate, peak-limited victory bus. No music during the countdown.
     this.musicBus = ctx.createGain();
     this.musicBus.gain.value = this.volumes.music;
