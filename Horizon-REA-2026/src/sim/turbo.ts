@@ -7,7 +7,7 @@ export const TURBO_TRIGGER_KPH = 160.9344;
 export const TURBO_TRIGGER_MS = TURBO_TRIGGER_KPH / 3.6;
 export const TURBO_DURATION = 2.2;
 export const TURBO_COOLDOWN = 6;
-export const TURBO_FORCE_N = 5900;
+export const TURBO_FORCE_N = 11200;
 export interface TurboState {
   active: number;
   cooldown: number;
