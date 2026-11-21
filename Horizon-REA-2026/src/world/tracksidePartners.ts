@@ -104,8 +104,11 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
         if (!clearOfRoad(track, x, z, minRoadDistance) ||
             !clearOfRoad(track, ax, az, minRoadDistance) ||
             !clearOfRoad(track, bx, bz, minRoadDistance)) continue;
-        if (Math.abs(ground.heightAt(ax, az) - y) > 1.4 ||
-            Math.abs(ground.heightAt(bx, bz) - y) > 1.4) continue;
+        // Compare footing terrain against footing terrain, NOT against the
+        // elevated bridge deck. The previous check rejected every candidate
+        // whenever bridgeY was ~12 m above ground, leaving two empty sectors.
+        if (Math.abs(ground.heightAt(ax, az) - groundY) > 1.4 ||
+            Math.abs(ground.heightAt(bx, bz) - groundY) > 1.4) continue;
         choice = { brandIndex: k % TRACKSIDE_BRANDS.length, sampleIndex: index,
           side, x, y, z, tangentX: tangent.x, tangentZ: tangent.z };
         break;
