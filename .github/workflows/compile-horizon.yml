@@ -1,0 +1,47 @@
+name: Compilar Horizon El Salvador V9
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/compile-horizon.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Compilar TypeScript y Vite
+        run: npm run build
+      - name: Comprobar archivos resultantes
+        run: |
+          test -s dist/index.html
+          test -d dist/assets
+          echo "Archivos del paquete:"
+          du -sh dist
+          find dist -type f | wc -l
+      - name: Guardar paquete compilado
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-v9-dist
+          path: Horizon-REA-2026/dist
+          if-no-files-found: error
+          retention-days: 7
