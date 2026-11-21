@@ -138,6 +138,7 @@ export class Game {
       onToggleQuality: () => this.toggleQuality(),
       onAudioVolumes: (volumes) => this.audio.setVolumes(volumes),
       onEngineProfile: (profile) => this.audio.setEngineProfile(profile),
+      onVictoryTrack: (file) => this.audio.setVictoryTrack(file),
       onPerformanceReport: () => this.downloadPerformance(),
       onSelectCircuit: (id) => {
         if (id === this.track.circuit.id) return;
@@ -169,6 +170,7 @@ export class Game {
 
     this.menu.setAudioVolumes(this.audio.getVolumes());
     this.menu.setEngineProfile(this.audio.getEngineProfile());
+    this.menu.setVictoryTrackName(this.audio.getVictoryTrackName());
     this.menu.setSelectedVehicle(this.selectedVehicleId);
     this.menu.setSelectedCircuit(this.track.circuit.id);
     this.menu.setDifficulty(this.difficulty);
@@ -527,7 +529,6 @@ export class Game {
       } else if (this.goFlash > 0) this.goFlash = Math.max(0, this.goFlash-dt);
       const signal = startSignalPhase(this.race.state, this.race.countdown, this.goFlash > 0);
       this.hud.setStartSignal(signal);
-      this.audio.updateStartSignal(signal, this.race.countdown, SETTINGS.race.countdown);
 
       const snapshot = this.race.snapshot(drive as Input);
       this.hud.update(dt, snapshot, player, this.race.racers, this.captureMode ? NaN : this.fps);
@@ -539,7 +540,7 @@ export class Game {
           this.input.setTouchControlsVisible(false);
           this.hud.setCountdown(null);
           this.hud.show(false);
-          this.audio.silence();
+          this.audio.playVictory();
           this.menu.showResults(this.race.snapshot(drive as Input));
         }
       }
