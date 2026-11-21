@@ -35,6 +35,14 @@ Cada carrera tiene un jugador, tres rivales físicos y tres vueltas. **Fácil, M
 
 La salida automática comparte el reloj de carrera entre rojo, amarillo y verde. Los cuatro autos permanecen detenidos hasta el verde. La música original de tensión termina con la señal de salida; los motores del jugador y los rivales se sintetizan con Web Audio. Motores/neumáticos y música tienen controles separados; `M` silencia el conjunto. No se presentan estos perfiles como grabaciones de los motores originales.
 
+## Publicidad conceptual en los dos circuitos
+
+La revisión de partners incorpora **Aramco, AWS, DHL, Heineken, Lenovo, LVMH, MSC Cruises, Pirelli, Qatar Airways y Salesforce** tanto en Monzón como en Suzaka. Cada nombre aparece dos veces por vuelta, en vallas 3D más allá de las barreras de seguridad. El planificador evita los boxes, la tribuna de Monzón, el cruce de Suzaka y los puntos elevados sin soporte en terreno. Usa un solo atlas de texturas de Canvas, un lote de carteles y soportes instanciados para controlar el coste gráfico.
+
+**Alcance legal:** son representaciones tipográficas conceptuales para revisión, no logotipos oficiales ni patrocinios acreditados. Antes de explotar comercialmente el juego con las marcas es necesario obtener los derechos/autorizaciones correspondientes y verificar las restricciones publicitarias aplicables (especialmente bebidas alcohólicas).
+
+Las pruebas automáticas `src/world/tracksidePartners.test.ts` verifican los nombres, dos apariciones por marca y circuito, y la separación de la pista en un circuito de prueba. Deben completarse capturas WebGL, inspección visual y medición real de FPS antes de aprobar producción.
+
 ## Instalación y uso local
 
 Recomendado: **Node.js 22+**, npm y Chrome con WebGL2. Blender, Python, numpy y Pillow solo se requieren para reconstruir determinados activos, no para jugar ni compilar el código web.
