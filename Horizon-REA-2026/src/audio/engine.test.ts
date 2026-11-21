@@ -83,7 +83,7 @@ it("silences rivals on pause, shares mute and releases obsolete voices", () => {
   expect(ctx.oscillators.at(-1)!.stop).toHaveBeenCalledOnce();
   audio.setMuted(false);
   audio.updateRivals(listener, [engine]);
-  expect(ctx.gains.at(-4)!.gain.value).toBeGreaterThan(0);
+  expect(ctx.gains[8].gain.value).toBeGreaterThan(0);
 });
 
  it("separates engines and music while keeping the shared mute",()=>{
