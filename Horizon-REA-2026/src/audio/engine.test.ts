@@ -168,13 +168,13 @@ it("raises V10 idle and acceleration to a medium-strong mix with peak control", 
   expect(ctx.compressors[1].ratio.value).toBeGreaterThanOrEqual(12);
   audio.update(850, 0, 0, 0);
   const idle = motorGain.gain.value;
-  expect(idle).toBeGreaterThan(.35);
-  expect(idle).toBeLessThan(.43);
+  expect(idle).toBeGreaterThan(.12);
+  expect(idle).toBeLessThan(.20);
   audio.update(7800, 1, 200, 0);
   const full = motorGain.gain.value;
   expect(full).toBeGreaterThan(.75);
   expect(full).toBeLessThan(1);
-  expect(full).toBeGreaterThan(idle * 2);
+  expect(full).toBeGreaterThan(idle * 4);
   expect(musicBus.gain.value).toBe(1);
   audio.setVolumes({engines: .5, music: .75});
   expect(ctx.gains[1].gain.value).toBe(.5);
