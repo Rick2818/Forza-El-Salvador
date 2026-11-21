@@ -85,6 +85,9 @@ export class AIDriver {
     const tangent = this.track.tangentAt(this.hint);
     const right = this.track.rightAt(this.hint);
     const ownLane = (pos.x - road.x) * right.x + (pos.z - road.z) * right.z;
+    // Reacquire the racing surface instead of continuing a high-speed
+    // overtaking maneuver while sideways/outside the road on Suzaka.
+    const recovering = !v.onTrack || Math.abs(ownLane) > this.track.halfWidth * .82;
 
     // Only local projections are needed; no expensive global pathfinding at 60 FPS.
     const nearby: Nearby[] = traffic.map(other => {
@@ -140,7 +143,10 @@ export class AIDriver {
         }
       }
     }
-    if (this.pass) {
+    if (recovering) {
+      this.pass = null;
+      desiredLane = 0;
+    } else if (this.pass) {
       desiredLane = this.pass.lane;
     } else if (chaser && tuning.pressure > 0.2 &&
                (this.personality === "defensor" || this.difficulty === "dificil")) {
@@ -160,7 +166,9 @@ export class AIDriver {
     const maxLaneStep = (1.4 + tuning.pressure * 0.8) * dt;
     this.currentLane += clamp(desiredLane - this.currentLane, -maxLaneStep, maxLaneStep);
 
-    const lookAhead = clamp((7 + speed * 0.62) * tuning.reaction, 7, 46);
+    const lookAhead = recovering
+      ? clamp(7 + speed * .25, 7, 24)
+      : clamp((7 + speed * 0.62) * tuning.reaction, 7, 46);
     const aheadIndex = this.hint + Math.round(lookAhead / this.track.segmentLength);
     const base = this.track.sampleAt(aheadIndex);
     const aimRight = this.track.rightAt(aheadIndex);
@@ -171,7 +179,8 @@ export class AIDriver {
     _forward.set(0, 0, 1).applyQuaternion(_quat);
     const heading = Math.atan2(_forward.x, _forward.z);
     const desired = Math.atan2(_target.x - pos.x, _target.z - pos.z);
-    const steer = clamp(angleDelta(heading, desired) * (2.5 * tuning.reaction), -1, 1);
+    const steer = clamp(angleDelta(heading, desired) *
+      (recovering ? 3.1 : 2.5) * tuning.reaction, -1, 1);
 
     // A nearby slower car forces braking until the pass is physically clear.
     for (const other of nearby) {
@@ -181,6 +190,7 @@ export class AIDriver {
       }
     }
 
+    if (recovering) targetSpeed = Math.min(targetSpeed, 12);
     const error = targetSpeed - speed;
     // The speed controller must account for the stronger highway engine;
     // Large gaps allow full acceleration; taper small errors by the square
