@@ -46,6 +46,7 @@ class Context {
   createDynamicsCompressor() { const node = new Node(); this.compressors.push(node); return node; }
   createBufferSource() { const node = new Node(); this.bufferSources.push(node); return node; }
   createBuffer() { return {getChannelData: () => new Float32Array(40)}; }
+  decodeAudioData(_data: ArrayBuffer) { return Promise.resolve(this.createBuffer()); }
   resume() { return Promise.resolve(); }
 }
 afterEach(() => vi.unstubAllGlobals());
@@ -204,4 +205,32 @@ it("keeps countdown music silent and starts the full-level original victory only
   expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
   audio.playVictory();
   expect(audio.isVictoryPlaying).toBe(true);
+});
+
+it("plays a chosen local audio file from the decoded buffer without publishing it", async () => {
+  vi.stubGlobal("window", {AudioContext:Context});
+  const audio = new GameAudio();
+  const acceptedFile = {
+    name: "licensed-victory.wav",
+    type: "audio/wav",
+    size: 128,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(128))
+  } as File;
+  expect(audio.setVictoryTrack(acceptedFile)).toBe(true);
+  expect(audio.getVictoryTrackName()).toBe("licensed-victory.wav");
+  audio.ensure();
+  await vi.waitFor(() => {
+    expect(Context.current.bufferSources).toHaveLength(2); // combustion and tyre noise
+    expect((audio as unknown as {victoryBuffer:unknown}).victoryBuffer).toBeTruthy();
+  });
+  audio.playVictory();
+  expect(audio.isVictoryPlaying).toBe(true);
+  const played = Context.current.bufferSources.at(-1)!;
+  expect(played.start).toHaveBeenCalledOnce();
+  expect(played.buffer).toBeDefined();
+  expect(audio.setVictoryTrack({name:"huge.wav",size:60*1024*1024,type:"audio/wav"} as File)).toBe(false);
+  audio.silence();
+  expect(played.stop).toHaveBeenCalledOnce();
+  audio.setVictoryTrack(null);
+  expect(audio.getVictoryTrackName()).toBeNull();
 });
