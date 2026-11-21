@@ -15,6 +15,7 @@ export interface MenuCallbacks {
   onToggleQuality: () => void;
   onAudioVolumes: (values: AudioVolumes) => void;
   onEngineProfile: (profile: EngineSoundProfile) => void;
+  onVictoryTrack: (file: File | null) => boolean;
   onPerformanceReport: () => void;
   onSelectDifficulty: (difficulty: Difficulty) => void;
   onSelectCircuit: (id: string) => void;
@@ -38,6 +39,7 @@ const CONTROLS = `
 export class Menu {
   private audioVolumes: AudioVolumes = {engines:1,music:1};
   private engineProfile: EngineSoundProfile = "v10";
+  private victoryTrackName: string | null = null;
   private overlay: HTMLDivElement;
   private callbacks: MenuCallbacks;
   private qualityLabel = "EQUILIBRADA";
@@ -57,9 +59,20 @@ export class Menu {
     root.appendChild(this.overlay);
     this.overlay.addEventListener("click", this.onClick);
     this.overlay.addEventListener("change", event => {
-      const target = event.target as HTMLSelectElement;
-      if (target.dataset.engineProfile !== "profile") return;
-      if (target.value === "v10" || target.value === "vehiculo") {
+      const target = event.target as HTMLInputElement | HTMLSelectElement;
+      if (target.dataset.victoryTrack === "file" && target instanceof HTMLInputElement) {
+        const file = target.files?.[0] ?? null;
+        const accepted = this.callbacks.onVictoryTrack(file);
+        if (accepted) this.victoryTrackName = file?.name ?? null;
+        const label = this.overlay.querySelector<HTMLElement>("[data-victory-status]");
+        if (label) label.textContent = !accepted ? "Archivo inválido o mayor de 50 MB"
+          : this.victoryTrackName
+            ? "Audio local: " + this.victoryTrackName
+            : "Celebración original";
+        return;
+      }
+      if (target.dataset.engineProfile === "profile" &&
+          (target.value === "v10" || target.value === "vehiculo")) {
         this.engineProfile = target.value;
         this.callbacks.onEngineProfile(target.value);
       }
@@ -75,14 +88,19 @@ export class Menu {
 
   setAudioVolumes(values: AudioVolumes): void { this.audioVolumes={...values}; }
   setEngineProfile(profile: EngineSoundProfile): void { this.engineProfile = profile; }
+  setVictoryTrackName(name: string | null): void { this.victoryTrackName = name; }
   private audioPanel(): string {
-    return `<fieldset class="audio-panel"><legend>Sonido</legend>${([['engines','Motores y neumáticos'],['music','Música de salida']] as const).map(([key,label])=>
+    return `<fieldset class="audio-panel"><legend>Sonido</legend>${([['engines','Motores y neumáticos'],['music','Música de victoria']] as const).map(([key,label])=>
       `<label>${label}<input type="range" min="0" max="100" step="5" value="${Math.round(this.audioVolumes[key]*100)}" data-audio="${key}" aria-label="${label}"><output>${Math.round(this.audioVolumes[key]*100)}%</output></label>`).join('')}
       <label>Sonido del motor
         <select data-engine-profile="profile" aria-label="Sonido del motor">
           <option value="v10" ${this.engineProfile === "v10" ? "selected" : ""}>V10 deportivo (sintetizado)</option>
           <option value="vehiculo" ${this.engineProfile === "vehiculo" ? "selected" : ""}>Perfil por vehículo (sintetizado)</option>
         </select>
+      </label>
+      <label style="grid-template-columns:1fr">Audio de victoria propio (archivo local, con permiso de uso)
+        <input data-victory-track="file" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.webm" aria-label="Archivo de música de victoria">
+        <span data-victory-status style="font-size:12px;opacity:.85">${this.victoryTrackName ? escapeHtml(this.victoryTrackName) : "Sin archivo: celebración musical original"}</span>
       </label></fieldset>`;
   }
 
