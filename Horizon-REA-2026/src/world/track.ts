@@ -144,9 +144,8 @@ export class Track {
       const a = this.tangents[(i - 2 + N) % N];
       const b = this.tangents[(i + 2) % N];
       const angle = clamp(a.dot(b), -1, 1);
-      // The figure-eight uses genuine angular curvature, not cosine; the
-      // legacy layouts retain their previous AI tuning.
-      const bend = this.circuit.layout ? Math.acos(angle) : angle;
+      // Angular curvature keeps Monzon straight-line targets separate from braking zones.
+      const bend = this.circuit.layout || this.circuit.id === "monzon" ? Math.acos(angle) : angle;
       this.curvatures.push(bend / (4 * this.segmentLength));
     }
     // Light smoothing
