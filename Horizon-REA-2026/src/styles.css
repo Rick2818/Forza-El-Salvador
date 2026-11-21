@@ -616,3 +616,17 @@ button.difficulty-btn.is-active {
   .audio-panel select { grid-column: 1; }
   .audio-panel output { grid-column: 2; }
 }
+
+/* Optional physical oncoming traffic: clear touch target on desktop/mobile. */
+.traffic-panel {
+  border: 1px solid #465463;
+  border-radius: 12px;
+  padding: 13px 17px;
+  margin: 16px 0 20px;
+  color: #dfe9f5;
+}
+.traffic-panel legend { font-weight: 700; padding: 0 8px; }
+.traffic-panel p { font-size: 13px; line-height: 1.45; opacity: .82; margin: 8px 0 0; }
+.traffic-switch { display: flex; gap: 12px; align-items: center; cursor: pointer; min-height: 45px; line-height: 1.45; }
+.traffic-switch input { flex: none; width: 22px; height: 22px; accent-color: #ff824f; }
+.traffic-switch strong { color: #fff; }
