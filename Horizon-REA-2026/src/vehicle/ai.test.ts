@@ -1,5 +1,8 @@
+import { Vector3 } from "three";
+import type { Vehicle } from "./vehicle";
+import type { Track } from "../world/track";
 import { describe, expect, it } from "vitest";
-import { DIFFICULTY_TUNING, rivalTargetMultiplier } from "./ai";
+import { AIDriver, DIFFICULTY_TUNING, rivalTargetMultiplier } from "./ai";
 
 describe("IA de carrera: tres niveles y personalidades", () => {
   it("aumenta de forma consistente el ritmo al subir la dificultad", () => {
@@ -17,4 +20,29 @@ describe("IA de carrera: tres niveles y personalidades", () => {
     expect(DIFFICULTY_TUNING.dificil.pressure).toBeGreaterThan(DIFFICULTY_TUNING.medio.pressure);
     expect(DIFFICULTY_TUNING.medio.pressure).toBeGreaterThan(DIFFICULTY_TUNING.facil.pressure);
   });
+});
+
+it("commits to a pass against another AI car until it has cleared it", () => {
+  const track = {
+    nearestIndex: () => 0,
+    sampleAt: (i: number) => new Vector3(0, 0, i * 3),
+    tangentAt: () => new Vector3(0, 0, 1),
+    rightAt: () => new Vector3(1, 0, 0),
+    segmentLength: 3,
+    samples: Array(60),
+    targetSpeeds: Array(60).fill(40)
+  } as unknown as Track;
+  const vehicle = {
+    position: new Vector3(),
+    speed: 25,
+    body: { rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }) }
+  } as unknown as Vehicle;
+  const driver = new AIDriver(vehicle, track, 0, 1, 0, "estratega", "medio");
+  const opponent = { racerId: 3, isPlayer: false, position: new Vector3(0, 0, 14), speed: 16 };
+  expect(driver.plan(0.5, 0, [opponent]).steer).toBeGreaterThan(0);
+  opponent.position.z = -3;
+  const alongside = driver.plan(0.5, 0, [opponent]).steer;
+  expect(alongside).toBeGreaterThan(0);
+  opponent.position.z = -12;
+  expect(driver.plan(0.5, 0, [opponent]).steer).toBeLessThan(alongside);
 });

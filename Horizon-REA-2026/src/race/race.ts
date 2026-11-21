@@ -208,12 +208,10 @@ export class Race {
           racer.vehicle.update(dt, driving, grip);
           racer.vehicle.setBrakeLights(driving.brake > 0.05 || this.state === "finished");
         } else if (racer.ai) {
-          racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id && Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5));
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
-          if (grip < 0.99) {
-            racer.vehicle.controls.throttle *= grip;
-          }
+          racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id &&
+            Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5), grip);
         }
       }
     }

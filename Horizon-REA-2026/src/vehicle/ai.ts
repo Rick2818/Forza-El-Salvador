@@ -10,6 +10,7 @@ export interface TrafficCar {
   position: THREE.Vector3;
   speed: number;
   isPlayer: boolean;
+  racerId?: number;
 }
 
 export const DIFFICULTY_TUNING = {
@@ -29,11 +30,11 @@ const _forward = new THREE.Vector3();
 const _target = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 
-type Nearby = { gap: number; lane: number; speed: number; isPlayer: boolean };
+type Nearby = { gap: number; lane: number; speed: number; racerId?: number };
 
 /**
  * Competidores físicos con estrategia, no coches guiados por una animación:
- * - Defensor cubre una línea cuando ve llegar al jugador.
+ * - Defensor cubre una línea cuando se acerca cualquier rival.
  * - Atacante busca huecos y pasa por el exterior/interior.
  * - Estratega cambia de trazada y conserva velocidad antes de las curvas.
  * Reaccionan a otros coches, mantienen espacio y nunca reciben teletransporte.
@@ -43,6 +44,7 @@ export class AIDriver {
   private stuckTime = 0;
   private reverseTime = 0;
   private currentLane: number;
+  private pass: { lane: number; racerId?: number; remaining: number } | null = null;
   private readonly baseLane: number;
   private readonly skill: number;
   private readonly phase: number;
@@ -66,8 +68,10 @@ export class AIDriver {
     this.difficulty = difficulty;
   }
 
-  update(dt: number, time: number, traffic: readonly TrafficCar[] = []): void {
-    this.vehicle.update(dt, this.plan(dt, time, traffic), 1);
+  update(dt: number, time: number, traffic: readonly TrafficCar[] = [], grip = 1): void {
+    const driving = this.plan(dt, time, traffic);
+    this.vehicle.update(dt, driving, grip);
+    this.vehicle.setBrakeLights(driving.brake > 0.05);
   }
 
   /** El mismo plan sirve para carreras reales y capturas automáticas. */
@@ -90,36 +94,59 @@ export class AIDriver {
         gap: dx * tangent.x + dz * tangent.z,
         lane: ownLane + dx * right.x + dz * right.z,
         speed: Math.abs(other.speed),
-        isPlayer: other.isPlayer
+        racerId: other.racerId
       };
     });
 
+    const multiplier = rivalTargetMultiplier(this.skill, this.difficulty, this.personality);
+    // Drivers are quicker in different parts of the lap, so the same car
+    // does not automatically set the pace in every sector.
+    const sector = this.hint / this.track.samples.length * Math.PI * 4;
+    const pace = multiplier * (1 + Math.sin(sector + this.phase) * (0.018 + tuning.pressure * 0.035));
+    const profileSpeed = this.track.targetSpeeds[this.hint] * pace;
+    const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace;
+    let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, 17));
     const front = nearby
-      .filter(o => o.gap > 1.5 && o.gap < 32 && Math.abs(o.lane - ownLane) < 3.6)
+      .filter(o => o.gap > 1.5 && o.gap < 24 + tuning.pressure * 22 && Math.abs(o.lane - ownLane) < 3.3)
       .sort((a, b) => a.gap - b.gap)[0];
-    const playerBehind = nearby.find(o => o.isPlayer && o.gap < -7 && o.gap > -23);
-    const wander = Math.sin(time * (this.personality === "estratega" ? 0.23 : 0.31) + this.phase) * 0.55;
+    const chaser = nearby.find(o => o.gap < -9 && o.gap > -25 &&
+      Math.abs(o.lane - ownLane) > 1.3 && o.speed > speed + 1);
+    const wander = Math.sin(time * 0.27 + this.phase) * 0.35;
     let desiredLane = this.baseLane + wander;
 
-    // Seek an unoccupied passing corridor. The attacker attempts more passes,
-    // while easy rivals mostly hold a predictable line.
-    if (front && (this.personality === "atacante" || tuning.pressure > 0.35)) {
-      const firstSide = this.personality === "atacante" ? 1 : Math.sin(this.phase) > 0 ? -1 : 1;
-      for (const side of [firstSide, -firstSide]) {
-        const candidate = clamp(front.lane + side * 3.45, -4.55, 4.55);
-        if (Math.abs(candidate - front.lane) < 3.0) continue;
-        const occupied = nearby.some(o =>
-          Math.abs(o.gap) < 10 && Math.abs(o.lane - candidate) < 2.7
-        );
-        if (!occupied) { desiredLane = candidate; break; }
+    if (this.pass) {
+      const target = nearby.find(o => o.racerId === this.pass?.racerId);
+      this.pass.remaining -= dt;
+      if (this.pass.remaining <= 0 || (this.pass.racerId !== undefined && (!target || target.gap < -9))) {
+        this.pass = null;
       }
-    } else if (playerBehind && tuning.pressure > 0.2 &&
+    }
+    if (!this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
+      const firstSide = Math.sin(this.phase) > 0 ? -1 : 1;
+      for (const side of [firstSide, -firstSide]) {
+        const candidate = clamp(front.lane + side * 3.35, -4.55, 4.55);
+        if (Math.abs(candidate - front.lane) < 3) continue;
+        const occupied = nearby.some(o => o.gap > -11 && o.gap < Math.min(22, front.gap + 6) &&
+          Math.abs(o.lane - candidate) < 2.8);
+        if (!occupied) {
+          this.pass = { lane: candidate, racerId: front.racerId, remaining: 4.5 + tuning.pressure * 2 };
+          break;
+        }
+      }
+    }
+    if (this.pass) {
+      desiredLane = this.pass.lane;
+    } else if (chaser && tuning.pressure > 0.2 &&
                (this.personality === "defensor" || this.difficulty === "dificil")) {
-      // Defend once, with space to react; no sudden weave into a parallel car.
-      const candidate = clamp(playerBehind.lane, -3.8, 3.8);
-      if (nearby.every(o => o.gap < -8 || o.gap > 9 || Math.abs(o.lane - candidate) > 3)) {
+      const candidate = clamp(chaser.lane, -3.8, 3.8);
+      if (nearby.every(o => o.gap < -8 || o.gap > 10 || Math.abs(o.lane - candidate) > 3)) {
         desiredLane = candidate;
       }
+    }
+    // Hold the current line if a car is already alongside on the intended line.
+    if (nearby.some(o => Math.abs(o.gap) < 6 && Math.abs(o.lane - ownLane) > 2.1 &&
+          Math.abs(o.lane - desiredLane) < 2.6)) {
+      desiredLane = ownLane;
     }
 
     // Opponents drive within the asphalt; gradual lateral transitions avoid swerves.
@@ -139,11 +166,6 @@ export class AIDriver {
     const heading = Math.atan2(_forward.x, _forward.z);
     const desired = Math.atan2(_target.x - pos.x, _target.z - pos.z);
     const steer = clamp(angleDelta(heading, desired) * (2.5 * tuning.reaction), -1, 1);
-
-    const multiplier = rivalTargetMultiplier(this.skill, this.difficulty, this.personality);
-    const profileSpeed = this.track.targetSpeeds[this.hint] * multiplier;
-    const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length];
-    let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead * multiplier, 17));
 
     // A nearby slower car forces braking until the pass is physically clear.
     for (const other of nearby) {
