@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "../world/track";
 import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
+import { OncomingDriver, ONCOMING_CAR_COUNT, oncomingPose, oncomingSpawnIndex } from "./oncoming";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
 import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, vehicleDesign } from "../vehicle/selectedAsset";
@@ -61,19 +62,22 @@ const ROSTER = [
 
 export class Race {
   readonly racers: Racer[] = [];
+  readonly oncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
   readonly player: Racer;
   state: RaceState = "idle";
   countdown = SETTINGS.race.countdown;
   elapsed = 0;
   private finishOrder: Standing[] = [];
   private playerResult: Standing[] = [];
+  private lastCollisionSoundAt = -Infinity;
 
   constructor(
     private readonly world: RAPIER.World,
     scene: THREE.Scene,
     readonly track: Track,
     readonly vehicleId: string = DEFAULT_SELECTED_ID,
-    readonly difficulty: Difficulty = "medio"
+    readonly difficulty: Difficulty = "medio",
+    readonly oncomingEnabled = false
   ) {
     const playerVehicle = new Vehicle(this.world, scene, {
       paintColor: Number.parseInt(vehicleDesign(vehicleId).paint.slice(1), 16),
@@ -120,10 +124,27 @@ export class Race {
       racer.progress = this.track.progress(index);
       racer.lastProgress = racer.progress;
     });
+
+    if (oncomingEnabled) {
+      const designs = VEHICLE_DESIGNS.filter(design => design.id !== vehicleId).slice(0, ONCOMING_CAR_COUNT);
+      designs.forEach((design, i) => {
+        const vehicle = new Vehicle(this.world, scene, {
+          paintColor: Number.parseInt(design.paint.slice(1), 16),
+          accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
+          number: 80 + i,
+          vehicleId: design.id
+        });
+        const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
+        const pose = oncomingPose(this.track, index);
+        vehicle.place(pose.position, pose.heading);
+        this.oncoming.push({ id: 100 + i, vehicle, ai: new OncomingDriver(vehicle, this.track) });
+      });
+    }
   }
 
   dispose(): void {
     for (const racer of this.racers) racer.vehicle.dispose(this.world);
+    for (const car of this.oncoming) car.vehicle.dispose(this.world);
   }
 
   private makeRacer(vehicle: Vehicle, name: string, isPlayer: boolean, id: number): Racer {
@@ -162,9 +183,9 @@ export class Race {
     }
     if (this.state === "countdown") {
       this.countdown -= dt;
-      for (const racer of this.racers) {
-        racer.vehicle.update(dt, { throttle: 0, brake: 0, steer: 0, handbrake: true }, 1);
-        racer.vehicle.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      for (const vehicle of [...this.racers.map(r => r.vehicle), ...this.oncoming.map(c => c.vehicle)]) {
+        vehicle.update(dt, { throttle: 0, brake: 0, steer: 0, handbrake: true }, 1);
+        vehicle.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
       }
       if (this.countdown <= 0) {
         this.state = "racing";
@@ -186,6 +207,11 @@ export class Race {
             isPlayer: r.isPlayer
           };
         });
+      for (const car of this.oncoming) {
+        const p = car.vehicle.body.translation();
+        traffic.push({ racerId: car.id, position: new THREE.Vector3(p.x, p.y, p.z),
+          speed: car.vehicle.speed, isPlayer: false, oncoming: true });
+      }
       for (const racer of this.racers) {
         if (racer.finished) {
           racer.vehicle.update(dt, { throttle: 0, brake: 0.35, steer: 0, handbrake: false }, 1);
@@ -212,8 +238,36 @@ export class Race {
             Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5), grip);
         }
       }
+      for (const car of this.oncoming) car.ai.update(dt, traffic.filter(o => o.racerId !== car.id));
     }
     for (const racer of this.racers) this.updateProgress(racer);
+  }
+
+  /** Returns one impact pulse only for physical player/car contacts, with a cooldown. */
+  detectPlayerCarImpact(): number {
+    if (this.state !== "racing" || this.elapsed - this.lastCollisionSoundAt < 0.5) return 0;
+    const playerBody = this.player.vehicle.body;
+    const playerCollider = playerBody.collider(0);
+    if (!playerCollider) return 0;
+    for (const body of [
+      ...this.racers.filter(r => !r.isPlayer).map(r => r.vehicle.body),
+      ...this.oncoming.map(car => car.vehicle.body)
+    ]) {
+      const collider = body.collider(0);
+      if (!collider) continue;
+      let touching = false;
+      this.world.contactPair(playerCollider, collider, manifold => {
+        if (manifold.numContacts() > 0) touching = true;
+      });
+      if (!touching) continue;
+      const a = playerBody.linvel();
+      const b = body.linvel();
+      const speed = Math.hypot(a.x - b.x, a.z - b.z);
+      if (speed < 2.5) continue;
+      this.lastCollisionSoundAt = this.elapsed;
+      return Math.min(1, speed / 34);
+    }
+    return 0;
   }
 
   private updateProgress(racer: Racer): void {
