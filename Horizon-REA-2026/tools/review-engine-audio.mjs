@@ -25,6 +25,9 @@ try {
 
   const result = await page.evaluate(async () => {
     const game = window.__HORIZON_GAME__;
+    // Pause game physics/audio writes: the normal animation loop otherwise
+    // overrides manually tested RPM on every frame, corrupting loudness QA.
+    game.state = "paused";
     const audio = game.audio;
     if (audio.getEngineProfile() !== "v10")
       throw Error("V10 mode is not active");
@@ -49,12 +52,21 @@ try {
     meter.fftSize = 2048;
     audio.masterGain.connect(meter);
     const measures = [];
-    const recordLevel = rpm => {
-      const data = new Float32Array(meter.fftSize);
-      meter.getFloatTimeDomainData(data);
-      let peak = 0, sum = 0;
-      for (const v of data) { peak = Math.max(peak, Math.abs(v)); sum += v*v; }
-      measures.push({rpm, peak: Number(peak.toFixed(4)), rms: Number(Math.sqrt(sum/data.length).toFixed(4))});
+    const recordLevel = async rpm => {
+      // Three independent snapshots after settling the engine stage; use
+      // median RMS rather than a random single 46-ms analyser window.
+      const frames = [];
+      for (let i = 0; i < 3; i++) {
+        const data = new Float32Array(meter.fftSize);
+        meter.getFloatTimeDomainData(data);
+        let peak = 0, sum = 0;
+        for (const v of data) { peak = Math.max(peak, Math.abs(v)); sum += v*v; }
+        frames.push({peak, rms: Math.sqrt(sum / data.length)});
+        await new Promise(resolve => setTimeout(resolve, 65));
+      }
+      const rms = frames.map(x => x.rms).sort((a,b) => a - b)[1];
+      const peak = Math.max(...frames.map(x => x.peak));
+      measures.push({rpm, peak: Number(peak.toFixed(4)), rms: Number(rms.toFixed(4))});
     };
     const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
       ? "audio/webm;codecs=opus" : "audio/webm";
@@ -66,19 +78,19 @@ try {
     const hold = ms => new Promise(resolve => setTimeout(resolve, ms));
     audio.update(950, .12, 0, 0);
     await hold(550);
-    recordLevel(950);
+    await recordLevel(950);
     audio.update(3000, .55, 75, 0);
     await hold(650);
-    recordLevel(3000);
+    await recordLevel(3000);
     audio.update(5800, .95, 155, 0);
     await hold(650);
-    recordLevel(5800);
+    await recordLevel(5800);
     audio.update(7800, 1, 220, 0);
     await hold(600);
-    recordLevel(7800);
+    await recordLevel(7800);
     audio.update(2800, 0, 120, 0);
     await hold(550);
-    recordLevel(2800);
+    await recordLevel(2800);
     recorder.stop();
     await stopped;
     audio.masterGain.disconnect(destination);
