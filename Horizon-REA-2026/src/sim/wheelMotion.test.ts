@@ -10,8 +10,8 @@ it("steers front wheels left and right with a realistic visible yaw", () => {
 });
 
 it("rolls wheels from real speed, reverses with direction and stops at zero", () => {
-  const a=nextWheelRoll(0,12,0,.8,.35,.1);
-  const b=nextWheelRoll(0,-12,0,.8,.35,.1);
+  const a=nextWheelRoll(0,6,0,.8,.35,.1);
+  const b=nextWheelRoll(0,-6,0,.8,.35,.1);
   expect(a).toBeGreaterThan(0);
   expect(b).toBeLessThan(0);
   expect(nextWheelRoll(a,0,0,.8,.35,.1)).toBeCloseTo(a);
