@@ -25,7 +25,7 @@ class Node {
   stop = vi.fn();
   disconnect = vi.fn();
   connect = vi.fn();
-  start() {}
+  start = vi.fn();
 }
 class Context {
   static current: Context;
