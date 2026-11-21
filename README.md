@@ -1,57 +1,37 @@
-# Plan Comercial tipo Relevance AI
+# Horizon El Salvador
 
-Proyecto independiente con el **plan comercial** reconstruido a partir de la observación de
-embudos enterprise públicos (Relevance AI y Langflow), reimplementado como código original
-para **Boltech Group**.
+Juego de carreras 3D para Chrome desarrollado en **Rick2818/Forza-El-Salvador** con TypeScript, Three.js, Rapier y elementos modelados en Blender.
 
-No contiene código, texto, marcas ni diseño copiado de terceros. No está afiliado a
-Relevance AI ni a Langflow.
+**Jugar:** https://rick2818.github.io/Forza-El-Salvador/
 
-## Qué incluye
+## Estado del proyecto
 
-| Capa | Archivo | Contenido |
-|---|---|---|
-| Embudo clonado | `src/funnel.mjs` | 8 capas, 11 bloques de landing, 8 bloques por tarea, formulario de 6 campos |
-| SEO/AEO | `src/seo.mjs` | Sitemap, robots.txt, llms.txt, canonical, hreflang, Open Graph, Twitter, JSON-LD |
-| Recorridos comerciales | `src/commercial.mjs` | `adoption-services` (inspirado en Langflow) y `solution-led` (inspirado en Relevance AI) |
-| Oferta y contenido | `src/offer.mjs`, `src/content.mjs` | Fichas de caso de uso, integraciones y comparativas honestas |
-| Medición | `src/metrics.mjs`, `src/opportunities.mjs` | Métricas por tenant, solo desde registros persistidos |
-| Configuración ES | `config/funnel.json` | 6 especialidades, agentes, precios de referencia de Boltech |
-| Configuración EN | `config/funnel.en.json` | Espejo inglés con estructura idéntica |
+- **Producción:** rama `main`. La última versión pública comprobada parte de `f11313d`.
+- **Revisión de calidad:** rama `review/monzon-open-garages`, [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6).
+- Los cambios de iluminación, pinos, talleres y competencia están en revisión. Su publicación en GitHub Pages requiere aprobación visual y de audio.
+- **Objetivo: 60 FPS en la laptop. Sigue pendiente medirlos en ese equipo.** Las capturas y simulaciones automáticas no certifican ese rendimiento.
 
-## Precios de referencia (no ofertas finales)
+## Contenido activo
 
-- Agentes listos para configurar: desde US$69/mes, sujeto a alcance y cuotas.
-- Piloto empresarial: US$600 (US$300 iniciales y US$300 contra entrega).
-- Agentes a medida: implementación desde US$900.
+| Autos | Circuitos | Carrera |
+| --- | --- | --- |
+| Ferrari California T, Porsche 911, Bugatti Chiron y Mercedes-Benz AMG GT Black Series | Monzón nocturno y Suzaka diurno | Cuatro autos, tres vueltas, Fácil / Medio / Difícil |
 
-Toda cifra exige `reference: true` **y** `quoteRequired: true`; se muestran con la nota
-"Precios de referencia, no ofertas finales".
+La revisión incorpora asfalto iluminado, garajes con emblemas y equipo de taller, pinos con tres niveles de detalle, montañas, cámara con anticipación, cronometraje corregido, rivales que adelantan y mezcla independiente de motores/música. Los modelos y sonidos continúan sujetos a evaluación artística; no se afirma calidad AAA alcanzada.
 
-## Evidencia
+## Ejecutar y verificar
 
-`evidence/manifests/` conserva los 15 manifiestos de observación (7 de Langflow y 8 de
-Relevance AI), todos en estado `IMPORTED_PENDING_HUMAN_REVIEW`. **No son capturas
-certificadas** y no acreditan resultados, ingresos ni número de clientes de terceros.
+Recomendado: Node.js 22+, npm y Chrome con WebGL2.
 
-## Uso local
-
-```powershell
-npm run check
+```bash
+cd Horizon-REA-2026
+npm ci
 npm test
-npm run funnel:build
-npm run commercial:build
+npm run dev
 ```
 
-El build del embudo se genera en `.clonador/funnel/build-*` (HTML bilingüe navegable).
+Abrir `http://127.0.0.1:5173/`. Para compilar: `npm run build`.
 
-Landing ya generada incluida: `.clonador/funnel/build-6CRzAR/index.html` (español) y
-`.clonador/funnel/build-6CRzAR/en/index.html` (inglés).
+La documentación completa está en [Horizon-REA-2026/README.md](Horizon-REA-2026/README.md): controles, arquitectura, Blender, pruebas, medición de FPS y publicación. La auditoría está en [QUALITY-AUDIT-2026-11.md](Horizon-REA-2026/docs/QUALITY-AUDIT-2026-11.md).
 
-## Estado
-
-- `LOCAL_CONFIGURED`: todo funciona y está probado en local.
-- `REVIEW_REQUIRED` para publicación: sin dominio, sin formulario público conectado,
-  sin analítica y sin campañas.
-- Nada se envía, publica ni gasta desde este proyecto.
-
+Este repositorio conserva archivos de otros proyectos históricos. Su documentación comercial anterior se preserva en [docs/legacy/PLAN-COMERCIAL-README.md](docs/legacy/PLAN-COMERCIAL-README.md); no corresponde al juego ni describe su estado actual.

@@ -1,152 +1,159 @@
 # Horizon El Salvador
 
-Videojuego original de carreras 3D para Chrome. Three.js + TypeScript + Vite + Rapier.
-El arte de la carrera es procedural (texturas Canvas2D, coches y circuito generados por código):
-no se importan mallas, texturas ni datos de Forza Horizon ni de ningún otro juego.
+Videojuego de carreras 3D para Chrome. Código TypeScript, renderizado Three.js r187, física Rapier y construcción con Vite. Vehículos GLB, talleres y pinos editables en Blender; texturas de pista y otros elementos generados por el proyecto.
 
-## Garaje: selección de Rick
+Repositorio: **Rick2818/Forza-El-Salvador**. Juego publicado: https://rick2818.github.io/Forza-El-Salvador/
 
-**Revisión de prearte:** cabinas suavizadas y tomas delanteras con profundidad.
-La lámina y el índice de estudio están en `review/preart-studio/`.
-Informe del pase: `docs/vehicle-fidelity/PREART-2026-11-17.md`.
+## Estado al 21 de noviembre de 2026
 
-El menú inicial incluye **Garaje · 7 autos**, con la selección de vehículos,
-sus acabados y las fotografías aportadas para modelado. Las fotos pueden abrirse
-a tamaño completo. La ficha del Ferrari todavía no tiene fotografía adjunta.
-
-| Vehículo | Referencia visual |
+| Área | Estado |
 | --- | --- |
-| Ferrari California T | Rojo; ficha California T 2015 existente |
-| Yangwang U9 | Rojo y negro; archivo identificado como Xtreme, versión por verificar |
-| Koenigsegg Jesko Odin | Carbono negro y detalles dorados |
-| Bugatti Chiron | Negro y cobre |
-| Porsche 911 | Gris; posible Turbo S, por verificar |
-| Lamborghini Aventador Roadster | Azul claro, techo abierto; versión por verificar |
-| Mercedes-AMG GT Black Series | Rojo, configuración Safety Car F1 |
+| Versión pública | `main`, última base pública comprobada `f11313d` |
+| Versión mejorada | `review/monzon-open-garages`, [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6), borrador |
+| Validación | Pruebas automáticas y compilación; seis carreras físicas completas; capturas WebGL en Actions |
+| Publicación de mejoras | Pendiente de aprobación visual y de audio |
+| 60 FPS en la laptop | Objetivo pendiente de comprobar; no es una medición obtenida |
+| Fidelidad artística | En revisión; algunos vehículos y sonidos aún necesitan refinamiento |
 
-**Estado:** siete prototipos GLB diferentes, seleccionables desde el garaje.
-Pulsa **Seleccionar para conducir**, vuelve al menú e inicia la carrera.
-La selección se conserva en el navegador. Los rivales usan otros tres modelos.
-Los coches tienen sus propias dimensiones, batalla, vías, radio de rueda y
-ajustes de conducción. El U9 usa tracción experimental sin cambios de marcha
-y sonido eléctrico sintetizado; no se afirma que reproduzca su tren motriz real.
+Las capturas proceden del motor real del juego, no de fotografías de referencia. Las imágenes de revisión con la leyenda **CAPTURA** usan poses y pasos controlados; no son un contador de FPS medidos. Los circuitos son trazados originales inspirados en disciplinas de automovilismo, sin afiliación con los autódromos reales ni con Forza.
 
-**Calidad:** las carrocerías son primeras aproximaciones editables, no réplicas
-visuales terminadas ni modelos AAA. Techo, faros, parrillas, aero y acabados
-requieren refinamiento con referencias adicionales. Las cifras de manejo son
-ajustes de videojuego, no prestaciones ni masas reales certificadas.
-No se han medido 60 FPS ni validado el recorrido visual en navegador en este entorno.
+## Autos, pistas y dificultades
 
-**Activos y fuentes:** GLB en `public/models/selected/`; fuentes comprimidas
-`.blend` en `tools/blender/selected-sources/`; geometría y dimensiones compartidas
-con física en `src/vehicle/vehicle-designs.json`. Cada entrada conserva su fuente
-publicada de dimensiones; las versiones exactas de algunas fotografías siguen
-pendientes de confirmar. Las capturas, hashes e informes están en `review/selected/`.
+Solo cuatro autos activos:
 
-Regeneración desde la carpeta del juego:
+- Ferrari California T: material rojo cereza aprobado, opaco, con barniz suave.
+- Porsche 911: grafito oscuro y pinzas amarillas.
+- Bugatti Chiron: negro y cobre.
+- Mercedes-Benz AMG GT Black Series: rojo, configuración visual Safety Car.
 
-```powershell
-blender --background --threads 2 --python tools/blender/selected-vehicles.py
-python tools/blender/review-selected.py
-blender --background --threads 2 --python tools/blender/review-vehicle.py -- --asset public/models/selected/ferrari-california-t.glb --out-dir review/selected/ferrari-california-t --full-vehicle --design ferrari-california-t
+Solo dos circuitos seleccionables:
+
+- **Monzón:** noche, estrellas, asfalto negro, farolas y cuatro talleres abiertos con emblemas de cada marca; herramientas, llantas y motores visibles.
+- **Suzaka:** día, trazado en ocho con puente, pinos de tronco largo y copas con ramas/agujas, terreno ondulado y montañas al fondo.
+
+Cada carrera tiene un jugador, tres rivales físicos y tres vueltas. **Fácil, Medio y Difícil** cambian ritmo, reacción y presión de adelantamiento. Los rivales frenan según el trazado, buscan espacios y disputan la punta usando los mismos coches físicos. Los parámetros son ajustes del videojuego, no prestaciones reales homologadas.
+
+La salida automática comparte el reloj de carrera entre rojo, amarillo y verde. Los cuatro autos permanecen detenidos hasta el verde. La música original de tensión termina con la señal de salida; los motores del jugador y los rivales se sintetizan con Web Audio. Motores/neumáticos y música tienen controles separados; `M` silencia el conjunto. No se presentan estos perfiles como grabaciones de los motores originales.
+
+## Instalación y uso local
+
+Recomendado: **Node.js 22+**, npm y Chrome con WebGL2. Blender, Python, numpy y Pillow solo se requieren para reconstruir determinados activos, no para jugar ni compilar el código web.
+
+Desde la raíz del repositorio:
+
+```bash
+cd Horizon-REA-2026
+npm ci
+npm run dev
 ```
 
-El segundo comando genera las 42 vistas y el resumen. Pillow es opcional para
-montar la lámina conjunta. La revisión Workbench aproxima las texturas por su
-color medio; no es una certificación de pintura ni de materiales PBR.
+Abrir `http://127.0.0.1:5173/`. Elegir auto, pista, dificultad y calidad; pulsar **Iniciar carrera**.
 
-El cargador exige los cuatro pivotes de rueda. Si falta un GLB o un pivote,
-se comunica el fallo y no se sustituye por la carrocería genérica. Reiniciar una
-carrera reconstruye parrilla, vueltas y tiempos, retirando los controladores y
-cuerpos físicos de la sesión anterior.
-
-El registro está en `src/vehicle/roster.ts`; las fotografías, en
-`public/vehicles/references/`. Procedencia e integridad:
-[`docs/vehicle-fidelity/selected-references.json`](docs/vehicle-fidelity/selected-references.json).
-
-## Requisitos
-
-- Node.js 20+
-- Chrome con WebGL2
-- Windows / macOS / Linux
-
-## Ejecutar
-
-```powershell
-$P = "C:\Users\Ricardo\Documents\Boltech Group\Plan Comercial tipo Relevance AI\Horizon-REA-2026"
-npm --prefix $P install
-npm --prefix $P run dev
+```bash
+npm test
+npm run build
+npm run preview
 ```
 
-Abrir `http://localhost:5173/` en Chrome y pulsar **Iniciar carrera**
-(o simplemente W / S / Enter / Espacio).
-
-Build de producción:
-
-```powershell
-npm --prefix $P run build
-npm --prefix $P preview
-```
+La vista previa de producción utiliza `http://127.0.0.1:4173/`. Vite resuelve los recursos con una base relativa para GitHub Pages. Los archivos de modelos necesarios deben estar presentes; si falta un GLB o un pivote de rueda, se informa del fallo en vez de sustituir el auto por una carrocería genérica.
 
 ## Controles
 
 | Acción | Teclas |
-|---|---|
+| --- | --- |
 | Acelerar | `W` / `↑` |
-| Frenar / marcha atrás | `S` / `↓` |
-| Girar | `A` `D` / `←` `→` |
+| Frenar y marcha atrás | `S` / `↓` |
+| Dirección | `K` / `L`, `A` / `D` o `←` / `→` |
 | Freno de mano | `Espacio` |
-| Pausa | `Esc` / `P` |
-| Cámara persecución / capó | `C` |
-| Devolver coche a pista | `R` |
+| Pausa y continuar | `Esc` / `P` |
+| Cámara cercana, capó y panorámica | `C` |
+| Recuperar el auto en pista | `R` |
 | Silenciar | `M` |
 
-## Contenido
+La pérdida de foco pausa la carrera. Los controles de volumen conservan sus flechas de teclado y el foco; esas teclas no deben acelerar ni iniciar una carrera. Auto, circuito, dificultad, calidad elegida y niveles de audio se conservan en el almacenamiento local cuando el navegador lo permite.
 
-- Circuito cerrado de 1.94 km con rectas, curvas, bordillos, muros, pórtico de salida y boxes.
-- Coche deportivo procedural con pintura PBR, cristales, faros, llantas de 10 radios y pinzas.
-- Física Rapier: suspensión por raycast, 6 marchas automáticas, curva de par, drag, downforce.
-- 3 rivales con IA pure-pursuit, vueltas, posiciones y mejores tiempos.
-- HUD con velocímetro, tacómetro, marcha, vuelta, tiempos y minimapa.
-- Menú de inicio, pausa, resultados, audio procedural y sistema de humo.
-- Calidad gráfica adaptable (alta / equilibrada) según FPS.
+## Cambios de la revisión integral
 
-## Estructura
+- Asfalto nocturno con agregado, normal y rugosidad; cuatro luces locales de farolas cercanas, marcas de frenado, señales y escapatorias legibles.
+- Iluminación nocturna más neutra y corrección del entorno HDR diurno que deslavaba la pintura de Suzaka. Se conserva el material cereza del Ferrari.
+- Garajes de Ferrari, Porsche, Bugatti y Mercedes-Benz, con bancos de trabajo, herramientas, repuestos y motores de Blender.
+- Pinos de Suzaka con geometría de tronco y ramas de Poly Haven, agrupación natural y tres niveles de detalle; se retira la vegetación antigua de esa pista.
+- Pintura PBR para Bugatti/Mercedes, pinzas separadas del giro del rin y lotes de geometría estática que conservan los triángulos de los autos.
+- Cámara cercana con anticipación suave de curvas y límites de pista.
+- Cronómetro corregido: cada vuelta mide su propio tiempo, en vez de acumular las vueltas previas.
+- IA con aceleración aprovechable en rectas y maniobras de ataque; verificación de lideratos sostenidos, llegada y ausencia de recolocaciones de emergencia.
 
+Auditoría, prioridades, segunda pasada y límites: [docs/QUALITY-AUDIT-2026-11.md](docs/QUALITY-AUDIT-2026-11.md).
+
+## Pruebas y evidencia
+
+`npm test` cubre materiales, selección de cuatro autos, pivotes, conservación de geometría al agrupar mallas, pinzas de freno, física Rapier, seis carreras de tres vueltas, niveles de dificultad, salida sincronizada, cronómetro, audio y registro de rendimiento. En Node se sustituye la decodificación de imágenes, conservando el análisis real de GLB, geometría, materiales y física.
+
+Las seis carreras usan un conductor de prueba automático para el jugador. La segunda pasada registra cambios de líder sostenidos durante al menos 1,5 segundos: Monzón **3/2/3**, Suzaka **4/4/3** en Fácil/Medio/Difícil; todos terminan y no necesitan recolocación de emergencia. Los resultados se guardan en `review/quality/race-validation.jsonl` dentro del artefacto de Actions. Estas simulaciones no equivalen a una prueba de FPS ni a una validación humana de la conducción.
+
+Pruebas de velocidad máxima en un plano, 180 segundos de simulación: Ferrari **205,0 mph**, Porsche **205,0 mph**, Bugatti **234,6 mph**, Mercedes **202,0 mph**. No significa que cada recta permita alcanzar esos máximos.
+
+La tarea `.github/workflows/monzon-garages-review.yml` ejecuta pruebas y compilación, abre Chrome con WebGL/SwiftShader y genera:
+
+- `review/quality/`: recta, curva, chicana, boxes, puente, pinos y vistas de los cuatro autos en ambos circuitos; métricas de cada captura y resultados de carrera.
+- `review/garages/`: talleres, interior, vista de conducción, señales roja/amarilla/verde y muestra original de música WAV.
+
+El artefacto **monzon-garages-review** permite revisar la rama sin publicar Pages. Los archivos de `review/` se generan durante la verificación; no se confunden con fotografías de referencia.
+
+## Medir rendimiento de verdad
+
+La física usa pasos fijos de **60 Hz**. Ese número no representa los FPS gráficos.
+
+1. Probar la versión que se desea evaluar en la laptop, con Chrome enfocado y conectado a corriente.
+2. Anotar CPU/GPU, resolución de pantalla y calidad; correr con los cuatro autos.
+3. Mantener la carrera continua durante **15 segundos de calentamiento y 120 segundos de medición** por circuito.
+4. Al finalizar, pausar y pulsar **Descargar informe de rendimiento**. La pausa posterior no invalida una medición ya completada.
+5. Revisar el estado `complete`, FPS medio, percentiles, 1 % bajo, tiempos CPU/GPU cuando estén disponibles, resolución, calidad, geometrías y texturas. Si hubo pérdida de foco o pausa antes de completar, reiniciar la carrera y repetir.
+
+También están disponibles `HORIZON.stats()` y `HORIZON.performanceReport()` para diagnóstico. El informe registra si cambió la resolución: la calidad adaptable puede mantener fluidez a costa de nitidez. No se han certificado 60 FPS en la laptop con esta revisión. SwiftShader es un renderizador por software de CI y sus resultados no predicen la GPU del jugador.
+
+La calidad equilibrada limita la densidad de píxeles, omite sombras costosas, agrupa objetos y usa niveles de detalle. Los pinos utilizan **10104 triángulos cerca**, **4307 a distancia media** y **6 por árbol lejano**; como máximo siete lotes de material para el bosque. Las capturas registran llamadas y triángulos realmente dibujados en cada vista.
+
+## Blender y procedencia de activos
+
+| Activo | Archivos |
+| --- | --- |
+| Cuatro vehículos activos | `public/models/selected/`; registro `src/vehicle/roster.ts` |
+| Fuentes y diseño de vehículos | `tools/blender/selected-sources/`; `src/vehicle/vehicle-designs.json` |
+| Equipo de garajes | `tools/blender/monzon-garage-kit.py`; `public/scenery/monzon-garage-kit.glb.gz` |
+| Pinos editables | `tools/blender/sources/suzaka-pine.blend.gz` |
+| Preparación y exportación de pinos | `tools/blender/prepare-pine.py`; `tools/blender/suzaka-pine.py` |
+| LOD y atlas de pinos | `public/scenery/pine-near.glb.gz`, `pine-medium.glb.gz`, `pine-far.png` |
+| Emblemas de garajes | `public/brands/README.md` |
+
+Para reconstruir los pinos con Python y Blender instalados:
+
+```bash
+python tools/blender/prepare-pine.py /tmp/horizon-pine
+blender -b --python tools/blender/suzaka-pine.py -- /tmp/horizon-pine /tmp/horizon-pine/built
 ```
-src/
-  core/      input, ajustes, matemáticas
-  sim/       kernel de física del vehículo (matemática pura, testeable)
-  vehicle/   coche procedural, física, IA
-  world/     circuito, entorno, texturas procedurales
-  race/      carrera, vueltas, clasificación
-  render/    cámara, humo
-  ui/        HUD, menús
-  audio/     motor procedural (WebAudio)
-rea-lab/     artefacto JS original analizado con REA
-scripts/     resolución y validación numérica del trazado
-```
 
-## Verificación
+La preparación toma la distribución de agujas y la geometría de tronco/ramas de **Pine Tree 01** de Poly Haven, licencia CC0. La receta de Blender crea los LOD y tres renders transparentes del árbol para el atlas; el juego no descarga recursos de terceros durante la carrera. Procedencia y ensamblado del atlas: [public/scenery/PINE-SOURCE.md](public/scenery/PINE-SOURCE.md).
 
-- `npm test` — pruebas del kernel de física.
-- `npm run build` — `tsc --noEmit` + bundle de producción.
-- Telemetría en vivo desde la consola de Chrome:
+Las marcas y nombres identifican los vehículos y talleres; el juego no está afiliado a los fabricantes. No se importan modelos de Forza.
 
-```js
-HORIZON.stats()
-```
+## Estructura del código
 
-Devuelve estado, FPS, velocidad, marcha, RPM, posición, draw calls, triángulos
-y el estado de las cuatro ruedas (contacto, longitud y fuerza de suspensión).
+| Carpeta | Responsabilidad |
+| --- | --- |
+| `src/core/` | Entrada, ajustes y almacenamiento |
+| `src/sim/` | Cálculos de motor, transmisión, neumáticos y aerodinámica |
+| `src/vehicle/` | Modelos, vehículos físicos, acabados e IA |
+| `src/world/` | Trazados, terreno, iluminación, talleres y vegetación |
+| `src/race/` | Carrera, vueltas, tiempos y clasificación |
+| `src/render/` | Cámaras, efectos, agrupación y medición de rendimiento |
+| `src/ui/` | Menú, selección, pausa y HUD |
+| `src/audio/` | Motores, rivales y música de salida |
+| `tools/` | Construcción de activos y capturas reproducibles |
+| `tests/` | Validaciones con modelos GLB y Rapier |
 
-## Evidencia REA
+## Publicación y pendientes
 
-El análisis estático real (IDs de evidencia, hashes, métricas y limitaciones) y el
-diagnóstico del bug de física están documentados en [`REA-EVIDENCE.md`](REA-EVIDENCE.md).
+`.github/workflows/horizon-pages.yml` publica desde `main`. La rama de revisión conserva el trabajo sin cambiar la versión pública. **Aprobar primero las capturas y el audio; después incorporar a `main`, comprobar Actions y verificar la URL pública.** Actualizar una rama o abrir un PR no equivale a publicar el juego.
 
-## Estado conocido
-
-- Física estable: 0–100 km/h en ~6 s, altura 0.52 m, sin vuelcos.
-- Rendimiento: 30–37 FPS en Intel Iris Xe a 800×526. Pendiente optimización para 1080p.
-- Escenografía diurna actual; la versión nocturna cinematográfica está pendiente.
+Antes de aprobar una entrega final quedan: conducción manual completa en ambos circuitos, impactos en barreras y escapatorias, revisión visual en movimiento, escucha de mezcla y medición sostenida en la laptop. La fidelidad de algunas carrocerías y el audio sintetizado siguen siendo oportunidades de mejora; no se garantiza equivalencia visual con un título AAA.

@@ -14,6 +14,10 @@ const BLOCKED = new Set([
   "KeyL"
 ]);
 
+function isFormControl(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && !!target.closest('input,select,textarea,[contenteditable="true"]');
+}
+
 export class Input {
   private down = new Set<string>();
   private edges = new Set<string>();
@@ -110,7 +114,9 @@ export class Input {
     this.canvas?.focus({ preventScroll: true });
   }
 
-  private onPointerDown = (): void => {
+  private onPointerDown = (event: PointerEvent): void => {
+    const target=event.target;
+    if (target instanceof HTMLElement && target.closest('button,input,select,textarea,a,[contenteditable="true"]')) return;
     this.focusGame();
   };
 
@@ -126,13 +132,14 @@ export class Input {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    if (isFormControl(e.target) && e.code !== "Escape") return;
     if (BLOCKED.has(e.code)) e.preventDefault();
     if (!this.down.has(e.code)) this.edges.add(e.code);
     this.down.add(e.code);
   };
 
   private onKeyUp = (e: KeyboardEvent): void => {
-    if (BLOCKED.has(e.code)) e.preventDefault();
+    if (!isFormControl(e.target) && BLOCKED.has(e.code)) e.preventDefault();
     this.down.delete(e.code);
   };
 
