@@ -49,3 +49,6 @@ export const makeRng = (seed: number): (() => number) => {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 };
+
+/** Race physics and lap records use seconds. */
+export const formatRaceTime = (seconds: number): string => formatTime(seconds * 1000);

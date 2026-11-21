@@ -3,6 +3,7 @@
 // MCP data can be loaded via pitstop.getCircuits() from src/integrations/pitstop.ts.
 
 import * as THREE from "three";
+import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
@@ -48,6 +49,7 @@ export interface TurnInfo {
 /** Minimal track class with procedural generation. */
 export class Track {
   readonly group = new THREE.Group();
+  readonly lampPositions: THREE.Vector3[] = [];
   curve: THREE.CatmullRomCurve3 = new THREE.CatmullRomCurve3([], true);
   samples: THREE.Vector3[] = [];
   tangents: THREE.Vector3[] = [];
@@ -144,9 +146,8 @@ export class Track {
       const a = this.tangents[(i - 2 + N) % N];
       const b = this.tangents[(i + 2) % N];
       const angle = clamp(a.dot(b), -1, 1);
-      // The figure-eight uses genuine angular curvature, not cosine; the
-      // legacy layouts retain their previous AI tuning.
-      const bend = this.circuit.layout ? Math.acos(angle) : angle;
+      // Angular curvature provides meaningful braking targets for Monzon and 3D layouts.
+      const bend = this.circuit.layout || this.circuit.id === "monzon" ? Math.acos(angle) : angle;
       this.curvatures.push(bend / (4 * this.segmentLength));
     }
     // Light smoothing
@@ -202,7 +203,14 @@ export class Track {
     // Absolute dark asphalt rather than blue-gray PBR under the very bright
     // daylight lighting/sky environment. Unlit black charcoal retains the
     // subtle aggregate map and ensures the white lines stay high-contrast.
-    const roadMat = createDarkAsphaltMaterial(asphalt.map);
+    const roadMat = this.circuit.id === "monzon"
+      ? new THREE.MeshStandardMaterial({
+          map: asphalt.map, normalMap: asphalt.normalMap,
+          normalScale: new THREE.Vector2(.18, .18),
+          roughnessMap: asphalt.roughnessMap, color: 0x898989,
+          roughness: .95, metalness: 0, envMapIntensity: .12
+        })
+      : createDarkAsphaltMaterial(asphalt.map);
     const road = new THREE.Mesh(this.ribbonGeometry(-halfW, halfW, surfaceY, 12), roadMat);
     road.name = "asphalt";
     road.receiveShadow = true;
@@ -238,6 +246,19 @@ export class Track {
       );
       kerb.name = `kerb-${side}`;
       this.group.add(kerb);
+    }
+
+    if (this.circuit.id === "monzon") {
+      const gravel = new THREE.MeshStandardMaterial({ color: 0x605647, roughness: 1, envMapIntensity: .1 });
+      for (const side of [-1, 1]) {
+        const a = side * (halfW + 1.3);
+        const b = side * (barrierOffset - .3);
+        const shoulder = new THREE.Mesh(
+          this.ribbonGeometry(Math.min(a, b), Math.max(a, b), surfaceY - .006, 4), gravel);
+        shoulder.name = "monzon-gravel-shoulder";
+        shoulder.receiveShadow = true;
+        this.group.add(shoulder);
+      }
     }
 
     // ---- Barriers. Same offset as the physics colliders so the car stops
@@ -287,6 +308,7 @@ export class Track {
     startLine.name = "start-line";
     this.group.add(startLine);
     this.buildGantry();
+    if (this.circuit.id === "monzon") addMonzonRoadDetails(this);
 
     // ---- Trackside lamps: instanced poles with glowing heads.
     if (this.circuit.id !== "suzaka" && this.circuit.id !== "sparda") this.buildLamps(barrierOffset);
@@ -436,7 +458,7 @@ export class Track {
   /** Instanced trackside lamps so the asphalt stays readable at night. */
   private buildLamps(barrierOffset: number): void {
     const N = this.samples.length;
-    const stride = 55;
+    const stride = this.circuit.id === "monzon" ? Math.max(1, Math.round(48 / this.segmentLength)) : 55;
     const perSide = Math.floor(N / stride);
     if (perSide < 2) return;
 
@@ -468,6 +490,7 @@ export class Track {
         poles.setMatrixAt(n, m);
         m.makeTranslation(x, s.y + 6.5, z);
         heads.setMatrixAt(n, m);
+        this.lampPositions.push(new THREE.Vector3(x, s.y + 6.5, z));
         n++;
       }
     }

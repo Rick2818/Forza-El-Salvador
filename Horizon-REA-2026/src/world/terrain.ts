@@ -80,10 +80,12 @@ export class TerrainField {
   private readonly heights: Float32Array;
   private readonly isSparda: boolean;
   private readonly isDesert: boolean;
+  private readonly isMonzon: boolean;
   private readonly roadSamples: readonly THREE.Vector3[];
   private readonly count = TERRAIN_SEGMENTS + 1;
 
   constructor(track: TrackLike) {
+    this.isMonzon = track.circuit?.id === "monzon";
     this.isSparda = track.circuit?.id === "sparda";
     this.isDesert = track.circuit?.id === "sakhir-horizon";
     this.roadSamples = track.samples;
@@ -133,6 +135,11 @@ export class TerrainField {
       const outskirts = smoothstep(18, 90, trackDistance);
       return TERRAIN_NEAR_Y - 1.5 * outskirts +
         (fbm(x * 0.003, z * 0.003, 3) - .5) * 6 * outskirts;
+    }
+    if (this.isMonzon) {
+      // A low park landscape keeps corner sightlines open.
+      const outskirts = smoothstep(24, 140, trackDistance);
+      return TERRAIN_NEAR_Y + (fbm(x * .003, z * .003, 3) - .5) * 9 * outskirts;
     }
     // Flat and just below the road next to the circuit; the bank then falls
     // away to the valley floor before the hills start.
@@ -185,8 +192,8 @@ export class TerrainField {
     geo.translate(this.centerX, 0, this.centerZ);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x4a4d55);
-    const dryGrass = new THREE.Color(this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x565a63);
+    const grass = new THREE.Color(this.isMonzon ? 0x304b30 : this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x4a4d55);
+    const dryGrass = new THREE.Color(this.isMonzon ? 0x526044 : this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x565a63);
     const rock = new THREE.Color(this.isSparda ? 0x737a6c : this.isDesert ? 0x766450 : 0x6d717a);
     const tmp = new THREE.Color();
 

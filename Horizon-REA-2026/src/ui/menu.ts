@@ -1,5 +1,5 @@
 import type { Difficulty, RaceSnapshot } from "../race/race";
-import { formatTime } from "../core/mathx";
+import { formatRaceTime as formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
 import { vehiclePickerMarkup } from "./vehiclePicker";

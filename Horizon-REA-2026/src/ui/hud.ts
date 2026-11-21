@@ -1,7 +1,7 @@
 import type { RaceSnapshot, Racer } from "../race/race";
 import type { Track } from "../world/track";
 import type { Vehicle } from "../vehicle/vehicle";
-import { formatTime } from "../core/mathx";
+import { formatRaceTime as formatTime } from "../core/mathx";
 
 const GAUGE_CX = 134;
 const GAUGE_CY = 112;

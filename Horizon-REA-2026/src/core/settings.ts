@@ -37,7 +37,7 @@ export const SETTINGS = {
   render: {
     // The adaptive scaler owns sharpness; capping DPR at 1 keeps a 1080p
     // window at a true 1920x1080 buffer instead of 2x supersampling.
-    maxPixelRatio: 2.0,  // 4K support: allow 2x supersampling on capable displays
+    maxPixelRatio: 1.0,  // Start at native resolution; adaptive scaling targets 60 FPS
     shadowMapSize: 4096,  // 4K shadows
     targetWidth: 3840,    // 4K width
     targetHeight: 2160    // 4K height
