@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
-import { planTracksidePartners, TRACKSIDE_BRANDS } from "./tracksidePartners";
+import { planTracksidePartners, TRACKSIDE_BRANDS, TARGET_TRACKSIDE_SIGNS } from "./tracksidePartners";
 
 function circuitFixture(id: "monzon" | "suzaka"): Track {
   const samples: THREE.Vector3[] = [];
@@ -18,7 +18,9 @@ function circuitFixture(id: "monzon" | "suzaka"): Track {
     tangents.push(new THREE.Vector3(-radialZ, 0, radialX));
     rights.push(new THREE.Vector3(-radialX, 0, -radialZ));
   }
-  return { samples, tangents, rights, circuit: { id }, barrierLateralOffset: 10 } as Track;
+  const length = 2 * Math.PI * radius;
+  return { samples, tangents, rights, length, segmentLength: length / count,
+    circuit: { id }, barrierLateralOffset: 10 } as Track;
 }
 
 const ground = { heightAt: (_x: number, _z: number) => 0 } as TerrainField;
@@ -52,18 +54,26 @@ describe("trackside partner billboards", () => {
   });
 
   for (const circuit of ["monzon", "suzaka"] as const) {
-    it(`places each partner twice on ${circuit}, outside all barriers`, () => {
+    it(`distributes every partner throughout the complete ${circuit} lap, safely`, () => {
       const track = circuitFixture(circuit);
       const placements = planTracksidePartners(track, ground);
-      expect(placements).toHaveLength(20);
+      expect(TARGET_TRACKSIDE_SIGNS).toBe(80);
+      // Pit/bridge clearance may legitimately skip slots but never cluster
+      // displaced signs at the start or remove brands from the back of lap.
+      expect(placements.length).toBeGreaterThanOrEqual(65);
       for (let brandIndex = 0; brandIndex < TRACKSIDE_BRANDS.length; brandIndex++) {
-        expect(placements.filter(item => item.brandIndex === brandIndex)).toHaveLength(2);
+        expect(placements.filter(item => item.brandIndex === brandIndex).length).toBeGreaterThanOrEqual(5);
       }
+      const sectors = Array.from({length: 8}, () => 0);
       for (const item of placements) {
+        sectors[Math.floor(item.sampleIndex / track.samples.length * 8)]++;
         const minDistance = Math.min(...track.samples.map(point =>
           Math.hypot(item.x - point.x, item.z - point.z)));
         expect(minDistance).toBeGreaterThan(track.barrierLateralOffset + 3);
       }
+      // Includes middle and last portions, rather than only the first sector.
+      expect(sectors.filter(n => n > 0).length).toBeGreaterThanOrEqual(7);
+      expect(sectors.slice(4).reduce((a, b) => a + b, 0)).toBeGreaterThan(20);
     });
   }
 
