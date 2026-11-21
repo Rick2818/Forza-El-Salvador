@@ -1,0 +1,258 @@
+{
+  "baselineCommit": "caf4a6f401bccba24e9ce387164e78bd5abf528f",
+  "conditions": "Actual GLB wheel pivots + Rapier, flat dry surface, 60 Hz; no render/FPS claim",
+  "manoeuvre": "45 m/s initial forward velocity after settling; full throttle; 10 straight frames then 170 turning frames",
+  "slipDefinition": "Vehicle.slip: absolute local lateral velocity minus 0.6 m/s deadband",
+  "before": [
+    {
+      "id": "ferrari-california-t",
+      "steer": 0.35,
+      "maxSlip": 35.64229944320664,
+      "maxYaw": 1.735144019126892
+    },
+    {
+      "id": "ferrari-california-t",
+      "steer": 1,
+      "maxSlip": 21.02307764990335,
+      "maxYaw": 1.3947521448135376
+    },
+    {
+      "id": "bugatti-chiron",
+      "steer": 0.35,
+      "maxSlip": 30.885015588626732,
+      "maxYaw": 1.496508002281189
+    },
+    {
+      "id": "bugatti-chiron",
+      "steer": 1,
+      "maxSlip": 19.42060372872442,
+      "maxYaw": 1.2737194299697876
+    }
+  ],
+  "after": [
+    {
+      "id": "ferrari-california-t",
+      "steer": -1,
+      "maxSlip": 5.298723093002568,
+      "maxYaw": 1.226202130317688,
+      "minUp": 0.999391185322849,
+      "finalForwardSpeed": 27.900265861938337
+    },
+    {
+      "id": "ferrari-california-t",
+      "steer": -0.35,
+      "maxSlip": 0.5913741844272397,
+      "maxYaw": 0.919687807559967,
+      "minUp": 0.9994935226092445,
+      "finalForwardSpeed": 50.82108662192366
+    },
+    {
+      "id": "ferrari-california-t",
+      "steer": 0.35,
+      "maxSlip": 0.5913745057157583,
+      "maxYaw": 0.9196876287460327,
+      "minUp": 0.9994935204739541,
+      "finalForwardSpeed": 50.821085917754516
+    },
+    {
+      "id": "ferrari-california-t",
+      "steer": 1,
+      "maxSlip": 5.298632704506248,
+      "maxYaw": 1.226199746131897,
+      "minUp": 0.9993911855343265,
+      "finalForwardSpeed": 27.90032162689556
+    },
+    {
+      "id": "porsche-911",
+      "steer": -1,
+      "maxSlip": 4.2080537865158245,
+      "maxYaw": 1.1944973468780518,
+      "minUp": 0.9996526791610818,
+      "finalForwardSpeed": 30.2161944628223
+    },
+    {
+      "id": "porsche-911",
+      "steer": -0.35,
+      "maxSlip": 0.543053757321524,
+      "maxYaw": 0.9967684149742126,
+      "minUp": 0.9996336624873945,
+      "finalForwardSpeed": 50.57826157054582
+    },
+    {
+      "id": "porsche-911",
+      "steer": 0.35,
+      "maxSlip": 0.5430537602339739,
+      "maxYaw": 0.9967681765556335,
+      "minUp": 0.999633668790629,
+      "finalForwardSpeed": 50.57823407737782
+    },
+    {
+      "id": "porsche-911",
+      "steer": 1,
+      "maxSlip": 4.207881512815956,
+      "maxYaw": 1.1944941282272339,
+      "minUp": 0.9996526790707512,
+      "finalForwardSpeed": 30.21645132372816
+    },
+    {
+      "id": "bugatti-chiron",
+      "steer": -1,
+      "maxSlip": 5.036970755035433,
+      "maxYaw": 1.1456990242004395,
+      "minUp": 0.9996815250934923,
+      "finalForwardSpeed": 29.42412451558436
+    },
+    {
+      "id": "bugatti-chiron",
+      "steer": -0.35,
+      "maxSlip": 0.5419475623886042,
+      "maxYaw": 1.0683540105819702,
+      "minUp": 0.9996275533400877,
+      "finalForwardSpeed": 52.92928179540908
+    },
+    {
+      "id": "bugatti-chiron",
+      "steer": 0.35,
+      "maxSlip": 0.5419493782340995,
+      "maxYaw": 1.0683592557907104,
+      "minUp": 0.9996275548928087,
+      "finalForwardSpeed": 52.9292776584558
+    },
+    {
+      "id": "bugatti-chiron",
+      "steer": 1,
+      "maxSlip": 5.0370338668147125,
+      "maxYaw": 1.1456981897354126,
+      "minUp": 0.9996815248164252,
+      "finalForwardSpeed": 29.423889051048405
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "steer": -1,
+      "maxSlip": 3.0797264104408053,
+      "maxYaw": 1.1581870317459106,
+      "minUp": 0.999592217902034,
+      "finalForwardSpeed": 32.09789207742619
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "steer": -0.35,
+      "maxSlip": 0.554946911575214,
+      "maxYaw": 0.9403122067451477,
+      "minUp": 0.999633875790012,
+      "finalForwardSpeed": 49.38528539465554
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "steer": 0.35,
+      "maxSlip": 0.5549427109773616,
+      "maxYaw": 0.940311074256897,
+      "minUp": 0.9996338742187235,
+      "finalForwardSpeed": 49.38527126308172
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "steer": 1,
+      "maxSlip": 3.0797113583883102,
+      "maxYaw": 1.1581834554672241,
+      "minUp": 0.9995922174923513,
+      "finalForwardSpeed": 32.09786211496334
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "steer": -1,
+      "maxSlip": 1.4542313991957783,
+      "maxYaw": 1.0956642627716064,
+      "minUp": 0.9996646868758573,
+      "finalForwardSpeed": 34.98979878802374
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "steer": -0.35,
+      "maxSlip": 0.57053562469014,
+      "maxYaw": 0.9096379280090332,
+      "minUp": 0.9997113501816965,
+      "finalForwardSpeed": 48.750491321277515
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "steer": 0.35,
+      "maxSlip": 0.5705346567375794,
+      "maxYaw": 0.909640908241272,
+      "minUp": 0.9997113506028585,
+      "finalForwardSpeed": 48.750478496873995
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "steer": 1,
+      "maxSlip": 1.4542232182329262,
+      "maxYaw": 1.095662236213684,
+      "minUp": 0.9996646862067355,
+      "finalForwardSpeed": 34.98994210845745
+    },
+    {
+      "id": "yangwang-u9",
+      "steer": -1,
+      "maxSlip": 1.3243085138254904,
+      "maxYaw": 1.0337603092193604,
+      "minUp": 0.9996997671032786,
+      "finalForwardSpeed": 39.394823436795335
+    },
+    {
+      "id": "yangwang-u9",
+      "steer": -0.35,
+      "maxSlip": 0.5483083496755993,
+      "maxYaw": 0.9096923470497131,
+      "minUp": 0.9996730014765561,
+      "finalForwardSpeed": 51.96197867589753
+    },
+    {
+      "id": "yangwang-u9",
+      "steer": 0.35,
+      "maxSlip": 0.5483098619080417,
+      "maxYaw": 0.9096914529800415,
+      "minUp": 0.9996729990039145,
+      "finalForwardSpeed": 51.96199693260065
+    },
+    {
+      "id": "yangwang-u9",
+      "steer": 1,
+      "maxSlip": 1.324178087051814,
+      "maxYaw": 1.033753752708435,
+      "minUp": 0.9996997669482949,
+      "finalForwardSpeed": 39.39507525573949
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "steer": -1,
+      "maxSlip": 1.9943724129146143,
+      "maxYaw": 1.1691666841506958,
+      "minUp": 0.9994470943770187,
+      "finalForwardSpeed": 34.51630584901068
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "steer": -0.35,
+      "maxSlip": 0.5272084696219136,
+      "maxYaw": 0.9871491193771362,
+      "minUp": 0.9994690294239446,
+      "finalForwardSpeed": 50.1384001909591
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "steer": 0.35,
+      "maxSlip": 0.5272089954036744,
+      "maxYaw": 0.9871482849121094,
+      "minUp": 0.9994690248018018,
+      "finalForwardSpeed": 50.138392052732975
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "steer": 1,
+      "maxSlip": 1.9944090584897913,
+      "maxYaw": 1.1691559553146362,
+      "minUp": 0.999447095273539,
+      "finalForwardSpeed": 34.51624848436109
+    }
+  ]
+}

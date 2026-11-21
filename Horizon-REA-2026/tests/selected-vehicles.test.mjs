@@ -265,17 +265,19 @@ it.each(VEHICLE_DESIGNS)("enforces $id speed without rendering and cancels nitro
   expect(Math.hypot(velocity.x,velocity.z)).toBeCloseTo(design.tuning.topSpeed,4);
   expect(velocity.y).toBe(-17);
   car.body.setLinvel({x:0,y:0,z:45},true);
-  car.update(1/60,{throttle:1,brake:0,steer:.5,handbrake:false},1);
+  car.update(1/60,{throttle:1,brake:0,steer:0,handbrake:false},1);
   expect(car.turboActive).toBe(true);
   car.syncVisual(1/60);
   expect(car.visual.root.getObjectByName('turbo-exhaust-flames').visible).toBe(true);
-  const wheels=car.wheelVisualDebug();
-  expect(wheels.slice(0,2).every(w=>w.steer>0 && Math.abs(w.roll)>.1)).toBe(true);
-  expect(wheels.slice(2).every(w=>w.steer===0 && Math.abs(w.roll)>.1)).toBe(true);
   car.update(1/60,{throttle:1,brake:1,steer:0,handbrake:false},1);
   expect(car.turboActive).toBe(false);
   car.syncVisual(1/60);
   expect(car.visual.root.getObjectByName('turbo-exhaust-flames').visible).toBe(false);
+  car.update(1/60,{throttle:1,brake:0,steer:.5,handbrake:false},1);
+  car.syncVisual(1/60);
+  const wheels=car.wheelVisualDebug();
+  expect(wheels.slice(0,2).every(w=>w.steer>0 && Math.abs(w.roll)>.1)).toBe(true);
+  expect(wheels.slice(2).every(w=>w.steer===0 && Math.abs(w.roll)>.1)).toBe(true);
   car.dispose(world);world.free();
 });
 

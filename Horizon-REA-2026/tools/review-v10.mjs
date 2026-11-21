@@ -76,19 +76,25 @@ try {
      const q=v.body.rotation(),fwd={x:2*(q.x*q.z+q.w*q.y),z:1-2*(q.x*q.x+q.y*q.y)};
      const mag=Math.hypot(fwd.x,fwd.z);fwd.x/=mag;fwd.z/=mag;
      const inject=speed=>v.body.setLinvel({x:fwd.x*speed,y:0,z:fwd.z*speed},true);
-     const drive={throttle:1,brake:0,steer:.75,handbrake:false};
+     const drive={throttle:1,brake:0,steer:0,handbrake:false};
      inject(42);v.update(1/60,drive,1);v.syncVisual(1/60);if(v.turboActive)throw Error('Early turbo');
      for(let step=0;step<3;step++){inject(45.5);v.update(1/60,drive,1);v.syncVisual(1/60);}
      const flames=v.visual.root.getObjectByName('turbo-exhaust-flames');
      const flameScale=flames.children[0].scale.y;
      v.syncVisual(1/60);
      if(!v.turboActive||!flames.visible||flameScale===flames.children[0].scale.y)throw Error('Turbo is missing or static');
+     for(let step=0;step<3;step++){inject(45.5);v.update(1/60,{...drive,steer:.75},1);v.syncVisual(1/60);}
+     if(v.turboActive||flames.visible)throw Error('Turbo pushes through a high-load turn');
+     metadata.cornerCancelsTurbo=true;
      const wheels=v.wheelVisualDebug();
      if(wheels.length!==4||!wheels.slice(0,2).every(w=>w.steer>.04)||!wheels.slice(2).every(w=>w.steer===0)||!wheels.every(w=>Math.abs(w.roll)>.05))throw Error('Wheel animation mismatch');
      v.body.setLinvel({x:35,y:-17,z:150},true);v.afterPhysicsStep();
      const vel=v.body.linvel(),mph=Math.hypot(vel.x,vel.z)/.44704;
      if(Math.abs(mph-v.speedLimitMph)>.001||vel.y!==-17)throw Error('Governor mismatch');
      metadata.wheels=wheels;metadata.speedCapMph=mph;metadata.animatedTurbo=true;
+     v.place(track.sampleAt(index).clone(),Math.atan2(t.x,t.z));
+     inject(45.5);v.update(1/60,drive,1);v.syncVisual(1/60);
+     if(!v.turboActive)throw Error('Straight turbo did not re-arm after a fresh reset');
      inject(45.5);v.update(1/60,{...drive,brake:1},1);v.syncVisual(1/60);
      if(v.turboActive||flames.visible)throw Error('Turbo remains active under braking');
      metadata.brakingCancelsTurbo=true;
