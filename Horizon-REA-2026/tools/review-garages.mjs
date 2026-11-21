@@ -32,9 +32,58 @@ try {
   const {image,...report}=result;metrics.push({name,...report});console.log('CAPTURE',name,JSON.stringify(report));
   await writeFile(`review/garages/${name}.png`,Buffer.from(image.split(',')[1],'base64'));
  }
+ // The full DOM is captured here because the large start signal is a HUD element.
+ await page.evaluate(()=>{
+  const g=window.__HORIZON_GAME__;g.startRace();g.chase.snap();g.chase.update(1/60,g.race.player.vehicle,0);g.advance(0);
+ });
+ const startPhases=[];
+ for(const phase of ['red','yellow','green']) {
+  const report=await page.evaluate(phase=>{
+   const g=window.__HORIZON_GAME__;g.skipRender=true;
+   let steps=0;
+   while(document.querySelector('#countdown')?.dataset.phase!==phase && steps++<400)g.advance(1/60);
+   g.skipRender=false;g.advance(0);
+   return {phase:document.querySelector('#countdown')?.dataset.phase,state:g.race.state,remaining:g.race.countdown,
+    lamps:document.querySelectorAll('.start-lamp').length,musicActive:!!g.audio.startMusic,muted:g.audio.isMuted};
+  },phase);
+  if(report.phase!==phase || report.lamps!==3 || (phase==='green' && report.state!=='racing'))throw Error('Unsynchronized start signal: '+JSON.stringify(report));
+  startPhases.push(report);
+  await page.screenshot({path:`review/garages/salida-${phase}.png`});
+ }
+ const sound=await page.evaluate(async()=>{
+  const Score=window.__HORIZON_GAME__.audio.startMusic.constructor;
+  const sampleRate=48000, seconds=6.5, context=new OfflineAudioContext(2,sampleRate*seconds,sampleRate);
+  const score=new Score(context,context.destination);score.update('red',5.2,5.2);
+  const suspended=[];
+  for(let i=1;i<65;i++) {
+   suspended.push(context.suspend(i/10).then(()=>{
+    const remaining=5.2-context.currentTime;
+    score.update(remaining>2?'red':remaining>0?'yellow':context.currentTime<6.4?'green':null,remaining,5.2);
+    return context.resume();
+   }));
+  }
+  const buffer=await context.startRendering();await Promise.all(suspended);
+  const count=buffer.length, bytes=new ArrayBuffer(44+count*4), view=new DataView(bytes);
+  const text=(offset,s)=>{for(let i=0;i<s.length;i++)view.setUint8(offset+i,s.charCodeAt(i));};
+  text(0,'RIFF');view.setUint32(4,36+count*4,true);text(8,'WAVE');text(12,'fmt ');view.setUint32(16,16,true);
+  view.setUint16(20,1,true);view.setUint16(22,2,true);view.setUint32(24,sampleRate,true);view.setUint32(28,sampleRate*4,true);
+  view.setUint16(32,4,true);view.setUint16(34,16,true);text(36,'data');view.setUint32(40,count*4,true);
+  let peak=0, square=0;
+  for(let i=0;i<count;i++)for(let channel=0;channel<2;channel++) {
+   const value=buffer.getChannelData(channel)[i];peak=Math.max(peak,Math.abs(value));square+=value*value;
+   view.setInt16(44+(i*2+channel)*2,Math.round(Math.max(-1,Math.min(1,value))*32767),true);
+  }
+  let binary='';const data=new Uint8Array(bytes);
+  for(let i=0;i<data.length;i+=8192)binary+=String.fromCharCode(...data.subarray(i,i+8192));
+  return {base64:btoa(binary),peak,rms:Math.sqrt(square/(count*2)),seconds};
+ });
+ if(sound.peak>=1 || sound.rms<.01)throw Error('Start music is silent or clipped');
+ await writeFile('review/garages/salida-tension.wav',Buffer.from(sound.base64,'base64'));
+ const {base64,...audioMetrics}=sound;
+ await writeFile('review/garages/start-checks.json',JSON.stringify({startPhases,audioMetrics},null,2));
  // Real animation pacing, four simulated cars. Software CI results are not a
  // prediction of the laptop GPU. Keep the hardware/conditions in the report.
- const benchmark=await page.evaluate(async()=>{
+ const benchmark=process.env.SKIP_RACE_BENCHMARK ? {skipped:"Existing software performance baseline retained; this run checks signs and start synchronization."} : await page.evaluate(async()=>{
   const g=window.__HORIZON_GAME__;g.captureMode=true;g.race.state='racing';g.state='racing';g.skipRender=false;
   const Driver=g.race.racers.find(r=>!r.isPlayer).ai.constructor;
   const pilot=new Driver(g.race.player.vehicle,g.track,-2.7,.94,1,'estratega','medio');

@@ -1,3 +1,4 @@
+import type { StartSignalPhase } from "../race/startSignal";
 import type { RaceSnapshot, Racer } from "../race/race";
 import type { Track } from "../world/track";
 import type { Vehicle } from "../vehicle/vehicle";
@@ -68,6 +69,7 @@ export class HUD {
   private startPoint: [number, number];
   private toastTimer = 0;
   private lastSpeed = -1;
+  private startPhase: StartSignalPhase | null = null;
   private uiElapsed = .1;
 
   constructor(root: HTMLElement, track: Track) {
@@ -155,8 +157,23 @@ export class HUD {
     this.toastTimer = duration / 1000;
   }
 
+  setStartSignal(phase: StartSignalPhase | null): void {
+    if (phase === this.startPhase) return;
+    this.startPhase = phase;
+    if (!phase) { this.countdownEl.classList.remove("show"); this.countdownEl.replaceChildren(); return; }
+    const label = phase === "red" ? "PREPÁRATE" : phase === "yellow" ? "ATENCIÓN" : "¡SALIDA!";
+    this.countdownEl.dataset.phase = phase;
+    this.countdownEl.innerHTML = `<div class="start-signal" role="status" aria-label="${label}">
+      <div class="start-signal-title">SALIDA DE CARRERA</div>
+      <div class="start-signal-lamps" aria-hidden="true">
+        <span class="start-lamp red"></span><span class="start-lamp yellow"></span><span class="start-lamp green"></span>
+      </div><div class="start-signal-label">${label}</div></div>`;
+    this.countdownEl.classList.add("show");
+  }
+
   setCountdown(text: string | null): void {
     if (text === null) {
+      this.startPhase = null;
       this.countdownEl.classList.remove("show", "pop");
       this.countdownEl.textContent = "";
       return;

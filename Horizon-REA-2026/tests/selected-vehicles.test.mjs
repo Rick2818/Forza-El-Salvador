@@ -178,3 +178,20 @@ it.each(VEHICLE_DESIGNS)("reaches the requested straight-line speed for $id", (d
   car.dispose(world);
   world.free();
 }, 60000);
+
+it.each(["monzon", "suzaka"])("holds all four cars until the shared green boundary on %s", (id) => {
+ const world = new RAPIER.World({x:0,y:-13.5,z:0});world.timestep=1/60;
+ const track=new Track(getCircuit(id));track.buildVisuals=()=>{
+  const road=new THREE.Mesh(track.ribbonGeometry(-track.halfWidth,track.halfWidth,.02,12));
+  road.name="asphalt";track.group.add(road);
+ };track.build();track.addPhysics(world);
+ const race=new Race(world,new THREE.Scene(),track,"ferrari-california-t","medio");
+ race.state="countdown";
+ const before=race.racers.map(r=>r.vehicle.body.translation());
+ for(let step=0;step<300;step++) {race.update(1/60,{throttle:1,brake:0,steer:0,handbrake:false});world.step();}
+ expect(race.state).toBe("countdown");
+ race.racers.forEach((r,i)=>{const p=r.vehicle.body.translation();expect(Math.hypot(p.x-before[i].x,p.z-before[i].z)).toBeLessThan(.1);});
+ for(let step=0;step<180;step++){race.update(1/60,{throttle:1,brake:0,steer:0,handbrake:false});world.step();}
+ expect(race.state).toBe("racing");expect(race.racers.every(r=>r.vehicle.speedKph>1)).toBe(true);
+ race.dispose();world.free();
+});

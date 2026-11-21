@@ -1,3 +1,4 @@
+import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
@@ -221,6 +222,7 @@ export class Game {
 
   startRace(): void {
     this.replaceRace();
+    this.audio.silence();
     this.audio.ensure();
     this.audio.setElectric(vehicleDesign(this.selectedVehicleId).powertrain === "electric");
         this.race.state = "countdown";
@@ -235,6 +237,7 @@ export class Game {
     this.menu.hide();
     this.input.setTouchControlsVisible(true);
     this.hud.show(true);
+    this.hud.setStartSignal("red");
     this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas`, 3000);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
@@ -253,6 +256,7 @@ export class Game {
     this.state = "paused";
     this.physicsAccum = 0;
     this.audio.silence();
+    this.hud.setStartSignal(null);
     this.input.setTouchControlsVisible(false);
     this.menu.showPause(this.race.snapshot(this.input));
   }
@@ -499,19 +503,13 @@ export class Game {
         };
       }));
 
-      if (this.race.state === "countdown") {
-        const n = Math.ceil(this.race.countdown);
-        this.hud.setCountdown(n > 0 ? String(n) : "GO");
-      } else if (this.race.state === "racing" && !this.goShown) {
-        // One-shot: without the goShown latch this branch retriggers as soon as
-        // goFlash falls back to zero and the word GO blinks forever.
+      if (this.race.state === "racing" && !this.goShown) {
         this.goShown = true;
-        this.goFlash = 0.9;
-        this.hud.setCountdown("GO");
-      } else if (this.goFlash > 0) {
-        this.goFlash -= dt;
-        if (this.goFlash <= 0) this.hud.setCountdown(null);
-      }
+        this.goFlash = 1.2;
+      } else if (this.goFlash > 0) this.goFlash = Math.max(0, this.goFlash-dt);
+      const signal = startSignalPhase(this.race.state, this.race.countdown, this.goFlash > 0);
+      this.hud.setStartSignal(signal);
+      this.audio.updateStartSignal(signal, this.race.countdown, SETTINGS.race.countdown);
 
       const snapshot = this.race.snapshot(drive as Input);
       this.hud.update(dt, snapshot, player, this.race.racers, this.fps);

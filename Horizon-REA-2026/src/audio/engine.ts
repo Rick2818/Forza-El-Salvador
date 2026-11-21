@@ -1,3 +1,5 @@
+import { StartMusic } from "./startMusic";
+import type { StartSignalPhase } from "../race/startSignal";
 export interface RivalEngineState {
   id: string;
   vehicleId: string;
@@ -50,6 +52,7 @@ export class GameAudio {
   private muted = false;
   private started = false;
   private electric = false;
+  private startMusic: StartMusic | null = null;
   private readonly rivals = new Map<string, RivalVoice>();
 
   setElectric(on: boolean): void {
@@ -225,8 +228,15 @@ export class GameAudio {
     }
   }
 
+  updateStartSignal(phase: StartSignalPhase | null, remaining: number, total: number): void {
+    if (!this.ctx || !this.masterGain) return;
+    if (!this.startMusic && phase) this.startMusic = new StartMusic(this.ctx, this.masterGain);
+    this.startMusic?.update(phase, remaining, total);
+  }
+
   /** Fade everything out (pause, menu, results) without closing the context. */
   silence(): void {
+    this.startMusic?.silence();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.engineGain?.gain.setTargetAtTime(0, now, 0.06);

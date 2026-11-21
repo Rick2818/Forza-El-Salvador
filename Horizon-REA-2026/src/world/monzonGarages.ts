@@ -26,10 +26,10 @@ function workshopFloorMap(): THREE.CanvasTexture {
 }
 
 export const GARAGE_LAYOUT = [
-  { name: "FERRARI", x: 118, color: 0xb41428 },
-  { name: "PORSCHE", x: 134.5, color: 0xb1a68a },
-  { name: "BUGATTI", x: 151, color: 0x307986 },
-  { name: "MERCEDES-BENZ", x: 167.5, color: 0x9ca9af }
+  { name: "FERRARI", brand: "ferrari", crop: [205, 30, 230, 370], x: 118, color: 0xb41428 },
+  { name: "PORSCHE", brand: "porsche", crop: [235, 65, 180, 225], x: 134.5, color: 0xb1a68a },
+  { name: "BUGATTI", brand: "bugatti", crop: [165, 195, 695, 360], x: 151, color: 0x307986 },
+  { name: "MERCEDES-BENZ", brand: "mercedes-benz", crop: [670, 90, 580, 585], x: 167.5, color: 0x9ca9af }
 ] as const;
 
 /** Visual-only service area; all props remain beyond the circuit guardrail. */
@@ -39,6 +39,7 @@ export class MonzonGarages {
   private lights: THREE.PointLight[] = [];
   private equipment: { mesh: THREE.InstancedMesh; detail: boolean; transform: THREE.Matrix4 }[] = [];
   private lastEquipmentPosition = new THREE.Vector3(Infinity, 0, Infinity);
+  private brandSigns: {bay: typeof GARAGE_LAYOUT[number]; canvas: HTMLCanvasElement; map: THREE.CanvasTexture}[] = [];
 
   constructor(scene: THREE.Scene) {
     this.group.name = "monzon-open-garages";
@@ -58,22 +59,23 @@ export class MonzonGarages {
         box("garage-entry-column", bay.x + side * 7.65, 2.4, 30.3, .32, 4.8, .38, metal);
       }
       box("garage-roof", bay.x, 4.85, 35.5, 16.1, .22, 11.2, metal);
-      box("garage-fascia", bay.x, 4.40, 30.15, 15.8, .72, .23,
+      box("garage-fascia", bay.x, 4.95, 30.15, 15.8, 1.92, .23,
         new THREE.MeshStandardMaterial({color: bay.color, roughness: .55, metalness: .15}));
       // Raised roller door remains entirely above the open frontage.
       for (let i = 0; i < 4; i++) box("raised-shutter", bay.x, 3.78 + i * .07, 30.55, 14.9, .045, .15, metal);
       box("garage-threshold", bay.x, .12, 30, 14.9, .015, .12, markings);
       for (const side of [-1, 1]) box("working-area-line", bay.x + side * 2.6, .12, 33.7, .065, .012, 5.8, markings);
-      const canvas = document.createElement("canvas"); canvas.width = 1024; canvas.height = 96;
+      const canvas = document.createElement("canvas"); canvas.width = 2048; canvas.height = 256;
       const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#0f171d"; ctx.fillRect(0, 0, 1024, 96);
+      ctx.fillStyle = "#0f171d"; ctx.fillRect(0, 0, 2048, 256);
       ctx.fillStyle = "#e2e5e2"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.font = "600 48px Arial, sans-serif"; ctx.fillText(bay.name, 512, 50);
+      ctx.font = "600 104px Arial, sans-serif"; ctx.fillText(bay.name, 1210, 137, 1450);
       const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace;
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(9.6, .9),
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(14.8, 1.85),
         new THREE.MeshBasicMaterial({map, toneMapped: false}));
-      sign.name = "garage-brand"; sign.position.set(bay.x, 4.42, 29.98); sign.rotation.y = Math.PI;
+      sign.name = "garage-brand"; sign.position.set(bay.x, 4.95, 29.98); sign.rotation.y = Math.PI;
       this.group.add(sign);
+      this.brandSigns.push({bay, canvas, map});
     }
     batchStaticScenery(this.group);
     scene.add(this.group);
@@ -85,7 +87,31 @@ export class MonzonGarages {
       light.castShadow = false; this.lights.push(light); scene.add(light);
     }
     this.update(new THREE.Vector3(140, 0, 0));
-    this.ready = this.loadKit();
+    this.ready = Promise.all([this.loadKit(), this.loadBrandMarks()]).then(() => { this.group.userData.ready = true; });
+  }
+
+  private async loadBrandMarks(): Promise<void> {
+    await Promise.all(this.brandSigns.map(async ({bay, canvas, map}) => {
+      const image = await new THREE.ImageLoader().loadAsync(`${import.meta.env.BASE_URL}brands/${bay.brand}.png`);
+      const [sx, sy, sw, sh] = bay.crop;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#e9e6dc"; ctx.fillRect(24, 20, 340, 216);
+      const scale = Math.min(304 / sw, 192 / sh), w = sw * scale, h = sh * scale;
+      ctx.drawImage(image, sx, sy, sw, sh, 194-w/2, 128-h/2, w, h);
+      map.needsUpdate = true;
+      const rear = document.createElement("canvas"); rear.width = rear.height = 512;
+      const panel = rear.getContext("2d")!;
+      panel.fillStyle = "#e9e6dc"; panel.fillRect(0, 0, 512, 512);
+      const rearScale = Math.min(428 / sw, 408 / sh), rw = sw * rearScale, rh = sh * rearScale;
+      panel.drawImage(image, sx, sy, sw, sh, 256-rw/2, 232-rh/2, rw, rh);
+      panel.fillStyle = "#20262a"; panel.font = "600 28px Arial, sans-serif";
+      panel.textAlign = "center"; panel.fillText(bay.name, 256, 485, 470);
+      const texture = new THREE.CanvasTexture(rear); texture.colorSpace = THREE.SRGBColorSpace;
+      const plaque = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.8), new THREE.MeshBasicMaterial({map: texture, toneMapped: false}));
+      plaque.name = `garage-emblem-${bay.brand}`;
+      plaque.position.set(bay.x, 2.7, 40.20); plaque.rotation.y = Math.PI;
+      this.group.add(plaque);
+    }));
   }
 
   private async loadKit(): Promise<void> {
@@ -106,7 +132,7 @@ export class MonzonGarages {
       this.group.add(mesh);
     });
     this.update(new THREE.Vector3(140, 0, 0));
-    this.group.userData.ready = true;
+
   }
 
   update(position: THREE.Vector3): void {
