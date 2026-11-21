@@ -29,6 +29,7 @@ jobs:
           SKIP_RACE_BENCHMARK: '1'
       - run: node tools/review-quality.mjs
       - run: node tools/review-partners.mjs
+      - run: node tools/review-engine-audio.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -37,3 +38,4 @@ jobs:
             Horizon-REA-2026/review/garages
             Horizon-REA-2026/review/quality
             Horizon-REA-2026/review/partners
+            Horizon-REA-2026/review/audio

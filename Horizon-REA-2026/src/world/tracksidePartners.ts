@@ -5,18 +5,20 @@ import type { TerrainField } from "./terrain";
 /**
  * Conceptual trackside advertising. These are text treatments, NOT official
  * sponsor logos or evidence of a commercial partnership.
+ * Background / foreground / accent are the user-approved V7 exact sRGB hex
+ * values. These are design references, not verified brand-guide assets.
  */
 export const TRACKSIDE_BRANDS = [
-  { name: "Aramco", background: "#007e83", foreground: "#ffffff", accent: "#65cfab" },
-  { name: "AWS", background: "#172b4b", foreground: "#ffffff", accent: "#ff9f32" },
-  { name: "DHL", background: "#ffdf00", foreground: "#d40511", accent: "#d40511" },
-  { name: "Heineken", background: "#075b33", foreground: "#ffffff", accent: "#e6383f" },
-  { name: "Lenovo", background: "#e0242d", foreground: "#ffffff", accent: "#ffffff" },
-  { name: "LVMH", background: "#111820", foreground: "#faf3e5", accent: "#bfa777" },
-  { name: "MSC Cruises", background: "#102c48", foreground: "#ffffff", accent: "#c6d7ed" },
-  { name: "Pirelli", background: "#f6d700", foreground: "#c40b1a", accent: "#c40b1a" },
-  { name: "Qatar Airways", background: "#692443", foreground: "#ffffff", accent: "#e5c9d0" },
-  { name: "Salesforce", background: "#0877bb", foreground: "#ffffff", accent: "#c5eeff" }
+  { name: "Aramco", background: "#00A19B", foreground: "#FFFFFF", accent: "#7CE0C3" },
+  { name: "AWS", background: "#1A2A44", foreground: "#FFFFFF", accent: "#FF9900" },
+  { name: "DHL", background: "#FFCC00", foreground: "#D40511", accent: "#D40511" },
+  { name: "Heineken", background: "#006B3F", foreground: "#FFFFFF", accent: "#E1251B" },
+  { name: "Lenovo", background: "#E2231A", foreground: "#FFFFFF", accent: "#B51E17" },
+  { name: "LVMH", background: "#111111", foreground: "#F4F1EA", accent: "#C7A86D" },
+  { name: "MSC Cruises", background: "#003B70", foreground: "#FFFFFF", accent: "#D9E4F2" },
+  { name: "Pirelli", background: "#FFD100", foreground: "#C8102E", accent: "#C8102E" },
+  { name: "Qatar Airways", background: "#5C1635", foreground: "#FFFFFF", accent: "#D8C3CB" },
+  { name: "Salesforce", background: "#00A1E0", foreground: "#FFFFFF", accent: "#BFEFFF" }
 ] as const;
 
 export interface PartnerBoardPlacement {
@@ -97,7 +99,7 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
   return planned;
 }
 
-function makeBrandAtlas(): THREE.CanvasTexture {
+export function makeBrandAtlas(): THREE.CanvasTexture {
   const width = 1024;
   const cellHeight = 160;
   const canvas = document.createElement("canvas");
@@ -112,17 +114,28 @@ function makeBrandAtlas(): THREE.CanvasTexture {
     ctx.fillStyle = brand.accent;
     ctx.fillRect(0, y, 22, cellHeight);
     ctx.fillRect(0, y + cellHeight - 10, width, 10);
-    ctx.fillStyle = brand.foreground;
+    // Text colors stay exact. A narrow dark outline makes low-contrast
+    // approved palettes (Salesforce, Aramco, DHL) readable without dimming
+    // the background or changing its brand hue.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = brand.name.length > 12
-      ? "bold 82px Arial, sans-serif"
-      : "bold 107px Arial, sans-serif";
-    ctx.fillText(brand.name, width / 2 + 10, y + 75, 925);
+      ? "900 94px Arial, sans-serif"
+      : "900 120px Arial, sans-serif";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(4, 13, 20, 0.65)";
+    ctx.strokeText(brand.name, width / 2 + 10, y + 75, 920);
+    ctx.fillStyle = brand.foreground;
+    ctx.fillText(brand.name, width / 2 + 10, y + 75, 920);
   });
   const atlas = new THREE.CanvasTexture(canvas);
   atlas.colorSpace = THREE.SRGBColorSpace;
   atlas.anisotropy = 4;
+  // Signs are unlit (MeshBasicMaterial + toneMapped:false), so a night race
+  // does not mute colors while daylight does not wash them out.
+  atlas.generateMipmaps = true;
+  atlas.needsUpdate = true;
   return atlas;
 }
 

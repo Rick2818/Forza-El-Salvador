@@ -41,7 +41,40 @@ La revisión de partners incorpora **Aramco, AWS, DHL, Heineken, Lenovo, LVMH, M
 
 **Alcance legal:** son representaciones tipográficas conceptuales para revisión, no logotipos oficiales ni patrocinios acreditados. Antes de explotar comercialmente el juego con las marcas es necesario obtener los derechos/autorizaciones correspondientes y verificar las restricciones publicitarias aplicables (especialmente bebidas alcohólicas).
 
-Las pruebas automáticas `src/world/tracksidePartners.test.ts` verifican los nombres, dos apariciones por marca y circuito, y la separación de la pista en un circuito de prueba. Deben completarse capturas WebGL, inspección visual y medición real de FPS antes de aprobar producción.
+### V7 — paletas sRGB aprobadas
+
+La fuente única para el color es `src/world/tracksidePartners.ts`. Estas **paletas propuestas por el usuario** se almacenan como valores HEX sRGB exactos; no son certificaciones de identidad corporativa ni implican acuerdos con las empresas.
+
+| Partner | Fondo | Texto | Acento |
+| --- | --- | --- | --- |
+| Aramco | `#00A19B` | `#FFFFFF` | `#7CE0C3` |
+| AWS | `#1A2A44` | `#FFFFFF` | `#FF9900` |
+| DHL | `#FFCC00` | `#D40511` | `#D40511` |
+| Heineken | `#006B3F` | `#FFFFFF` | `#E1251B` |
+| Lenovo | `#E2231A` | `#FFFFFF` | `#B51E17` |
+| LVMH | `#111111` | `#F4F1EA` | `#C7A86D` |
+| MSC Cruises | `#003B70` | `#FFFFFF` | `#D9E4F2` |
+| Pirelli | `#FFD100` | `#C8102E` | `#C8102E` |
+| Qatar Airways | `#5C1635` | `#FFFFFF` | `#D8C3CB` |
+| Salesforce | `#00A1E0` | `#FFFFFF` | `#BFEFFF` |
+
+Los carteles comparten un atlas Canvas2D sRGB y usan `MeshBasicMaterial` sin tone mapping para conservar el color frente a la iluminación nocturna y diurna. Se añadió un contorno tipográfico discreto para la lectura de combinaciones con contraste moderado; el color del texto no cambia. Las estructuras de cartel, distribución y soportes permanecen iguales.
+
+La batería `src/world/tracksidePartners.test.ts` verifica el catálogo, los valores HEX exactos y la distancia de seguridad de cada valla. La verificación real `node tools/review-partners.mjs` inspecciona en navegador **la textura utilizada en los dos escenarios**, lee píxeles de fondo, acento y texto, comprueba materiales compartidos, carteles elevados y boxes, y produce `review/partners/v7-brand-atlas.png`, capturas 1920×1080 e informe JSON. Esta prueba asegura valores exactos en el **atlas**, no equivalencia fotométrica de cada píxel en todas las pantallas.
+
+La publicación de V7 solo debe considerarse confirmada tras el workflow en GitHub Pages y una petición HTTP satisfactoria al sitio. Los 60 FPS siguen condicionados a una sesión de prueba en hardware real; render SwiftShader de CI no certifica el rendimiento de la laptop.
+
+## Sonido deportivo V10 (perfil opcional; audio procedural)
+
+El sonido anterior estaba basado en ondas diente de sierra y cuadradas, lo que producía un zumbido tipo rasuradora. El nuevo motor de audio crea un **buffer periódico de impulsos de combustión** según cilindros/RPM, un componente grave de cigüeñal, una capa de admisión filtrada y cambios suaves de volumen/filtro al acelerar o desacelerar. También aplica atenuación espacial y Doppler limitado a los tres rivales.
+
+Desde el menú de inicio o pausa, **Sonido del motor** permite escoger:
+- **V10 deportivo (sintetizado):** el mismo carácter de diez cilindros para todos los autos; es un efecto estético de carreras, seleccionado inicialmente.
+- **Perfil por vehículo (sintetizado):** conserva las configuraciones aproximadas por motor (Ferrari V8, Porsche seis cilindros, Bugatti W16 y Mercedes V8).
+
+El ajuste se guarda localmente cuando el navegador lo permite. Los motores/neumáticos mantienen su volumen independiente de la música de salida. La producción no contiene audios obtenidos de videos de terceros.
+
+**Limitación fundamental:** los sonidos son procedurales, NO grabaciones de un V10 real; todavía se necesita evaluación auditiva en altavoces/auriculares y, para un simulador con grabación auténtica, muestras grabadas y licenciadas con capas de ralentí, carga, descarga y altas RPM. La respuesta del audio sí depende de RPM, acelerador, distancia y cambio de relación. No atribuir el sonido del V10 a los fabricantes de los cuatro vehículos.
 
 ## Instalación y uso local
 

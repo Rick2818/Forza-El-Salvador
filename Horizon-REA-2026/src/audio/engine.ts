@@ -1,6 +1,47 @@
 import { StartMusic } from "./startMusic";
 import type { StartSignalPhase } from "../race/startSignal";
 export interface AudioVolumes { engines: number; music: number }
+export type EngineSoundProfile = "v10" | "vehiculo";
+
+/**
+ * Synthetic, dynamically driven exhaust pulses. This is a deliberate upgrade
+ * from detuned saw/square oscillators, NOT an authentic engine recording.
+ * A 720-degree four-stroke cycle contains cylinderCount firing events.
+ */
+const REF_RPM = 3600;
+const ENGINE_IDLE = 850;
+export function enginePulseHz(rpm: number, cylinders: number): number {
+  return Math.max(ENGINE_IDLE, Math.min(10500, rpm)) / 60 * cylinders / 2;
+}
+
+function createCombustionLoop(ctx: AudioContext, cylinders: number): AudioBuffer {
+  // Ten four-stroke cycles at the 3600 RPM reference. Both loop boundaries
+  // have the same firing phase. No per-frame PCM generation or extra workers.
+  const duration = 1 / 3;
+  const length = Math.max(32, Math.round(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  const pulses = (REF_RPM / 60) * (cylinders / 2) * duration;
+  const revolutions = (REF_RPM / 60) * duration;
+  let seed = cylinders * 982451653 + 19;
+  let filteredNoise = 0;
+  for (let i = 0; i < data.length; i++) {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    const noise = ((seed >>> 0) / 2147483648 - 1);
+    filteredNoise = filteredNoise * .65 + noise * .35;
+    const t = i / length;
+    const firingPhase = (t * pulses) % 1;
+    const decay = Math.exp(-firingPhase * 12);
+    const crackle = (filteredNoise * .63 + Math.sin(firingPhase * Math.PI * 2) * .37) * decay;
+    const crank = Math.sin(t * revolutions * Math.PI * 2) * .16
+      + Math.sin(t * revolutions * Math.PI * 4) * .09;
+    data[i] = (crackle * .68 + crank) * .65;
+  }
+  return buffer;
+}
+
 export interface RivalEngineState {
   id: string;
   vehicleId: string;
@@ -23,6 +64,8 @@ export interface EngineListener {
 
 interface RivalVoice {
   oscillators: OscillatorNode[];
+  combustion: AudioBufferSourceNode;
+  cylinders: number;
   gain: GainNode;
   filter: BiquadFilterNode;
   pan: StereoPannerNode;
@@ -36,11 +79,11 @@ const ENGINE_CYLINDERS: Record<string, number> = {
 };
 
 /**
- * Procedural game audio: a small synth engine (two detuned saws through a
- * low-pass), a tyre-scrub noise layer and a master gain. Everything is
- * generated with Web Audio; no sample files are loaded, so the game keeps
- * working offline and the browser autoplay policy is satisfied by only
- * creating the context after a user gesture (`ensure()`).
+ * Procedural racing audio: a lightweight deterministic combustion waveform,
+ * separate exhaust, bass crankshaft and intake layers, plus tyre scrub.
+ * The V10 racing profile is an aesthetic option, not a recording or a claim
+ * about the real Ferrari/Porsche/Bugatti/Mercedes engine configuration.
+ * Everything is generated locally and functions offline after a user gesture.
  */
 export class GameAudio {
   private volumes: AudioVolumes = {engines:1,music:1};
@@ -52,6 +95,12 @@ export class GameAudio {
   private engineFilter: BiquadFilterNode | null = null;
   private oscA: OscillatorNode | null = null;
   private oscB: OscillatorNode | null = null;
+  private combustion: AudioBufferSourceNode | null = null;
+  private combustionGain: GainNode | null = null;
+  private crankGain: GainNode | null = null;
+  private intakeGain: GainNode | null = null;
+  private readonly loops = new Map<number, AudioBuffer>();
+  private profile: EngineSoundProfile = "v10";
   private skidGain: GainNode | null = null;
   private muted = false;
   private started = false;
@@ -61,7 +110,57 @@ export class GameAudio {
   private readonly rivals = new Map<string, RivalVoice>();
 
   constructor() {
-    try { const saved=JSON.parse(localStorage.getItem("horizon.audio")??"null"); if(saved)this.setVolumes(saved); } catch { /* optional storage */ }
+    try {
+      const saved = JSON.parse(localStorage.getItem("horizon.audio") ?? "null");
+      if (saved) this.setVolumes(saved);
+      const profile = localStorage.getItem("horizon.engine-profile");
+      if (profile === "v10" || profile === "vehiculo") this.profile = profile;
+    } catch { /* optional storage */ }
+  }
+  getEngineProfile(): EngineSoundProfile { return this.profile; }
+  setEngineProfile(profile: EngineSoundProfile): void {
+    if (profile !== "v10" && profile !== "vehiculo") return;
+    if (this.profile === profile) return;
+    this.profile = profile;
+    try { localStorage.setItem("horizon.engine-profile", profile); } catch { /* optional */ }
+    this.installCombustion();
+    // Existing rivals use their former cylinder voice; recreate next frame.
+    for (const voice of this.rivals.values()) this.stopRival(voice);
+    this.rivals.clear();
+  }
+  private effectiveCylinders(id: string): number {
+    return this.profile === "v10" ? 10 : (ENGINE_CYLINDERS[id] ?? 8);
+  }
+  private combustionBuffer(cylinders: number): AudioBuffer {
+    const found = this.loops.get(cylinders);
+    if (found) return found;
+    const buffer = createCombustionLoop(this.ctx!, cylinders);
+    this.loops.set(cylinders, buffer);
+    return buffer;
+  }
+  private installCombustion(): void {
+    if (!this.ctx || !this.combustionGain) return;
+    if (this.combustion) {
+      this.combustion.stop();
+      this.combustion.disconnect();
+    }
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.combustionBuffer(this.effectiveCylinders(this.vehicleId));
+    source.loop = true;
+    source.connect(this.combustionGain);
+    source.start();
+    this.combustion = source;
+  }
+  private stopRival(voice: RivalVoice): void {
+    for (const oscillator of voice.oscillators) {
+      oscillator.stop();
+      oscillator.disconnect();
+    }
+    voice.combustion.stop();
+    voice.combustion.disconnect();
+    voice.gain.disconnect();
+    voice.filter.disconnect();
+    voice.pan.disconnect();
   }
   getVolumes(): AudioVolumes { return {...this.volumes}; }
   setVolumes(values: Partial<AudioVolumes>): void {
@@ -77,13 +176,15 @@ export class GameAudio {
   }
 
   setVehicle(id: string, electric=false): void {
-    this.vehicleId=id;this.setElectric(electric);
-    if(this.oscB && id==="porsche-911")this.oscB.type="triangle";
+    const oldCylinders = this.effectiveCylinders(this.vehicleId);
+    this.vehicleId = id;
+    this.setElectric(electric);
+    if (this.effectiveCylinders(id) !== oldCylinders) this.installCombustion();
   }
   setElectric(on: boolean): void {
     this.electric = on;
-    if (this.oscA) this.oscA.type = on ? "sine" : "sawtooth";
-    if (this.oscB) this.oscB.type = on ? "triangle" : "square";
+    if (this.oscA) this.oscA.type = on ? "sine" : "triangle";
+    if (this.oscB) this.oscB.type = "sine";
   }
 
   get isMuted(): boolean {
@@ -116,28 +217,48 @@ export class GameAudio {
     this.enginesBus=ctx.createGain();this.enginesBus.gain.value=this.volumes.engines;this.enginesBus.connect(master);
     this.musicBus=ctx.createGain();this.musicBus.gain.value=this.volumes.music;this.musicBus.connect(master);
 
-    // ---- Engine: two slightly detuned saws -> low-pass -> gain -> master.
+    // ---- Exhaust: broadband combustion pulses with controlled low mids,
+    // plus physical crankshaft body and subtle tonal induction. All sources
+    // share a single master engine gain so pause and M work as before.
     const engineGain = ctx.createGain();
     engineGain.gain.value = 0;
+    engineGain.connect(this.enginesBus);
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = 700;
-    filter.Q.value = 4;
-    engineGain.connect(filter);
-    filter.connect(this.enginesBus);
+    filter.frequency.value = 950;
+    filter.Q.value = .65;
+    filter.connect(engineGain);
+    const combustionGain = ctx.createGain();
+    combustionGain.gain.value = .82;
+    combustionGain.connect(filter);
 
     const oscA = ctx.createOscillator();
-    oscA.type = "sawtooth";
-    oscA.frequency.value = 60;
+    oscA.type = this.electric ? "sine" : "triangle";
+    oscA.frequency.value = 30;
     const oscB = ctx.createOscillator();
-    oscB.type = "square";
-    oscB.frequency.value = 30;
+    oscB.type = "sine";
+    oscB.frequency.value = 60;
+    const crankGain = ctx.createGain();
+    crankGain.gain.value = .18;
+    oscA.connect(crankGain);
+    oscB.connect(crankGain);
+    const crankFilter = ctx.createBiquadFilter();
+    crankFilter.type = "lowpass";
+    crankFilter.frequency.value = 260;
+    crankGain.connect(crankFilter);
+    crankFilter.connect(engineGain);
 
-    const mix = ctx.createGain();
-    mix.gain.value = 0.5;
-    oscA.connect(mix);
-    oscB.connect(mix);
-    mix.connect(engineGain);
+    // Combustion has a high-pass/bandpass intake branch: less harshness
+    // than full-band saws, but real mechanical texture under high throttle.
+    const intake = ctx.createBiquadFilter();
+    intake.type = "bandpass";
+    intake.frequency.value = 950;
+    intake.Q.value = .55;
+    combustionGain.connect(intake);
+    const intakeGain = ctx.createGain();
+    intakeGain.gain.value = .08;
+    intake.connect(intakeGain);
+    intakeGain.connect(engineGain);
     oscA.start();
     oscB.start();
 
@@ -145,6 +266,10 @@ export class GameAudio {
     this.engineFilter = filter;
     this.oscA = oscA;
     this.oscB = oscB;
+    this.crankGain = crankGain;
+    this.intakeGain = intakeGain;
+    this.combustionGain = combustionGain;
+    this.installCombustion();
 
     // ---- Tyre scrub: looping noise through a band-pass, gain driven by slip.
     const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -177,16 +302,29 @@ export class GameAudio {
     const speed = Math.min(1, Math.max(0, speedKph / 320));
     const rev = Math.min(1, Math.max(0, rpm / 8000));
 
-    // Firing frequency rises with rpm and speed, never fully silent at idle.
-    const base = this.electric ? 90 + speed * 520 : (48 + rev * 150 + speed * 40)*Math.sqrt((ENGINE_CYLINDERS[this.vehicleId]??8)/8);
-    if (this.oscA) this.oscA.frequency.setTargetAtTime(base, now, 0.06);
-    if (this.oscB) this.oscB.frequency.setTargetAtTime(base * 0.5, now, 0.06);
+    const engineRpm = Math.max(ENGINE_IDLE, Math.min(10500, rpm));
+    const rpmSpeed = engineRpm / REF_RPM;
+    const crankHz = engineRpm / 60;
+    if (this.combustion) this.combustion.playbackRate.setTargetAtTime(
+      this.electric ? Math.max(.65, speed * 2.4) : rpmSpeed, now, .07);
+    if (this.oscA) this.oscA.frequency.setTargetAtTime(
+      this.electric ? 28 + speed * 105 : crankHz * .5, now, .06);
+    if (this.oscB) this.oscB.frequency.setTargetAtTime(
+      this.electric ? 60 + speed * 220 : crankHz, now, .06);
     if (this.engineFilter) {
-      this.engineFilter.frequency.setTargetAtTime(500 + rev * 2600 + t * 900, now, 0.08);
+      this.engineFilter.frequency.setTargetAtTime(
+        this.electric ? 740 : 520 + rev * 1450 + t * 1250, now, .09);
     }
+    if (this.combustionGain) this.combustionGain.gain.setTargetAtTime(
+      this.electric ? .02 : .64 + t * .42, now, .1);
+    if (this.crankGain) this.crankGain.gain.setTargetAtTime(
+      this.electric ? .08 : .23 + (1 - rev) * .12, now, .1);
+    if (this.intakeGain) this.intakeGain.gain.setTargetAtTime(
+      this.electric ? .01 : .04 + t * .12, now, .1);
     if (this.engineGain) {
-      const level = this.electric ? (t * .08 + speed * .035) : .10 + t * .20 + rev * .14;
-      this.engineGain.gain.setTargetAtTime(level, now, 0.09);
+      const level = this.electric ? (.03 + t * .08 + speed * .03)
+        : .12 + t * .16 + rev * .11;
+      this.engineGain.gain.setTargetAtTime(level, now, .09);
     }
     if (this.skidGain) {
       const scrub = Math.min(1, Math.max(0, slip)) * 0.22;
@@ -198,40 +336,45 @@ export class GameAudio {
   updateRivals(listener: EngineListener, engines: readonly RivalEngineState[]): void {
     const ctx = this.ctx;
     if (!this.started || !ctx || !this.masterGain) return;
-    const active = new Set(engines.map(engine => engine.id));
     for (const [id, voice] of this.rivals) {
-      if (active.has(id)) continue;
-      voice.oscillators.forEach(oscillator => { oscillator.stop(); oscillator.disconnect(); });
-      voice.gain.disconnect();
-      voice.filter.disconnect();
-      voice.pan.disconnect();
+      const current = engines.find(engine => engine.id === id);
+      if (current && voice.cylinders === this.effectiveCylinders(current.vehicleId)) continue;
+      this.stopRival(voice);
       this.rivals.delete(id);
     }
     const now = ctx.currentTime;
     for (const engine of engines) {
       let voice = this.rivals.get(engine.id);
       if (!voice) {
+        const cylinders = this.effectiveCylinders(engine.vehicleId);
         const gain = ctx.createGain();
         gain.gain.value = 0;
         const filter = ctx.createBiquadFilter();
         filter.type = "lowpass";
-        filter.Q.value = 1.1;
+        filter.Q.value = .7;
         const pan = ctx.createStereoPanner();
         const low = ctx.createOscillator();
         const high = ctx.createOscillator();
-        low.type = "sawtooth";
-        high.type = engine.vehicleId === "porsche-911" ? "triangle" : "square";
-        low.connect(gain);
-        high.connect(gain);
+        low.type = "triangle";
+        high.type = "sine";
+        const lowGain = ctx.createGain();
+        lowGain.gain.value = .20;
+        low.connect(lowGain);
+        high.connect(lowGain);
+        lowGain.connect(gain);
+        const combustion = ctx.createBufferSource();
+        combustion.buffer = this.combustionBuffer(cylinders);
+        combustion.loop = true;
+        combustion.connect(gain);
         gain.connect(filter);
         filter.connect(pan);
         pan.connect(this.enginesBus!);
         low.start();
         high.start();
-        voice = {oscillators: [low, high], gain, filter, pan};
+        combustion.start();
+        voice = { oscillators: [low, high], combustion, cylinders, gain, filter, pan };
         this.rivals.set(engine.id, voice);
       }
-      voice.oscillators[1].type = engine.vehicleId === "porsche-911" ? "triangle" : "square";
       const dx = engine.x - listener.x;
       const dz = engine.z - listener.z;
       const distance = Math.hypot(dx, dz);
@@ -241,17 +384,19 @@ export class GameAudio {
       const radialSpeed = ((engine.vx - listener.vx) * dx + (engine.vz - listener.vz) * dz) /
         Math.max(1, distance);
       const doppler = Math.max(.88, Math.min(1.12, 343 / (343 + radialSpeed)));
-      const cylinders = ENGINE_CYLINDERS[engine.vehicleId] ?? 8;
-      const pitch = (revs / 60 * cylinders / 4) * doppler;
-      voice.oscillators[0].frequency.setTargetAtTime(pitch, now, .07);
-      voice.oscillators[1].frequency.setTargetAtTime(pitch * .503, now, .07);
+      // Vehicle specific or track-wide V10 reference. Pitch comes from
+      // actual RPM, not vehicle speed, so lift-off and gear changes sound real.
+      const revHz = revs / 60;
+      voice.combustion.playbackRate.setTargetAtTime(revs / REF_RPM * doppler, now, .09);
+      voice.oscillators[0].frequency.setTargetAtTime(revHz * .5 * doppler, now, .09);
+      voice.oscillators[1].frequency.setTargetAtTime(revHz * doppler, now, .09);
       voice.filter.frequency.setTargetAtTime(
-        Math.max(400, 650 + revs * .20 + throttle * 1200 - distance * 5), now, .1);
+        Math.max(380, 520 + revs * .16 + throttle * 1050 - distance * 3), now, .1);
       voice.pan.pan.setTargetAtTime(
         Math.max(-1, Math.min(1, (dx * listener.rightX + dz * listener.rightZ) /
           Math.max(5, distance))), now, .08);
       voice.gain.gain.setTargetAtTime(
-        this.muted ? 0 : attenuation * (.045 + throttle * .065 + revs / 9000 * .035), now, .1);
+        this.muted ? 0 : attenuation * (.025 + throttle * .06 + revs / 9000 * .025), now, .1);
     }
   }
 

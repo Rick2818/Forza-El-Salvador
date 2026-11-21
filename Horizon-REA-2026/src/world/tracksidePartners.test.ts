@@ -31,6 +31,26 @@ describe("trackside partner billboards", () => {
     ]);
   });
 
+  it("retains the approved V7 sRGB color triplets exactly", () => {
+    expect(TRACKSIDE_BRANDS).toEqual([
+      { name: "Aramco", background: "#00A19B", foreground: "#FFFFFF", accent: "#7CE0C3" },
+      { name: "AWS", background: "#1A2A44", foreground: "#FFFFFF", accent: "#FF9900" },
+      { name: "DHL", background: "#FFCC00", foreground: "#D40511", accent: "#D40511" },
+      { name: "Heineken", background: "#006B3F", foreground: "#FFFFFF", accent: "#E1251B" },
+      { name: "Lenovo", background: "#E2231A", foreground: "#FFFFFF", accent: "#B51E17" },
+      { name: "LVMH", background: "#111111", foreground: "#F4F1EA", accent: "#C7A86D" },
+      { name: "MSC Cruises", background: "#003B70", foreground: "#FFFFFF", accent: "#D9E4F2" },
+      { name: "Pirelli", background: "#FFD100", foreground: "#C8102E", accent: "#C8102E" },
+      { name: "Qatar Airways", background: "#5C1635", foreground: "#FFFFFF", accent: "#D8C3CB" },
+      { name: "Salesforce", background: "#00A1E0", foreground: "#FFFFFF", accent: "#BFEFFF" }
+    ]);
+    for (const brand of TRACKSIDE_BRANDS) {
+      expect(brand.background).toMatch(/^#[0-9A-F]{6}$/);
+      expect(brand.foreground).toMatch(/^#[0-9A-F]{6}$/);
+      expect(brand.accent).toMatch(/^#[0-9A-F]{6}$/);
+    }
+  });
+
   for (const circuit of ["monzon", "suzaka"] as const) {
     it(`places each partner twice on ${circuit}, outside all barriers`, () => {
       const track = circuitFixture(circuit);

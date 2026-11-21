@@ -1,4 +1,4 @@
-import type { AudioVolumes } from "../audio/engine";
+import type { AudioVolumes, EngineSoundProfile } from "../audio/engine";
 import type { Difficulty, RaceSnapshot } from "../race/race";
 import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
@@ -14,6 +14,7 @@ export interface MenuCallbacks {
   onQuit: () => void;
   onToggleQuality: () => void;
   onAudioVolumes: (values: AudioVolumes) => void;
+  onEngineProfile: (profile: EngineSoundProfile) => void;
   onPerformanceReport: () => void;
   onSelectDifficulty: (difficulty: Difficulty) => void;
   onSelectCircuit: (id: string) => void;
@@ -36,6 +37,7 @@ const CONTROLS = `
 
 export class Menu {
   private audioVolumes: AudioVolumes = {engines:1,music:1};
+  private engineProfile: EngineSoundProfile = "v10";
   private overlay: HTMLDivElement;
   private callbacks: MenuCallbacks;
   private qualityLabel = "EQUILIBRADA";
@@ -54,6 +56,14 @@ export class Menu {
     this.overlay.className = "overlay hidden";
     root.appendChild(this.overlay);
     this.overlay.addEventListener("click", this.onClick);
+    this.overlay.addEventListener("change", event => {
+      const target = event.target as HTMLSelectElement;
+      if (target.dataset.engineProfile !== "profile") return;
+      if (target.value === "v10" || target.value === "vehiculo") {
+        this.engineProfile = target.value;
+        this.callbacks.onEngineProfile(target.value);
+      }
+    });
     this.overlay.addEventListener("input", event=>{
       const input=event.target as HTMLInputElement,key=input.dataset.audio;
       if(key!=="engines" && key!=="music")return;
@@ -64,9 +74,16 @@ export class Menu {
   }
 
   setAudioVolumes(values: AudioVolumes): void { this.audioVolumes={...values}; }
+  setEngineProfile(profile: EngineSoundProfile): void { this.engineProfile = profile; }
   private audioPanel(): string {
     return `<fieldset class="audio-panel"><legend>Sonido</legend>${([['engines','Motores y neumáticos'],['music','Música de salida']] as const).map(([key,label])=>
-      `<label>${label}<input type="range" min="0" max="100" step="5" value="${Math.round(this.audioVolumes[key]*100)}" data-audio="${key}" aria-label="${label}"><output>${Math.round(this.audioVolumes[key]*100)}%</output></label>`).join('')}</fieldset>`;
+      `<label>${label}<input type="range" min="0" max="100" step="5" value="${Math.round(this.audioVolumes[key]*100)}" data-audio="${key}" aria-label="${label}"><output>${Math.round(this.audioVolumes[key]*100)}%</output></label>`).join('')}
+      <label>Sonido del motor
+        <select data-engine-profile="profile" aria-label="Sonido del motor">
+          <option value="v10" ${this.engineProfile === "v10" ? "selected" : ""}>V10 deportivo (sintetizado)</option>
+          <option value="vehiculo" ${this.engineProfile === "vehiculo" ? "selected" : ""}>Perfil por vehículo (sintetizado)</option>
+        </select>
+      </label></fieldset>`;
   }
 
   private onClick = (event: MouseEvent): void => {
