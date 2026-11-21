@@ -92,8 +92,15 @@ try {
       const expected = ["Aramco", "AWS", "DHL", "Heineken", "Lenovo", "LVMH",
         "MSC Cruises", "Pirelli", "Qatar Airways", "Salesforce"];
       const counts = Object.fromEntries(expected.map(brand => [brand, entries.filter(e => e.brand === brand).length]));
-      if (entries.length !== 20 || Object.values(counts).some(n => n !== 2)) {
-        throw Error("Insufficient physical billboards in " + id + ": " + JSON.stringify(counts));
+      // Count real meshes by lap sector, not merely by brand. The former
+      // 20 signs could all be physically placed but leave most of a lap bare.
+      const sectors = Array.from({length: 10}, () => 0);
+      entries.forEach(entry => sectors[Math.floor(entry.sampleIndex / track.samples.length * 10)]++);
+      if (entries.length < 60 || Object.values(counts).some(n => n < 5) ||
+          sectors.filter(n => n > 0).length < 8 ||
+          sectors.slice(5).reduce((a, b) => a + b, 0) < 20) {
+        throw Error("Missing full-lap advertising in " + id + ": " +
+          JSON.stringify({counts, sectors, total:entries.length}));
       }
       const gantry = group.getObjectByName("partner-gantry-banner");
       if (!gantry) throw Error("Missing overhead partner gantry in " + id);
@@ -131,7 +138,8 @@ try {
       game.renderer.render(game.scene, game.camera);
       return {
         image: game.renderer.domElement.toDataURL("image/png"),
-        circuit: id, physicalSigns: entries.length, counts, pitStrips,
+        circuit: id, physicalSigns: entries.length, counts, lapSectors: sectors,
+        lapLengthM: Number(track.length.toFixed(0)), pitStrips,
         portal: !!gantry, palette: checkedPalette,
         atlasImage: id === "monzon" ? canvas.toDataURL("image/png") : null,
         calls: game.renderer.info.render.calls,
@@ -145,6 +153,32 @@ try {
     if (atlasImage) {
       await writeFile("review/partners/v7-brand-atlas.png",
         Buffer.from(atlasImage.split(",")[1], "base64"));
+    }
+    // Capture representative signs from the middle and final quarter of
+    // the lap, not just the first sign near the start line.
+    for (const [label, fraction] of [["midlap", .52], ["lastlap", .83]]) {
+      const image = await page.evaluate(targetFraction => {
+        const game = window.__HORIZON_GAME__;
+        const track = game.track;
+        const group = game.scene.getObjectByName("trackside-partners-" + track.circuit.id);
+        const entries = group.getObjectByName("partner-brand-billboards").userData.placements;
+        const entry = entries.reduce((best, candidate) =>
+          Math.abs(candidate.sampleIndex / track.samples.length - targetFraction) <
+          Math.abs(best.sampleIndex / track.samples.length - targetFraction)
+            ? candidate : best, entries[0]);
+        const p = track.sampleAt(entry.sampleIndex);
+        const r = track.rightAt(entry.sampleIndex);
+        const x = p.x + r.x * (track.barrierLateralOffset + 9.5) * entry.side;
+        const z = p.z + r.z * (track.barrierLateralOffset + 9.5) * entry.side;
+        const y = game.environment.terrain.heightAt(x, z);
+        game.camera.position.set(p.x, p.y + 3.4, p.z);
+        game.camera.lookAt(x, y + 3.2, z);
+        game.camera.updateProjectionMatrix();
+        game.renderer.render(game.scene, game.camera);
+        return game.renderer.domElement.toDataURL("image/png");
+      }, fraction);
+      await writeFile(`review/partners/${circuit}-${label}.png`,
+        Buffer.from(image.split(",")[1], "base64"));
     }
     console.log("PARTNER_CHECK", JSON.stringify(report));
     await page.close();
