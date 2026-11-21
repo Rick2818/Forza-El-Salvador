@@ -89,9 +89,13 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
         const z = p.z + right.z * lateral * side;
         // Keep the Monzon garages/tribune/pits unobstructed.
         if (track.circuit.id === "monzon" && x > 55 && x < 730 && z > -112 && z < 110) continue;
-        const y = ground.heightAt(x, z);
-        // Flyover and crossing require ground-supported signs, never floating.
-        if (Math.abs(p.y - y) > 3.2) continue;
+        const groundY = ground.heightAt(x, z);
+        // Suzaka's flyover is up to 12 m above the lower road. The previous
+        // 3.2m limit emptied entire mid-lap sectors. Position the sign above
+        // its road deck, while extending both posts to actual terrain.
+        // No sign may be placed over an unexpectedly deep excavation.
+        if (p.y < groundY - 3.2 || p.y > groundY + 14.5) continue;
+        const y = Math.max(groundY, p.y);
         if (planned.some(board => Math.hypot(board.x - x, board.z - z) < separation)) continue;
         const ax = x - tangent.x * BOARD_WIDTH * .55;
         const az = z - tangent.z * BOARD_WIDTH * .55;
@@ -223,9 +227,14 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
       const x = board.x + board.tangentX * (halfW - .45) * side;
       const z = board.z + board.tangentZ * (halfW - .45) * side;
       const foot = ground.heightAt(x, z);
-      translation.set(x, foot + 2.125, z);
+      // Grounded posts are extended to support banners at bridge altitude,
+      // unlike suspended signage that has no plausible physical supports.
+      const postHeight = Math.max(.2, board.y + 4.25 - foot);
+      translation.set(x, foot + postHeight / 2, z);
+      scale.set(1, postHeight / 4.25, 1);
       matrix.compose(translation, new THREE.Quaternion(), scale);
       posts.setMatrixAt(i * 2 + (side + 1) / 2, matrix);
+      scale.set(1, 1, 1);
     }
   });
   backing.instanceMatrix.needsUpdate = true;
