@@ -10,6 +10,11 @@ class Node {
   frequency = new Param();
   playbackRate = new Param();
   Q = new Param();
+  threshold = new Param();
+  knee = new Param();
+  ratio = new Param();
+  attack = new Param();
+  release = new Param();
   pan = new Param();
   type = "";
   loop = false;
@@ -29,11 +34,13 @@ class Context {
   pans: Node[] = [];
   oscillators: Node[] = [];
   bufferSources: Node[] = [];
+  compressors: Node[] = [];
   constructor() { Context.current = this; }
   createGain() { const node = new Node(); this.gains.push(node); return node; }
   createStereoPanner() { const node = new Node(); this.pans.push(node); return node; }
   createOscillator() { const node = new Node(); this.oscillators.push(node); return node; }
   createBiquadFilter() { return new Node(); }
+  createDynamicsCompressor() { const node = new Node(); this.compressors.push(node); return node; }
   createBufferSource() { const node = new Node(); this.bufferSources.push(node); return node; }
   createBuffer() { return {getChannelData: () => new Float32Array(40)}; }
   resume() { return Promise.resolve(); }
@@ -139,3 +146,32 @@ it("rebuilds rival cylinder timbre when changing audio profile",()=>{
  expect(ctx.gains.at(-2)!.gain.value).toBe(0);
 });
 
+
+it("raises V10 idle and acceleration to a medium-strong mix with peak control", () => {
+  vi.stubGlobal("window", {AudioContext:Context});
+  const audio = new GameAudio();
+  audio.ensure();
+  const ctx = Context.current;
+  expect(ctx.compressors).toHaveLength(1);
+  expect(ctx.compressors[0].threshold.value).toBe(-16);
+  expect(ctx.compressors[0].ratio.value).toBe(3);
+  const motorGain = ctx.gains[3];
+  const musicBus = ctx.gains[2];
+  audio.update(850, 0, 0, 0);
+  const idle = motorGain.gain.value;
+  expect(idle).toBeGreaterThan(.35);
+  expect(idle).toBeLessThan(.43);
+  audio.update(7800, 1, 200, 0);
+  const full = motorGain.gain.value;
+  expect(full).toBeGreaterThan(.75);
+  expect(full).toBeLessThan(1);
+  expect(full).toBeGreaterThan(idle * 2);
+  expect(musicBus.gain.value).toBe(1);
+  audio.setVolumes({engines: .5, music: .75});
+  expect(ctx.gains[1].gain.value).toBe(.5);
+  expect(musicBus.gain.value).toBe(.75);
+  audio.setMuted(true);
+  expect(ctx.gains[0].gain.value).toBe(0);
+  audio.setMuted(false);
+  expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+});
