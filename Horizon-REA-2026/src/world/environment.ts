@@ -70,11 +70,11 @@ export class Environment {
       this.sky.addTo(scene);
       scene.background = new THREE.Color(0x03060d);
       scene.environment = this.sky.bakeEnvironment(renderer);
-      scene.environmentIntensity = 1.25;
+      scene.environmentIntensity = isMonzon ? .5 : 1.25;
       scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
     }
 
-    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : 0xa8c2ff, isDaylight ? 2.1 : 3.15);
+    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : isMonzon ? 0xe0e7e9 : 0xa8c2ff, isDaylight ? 2.1 : isMonzon ? 2.2 : 3.15);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
@@ -92,9 +92,9 @@ export class Environment {
       scene.add(new THREE.HemisphereLight(0xd8e3f0, 0x55694b, 1.15));
       scene.add(new THREE.AmbientLight(0xffffff, 0.28));
     } else {
-      scene.add(new THREE.HemisphereLight(0x2b4d82, 0x04060a, 1.05));
-      scene.add(new THREE.AmbientLight(0x101d33, 0.45));
-      const fill = new THREE.DirectionalLight(0x8fb6ff, 0.55);
+      scene.add(new THREE.HemisphereLight(isMonzon ? 0x9ba8b4 : 0x2b4d82, isMonzon ? 0x242a20 : 0x04060a, isMonzon ? .65 : 1.05));
+      scene.add(new THREE.AmbientLight(isMonzon ? 0xc0b6a4 : 0x101d33, isMonzon ? .17 : .45));
+      const fill = new THREE.DirectionalLight(isMonzon ? 0xd8e2e8 : 0x8fb6ff, .55);
       fill.position.set(-0.42, 0.55, -0.72);
       scene.add(fill);
     }
