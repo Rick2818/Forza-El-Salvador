@@ -1,3 +1,4 @@
+import type { AudioVolumes } from "../audio/engine";
 import type { Difficulty, RaceSnapshot } from "../race/race";
 import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
@@ -12,6 +13,8 @@ export interface MenuCallbacks {
   onRestart: () => void;
   onQuit: () => void;
   onToggleQuality: () => void;
+  onAudioVolumes: (values: AudioVolumes) => void;
+  onPerformanceReport: () => void;
   onSelectDifficulty: (difficulty: Difficulty) => void;
   onSelectCircuit: (id: string) => void;
   onSelectVehicle: (id: string) => Promise<void>;
@@ -32,6 +35,7 @@ const CONTROLS = `
 `;
 
 export class Menu {
+  private audioVolumes: AudioVolumes = {engines:1,music:1};
   private overlay: HTMLDivElement;
   private callbacks: MenuCallbacks;
   private qualityLabel = "EQUILIBRADA";
@@ -50,6 +54,19 @@ export class Menu {
     this.overlay.className = "overlay hidden";
     root.appendChild(this.overlay);
     this.overlay.addEventListener("click", this.onClick);
+    this.overlay.addEventListener("input", event=>{
+      const input=event.target as HTMLInputElement,key=input.dataset.audio;
+      if(key!=="engines" && key!=="music")return;
+      this.audioVolumes[key]=Number(input.value)/100;
+      this.callbacks.onAudioVolumes({...this.audioVolumes});
+      if(input.nextElementSibling)input.nextElementSibling.textContent=`${input.value}%`;
+    });
+  }
+
+  setAudioVolumes(values: AudioVolumes): void { this.audioVolumes={...values}; }
+  private audioPanel(): string {
+    return `<fieldset class="audio-panel"><legend>Sonido</legend>${([['engines','Motores y neumáticos'],['music','Música de salida']] as const).map(([key,label])=>
+      `<label>${label}<input type="range" min="0" max="100" step="5" value="${Math.round(this.audioVolumes[key]*100)}" data-audio="${key}" aria-label="${label}"><output>${Math.round(this.audioVolumes[key]*100)}%</output></label>`).join('')}</fieldset>`;
   }
 
   private onClick = (event: MouseEvent): void => {
@@ -60,6 +77,7 @@ export class Menu {
     if (action === "resume") this.callbacks.onResume();
     if (action === "restart") this.callbacks.onRestart();
     if (action === "quit") this.callbacks.onQuit();
+    if (action === "performance") this.callbacks.onPerformanceReport();
     if (action === "quality") this.callbacks.onToggleQuality();
     if (action === "difficulty") {
       const value = target.dataset.difficulty;
@@ -184,6 +202,7 @@ export class Menu {
           </div>
           <div class="difficulty-help">Fácil: rivales más lentos · Medio: adelantamientos y defensa · Difícil: presión constante y máxima competitividad.</div>
         </div>
+        ${this.audioPanel()}
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
@@ -273,7 +292,9 @@ export class Menu {
           <button class="btn" data-action="restart">Reiniciar carrera</button>
           <button class="btn ghost" data-action="quit">Menú principal</button>
         </div>
-        <div class="menu-note">Pulsa Esc para continuar</div>
+        <div class="menu-actions"><button class="btn ghost" data-action="performance">Descargar informe de rendimiento</button></div>
+        ${this.audioPanel()}
+        <div class="menu-note">La medición necesita 15 s de calentamiento y 120 s de carrera continua. Pulsa Esc para continuar.</div>
       </div>
     `;
     this.overlay.classList.remove("hidden");

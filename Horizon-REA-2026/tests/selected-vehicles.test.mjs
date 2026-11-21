@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { VEHICLE_DESIGNS, loadSelectedVehicle, createSelectedVisual, disposeSelectedVisual,
@@ -18,6 +18,8 @@ beforeAll(async () => {
   // Node has no image decoder. Keep real GLB parsing, geometry and materials;
   // replace only bitmap decoding. This test does not certify rendered textures.
   vi.stubGlobal("createImageBitmap", async () => ({ width: 128, height: 128, close() {} }));
+  mkdirSync("review/quality",{recursive:true});
+  writeFileSync("review/quality/race-validation.jsonl", "");
   await RAPIER.init();
   const incomplete = { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: "incomplete" }] };
   await expect(loadSelectedVehicle(VEHICLE_DESIGNS[0].id,
@@ -133,10 +135,10 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
   }
 });
 
-it.each(["facil", "medio", "dificil"])("simulates three Suzaka laps at %s difficulty", (difficulty) => {
+it.each(["monzon", "suzaka"].flatMap(circuit => ["facil", "medio", "dificil"].map(difficulty => [circuit, difficulty])))("simulates three %s laps at %s difficulty", (circuit, difficulty) => {
   const world = new RAPIER.World({ x: 0, y: -13.5, z: 0 });
   world.timestep = 1 / 60;
-  const track = new Track(getCircuit("suzaka"));
+  const track = new Track(getCircuit(circuit));
   track.buildVisuals = () => {
     const road = new THREE.Mesh(track.ribbonGeometry(-track.halfWidth, track.halfWidth, .02, 12));
     road.name = "asphalt";
@@ -147,13 +149,23 @@ it.each(["facil", "medio", "dificil"])("simulates three Suzaka laps at %s diffic
   const race = new Race(world, new THREE.Scene(), track, "ferrari-california-t", difficulty);
   race.state = "racing";
   const pilot = new AIDriver(race.player.vehicle, track, -2.7, .94, 1, "estratega", difficulty);
+  let leaderChanges=0,previousLeader=0;const peakSpeeds=new Map();
   for (let frame = 0; frame < 60 * 900 && !race.racers.every(r => r.finished); frame++) {
     const traffic = race.racers.filter(r => !r.isPlayer && !r.finished).map(r => ({
       position: r.vehicle.position.clone(), speed: r.vehicle.speed, isPlayer: false, racerId: r.id
     }));
     race.update(1 / 60, pilot.plan(1 / 60, frame / 60, traffic));
     world.step();
+    for(const r of race.racers)peakSpeeds.set(r.id,Math.max(peakSpeeds.get(r.id)??0,r.vehicle.speedKph));
+    if(frame%30===0 && !race.racers.some(r=>r.finished)) {
+      const leader=[...race.racers].sort((a,b)=>(b.lap+b.progress)-(a.lap+a.progress))[0].id;
+      if(previousLeader && leader!==previousLeader)leaderChanges++;previousLeader=leader;
+    }
   }
+  appendFileSync("review/quality/race-validation.jsonl",JSON.stringify({circuit,difficulty,
+    simulationSeconds:race.elapsed,physicsHz:60,rendering:false,leaderChanges,
+    drivers:race.racers.map(r=>({id:r.id,car:r.vehicle.vehicleId,finished:r.finished,finishSeconds:r.finishTime,
+      bestLapSeconds:r.bestLap,peakKph:peakSpeeds.get(r.id)}))})+"\n");
   expect(race.racers.every(r => r.finished)).toBe(true);
   race.dispose();
   world.free();
@@ -193,5 +205,18 @@ it.each(["monzon", "suzaka"])("holds all four cars until the shared green bounda
  race.racers.forEach((r,i)=>{const p=r.vehicle.body.translation();expect(Math.hypot(p.x-before[i].x,p.z-before[i].z)).toBeLessThan(.1);});
  for(let step=0;step<180;step++){race.update(1/60,{throttle:1,brake:0,steer:0,handbrake:false});world.step();}
  expect(race.state).toBe("racing");expect(race.racers.every(r=>r.vehicle.speedKph>1)).toBe(true);
+ race.dispose();world.free();
+});
+
+it("times each lap independently and retains the fastest lap",()=>{
+ const world=new RAPIER.World({x:0,y:-13.5,z:0});
+ const track={segmentLength:5,startIndex:0,sampleAt:i=>new THREE.Vector3(0,0,i*5),rightAt:()=>new THREE.Vector3(1,0,0),
+  tangentAt:()=>new THREE.Vector3(0,0,1),progress:i=>i/100,nearestIndex:()=>1};
+ const race=new Race(world,new THREE.Scene(),track,"ferrari-california-t","medio");
+ for(const [elapsed,lapTime] of [[100,100],[180,80],[270,90]]) {
+  race.elapsed=elapsed;race.player.lastProgress=.99;race.updateProgress(race.player);
+  expect(race.player.lastLap).toBe(lapTime);expect(race.player.lapStart).toBe(elapsed);
+ }
+ expect(race.player.bestLap).toBe(80);expect(race.player.finishTime).toBe(270);
  race.dispose();world.free();
 });

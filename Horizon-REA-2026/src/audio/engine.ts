@@ -1,5 +1,6 @@
 import { StartMusic } from "./startMusic";
 import type { StartSignalPhase } from "../race/startSignal";
+export interface AudioVolumes { engines: number; music: number }
 export interface RivalEngineState {
   id: string;
   vehicleId: string;
@@ -42,6 +43,9 @@ const ENGINE_CYLINDERS: Record<string, number> = {
  * creating the context after a user gesture (`ensure()`).
  */
 export class GameAudio {
+  private volumes: AudioVolumes = {engines:1,music:1};
+  private enginesBus: GainNode | null = null;
+  private musicBus: GainNode | null = null;
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private engineGain: GainNode | null = null;
@@ -54,6 +58,22 @@ export class GameAudio {
   private electric = false;
   private startMusic: StartMusic | null = null;
   private readonly rivals = new Map<string, RivalVoice>();
+
+  constructor() {
+    try { const saved=JSON.parse(localStorage.getItem("horizon.audio")??"null"); if(saved)this.setVolumes(saved); } catch { /* optional storage */ }
+  }
+  getVolumes(): AudioVolumes { return {...this.volumes}; }
+  setVolumes(values: Partial<AudioVolumes>): void {
+    for (const key of ["engines","music"] as const) {
+      const value=values[key];
+      if(typeof value==="number" && Number.isFinite(value)) this.volumes[key]=Math.max(0,Math.min(1,value));
+    }
+    if(this.ctx) {
+      this.enginesBus?.gain.setTargetAtTime(this.volumes.engines,this.ctx.currentTime,.05);
+      this.musicBus?.gain.setTargetAtTime(this.volumes.music,this.ctx.currentTime,.05);
+    }
+    try { localStorage.setItem("horizon.audio",JSON.stringify(this.volumes)); } catch { /* optional */ }
+  }
 
   setElectric(on: boolean): void {
     this.electric = on;
@@ -88,6 +108,8 @@ export class GameAudio {
     master.gain.value = this.muted ? 0 : 0.55;
     master.connect(ctx.destination);
     this.masterGain = master;
+    this.enginesBus=ctx.createGain();this.enginesBus.gain.value=this.volumes.engines;this.enginesBus.connect(master);
+    this.musicBus=ctx.createGain();this.musicBus.gain.value=this.volumes.music;this.musicBus.connect(master);
 
     // ---- Engine: two slightly detuned saws -> low-pass -> gain -> master.
     const engineGain = ctx.createGain();
@@ -97,7 +119,7 @@ export class GameAudio {
     filter.frequency.value = 700;
     filter.Q.value = 4;
     engineGain.connect(filter);
-    filter.connect(master);
+    filter.connect(this.enginesBus);
 
     const oscA = ctx.createOscillator();
     oscA.type = "sawtooth";
@@ -134,7 +156,7 @@ export class GameAudio {
     skidGain.gain.value = 0;
     noise.connect(band);
     band.connect(skidGain);
-    skidGain.connect(master);
+    skidGain.connect(this.enginesBus);
     noise.start();
 
     this.skidGain = skidGain;
@@ -198,7 +220,7 @@ export class GameAudio {
         high.connect(gain);
         gain.connect(filter);
         filter.connect(pan);
-        pan.connect(this.masterGain);
+        pan.connect(this.enginesBus!);
         low.start();
         high.start();
         voice = {oscillators: [low, high], gain, filter, pan};
@@ -230,7 +252,7 @@ export class GameAudio {
 
   updateStartSignal(phase: StartSignalPhase | null, remaining: number, total: number): void {
     if (!this.ctx || !this.masterGain) return;
-    if (!this.startMusic && phase) this.startMusic = new StartMusic(this.ctx, this.masterGain);
+    if (!this.startMusic && phase) this.startMusic = new StartMusic(this.ctx, this.musicBus!);
     this.startMusic?.update(phase, remaining, total);
   }
 

@@ -1,3 +1,4 @@
+import { RacePerformance, GPUFrameTimer } from "./render/performance";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
@@ -35,6 +36,8 @@ export class Game {
   state: GameState = "menu";
   quality: Quality = "equilibrada";
   fps = 0;
+  readonly performanceLog = new RacePerformance();
+  private readonly gpuTimer: GPUFrameTimer;
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -80,6 +83,7 @@ export class Game {
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.12;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.gpuTimer = new GPUFrameTimer(this.renderer.getContext());
 
     this.camera = new THREE.PerspectiveCamera(
       SETTINGS.camera.fov,
@@ -114,6 +118,8 @@ export class Game {
     try {
       const saved = localStorage.getItem("horizon.selected-vehicle");
       if (saved) { vehicleDesign(saved); this.selectedVehicleId = saved; }
+      const savedQuality = localStorage.getItem("horizon.quality");
+      if (savedQuality === "alta" || savedQuality === "equilibrada") this.quality=savedQuality;
       const savedDifficulty = localStorage.getItem("horizon.difficulty");
       if (savedDifficulty === "facil" || savedDifficulty === "medio" || savedDifficulty === "dificil") {
         this.difficulty = savedDifficulty;
@@ -130,6 +136,8 @@ export class Game {
       onRestart: () => this.startRace(),
       onQuit: () => this.quitToMenu(),
       onToggleQuality: () => this.toggleQuality(),
+      onAudioVolumes: (volumes) => this.audio.setVolumes(volumes),
+      onPerformanceReport: () => this.downloadPerformance(),
       onSelectCircuit: (id) => {
         if (id === this.track.circuit.id) return;
         try { localStorage.setItem("horizon.circuit", id); } catch { /* optional persistence */ }
@@ -158,10 +166,11 @@ export class Game {
     canvas.addEventListener("pointerdown", () => this.input.focusGame());
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
 
+    this.menu.setAudioVolumes(this.audio.getVolumes());
     this.menu.setSelectedVehicle(this.selectedVehicleId);
     this.menu.setSelectedCircuit(this.track.circuit.id);
     this.menu.setDifficulty(this.difficulty);
-    this.menu.setQuality("EQUILIBRADA");
+    this.menu.setQuality(this.quality.toUpperCase());
     this.applyQuality();
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
@@ -199,6 +208,7 @@ export class Game {
         wheels: this.race.player.vehicle.wheelDebug(),
         trackLength: Number(this.track.length.toFixed(1))
       }),
+      performanceReport: () => this.performanceReport(),
       start: () => this.startRace(),
       pause: () => this.pause(),
       resume: () => this.resume(),
@@ -222,6 +232,7 @@ export class Game {
 
   startRace(): void {
     this.replaceRace();
+    this.performanceLog.reset();
     this.audio.silence();
     this.audio.ensure();
     this.audio.setElectric(vehicleDesign(this.selectedVehicleId).powertrain === "electric");
@@ -254,6 +265,7 @@ export class Game {
   pause(): void {
     if (this.state !== "racing") return;
     this.state = "paused";
+    this.performanceLog.interrupt("Carrera en pausa; reinicia para medir una sesión continua.");
     this.physicsAccum = 0;
     this.audio.silence();
     this.hud.setStartSignal(null);
@@ -287,6 +299,8 @@ export class Game {
   private toggleQuality(): void {
     this.quality = this.quality === "alta" ? "equilibrada" : "alta";
     this.applyQuality();
+    this.degraded=false;
+    try { localStorage.setItem("horizon.quality", this.quality); } catch { /* optional */ }
     const label = this.quality === "alta" ? "ALTA" : "EQUILIBRADA";
     this.menu.setQuality(label);
     this.hud.toast(`Calidad ${label.toLowerCase()}`, 1800);
@@ -444,6 +458,7 @@ export class Game {
   }
 
   private tick(dt: number, rawDt: number): void {
+    const workStarted=performance.now();
     this.time += dt;
 
     this.fpsTimer += rawDt;
@@ -482,7 +497,8 @@ export class Game {
       for (const racer of this.race.racers) racer.vehicle.syncVisual();
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.environment.update(this.race.player.vehicle.position, dt);
-      if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall);
+      if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
+        this.track.sampleAt(this.race.player.hint+Math.round((12+Math.abs(this.race.player.vehicle.speed)*.35)/this.track.segmentLength)));
 
       const player = this.race.player.vehicle;
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
@@ -534,7 +550,19 @@ export class Game {
     }
 
     if (this.onBeforeRender) this.onBeforeRender();
-    if (!this.skipRender) this.renderer.render(this.scene, this.camera);
+    if (!this.skipRender) {
+      const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing";
+      if (measured) this.gpuTimer.begin();
+      this.renderer.render(this.scene, this.camera);
+      if (measured) {
+        this.gpuTimer.end();
+        for (const ms of this.gpuTimer.collect()) this.performanceLog.recordGPU(ms);
+        if (!document.hidden && document.hasFocus()) this.performanceLog.record(rawDt*1000,performance.now()-workStarted,{
+          width:this.renderer.domElement.width,height:this.renderer.domElement.height,quality:this.quality,circuit:this.track.circuit.id
+        });
+        else this.performanceLog.interrupt("La pestaña perdió el foco durante la medición.");
+      }
+    }
     this.input.endFrame();
   };
 
@@ -556,7 +584,8 @@ export class Game {
     if (this.lowFpsTime > 5) {
       this.degraded = true;
       this.quality = "equilibrada";
-      this.renderScale = Math.max(this.renderScale, 0.8);
+      // Preserve the existing scale: raising it during a slowdown adds work.
+      this.menu.setQuality("EQUILIBRADA");
       this.applyQuality();
       this.hud.toast("Calidad ajustada automáticamente para mantener fluidez", 3200);
     }
@@ -597,6 +626,21 @@ export class Game {
     if (this.state === "results" && this.input.consume("Enter")) {
       this.startRace();
     }
+  }
+
+  performanceReport() {
+    const gl=this.renderer.getContext(), ext=gl.getExtension("WEBGL_debug_renderer_info");
+    return {...this.performanceLog.report(),renderer:ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+      browser:navigator.userAgent,drivers:this.race.racers.length,drawCalls:this.renderer.info.render.calls,
+      triangles:this.renderer.info.render.triangles,geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,
+      captureMode:this.captureMode};
+  }
+
+  private downloadPerformance(): void {
+    const blob=new Blob([JSON.stringify(this.performanceReport(),null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob), link=document.createElement("a");
+    link.href=url;link.download=`horizon-${this.track.circuit.id}-rendimiento.json`;link.click();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
   get playerSpeed(): number {

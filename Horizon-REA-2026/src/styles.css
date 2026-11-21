@@ -568,3 +568,9 @@ button.difficulty-btn.is-active {
   object-fit: contain; background-color: #090e15;
 }
 .vehicle-pick-no-photo { display: grid; place-items: center; font-size: 28px; }
+
+.audio-panel { border:1px solid #334352; border-radius:12px; padding:14px 18px; margin:22px 0; color:#ced8e5; }
+.audio-panel legend { padding:0 8px; font-weight:700; }
+.audio-panel label { display:grid; grid-template-columns:minmax(140px,1fr) minmax(90px,2fr) 48px; align-items:center; gap:12px; margin:10px 0; }
+.audio-panel input { width:100%; accent-color:#ff824f; }
+.audio-panel output { text-align:right; font-variant-numeric:tabular-nums; }

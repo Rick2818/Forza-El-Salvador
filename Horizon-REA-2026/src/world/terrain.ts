@@ -136,6 +136,13 @@ export class TerrainField {
       return TERRAIN_NEAR_Y - 1.5 * outskirts +
         (fbm(x * 0.003, z * 0.003, 3) - .5) * 6 * outskirts;
     }
+    if (this.isMonzon) {
+      // A low park landscape keeps corner sightlines open.
+      const outskirts = smoothstep(24, 140, trackDistance);
+      const service = smoothstep(-100, -35, x) * (1-smoothstep(650, 740, x)) *
+        smoothstep(-45, -5, z) * (1-smoothstep(110, 190, z));
+      return TERRAIN_NEAR_Y + (fbm(x * .003, z * .003, 3) - .5) * 9 * outskirts * (1-service);
+    }
     // Flat and just below the road next to the circuit; the bank then falls
     // away to the valley floor before the hills start.
     const flat = smoothstep(15, 88, trackDistance);
@@ -144,16 +151,12 @@ export class TerrainField {
     const ridge = Math.pow(fbm(x * 0.0019 + 4.2, z * 0.0019 - 8.1, 4), 1.35);
     const hills = rise * (ridge * 112 + 18);
     const bumps = fbm(x * 0.012, z * 0.012, 3) * 4.2 * smoothstep(300, 600, r);
-    const height = (
+    return (
       TERRAIN_NEAR_Y +
       (TERRAIN_BASE_Y - TERRAIN_NEAR_Y) * flat +
       (hills + bumps) * flat
     );
-    // Grade the service paddock at track level. The old hill rose through the
-    // pit lane and the closed building, hiding props several metres below it.
-    const service = this.isMonzon ? smoothstep(-100, -35, x) * (1-smoothstep(650, 740, x)) *
-      smoothstep(-45, -5, z) * (1-smoothstep(110, 190, z)) : 0;
-    return height * (1-service) + TERRAIN_NEAR_Y * service;
+
   }
 
   /** Bilinear sample. Used by trees, rocks and the camera-side props. */
@@ -192,8 +195,8 @@ export class TerrainField {
     geo.translate(this.centerX, 0, this.centerZ);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x4a4d55);
-    const dryGrass = new THREE.Color(this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x565a63);
+    const grass = new THREE.Color(this.isMonzon ? 0x304b30 : this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x395837);
+    const dryGrass = new THREE.Color(this.isMonzon ? 0x526044 : this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x68704e);
     const rock = new THREE.Color(this.isSparda ? 0x737a6c : this.isDesert ? 0x766450 : 0x6d717a);
     const tmp = new THREE.Color();
 

@@ -3,7 +3,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { SELECTED_VEHICLES } from "./roster";
-import { BODY_CENTER_Y, createSolidPaintMaterial, type CarVisual } from "./carModel";
+import { BODY_CENTER_Y, type CarVisual } from "./carModel";
 
 export type VehicleDesign = (typeof designs)[number];
 export const VEHICLE_DESIGNS: readonly VehicleDesign[] = SELECTED_VEHICLES.map((car) => designs.find((design) => design.id === car.id)!);
@@ -184,7 +184,10 @@ export function createSelectedVisual(id: string): CarVisual {
     name: "paint", color: 0x15171c,
     metalness: .12, roughness: .28,
     clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
-  }) : createSolidPaintMaterial(d.paint);
+  }) : new THREE.MeshPhysicalMaterial({
+    name: "paint", color: d.paint, metalness: .14, roughness: .3,
+    clearcoat: .4, clearcoatRoughness: .24, specularIntensity: .35
+  });
   const taillightMat = new THREE.MeshStandardMaterial({
     color: 0xff1020, emissive: 0xff0010, emissiveIntensity: 2,
     toneMapped: !hasRevisedFinish
@@ -229,6 +232,14 @@ export function createSelectedVisual(id: string): CarVisual {
     // Preserve the Blender-authored orientation while moving to the live pivot.
     spin.attach(authored);
     authored.position.set(0, 0, 0);
+    root.updateMatrixWorld(true);
+    const calipers: THREE.Mesh[] = [];
+    authored.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const names = [object.name, ...[object.material].flat().map(material => material.name)].join(" ");
+      if (/caliper|étrier|etrier|pinza|Etriers/i.test(names)) calipers.push(object);
+    });
+    for (const caliper of calipers) steer.attach(caliper);
     return { steer, spin };
   });
   // A rigid body and each wheel spin independently. Batch only within those
