@@ -30,7 +30,7 @@ try {
       throw Error("V10 mode is not active");
     const source = audio.combustion;
     const ctx = audio.ctx;
-    if (!ctx || !source?.buffer || !audio.enginesBus || !audio.engineLimiter)
+    if (!ctx || !source?.buffer || !audio.enginesBus || !audio.enginePeakGuard || !audio.masterGain)
       throw Error("Engine combustion loop was not built");
     const pcm = source.buffer.getChannelData(0);
     const peak = Math.max(...pcm);
@@ -42,11 +42,12 @@ try {
 
     // Recorded from the WebAudio motor bus, intentionally not the race music.
     const destination = ctx.createMediaStreamDestination();
-    // Record the motor AFTER the engine-only compressor, leaving music out.
-    audio.engineLimiter.connect(destination);
+    // Capture the *audible* final level, AFTER makeup gain, peak guard and
+    // racing master. The victory bus is silent during this test.
+    audio.masterGain.connect(destination);
     const meter = ctx.createAnalyser();
     meter.fftSize = 2048;
-    audio.engineLimiter.connect(meter);
+    audio.masterGain.connect(meter);
     const measures = [];
     const recordLevel = rpm => {
       const data = new Float32Array(meter.fftSize);
@@ -80,10 +81,12 @@ try {
     recordLevel(2800);
     recorder.stop();
     await stopped;
-    audio.engineLimiter.disconnect(destination);
-    audio.engineLimiter.disconnect(meter);
-    if (measures.length !== 5 || measures.some(m => m.peak >= 1 || m.rms < .01))
-      throw Error("Engine quiet or clipping after limiter " + JSON.stringify(measures));
+    audio.masterGain.disconnect(destination);
+    audio.masterGain.disconnect(meter);
+    if (measures.length !== 5 || measures.some(m => m.peak >= .99 || m.rms < .07))
+      throw Error("Engine quiet or clipping at audible output " + JSON.stringify(measures));
+    if (measures[0].rms < .15 || measures[3].rms < .22)
+      throw Error("Engine still too weak at idle or high RPM " + JSON.stringify(measures));
     if (measures[3].rms <= measures[0].rms * 1.25)
       throw Error("Engine does not grow with RPM " + JSON.stringify(measures));
     const blob = new Blob(parts, {type:mimeType});
@@ -103,7 +106,8 @@ try {
       oscillators: [audio.oscA?.type, audio.oscB?.type],
       engineVolumes: audio.getVolumes(),
       durationSeconds:3.0,
-      postLimiterLevels: measures
+      audibleMasterLevels: measures,
+      outputBoost: audio.getEngineOutputBoost()
     };
   });
   if (errors.length) throw Error("Browser JS errors: " + errors.join("; "));
