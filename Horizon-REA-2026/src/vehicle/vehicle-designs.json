@@ -13,9 +13,9 @@
     "wing": false,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1,
+      "power": 8.5,
       "mass": 1,
-      "topSpeed": 92,
+      "topSpeed": 96,
       "grip": 1,
       "steer": 0.52
     },
@@ -88,9 +88,9 @@
     "wing": false,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1.2,
+      "power": 13,
       "mass": 1.2,
-      "topSpeed": 101,
+      "topSpeed": 110,
       "grip": 1,
       "steer": 0.52
     },
@@ -113,9 +113,9 @@
     "wing": false,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1.02,
+      "power": 8.5,
       "mass": 1.01,
-      "topSpeed": 94,
+      "topSpeed": 96,
       "grip": 1,
       "steer": 0.52
     },
@@ -163,9 +163,9 @@
     "wing": true,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1.08,
+      "power": 8.5,
       "mass": 1.06,
-      "topSpeed": 95,
+      "topSpeed": 96,
       "grip": 1.02,
       "steer": 0.52
     },

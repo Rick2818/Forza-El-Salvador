@@ -150,3 +150,23 @@ it.each(["facil", "medio", "dificil"])("simulates three Suzaka laps at %s diffic
   race.dispose();
   world.free();
 }, 180000);
+
+it.each(VEHICLE_DESIGNS)("reaches the requested straight-line speed for $id", (design) => {
+  const world = new RAPIER.World({ x: 0, y: -13.5, z: 0 });
+  world.timestep = 1 / 60;
+  world.createCollider(RAPIER.ColliderDesc.cuboid(100, .1, 30000).setTranslation(0, -.1, 0));
+  const car = new Vehicle(world, new THREE.Scene(), {
+    vehicleId: design.id, paintColor: 0, accentColor: 0, number: 7
+  });
+  car.place(new THREE.Vector3(0, 0, 0), 0);
+  let peak = 0;
+  for (let frame = 0; frame < 60 * 180; frame++) {
+    car.update(1 / 60, {throttle: 1, brake: 0, steer: 0, handbrake: false}, 1);
+    world.step();
+    peak = Math.max(peak, Math.abs(car.speed) / .44704);
+  }
+  console.log("SPEED_MPH", design.id, peak);
+  expect(peak).toBeGreaterThanOrEqual(design.id === "bugatti-chiron" ? 230 : 200);
+  car.dispose(world);
+  world.free();
+}, 60000);

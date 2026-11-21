@@ -37,9 +37,9 @@ export const SETTINGS = {
   render: {
     // The adaptive scaler owns sharpness; capping DPR at 1 keeps a 1080p
     // window at a true 1920x1080 buffer instead of 2x supersampling.
-    maxPixelRatio: 2.0,  // 4K support: allow 2x supersampling on capable displays
-    shadowMapSize: 4096,  // 4K shadows
-    targetWidth: 3840,    // 4K width
-    targetHeight: 2160    // 4K height
+    maxPixelRatio: 1,
+    shadowMapSize: 1024,
+    targetWidth: 1920,
+    targetHeight: 1080
   }
 } as const;

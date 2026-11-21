@@ -34,7 +34,7 @@ const CONTROLS = `
 export class Menu {
   private overlay: HTMLDivElement;
   private callbacks: MenuCallbacks;
-  private qualityLabel = "ALTA";
+  private qualityLabel = "EQUILIBRADA";
   private difficulty: Difficulty = "medio";
   private selectedCircuitId = DEFAULT_CIRCUIT_ID;
   private activeSetupTab: "autos" | "circuitos" = "autos";

@@ -176,7 +176,9 @@ export class AIDriver {
     }
 
     const error = targetSpeed - speed;
-    let throttle = clamp(error / (5.5 / tuning.reaction), 0, 1);
+    // The speed controller must account for the stronger highway engine;
+    // otherwise a small speed error commands several times the old force.
+    let throttle = clamp(error / (5.5 / tuning.reaction), 0, 1) / v.highSpeedPowerMultiplier;
     let brake = clamp(-error / (7.0 / tuning.reaction), 0, 1);
     if (this.reverseTime > 0) {
       this.reverseTime -= dt;

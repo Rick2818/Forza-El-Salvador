@@ -59,6 +59,12 @@ export class Vehicle {
   private readonly wheelMounts: typeof WHEELS;
   private readonly tuning;
 
+  get highSpeedPowerMultiplier(): number {
+    const launch = this.vehicleId === "bugatti-chiron" ? 1.2 : this.vehicleId === "mercedes-amg-gt-black-series" ? 1.08 : this.vehicleId === "porsche-911" ? 1.02 : 1;
+    return THREE.MathUtils.lerp(1, this.tuning.power / launch,
+      THREE.MathUtils.smoothstep(Math.abs(this.speed), 40, 80));
+  }
+
   constructor(world: RAPIER.World, scene: THREE.Scene, opts: VehicleOptions) {
     this.vehicleId = opts.vehicleId;
     const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
@@ -174,11 +180,15 @@ export class Vehicle {
 
     let engineForce = 0;
     if (throttle > 0.01 && absSpeed < this.tuning.topSpeed) {
+      // Preserve controllable launches; reserve the extra power for high-speed drag.
+      const highway = THREE.MathUtils.smoothstep(absSpeed, 40, 80);
+      const launchPower = this.vehicleId === "bugatti-chiron" ? 1.2 : this.vehicleId === "mercedes-amg-gt-black-series" ? 1.08 : this.vehicleId === "porsche-911" ? 1.02 : 1;
+      const power = THREE.MathUtils.lerp(launchPower, this.tuning.power, highway);
       const total = this.electric
-        ? throttle * p.maxEngineForce * this.tuning.power
-        : wheelForce(absSpeed, throttle, this.gear, this.rpm) * .5 * this.tuning.power;
+        ? throttle * p.maxEngineForce * power
+        : wheelForce(absSpeed, throttle, this.gear, this.rpm) * .5 * power;
       const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .55;
-      engineForce = Math.min(total * limiter * grip, p.maxEngineForce * this.tuning.power);
+      engineForce = Math.min(total * limiter * grip, p.maxEngineForce * power);
     }
     let reverseForce = 0;
     if (brake > 0.05 && speed < 0.6) {

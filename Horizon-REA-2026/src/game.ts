@@ -32,7 +32,7 @@ export class Game {
   readonly audio = new GameAudio();
 
   state: GameState = "menu";
-  quality: Quality = "alta";
+  quality: Quality = "equilibrada";
   fps = 0;
   private hud: HUD;
   private menu: Menu;
@@ -74,7 +74,7 @@ export class Game {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.setPixelRatio(1);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.12;
@@ -160,6 +160,8 @@ export class Game {
     this.menu.setSelectedVehicle(this.selectedVehicleId);
     this.menu.setSelectedCircuit(this.track.circuit.id);
     this.menu.setDifficulty(this.difficulty);
+    this.menu.setQuality("EQUILIBRADA");
+    this.applyQuality();
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
     this.installDebugApi();
@@ -288,7 +290,9 @@ export class Game {
 
   private applyResolution(): void {
     const limit = this.quality === "alta" ? SETTINGS.render.maxPixelRatio : 1;
-    const base = Math.min(window.devicePixelRatio, limit);
+    const pixelBudget = Math.sqrt(SETTINGS.render.targetWidth * SETTINGS.render.targetHeight /
+      Math.max(1, window.innerWidth * window.innerHeight));
+    const base = Math.min(window.devicePixelRatio, limit, pixelBudget);
     const ratio = Math.max(0.5, base * this.renderScale);
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -310,11 +314,11 @@ export class Game {
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.
     if (!document.hasFocus()) return;
-    const max = this.quality === "alta" ? 1 : 0.9;
+    const max = 1;
     let s = this.renderScale;
     if (this.fps < 57) s -= this.fps < 48 ? 0.12 : 0.06;
     else if (this.fps > 59.5) s += 0.03;
-    s = clamp(s, 0.7, max);
+    s = clamp(s, 0.5, max);
     if (s !== this.renderScale) {
       this.renderScale = s;
       this.applyResolution();
@@ -324,7 +328,7 @@ export class Game {
   private applyQuality(): void {
     const high = this.quality === "alta";
     const moon = this.environment.moon;
-    moon.shadow.mapSize.set(high ? 2048 : 1024, high ? 2048 : 1024);
+    moon.shadow.mapSize.set(SETTINGS.render.shadowMapSize, SETTINGS.render.shadowMapSize);
     if (moon.shadow.map) {
       moon.shadow.map.dispose();
       moon.shadow.map = null;

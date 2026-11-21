@@ -17,12 +17,12 @@ function gaugeSvg(): string {
   const [x0, y0] = polar(-120, GAUGE_R);
   const [x1, y1] = polar(120, GAUGE_R);
   let ticks = "";
-  for (let v = 0; v <= 320; v += 40) {
-    const a = -120 + (v / 320) * 240;
+  for (let v = 0; v <= 260; v += 20) {
+    const a = -120 + (v / 260) * 240;
     const [ax, ay] = polar(a, GAUGE_R - 3);
     const [bx, by] = polar(a, GAUGE_R - 13);
     const [tx, ty] = polar(a, GAUGE_R - 27);
-    const major = v % 80 === 0;
+    const major = v % 60 === 0;
     ticks += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="rgba(255,255,255,${major ? 0.55 : 0.28})" stroke-width="${major ? 2 : 1}" />`;
     if (major) {
       ticks += `<text x="${tx.toFixed(1)}" y="${(ty + 3).toFixed(1)}" fill="rgba(233,242,255,0.38)" font-size="8.5" font-weight="700" text-anchor="middle">${v}</text>`;
@@ -68,6 +68,7 @@ export class HUD {
   private startPoint: [number, number];
   private toastTimer = 0;
   private lastSpeed = -1;
+  private uiElapsed = .1;
 
   constructor(root: HTMLElement, track: Track) {
     const wrap = document.createElement("div");
@@ -91,7 +92,7 @@ export class HUD {
             ${gaugeSvg()}
             <div class="speed-read">
               <div class="num" id="hud-speed">0</div>
-              <span class="unit">KM/H</span>
+              <span class="unit">MPH</span>
             </div>
             <div class="gear-badge" id="hud-gear">1</div>
           </div>
@@ -170,19 +171,26 @@ export class HUD {
   }
 
   update(dt: number, snapshot: RaceSnapshot, vehicle: Vehicle, racers: Racer[], fps: number): void {
-    this.posEl.innerHTML = `${snapshot.position}<small>/${snapshot.totalRacers}</small>`;
-    this.lapEl.innerHTML = `${snapshot.lap}<small>/${snapshot.totalLaps}</small>`;
-    this.currentEl.textContent = formatTime(snapshot.lapTime);
-    this.bestEl.textContent = snapshot.bestLap > 0 ? formatTime(snapshot.bestLap) : "--:--.---";
-    this.lastEl.textContent = snapshot.lastLap > 0 ? formatTime(snapshot.lastLap) : "--:--.---";
+    // DOM and minimap work do not need to run at the physics/render rate.
+    this.uiElapsed += dt;
+    if (this.uiElapsed < .1) return;
+    dt = this.uiElapsed;
+    this.uiElapsed = 0;
+    const position = `${snapshot.position}<small>/${snapshot.totalRacers}</small>`;
+    const lap = `${snapshot.lap}<small>/${snapshot.totalLaps}</small>`;
+    if (this.posEl.innerHTML !== position) this.posEl.innerHTML = position;
+    if (this.lapEl.innerHTML !== lap) this.lapEl.innerHTML = lap;
+    this.currentEl.textContent = formatTime(snapshot.lapTime * 1000);
+    this.bestEl.textContent = snapshot.bestLap > 0 ? formatTime(snapshot.bestLap * 1000) : "--:--.---";
+    this.lastEl.textContent = snapshot.lastLap > 0 ? formatTime(snapshot.lastLap * 1000) : "--:--.---";
     this.fpsEl.textContent = `${Math.round(fps)} FPS · V6`;
 
-    const speed = Math.round(vehicle.speedKph);
+    const speed = Math.round(vehicle.speedKph / 1.609344);
     if (speed !== this.lastSpeed) {
       this.speedEl.textContent = String(speed);
-      const angle = -120 + Math.min(speed, 320) / 320 * 240;
+      const angle = -120 + Math.min(speed, 260) / 260 * 240;
       if (this.needle) this.needle.setAttribute("transform", `rotate(${angle.toFixed(1)} ${GAUGE_CX} ${GAUGE_CY})`);
-      if (this.arc) this.arc.setAttribute("stroke-dashoffset", String(ARC_LEN * (1 - Math.min(speed, 320) / 320)));
+      if (this.arc) this.arc.setAttribute("stroke-dashoffset", String(ARC_LEN * (1 - Math.min(speed, 260) / 260)));
       this.lastSpeed = speed;
     }
 

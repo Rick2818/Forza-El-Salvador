@@ -4,6 +4,7 @@ import { makeRng } from "../core/mathx";
 import { createBannerTexture } from "./textures";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
+import { batchStaticScenery } from "../render/staticBatch";
 
 /**
  * Circuito Monzon: original, light-weight 3D scenery built with instancing.
@@ -195,5 +196,6 @@ export class MonzonScenery {
     crowns.instanceMatrix.needsUpdate = true;
     if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true;
     this.group.add(trunk, crowns);
+    batchStaticScenery(this.group);
   }
 }
