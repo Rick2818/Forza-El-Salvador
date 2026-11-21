@@ -207,7 +207,10 @@ export class Vehicle {
       const total = this.electric
         ? throttle * p.maxEngineForce * power
         : wheelForce(absSpeed, throttle, this.gear, this.rpm) * .5 * power;
-      const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .55;
+      // Preserve torque near the restored mph ceilings. The old .55 taper
+      // stalled Ferrari/Porsche around 197 mph and Bugatti around 224 mph.
+      // Absolute speed remains bounded by the post-step governor.
+      const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .36;
       engineForce = Math.min(total * limiter * grip, p.maxEngineForce * power);
     }
     let reverseForce = 0;
