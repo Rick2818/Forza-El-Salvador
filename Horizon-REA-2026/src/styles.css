@@ -574,3 +574,21 @@ button.difficulty-btn.is-active {
 .audio-panel label { display:grid; grid-template-columns:minmax(140px,1fr) minmax(90px,2fr) 48px; align-items:center; gap:12px; margin:10px 0; }
 .audio-panel input { width:100%; accent-color:#ff824f; }
 .audio-panel output { text-align:right; font-variant-numeric:tabular-nums; }
+.audio-panel select {
+  grid-column: 2 / 4;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid #536878;
+  background: #172331;
+  color: #f1f5fb;
+  font: inherit;
+}
+.audio-panel select:focus-visible { outline: 2px solid #ff824f; outline-offset: 2px; }
+@media (max-width: 560px) {
+  .audio-panel label { grid-template-columns: 1fr minmax(70px, 1fr); }
+  .audio-panel label:has(select) { grid-template-columns: 1fr; }
+  .audio-panel select { grid-column: 1; }
+  .audio-panel output { grid-column: 2; }
+}
