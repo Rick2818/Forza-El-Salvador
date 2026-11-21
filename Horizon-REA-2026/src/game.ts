@@ -478,6 +478,22 @@ export class Game {
 
       const player = this.race.player.vehicle;
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
+      const listener = player.body.translation();
+      const velocity = player.body.linvel();
+      const cameraRight = this.camera.matrixWorld.elements;
+      this.audio.updateRivals({
+        x: listener.x, z: listener.z, vx: velocity.x, vz: velocity.z,
+        rightX: cameraRight[0], rightZ: cameraRight[2]
+      }, this.race.racers.filter(racer => !racer.isPlayer).map(racer => {
+        const vehicle = racer.vehicle;
+        const position = vehicle.body.translation();
+        const motion = vehicle.body.linvel();
+        return {
+          id: String(racer.id), vehicleId: vehicle.vehicleId ?? "",
+          rpm: vehicle.rpm, throttle: vehicle.controls.throttle,
+          x: position.x, z: position.z, vx: motion.x, vz: motion.z
+        };
+      }));
 
       if (this.race.state === "countdown") {
         const n = Math.ceil(this.race.countdown);

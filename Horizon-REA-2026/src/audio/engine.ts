@@ -1,3 +1,37 @@
+export interface RivalEngineState {
+  id: string;
+  vehicleId: string;
+  rpm: number;
+  throttle: number;
+  x: number;
+  z: number;
+  vx: number;
+  vz: number;
+}
+
+export interface EngineListener {
+  x: number;
+  z: number;
+  vx: number;
+  vz: number;
+  rightX: number;
+  rightZ: number;
+}
+
+interface RivalVoice {
+  oscillators: OscillatorNode[];
+  gain: GainNode;
+  filter: BiquadFilterNode;
+  pan: StereoPannerNode;
+}
+
+const ENGINE_CYLINDERS: Record<string, number> = {
+  "ferrari-california-t": 8,
+  "porsche-911": 6,
+  "bugatti-chiron": 16,
+  "mercedes-amg-gt-black-series": 8
+};
+
 /**
  * Procedural game audio: a small synth engine (two detuned saws through a
  * low-pass), a tyre-scrub noise layer and a master gain. Everything is
@@ -16,6 +50,7 @@ export class GameAudio {
   private muted = false;
   private started = false;
   private electric = false;
+  private readonly rivals = new Map<string, RivalVoice>();
 
   setElectric(on: boolean): void {
     this.electric = on;
@@ -129,12 +164,74 @@ export class GameAudio {
     }
   }
 
+  /** Three lightweight synth voices share the player's context and master mute. */
+  updateRivals(listener: EngineListener, engines: readonly RivalEngineState[]): void {
+    const ctx = this.ctx;
+    if (!this.started || !ctx || !this.masterGain) return;
+    const active = new Set(engines.map(engine => engine.id));
+    for (const [id, voice] of this.rivals) {
+      if (active.has(id)) continue;
+      voice.oscillators.forEach(oscillator => { oscillator.stop(); oscillator.disconnect(); });
+      voice.gain.disconnect();
+      voice.filter.disconnect();
+      voice.pan.disconnect();
+      this.rivals.delete(id);
+    }
+    const now = ctx.currentTime;
+    for (const engine of engines) {
+      let voice = this.rivals.get(engine.id);
+      if (!voice) {
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.Q.value = 1.1;
+        const pan = ctx.createStereoPanner();
+        const low = ctx.createOscillator();
+        const high = ctx.createOscillator();
+        low.type = "sawtooth";
+        high.type = engine.vehicleId === "porsche-911" ? "triangle" : "square";
+        low.connect(gain);
+        high.connect(gain);
+        gain.connect(filter);
+        filter.connect(pan);
+        pan.connect(this.masterGain);
+        low.start();
+        high.start();
+        voice = {oscillators: [low, high], gain, filter, pan};
+        this.rivals.set(engine.id, voice);
+      }
+      voice.oscillators[1].type = engine.vehicleId === "porsche-911" ? "triangle" : "square";
+      const dx = engine.x - listener.x;
+      const dz = engine.z - listener.z;
+      const distance = Math.hypot(dx, dz);
+      const attenuation = distance >= 180 ? 0 : 1 / (1 + (distance / 24) ** 2);
+      const revs = Math.max(700, Math.min(9000, engine.rpm));
+      const throttle = Math.max(0, Math.min(1, engine.throttle));
+      const radialSpeed = ((engine.vx - listener.vx) * dx + (engine.vz - listener.vz) * dz) /
+        Math.max(1, distance);
+      const doppler = Math.max(.88, Math.min(1.12, 343 / (343 + radialSpeed)));
+      const cylinders = ENGINE_CYLINDERS[engine.vehicleId] ?? 8;
+      const pitch = (revs / 60 * cylinders / 4) * doppler;
+      voice.oscillators[0].frequency.setTargetAtTime(pitch, now, .07);
+      voice.oscillators[1].frequency.setTargetAtTime(pitch * .503, now, .07);
+      voice.filter.frequency.setTargetAtTime(
+        Math.max(400, 650 + revs * .20 + throttle * 1200 - distance * 5), now, .1);
+      voice.pan.pan.setTargetAtTime(
+        Math.max(-1, Math.min(1, (dx * listener.rightX + dz * listener.rightZ) /
+          Math.max(5, distance))), now, .08);
+      voice.gain.gain.setTargetAtTime(
+        this.muted ? 0 : attenuation * (.045 + throttle * .065 + revs / 9000 * .035), now, .1);
+    }
+  }
+
   /** Fade everything out (pause, menu, results) without closing the context. */
   silence(): void {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.engineGain?.gain.setTargetAtTime(0, now, 0.06);
     this.skidGain?.gain.setTargetAtTime(0, now, 0.06);
+    for (const voice of this.rivals.values()) voice.gain.gain.setTargetAtTime(0, now, .06);
   }
 
   setMuted(muted: boolean): void {
