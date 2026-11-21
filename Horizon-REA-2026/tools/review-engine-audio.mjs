@@ -56,8 +56,8 @@ try {
     audio.masterGain.connect(meter);
     const measures = [];
     const recordLevel = async rpm => {
-      // Three independent snapshots after settling the engine stage; use
-      // median RMS rather than a random single 46-ms analyser window.
+      // Three long-window snapshots after the engine stage has settled;
+      // median RMS covers multiple bass cycles instead of random phase.
       const frames = [];
       for (let i = 0; i < 3; i++) {
         const data = new Float32Array(meter.fftSize);
@@ -80,19 +80,19 @@ try {
     recorder.start();
     const hold = ms => new Promise(resolve => setTimeout(resolve, ms));
     audio.update(950, .12, 0, 0);
-    await hold(550);
+    await hold(1100);
     await recordLevel(950);
     audio.update(3000, .55, 75, 0);
-    await hold(650);
+    await hold(1100);
     await recordLevel(3000);
     audio.update(5800, .95, 155, 0);
-    await hold(650);
+    await hold(1100);
     await recordLevel(5800);
     audio.update(7800, 1, 220, 0);
-    await hold(600);
+    await hold(1100);
     await recordLevel(7800);
     audio.update(2800, 0, 120, 0);
-    await hold(550);
+    await hold(1100);
     await recordLevel(2800);
     recorder.stop();
     await stopped;
@@ -103,10 +103,10 @@ try {
     audio.silence();
     await hold(240);
     audio.update(950, .12, 0, 0);
-    await hold(600);
+    await hold(1100);
     await recordLevel(950);
     audio.update(7800, 1, 220, 0);
-    await hold(600);
+    await hold(1100);
     await recordLevel(7800);
     const playerOnly = measures.splice(5);
     audio.masterGain.disconnect(destination);

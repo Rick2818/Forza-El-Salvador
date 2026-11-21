@@ -406,7 +406,7 @@ export class GameAudio {
     // Preserve the approved idle level while raising the high-RPM body.
     // Its calibration
     // is measured at the final output, including the +50% reference floor.
-    const presence = ctx.createGain(); presence.gain.value = .87;
+    const presence = ctx.createGain(); presence.gain.value = .85;
     softLimiter.disconnect(master); softLimiter.connect(presence); presence.connect(master);
     this.enginePresence = presence;
     this.started = true;
@@ -432,7 +432,7 @@ export class GameAudio {
       this.electric ? 28 + speed * 105 : crankHz * 2, now, .06);
     if (this.oscB) this.oscB.frequency.setTargetAtTime(
       this.electric ? 60 + speed * 220 : enginePulseHz(engineRpm, this.effectiveCylinders(this.vehicleId)), now, .06);
-    this.enginePresence?.gain.setTargetAtTime(this.electric ? 1 : .87 + rev * .08 + t * .09, now, .09);
+    this.enginePresence?.gain.setTargetAtTime(this.electric ? 1 : .85 + rev * .10 + t * .09, now, .09);
     if (this.engineFilter) {
       this.engineFilter.frequency.setTargetAtTime(
         this.electric ? 740 : 650 + rev * 1500 + t * 1450, now, .09);
