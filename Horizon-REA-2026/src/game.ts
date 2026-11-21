@@ -210,6 +210,9 @@ export class Game {
         carPosition: this.race.player.vehicle.position.toArray().map((n) => Number(n.toFixed(2))),
         onTrack: this.race.player.vehicle.onTrack,
         wheels: this.race.player.vehicle.wheelDebug(),
+        wheelVisuals: this.race.player.vehicle.wheelVisualDebug(),
+        turboActive: this.race.player.vehicle.turboActive,
+        speedLimitMph: this.race.player.vehicle.speedLimitMph,
         trackLength: Number(this.track.length.toFixed(1))
       }),
       performanceReport: () => this.performanceReport(),
@@ -498,7 +501,7 @@ export class Game {
       }
       if (steps === 0) this.physicsAccum = Math.min(this.physicsAccum, this.fixedStep);
 
-      for (const racer of this.race.racers) racer.vehicle.syncVisual();
+      for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.environment.update(this.race.player.vehicle.position, dt);
       if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,

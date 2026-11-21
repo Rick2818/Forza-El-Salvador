@@ -59,6 +59,7 @@ export class HUD {
   private lastEl: HTMLElement;
   private speedEl: HTMLElement;
   private gearEl: HTMLElement;
+  private turboEl: HTMLElement;
   private needle: SVGGElement | null;
   private arc: SVGPathElement | null;
   private fpsEl: HTMLElement;
@@ -97,6 +98,7 @@ export class HUD {
               <span class="unit">MPH</span>
             </div>
             <div class="gear-badge" id="hud-gear">1</div>
+            <div class="turbo-status" id="hud-turbo" aria-live="off">TURBO</div>
           </div>
         </div>
         <div class="hud-fps" id="hud-fps">-- FPS</div>
@@ -117,6 +119,7 @@ export class HUD {
     this.lastEl = wrap.querySelector("#hud-last")!;
     this.speedEl = wrap.querySelector("#hud-speed")!;
     this.gearEl = wrap.querySelector("#hud-gear")!;
+    this.turboEl = wrap.querySelector("#hud-turbo")!;
     this.needle = wrap.querySelector("#spd-needle");
     this.arc = wrap.querySelector("#spd-arc");
     this.fpsEl = wrap.querySelector("#hud-fps")!;
@@ -214,6 +217,7 @@ export class HUD {
 
     const gear = vehicle.speed < -0.5 ? "R" : vehicle.speed < 0.4 ? "N" : vehicle.electric ? "D" : String(vehicle.gear + 1);
     if (this.gearEl.textContent !== gear) this.gearEl.textContent = gear;
+    this.turboEl.classList.toggle("active", vehicle.turboActive);
 
     if (this.toastTimer > 0) {
       this.toastTimer -= dt;
