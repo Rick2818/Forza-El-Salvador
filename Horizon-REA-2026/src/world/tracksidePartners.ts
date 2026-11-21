@@ -200,13 +200,103 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  const banners = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+  const panelMaterial = new THREE.MeshBasicMaterial({
     map: atlas, side: THREE.DoubleSide, toneMapped: false
-  }));
+  });
+  const banners = new THREE.Mesh(geometry, panelMaterial);
   banners.name = "partner-brand-billboards";
   banners.userData.placements = placements.map(({ brandIndex, sampleIndex, side }) => ({
     brand: TRACKSIDE_BRANDS[brandIndex].name, sampleIndex, side
   }));
   group.add(backing, posts, banners);
+
+  /** A UV-sliced panel shares the atlas with the trackside signs. */
+  const makePanel = (brandIndex: number, width: number, height: number, name: string): THREE.Mesh => {
+    const geo = new THREE.PlaneGeometry(width, height);
+    const coords = geo.getAttribute("uv") as THREE.BufferAttribute;
+    const low = 1 - (brandIndex + 1) / TRACKSIDE_BRANDS.length + .002;
+    const high = 1 - brandIndex / TRACKSIDE_BRANDS.length - .002;
+    for (let i = 0; i < coords.count; i++) {
+      coords.setY(i, low + coords.getY(i) * (high - low));
+    }
+    coords.needsUpdate = true;
+    const mesh = new THREE.Mesh(geo, panelMaterial);
+    mesh.name = name;
+    mesh.castShadow = false;
+    return mesh;
+  };
+
+  // Two wide sponsor panels on a fully elevated gantry. The existing
+  // start-light gantry remains unobstructed and is not replaced.
+  const offset = track.barrierLateralOffset + 3.7;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const index = (track.startIndex + Math.round((150 + attempt * 28) / track.segmentLength)) % track.samples.length;
+    const p = track.samples[index], r = track.rights[index];
+    if (!p || !r) continue;
+    const leftX = p.x - r.x * offset, leftZ = p.z - r.z * offset;
+    const rightX = p.x + r.x * offset, rightZ = p.z + r.z * offset;
+    const leftY = ground.heightAt(leftX, leftZ);
+    const rightY = ground.heightAt(rightX, rightZ);
+    if (Math.abs(p.y - leftY) > 2.0 || Math.abs(p.y - rightY) > 2.0) continue;
+    if (!clearOfRoad(track, leftX, leftZ, track.barrierLateralOffset + 2) ||
+        !clearOfRoad(track, rightX, rightZ, track.barrierLateralOffset + 2)) continue;
+    if (track.circuit.id === "monzon" && p.x > 90 && p.x < 720 && Math.abs(p.z) < 75) {
+      // The 640m Horizon bridge and pit complex should remain unobstructed.
+      continue;
+    }
+    const headHeight = p.y + 8.2, panelHeight = 2.1;
+    const poleGeo = new THREE.CylinderGeometry(.21, .24, 1, 8);
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x303a46, metalness: .48, roughness: .6 });
+    for (const side of [-1, 1]) {
+      const x = side < 0 ? leftX : rightX;
+      const z = side < 0 ? leftZ : rightZ;
+      const foot = side < 0 ? leftY : rightY;
+      const postHeight = headHeight - foot;
+      const pole = new THREE.Mesh(poleGeo, steelMat);
+      pole.scale.y = postHeight;
+      pole.position.set(x, foot + postHeight / 2, z);
+      pole.name = "partner-gantry-post";
+      group.add(pole);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(offset * 2, panelHeight + .3, .22), steelMat);
+    beam.position.set(p.x, headHeight - panelHeight / 2, p.z);
+    beam.rotation.y = -Math.atan2(r.z, r.x);
+    beam.name = "partner-gantry-beam";
+    group.add(beam);
+    // Panel width across the road, perpendicular to the driving direction.
+    for (const [indexInPair, brandIndex] of [6, 8].entries()) {
+      const halfWidth = offset - .3;
+      const panel = makePanel(brandIndex, halfWidth, panelHeight, "partner-gantry-banner");
+      const lateral = (indexInPair === 0 ? -.5 : .5) * halfWidth;
+      panel.position.set(p.x + r.x * lateral, headHeight - panelHeight / 2, p.z + r.z * lateral);
+      panel.rotation.y = -Math.atan2(r.z, r.x);
+      // Move toward approaching vehicles to avoid co-planar depth flicker.
+      const t = track.tangents[index];
+      panel.position.addScaledVector(t, -.135);
+      group.add(panel);
+    }
+    break;
+  }
+
+  // Monzon garages retain the Ferrari/Porsche/Bugatti/Mercedes brand fascia.
+  // The partner adverts form a separate thin band ABOVE those existing signs.
+  if (track.circuit.id === "monzon") {
+    const garagePanels = [
+      { x: 118, brand: 7 }, { x: 134.5, brand: 4 },
+      { x: 151, brand: 5 }, { x: 167.5, brand: 9 }
+    ];
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x263038, roughness: .8 });
+    for (const {x, brand} of garagePanels) {
+      const plaque = new THREE.Mesh(new THREE.BoxGeometry(14.65, .86, .12), roofMat);
+      plaque.name = "garage-partner-band";
+      plaque.position.set(x, 6.33, 29.9);
+      group.add(plaque);
+      const panel = makePanel(brand, 14.4, .72, "garage-partner-advert");
+      panel.position.set(x, 6.33, 29.82);
+      panel.rotation.y = Math.PI;
+      group.add(panel);
+    }
+  }
+
   return group;
 }
