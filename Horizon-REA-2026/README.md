@@ -64,6 +64,18 @@ La batería `src/world/tracksidePartners.test.ts` verifica el catálogo, los val
 
 La publicación de V7 solo debe considerarse confirmada tras el workflow en GitHub Pages y una petición HTTP satisfactoria al sitio. Los 60 FPS siguen condicionados a una sesión de prueba en hardware real; render SwiftShader de CI no certifica el rendimiento de la laptop.
 
+## Sonido deportivo V10 (perfil opcional; audio procedural)
+
+El sonido anterior estaba basado en ondas diente de sierra y cuadradas, lo que producía un zumbido tipo rasuradora. El nuevo motor de audio crea un **buffer periódico de impulsos de combustión** según cilindros/RPM, un componente grave de cigüeñal, una capa de admisión filtrada y cambios suaves de volumen/filtro al acelerar o desacelerar. También aplica atenuación espacial y Doppler limitado a los tres rivales.
+
+Desde el menú de inicio o pausa, **Sonido del motor** permite escoger:
+- **V10 deportivo (sintetizado):** el mismo carácter de diez cilindros para todos los autos; es un efecto estético de carreras, seleccionado inicialmente.
+- **Perfil por vehículo (sintetizado):** conserva las configuraciones aproximadas por motor (Ferrari V8, Porsche seis cilindros, Bugatti W16 y Mercedes V8).
+
+El ajuste se guarda localmente cuando el navegador lo permite. Los motores/neumáticos mantienen su volumen independiente de la música de salida. La producción no contiene audios obtenidos de videos de terceros.
+
+**Limitación fundamental:** los sonidos son procedurales, NO grabaciones de un V10 real; todavía se necesita evaluación auditiva en altavoces/auriculares y, para un simulador con grabación auténtica, muestras grabadas y licenciadas con capas de ralentí, carga, descarga y altas RPM. La respuesta del audio sí depende de RPM, acelerador, distancia y cambio de relación. No atribuir el sonido del V10 a los fabricantes de los cuatro vehículos.
+
 ## Instalación y uso local
 
 Recomendado: **Node.js 22+**, npm y Chrome con WebGL2. Blender, Python, numpy y Pillow solo se requieren para reconstruir determinados activos, no para jugar ni compilar el código web.
