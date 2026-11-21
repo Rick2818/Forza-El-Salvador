@@ -114,13 +114,20 @@ export function makeBrandAtlas(): THREE.CanvasTexture {
     ctx.fillStyle = brand.accent;
     ctx.fillRect(0, y, 22, cellHeight);
     ctx.fillRect(0, y + cellHeight - 10, width, 10);
-    ctx.fillStyle = brand.foreground;
+    // Text colors stay exact. A narrow dark outline makes low-contrast
+    // approved palettes (Salesforce, Aramco, DHL) readable without dimming
+    // the background or changing its brand hue.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = brand.name.length > 12
-      ? "bold 82px Arial, sans-serif"
-      : "bold 107px Arial, sans-serif";
-    ctx.fillText(brand.name, width / 2 + 10, y + 75, 925);
+      ? "900 94px Arial, sans-serif"
+      : "900 120px Arial, sans-serif";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(4, 13, 20, 0.65)";
+    ctx.strokeText(brand.name, width / 2 + 10, y + 75, 920);
+    ctx.fillStyle = brand.foreground;
+    ctx.fillText(brand.name, width / 2 + 10, y + 75, 920);
   });
   const atlas = new THREE.CanvasTexture(canvas);
   atlas.colorSpace = THREE.SRGBColorSpace;
