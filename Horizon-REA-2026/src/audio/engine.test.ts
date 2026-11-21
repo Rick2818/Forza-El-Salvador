@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { GameAudio, enginePulseHz, type RivalEngineState } from "./engine";
+import { GameAudio, enginePulseHz, ENGINE_OUTPUT_BOOST, RACING_MASTER_LEVEL, type RivalEngineState } from "./engine";
 
 class Param {
   value = 0;
@@ -85,22 +85,21 @@ it("silences rivals on pause, shares mute and releases obsolete voices", () => {
   const ctx = Context.current;
   expect(ctx.oscillators).toHaveLength(8);
   audio.silence();
-  // Each rival has one voice gain and one unchanged low-oscillator submix.
-  expect(ctx.gains.filter((_, i) => i >= 8 && (i - 8) % 2 === 0)
-    .every(node => node.gain.value === 0)).toBe(true);
+  const rivals = (audio as unknown as {rivals:Map<string,{gain:Node}>}).rivals;
+  expect([...rivals.values()].every(voice => voice.gain.gain.value === 0)).toBe(true);
   audio.setMuted(true);
   audio.updateRivals(listener, [engine]);
   expect(ctx.gains[0].gain.value).toBe(0);
   expect(ctx.oscillators.at(-1)!.stop).toHaveBeenCalledOnce();
   audio.setMuted(false);
   audio.updateRivals(listener, [engine]);
-  expect(ctx.gains[8].gain.value).toBeGreaterThan(0);
+  expect(rivals.get(engine.id)!.gain.gain.value).toBeGreaterThan(0);
 });
 
  it("separates engines and music while keeping the shared mute",()=>{
   vi.stubGlobal("window",{AudioContext:Context});const audio=new GameAudio();audio.ensure();
   const ctx=Context.current;audio.setVolumes({engines:0,music:.8});
-  expect(ctx.gains[1].gain.value).toBe(0);expect(ctx.gains[2].gain.value).toBeCloseTo(.8);
+  expect(ctx.gains[1].gain.value).toBe(0);expect(ctx.gains[3].gain.value).toBeCloseTo(.8);
   audio.setVolumes({engines:NaN,music:5});expect(audio.getVolumes()).toEqual({engines:0,music:1});
   audio.setMuted(true);expect(ctx.gains[0].gain.value).toBe(0);
   audio.setMuted(false);expect(ctx.gains[1].gain.value).toBe(0);
@@ -156,11 +155,15 @@ it("raises V10 idle and acceleration to a medium-strong mix with peak control", 
   const audio = new GameAudio();
   audio.ensure();
   const ctx = Context.current;
-  expect(ctx.compressors).toHaveLength(2); // engine bus + separate victory bus
+  expect(ctx.compressors).toHaveLength(3); // engine dynamics, peak guard, victory
   expect(ctx.compressors[0].threshold.value).toBe(-16);
   expect(ctx.compressors[0].ratio.value).toBe(3);
-  const motorGain = ctx.gains[3];
-  const musicBus = ctx.gains[2];
+  const motorGain = ctx.gains[4];
+  const musicBus = ctx.gains[3];
+  expect(audio.getEngineOutputBoost()).toBe(ENGINE_OUTPUT_BOOST);
+  expect(ENGINE_OUTPUT_BOOST).toBeGreaterThanOrEqual(2);
+  expect(ctx.gains[2].gain.value).toBe(ENGINE_OUTPUT_BOOST);
+  expect(ctx.compressors[1].ratio.value).toBeGreaterThanOrEqual(12);
   audio.update(850, 0, 0, 0);
   const idle = motorGain.gain.value;
   expect(idle).toBeGreaterThan(.35);
@@ -177,7 +180,7 @@ it("raises V10 idle and acceleration to a medium-strong mix with peak control", 
   audio.setMuted(true);
   expect(ctx.gains[0].gain.value).toBe(0);
   audio.setMuted(false);
-  expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+  expect(ctx.gains[0].gain.value).toBeCloseTo(RACING_MASTER_LEVEL);
 });
 
 it("keeps countdown music silent and starts the full-level original victory only at results", () => {
@@ -193,9 +196,9 @@ it("keeps countdown music silent and starts the full-level original victory only
   expect(audio.isVictoryPlaying).toBe(true);
   expect(ctx.oscillators.length).toBeGreaterThan(oscillatorsBefore + 25);
   expect(ctx.gains[0].gain.value).toBe(1);
-  expect(ctx.gains[2].gain.value).toBe(1);
+  expect(ctx.gains[3].gain.value).toBe(1);
   audio.setVolumes({music:.6});
-  expect(ctx.gains[2].gain.value).toBeCloseTo(.6);
+  expect(ctx.gains[3].gain.value).toBeCloseTo(.6);
   audio.setMuted(true);
   expect(ctx.gains[0].gain.value).toBe(0);
   audio.setMuted(false);
