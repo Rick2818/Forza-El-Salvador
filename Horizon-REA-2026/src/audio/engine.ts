@@ -88,6 +88,7 @@ const ENGINE_CYLINDERS: Record<string, number> = {
 export class GameAudio {
   private volumes: AudioVolumes = {engines:1,music:1};
   private enginesBus: GainNode | null = null;
+  private engineLimiter: DynamicsCompressorNode | null = null;
   private musicBus: GainNode | null = null;
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -227,6 +228,7 @@ export class GameAudio {
     engineLimiter.release.value = .16;
     this.enginesBus.connect(engineLimiter);
     engineLimiter.connect(master);
+    this.engineLimiter = engineLimiter;
     this.musicBus=ctx.createGain();this.musicBus.gain.value=this.volumes.music;this.musicBus.connect(master);
 
     // ---- Exhaust: broadband combustion pulses with controlled low mids,
