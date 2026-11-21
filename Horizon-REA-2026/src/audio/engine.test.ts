@@ -225,7 +225,7 @@ it("plays a chosen local audio file from the decoded buffer without publishing i
   expect(audio.getVictoryTrackName()).toBe("licensed-victory.wav");
   audio.ensure();
   await vi.waitFor(() => {
-    expect(Context.current.bufferSources).toHaveLength(3); // synchronized combustion/body and tyre noise
+    expect(Context.current.bufferSources).toHaveLength(2); // only combustion/body loops: abrasive skid noise removed
     expect((audio as unknown as {victoryBuffer:unknown}).victoryBuffer).toBeTruthy();
   });
   audio.playVictory();
@@ -248,4 +248,18 @@ it("locks combustion and body to the same start and RPM trajectory",()=>{
  for(const rpm of [950,3000,7800,2200]){audio.update(rpm,.8,120,0);expect(body.playbackRate.value).toBe(combustion.playbackRate.value);}
  expect(ctx.oscillators.every(o=>o.disconnect.mock.calls.length>0)).toBe(true);
  audio.setVehicle('yangwang-u9',true);expect(ctx.oscillators.every(o=>o.type==='sine')).toBe(true);
+});
+
+it("does not generate continuous tyre noise and plays a short low-frequency impact", () => {
+  vi.stubGlobal("window", {AudioContext: Context});
+  const audio = new GameAudio();
+  audio.ensure();
+  const ctx = Context.current;
+  expect(ctx.bufferSources).toHaveLength(2);
+  audio.update(5000, 1, 130, 9);
+  expect(ctx.bufferSources).toHaveLength(2);
+  const before = ctx.oscillators.length;
+  audio.playCollision(0.7);
+  expect(ctx.oscillators).toHaveLength(before + 1);
+  expect(ctx.oscillators.at(-1)!.stop).toHaveBeenCalledOnce();
 });
