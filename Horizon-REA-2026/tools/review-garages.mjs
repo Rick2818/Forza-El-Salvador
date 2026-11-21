@@ -34,7 +34,9 @@ try {
  }
  // The full DOM is captured here because the large start signal is a HUD element.
  await page.evaluate(()=>{
-  const g=window.__HORIZON_GAME__;g.startRace();g.chase.snap();g.chase.update(1/60,g.race.player.vehicle,0);g.advance(0);
+  const g=window.__HORIZON_GAME__;g.startRace();g.skipRender=true;
+  for(let i=0;i<60;i++)g.advance(1/60);
+  g.skipRender=false;g.chase.snap();g.chase.update(1/60,g.race.player.vehicle,0);g.advance(0);
  });
  const startPhases=[];
  for(const phase of ['red','yellow','green']) {
@@ -53,7 +55,8 @@ try {
  const sound=await page.evaluate(async()=>{
   const Score=window.__HORIZON_GAME__.audio.startMusic.constructor;
   const sampleRate=48000, seconds=6.5, context=new OfflineAudioContext(2,sampleRate*seconds,sampleRate);
-  const score=new Score(context,context.destination);score.update('red',5.2,5.2);
+  const master=context.createGain();master.gain.value=.55;master.connect(context.destination);
+  const score=new Score(context,master);score.update('red',5.2,5.2);
   const suspended=[];
   for(let i=1;i<65;i++) {
    suspended.push(context.suspend(i/10).then(()=>{
