@@ -11,11 +11,18 @@ try {
   await page.getByRole("button", {name: "Iniciar carrera", exact: true}).click();
   await page.evaluate(() => window.__HORIZON_GAME__.prepareCapture());
   await mkdir("review/monzon", {recursive: true});
+  await page.addStyleTag({content: "#countdown, #toast { visibility: hidden !important; }"});
   for (const [name, metres] of [["recta", 340], ["chicana", 1000], ["curva", 1800], ["boxes", 150]]) {
-    const report = await page.evaluate(metres => {
+    const report = await page.evaluate(({name, metres}) => {
       const game = window.__HORIZON_GAME__;
       const track = game.track;
-      const index = Math.round(metres / track.segmentLength);
+      let index = Math.round(metres / track.segmentLength);
+      if (name === "chicana" || name === "curva") {
+        const threshold = name === "chicana" ? .008 : .004;
+        const corner = track.curvatures.findIndex((curvature, i) =>
+          i > index && curvature > threshold);
+        if (corner >= 0) index = Math.max(0, corner - Math.round(25 / track.segmentLength));
+      }
       const position = track.sampleAt(index);
       const tangent = track.tangentAt(index);
       const player = game.race.player.vehicle;
@@ -30,7 +37,7 @@ try {
       return {position: position.toArray(), drawCalls: game.renderer.info.render.calls,
         triangles: game.renderer.info.render.triangles, width: game.renderer.domElement.width,
         height: game.renderer.domElement.height};
-    }, metres);
+    }, {name, metres});
     await page.screenshot({path: "review/monzon/" + name + ".png"});
     await writeFile("review/monzon/" + name + ".json", JSON.stringify(report, null, 2));
   }

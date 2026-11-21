@@ -4,6 +4,9 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { VEHICLE_DESIGNS, loadSelectedVehicle, createSelectedVisual, disposeSelectedVisual,
   wheelConnections } from "../src/vehicle/selectedAsset";
+import { Track } from "../src/world/track";
+import { getCircuit } from "../src/world/circuits";
+import { AIDriver } from "../src/vehicle/ai";
 import { Vehicle } from "../src/vehicle/vehicle";
 import { Race } from "../src/race/race";
 
@@ -28,7 +31,7 @@ beforeAll(async () => {
 
 afterAll(() => { vi.unstubAllGlobals(); });
 
-describe("seven actual GLBs and live Rapier vehicles", () => {
+describe("four game GLBs and live Rapier vehicles", () => {
   it("changes all seven grids and resets races without accumulating bodies or scene nodes", () => {
     const world = new RAPIER.World({ x: 0, y: -13.5, z: 0 });
     const scene = new THREE.Scene();
@@ -121,3 +124,25 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
     });
   }
 });
+
+it.each(["facil", "medio", "dificil"])("simulates three Monzon laps at %s difficulty", (difficulty) => {
+  const world = new RAPIER.World({ x: 0, y: -13.5, z: 0 });
+  world.timestep = 1 / 60;
+  const track = new Track(getCircuit("monzon"));
+  track.buildVisuals = () => {};
+  track.build();
+  track.addPhysics(world);
+  const race = new Race(world, new THREE.Scene(), track, "ferrari-california-t", difficulty);
+  race.state = "racing";
+  const pilot = new AIDriver(race.player.vehicle, track, -2.7, .94, 1, "estratega", difficulty);
+  for (let frame = 0; frame < 60 * 900 && !race.racers.every(r => r.finished); frame++) {
+    const traffic = race.racers.filter(r => !r.isPlayer && !r.finished).map(r => ({
+      position: r.vehicle.position.clone(), speed: r.vehicle.speed, isPlayer: false, racerId: r.id
+    }));
+    race.update(1 / 60, pilot.plan(1 / 60, frame / 60, traffic));
+    world.step();
+  }
+  expect(race.racers.every(r => r.finished)).toBe(true);
+  race.dispose();
+  world.free();
+}, 180000);
