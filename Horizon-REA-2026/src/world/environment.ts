@@ -11,6 +11,7 @@ import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
 import { createTracksidePartners } from "./tracksidePartners";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /**
  * Night-time circuit surroundings: starry dome, analytic moon, layered ridge
@@ -34,6 +35,12 @@ export class Environment {
   private lightRefresh = 1;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
+    // One shared neutral PMREM for coachwork. Keep the outdoor sky/lighting
+    // unchanged; the almost-disabled blue sky map made approved paint flat.
+    const paintEnvironment = new RoomEnvironment();
+    const paintPMREM = new THREE.PMREMGenerator(renderer);
+    scene.userData.vehicleReflectionEnvironment = paintPMREM.fromScene(paintEnvironment, .04).texture;
+    paintEnvironment.dispose(); paintPMREM.dispose();
     this.lampPositions = track.lampPositions;
     const isMonzon = track.circuit.id === "monzon";
     const isSuzaka = track.circuit.id === "suzaka";
@@ -129,7 +136,7 @@ export class Environment {
       void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
       // Load only editable Blender landmarks. The driveable surface and all
       // physical guardrails are generated in Track so physics always matches.
-      void installSuzakaScenery(scene).catch(error => {
+      void installSuzakaScenery(scene, track).catch(error => {
         console.warn("[Horizon] Suzaka scenery could not load; track remains playable", error);
       });
     } else if (isSparda || isSakhir) {

@@ -225,7 +225,7 @@ it("plays a chosen local audio file from the decoded buffer without publishing i
   expect(audio.getVictoryTrackName()).toBe("licensed-victory.wav");
   audio.ensure();
   await vi.waitFor(() => {
-    expect(Context.current.bufferSources).toHaveLength(2); // combustion and tyre noise
+    expect(Context.current.bufferSources).toHaveLength(3); // synchronized combustion/body and tyre noise
     expect((audio as unknown as {victoryBuffer:unknown}).victoryBuffer).toBeTruthy();
   });
   audio.playVictory();
@@ -238,4 +238,14 @@ it("plays a chosen local audio file from the decoded buffer without publishing i
   expect(played.stop).toHaveBeenCalledOnce();
   audio.setVictoryTrack(null);
   expect(audio.getVictoryTrackName()).toBeNull();
+});
+
+
+it("locks combustion and body to the same start and RPM trajectory",()=>{
+ vi.stubGlobal("window",{AudioContext:Context});const audio=new GameAudio();audio.ensure();
+ const ctx=Context.current,combustion=ctx.bufferSources[0],body=ctx.bufferSources[1];
+ expect(combustion.start.mock.calls[0]).toEqual(body.start.mock.calls[0]);
+ for(const rpm of [950,3000,7800,2200]){audio.update(rpm,.8,120,0);expect(body.playbackRate.value).toBe(combustion.playbackRate.value);}
+ expect(ctx.oscillators.every(o=>o.disconnect.mock.calls.length>0)).toBe(true);
+ audio.setVehicle('yangwang-u9',true);expect(ctx.oscillators.every(o=>o.type==='sine')).toBe(true);
 });

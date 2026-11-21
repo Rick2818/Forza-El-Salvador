@@ -1,6 +1,8 @@
 import { RacePerformance, GPUFrameTimer } from "./render/performance";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
+import { RELEASE_LABEL } from "./core/version";
+import { ContactShadows } from "./render/contactShadows";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { Environment } from "./world/environment";
@@ -126,6 +128,8 @@ export class Game {
       }
     } catch { /* Storage can be disabled; the default still works. */ }
     this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty);
+    const contacts = new ContactShadows(this.scene);
+    this.scene.onBeforeRender = () => contacts.update(this.race.racers, this.track, this.environment.terrain);
     this.chase = new ChaseCamera(this.camera);
     this.smoke = new SmokeSystem(this.scene);
 
@@ -188,7 +192,7 @@ export class Game {
 
   private installDebugApi(): void {
     const api = {
-      version: "0.1.0",
+      version: RELEASE_LABEL,
       stats: () => ({
         state: this.state,
         vehicleId: this.race.vehicleId,
@@ -496,6 +500,7 @@ export class Game {
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
         this.race.update(this.fixedStep, drive as Input);
         this.world.step();
+        for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep();
         this.physicsAccum -= this.fixedStep;
         steps++;
       }

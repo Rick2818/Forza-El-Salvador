@@ -22,7 +22,7 @@ export const DIFFICULTY_TUNING = {
 } as const;
 
 export function rivalTargetMultiplier(skill: number, difficulty: RaceDifficulty, personality: RivalPersonality): number {
-  const personalityPace = personality === "atacante" ? 1.025 : personality === "estratega" ? 1.01 : 1;
+  const personalityPace = personality === "atacante" ? 1.045 : personality === "estratega" ? 1.01 : 1;
   return skill * DIFFICULTY_TUNING[difficulty].pace * personalityPace;
 }
 
@@ -90,7 +90,8 @@ export class AIDriver {
     const recovering = !v.onTrack || Math.abs(ownLane) > this.track.halfWidth * .82;
 
     // Only local projections are needed; no expensive global pathfinding at 60 FPS.
-    const nearby: Nearby[] = traffic.map(other => {
+    const nearby: Nearby[] = traffic.filter(other =>
+      Math.abs(other.position.y - pos.y) < 5).map(other => {
       const dx = other.position.x - pos.x;
       const dz = other.position.z - pos.z;
       return {
@@ -115,6 +116,29 @@ export class AIDriver {
     const profileSpeed = this.track.targetSpeeds[this.hint] * pace * push;
     const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace * push;
     let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, 17));
+    const onBridge = this.track.circuit?.layout === "figure-eight" && road.y > 1;
+    if (onBridge) targetSpeed = Math.min(targetSpeed, 45);
+    // Difficulty changes pace, never the available braking distance or grip.
+    // Multiplying the precomputed braking envelope by pace also multiplied
+    // its required deceleration by pace². With V9 highway power that sent
+    // the hard Bugatti into Suzaka's barrier after the start straight.
+    const brakingDeceleration = 8;
+    const previewMetres = Math.max(60, speed * speed / (2 * brakingDeceleration) + speed * .4);
+    const previewSteps = Math.min(this.track.samples.length - 1,
+      Math.ceil(previewMetres / this.track.segmentLength));
+    for (let step = 0; step <= previewSteps; step += 3) {
+      const index = (this.hint + step) % this.track.samples.length;
+      const curvature = this.track.curvatures?.[index] ?? 0;
+      if (curvature <= .001) continue;
+      // A defender leaves more corner margin; an attacker uses the full
+      // grip envelope. These are physical differences in driving style.
+      const cornerPace = this.personality === "defensor" ? .96
+        : this.personality === "atacante" ? 1 : .98;
+      const cornerSpeed = Math.sqrt(13.5 / curvature) * Math.min(pace, cornerPace);
+      const reachable = Math.sqrt(cornerSpeed * cornerSpeed +
+        2 * brakingDeceleration * Math.max(0, step * this.track.segmentLength - speed * .25));
+      targetSpeed = Math.min(targetSpeed, reachable);
+    }
     const front = nearby
       .filter(o => o.gap > 1.5 && o.gap < 24 + tuning.pressure * 22 && Math.abs(o.lane - ownLane) < 3.3)
       .sort((a, b) => a.gap - b.gap)[0];
@@ -130,7 +154,7 @@ export class AIDriver {
         this.pass = null;
       }
     }
-    if (!this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
+    if (!onBridge && !this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
       const firstSide = Math.sin(this.phase) > 0 ? -1 : 1;
       for (const side of [firstSide, -firstSide]) {
         const candidate = clamp(front.lane + side * 3.35, -4.55, 4.55);
@@ -143,7 +167,7 @@ export class AIDriver {
         }
       }
     }
-    if (recovering) {
+    if (recovering || onBridge) {
       this.pass = null;
       desiredLane = 0;
     } else if (this.pass) {
@@ -179,7 +203,8 @@ export class AIDriver {
     _forward.set(0, 0, 1).applyQuaternion(_quat);
     const heading = Math.atan2(_forward.x, _forward.z);
     const desired = Math.atan2(_target.x - pos.x, _target.z - pos.z);
-    const steer = clamp(angleDelta(heading, desired) *
+    const headingError = angleDelta(heading, desired);
+    let steer = clamp(headingError *
       (recovering ? 3.1 : 2.5) * tuning.reaction, -1, 1);
 
     // A nearby slower car forces braking until the pass is physically clear.
@@ -191,6 +216,10 @@ export class AIDriver {
     }
 
     if (recovering) targetSpeed = Math.min(targetSpeed, 12);
+    else if (Math.abs(headingError) > .3 || v.slip > 3) {
+      // Regain alignment before asking the highway engine to accelerate.
+      targetSpeed = Math.min(targetSpeed, 25);
+    }
     const error = targetSpeed - speed;
     // The speed controller must account for the stronger highway engine;
     // Large gaps allow full acceleration; taper small errors by the square
@@ -201,12 +230,15 @@ export class AIDriver {
       this.reverseTime -= dt;
       throttle = 0;
       brake = 1;
+      // Reversing changes yaw response. Keeping the forward steering lock
+      // made a stuck driver repeatedly drive back into the same guardrail.
+      steer = -steer;
     }
 
     if (speed < 1.4 && time > 2) {
       this.stuckTime += dt;
       if (this.stuckTime > 1.8) {
-        this.reverseTime = 1.1;
+        this.reverseTime = 2.2;
         this.stuckTime = 0;
       }
     } else {

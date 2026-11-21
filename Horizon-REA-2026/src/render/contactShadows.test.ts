@@ -1,0 +1,22 @@
+import {expect,it} from 'vitest';
+import * as THREE from 'three';
+import type {Racer} from '../race/race';
+import {Track} from '../world/track';
+import {getCircuit} from '../world/circuits';
+import {TerrainField} from '../world/terrain';
+import {ContactShadows} from './contactShadows';
+it('keeps contact under an elevated car and fades it when airborne, using one shared draw',()=>{
+ const scene=new THREE.Scene(),track=new Track(getCircuit('suzaka')!);track.buildVisuals=()=>{};track.build();
+ const index=Math.round(track.samples.length/2),p=track.sampleAt(index),t=track.tangentAt(index);
+ const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.atan2(t.x,t.z));
+ let altitude=p.y+.55;
+ const racers=[{hint:index,vehicle:{vehicleId:'ferrari-california-t',body:{translation:()=>({x:p.x,y:altitude,z:p.z}),rotation:()=>q}}}] as unknown as Racer[];
+ const contact=new ContactShadows(scene);contact.update(racers,track,new TerrainField(track));
+ expect(scene.children).toHaveLength(1);expect(contact.mesh.count).toBe(1);
+ const matrix=new THREE.Matrix4();contact.mesh.getMatrixAt(0,matrix);
+ const center=new THREE.Vector3().setFromMatrixPosition(matrix);
+ expect(center.y).toBeGreaterThan(10);expect(center.y).toBeCloseTo(p.y+.038,3);
+ expect(contact.mesh.geometry.getAttribute('contactVisibility').getX(0)).toBe(1);
+ altitude+=4;contact.update(racers,track,new TerrainField(track));
+ expect(contact.mesh.geometry.getAttribute('contactVisibility').getX(0)).toBe(0);
+});

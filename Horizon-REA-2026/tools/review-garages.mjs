@@ -48,7 +48,7 @@ try {
    return {phase:document.querySelector('#countdown')?.dataset.phase,state:g.race.state,remaining:g.race.countdown,
     fpsLabel:document.querySelector('#hud-fps')?.textContent,lamps:document.querySelectorAll('.start-lamp').length,musicActive:!!g.audio.startMusic,muted:g.audio.isMuted};
   },phase);
-  if(report.fpsLabel!=='CAPTURA · V6' || report.phase!==phase || report.lamps!==3 || report.musicActive || (phase==='green' && report.state!=='racing'))throw Error('Unsynchronized or noisy start signal: '+JSON.stringify(report));
+  if(report.fpsLabel!=='CAPTURA · V10' || report.phase!==phase || report.lamps!==3 || report.musicActive || (phase==='green' && report.state!=='racing'))throw Error('Unsynchronized or noisy start signal: '+JSON.stringify(report));
   startPhases.push(report);
   await page.screenshot({path:`review/garages/salida-${phase}.png`});
  }

@@ -38,7 +38,7 @@
     "wing": true,
     "powertrain": "electric",
     "tuning": {
-      "power": 1.18,
+      "power": 2.4,
       "mass": 1.24,
       "topSpeed": 89.408,
       "grip": 1.02,
@@ -63,7 +63,7 @@
     "wing": true,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1.22,
+      "power": 8.5,
       "mass": 0.94,
       "topSpeed": 89.408,
       "grip": 1.02,
@@ -138,7 +138,7 @@
     "wing": false,
     "powertrain": "combustion",
     "tuning": {
-      "power": 1.1,
+      "power": 8.5,
       "mass": 1.03,
       "topSpeed": 89.408,
       "grip": 1,

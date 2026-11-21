@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { SELECTED_VEHICLES } from "./roster";
 import { BODY_CENTER_Y, type CarVisual } from "./carModel";
+import { RELEASE_LABEL } from "../core/version";
 
 export type VehicleDesign = (typeof designs)[number];
 export const VEHICLE_DESIGNS: readonly VehicleDesign[] = SELECTED_VEHICLES.map((car) => designs.find((design) => design.id === car.id)!);
@@ -26,7 +27,8 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
   if (cache.has(id)) return Promise.resolve();
   const running = pending.get(id);
   if (running) return running;
-  const revision = id === DEFAULT_SELECTED_ID ? "?rev=cherry" : "";
+  // A new application release must not reuse a stale browser-cached GLB.
+  const revision = `?rev=${RELEASE_LABEL}`;
   const task = new GLTFLoader().loadAsync(url ?? `${import.meta.env.BASE_URL}models/selected/${id}.glb${revision}`)
     .then(({ scene }) => {
       for (const name of WHEEL_NAMES) {
@@ -254,6 +256,7 @@ export function createSelectedVisual(id: string): CarVisual {
           object.material.transparent || object instanceof THREE.SkinnedMesh) return;
       // Keep the named, approved Ferrari rear details individually inspectable.
       if (/^(Ferrari_rear_brake_ring|Sculpted_rear_valance)/.test(object.name)) return;
+      if (/^Cockpit_V11_steering_rim/.test(object.name)) return;
       const attributes = Object.keys(object.geometry.attributes).sort().map(name => {
         const a = object.geometry.getAttribute(name);
         return `${name}:${a.itemSize}:${a.normalized}`;

@@ -1,4 +1,5 @@
 import type { StartSignalPhase } from "../race/startSignal";
+import { RELEASE_LABEL } from "../core/version";
 import type { RaceSnapshot, Racer } from "../race/race";
 import type { Track } from "../world/track";
 import type { Vehicle } from "../vehicle/vehicle";
@@ -191,7 +192,7 @@ export class HUD {
   }
 
   update(dt: number, snapshot: RaceSnapshot, vehicle: Vehicle, racers: Racer[], fps: number): void {
-    const fpsLabel = Number.isFinite(fps) ? `${Math.round(fps)} FPS · V6` : "CAPTURA · V6";
+    const fpsLabel = Number.isFinite(fps) ? `${Math.round(fps)} FPS · ${RELEASE_LABEL}` : `CAPTURA · ${RELEASE_LABEL}`;
     if (this.fpsEl.textContent !== fpsLabel) this.fpsEl.textContent = fpsLabel;
     // DOM and minimap work do not need to run at the physics/render rate.
     this.uiElapsed += dt;

@@ -593,7 +593,11 @@ export class Track {
     }
     for (let i = 0; i < N; i += 2) {
       const p = this.samples[i];
-      const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
+      // Global reacquisition must distinguish the flyover from the road below,
+      // just as the local hint search does after the first physics step.
+      const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 +
+        (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 :
+          this.circuit.layout === "mountain" ? (p.y - pos.y) ** 2 : 0);
       if (dist < bestDist) {
         bestDist = dist;
         best = i;

@@ -1,0 +1,14 @@
+{
+  "sourceSha256": "d3e66612b0d0cd7dd06f741ae51707b6cc8404a52657a72be911c4b8074d5f04",
+  "outputSha256": "7ac003e758bfe827bb7d0dc34152fef9325bdb193796d22f46e0cff4cc068ee4",
+  "paintLinearRGBA": [
+    0.3375000059604645,
+    0.0027000000700354576,
+    0.01080000028014183,
+    1.0
+  ],
+  "cabinSheetVerticesChanged": 0,
+  "approvedCabinLinerPreserved": true,
+  "status": "implemented; engine visual review required",
+  "factoryDashboardReplica": false
+}

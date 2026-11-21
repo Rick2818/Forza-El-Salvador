@@ -65,6 +65,8 @@ export class Vehicle {
   private turboState = createTurboState();
   private readonly turboFlames: TurboFlames | null;
   private readonly tuning;
+  private readonly forceForward = new THREE.Vector3();
+  private readonly localVelocity = new THREE.Vector3();
 
   get turboActive(): boolean { return this.turboState.active > 0; }
   get speedLimitMph(): number { return this.tuning.topSpeed / 0.44704; }
@@ -83,6 +85,12 @@ export class Vehicle {
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
     this.wheelRadius = design?.wheelRadius ?? .36;
     this.visual = opts.vehicleId ? createSelectedVisual(opts.vehicleId) : createCarVisual(opts);
+    if (opts.vehicleId === "ferrari-california-t" && this.visual.paint instanceof THREE.MeshPhysicalMaterial &&
+        scene.userData.vehicleReflectionEnvironment instanceof THREE.Texture) {
+      this.visual.paint.envMap = scene.userData.vehicleReflectionEnvironment;
+      this.visual.paint.envMapIntensity = .45;
+      this.visual.paint.needsUpdate = true;
+    }
     this.isPlayer = opts.isPlayer ?? false;
     this.turboFlames = this.isPlayer
       ? new TurboFlames(this.visual.root, design?.length ?? 4.5, design?.width ?? 1.9)
@@ -170,8 +178,8 @@ export class Vehicle {
     // Falling velocity must never count as forward driving speed.
     const velocity = this.body.linvel();
     const rotation = this.body.rotation();
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(
-      new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
+    const forward = this.forceForward.set(0, 0, 1).applyQuaternion(
+      _q.set(rotation.x, rotation.y, rotation.z, rotation.w)
     );
     forward.y = 0;
     forward.normalize();
@@ -196,7 +204,7 @@ export class Vehicle {
     // Auto-activate a brief, cooldown-limited arcade nitro burst at 100 mph.
     // No turbo in reverse, in countdown, or during off-track excursions.
     this.turboState = stepTurbo(this.turboState, dt, speed, throttle,
-      this.onTrack, this.isPlayer);
+      this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake);
 
     let engineForce = 0;
     if (throttle > 0.01 && absSpeed < this.tuning.topSpeed) {
@@ -229,11 +237,7 @@ export class Vehicle {
     // Propulsion is applied at the centre of mass instead of at the wheel
     // contact patch: feeding it through the raycast controller adds a huge
     // pitch moment that flips the car at low speed.
-    const rot = this.body.rotation();
-    _q.set(rot.x, rot.y, rot.z, rot.w);
-    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(_q);
-    fwd.y = 0;
-    if (fwd.lengthSq() > 1e-4) fwd.normalize();
+    const fwd = forward;
     const nitro = this.turboActive && !this.controls.handbrake &&
       speed < this.tuning.topSpeed ? TURBO_FORCE_N : 0;
     const drive = engineForce + nitro - reverseForce;
@@ -316,31 +320,34 @@ export class Vehicle {
       this.body.rotation().z,
       this.body.rotation().w
     );
-    const local = new THREE.Vector3(vel.x, vel.y, vel.z).applyQuaternion(_q.clone().invert());
+    const local = this.localVelocity.set(vel.x, vel.y, vel.z).applyQuaternion(_q.invert());
     this.slip = Math.max(0, Math.abs(local.x) - 0.6);
   }
 
-  private enforceTopSpeed(): void {
+  /** Must run after EVERY fixed world.step(), even when no frame is rendered. */
+  afterPhysicsStep(): void {
     const vel = this.body.linvel();
     const rot = this.body.rotation();
     const q = _q.set(rot.x, rot.y, rot.z, rot.w);
-    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    const fwd = this.forceForward.set(0, 0, 1).applyQuaternion(q);
     fwd.y = 0;
     if (fwd.lengthSq() < .5) return;
     fwd.normalize();
     const forwardSpeed = vel.x * fwd.x + vel.z * fwd.z;
-    if (forwardSpeed > this.tuning.topSpeed) {
-      const excess = forwardSpeed - this.tuning.topSpeed;
-      this.body.setLinvel({ x: vel.x - fwd.x * excess, y: vel.y,
-        z: vel.z - fwd.z * excess }, true);
-      this.speed = this.tuning.topSpeed;
+    const planarSpeed = Math.hypot(vel.x, vel.z);
+    if (planarSpeed > this.tuning.topSpeed) {
+      const scale = this.tuning.topSpeed / planarSpeed;
+      this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
+      this.speed = forwardSpeed * scale;
+    } else {
+      this.speed = forwardSpeed;
     }
   }
 
   syncVisual(dt = 0): void {
     // Governor acts AFTER each world step; an engine or nitro burst cannot
     // overshoot the configured 200 mph / Bugatti 230 mph speed ceiling.
-    this.enforceTopSpeed();
+    this.afterPhysicsStep();
     const t = this.body.translation();
     const r = this.body.rotation();
     this.visual.root.position.set(t.x, t.y, t.z);
