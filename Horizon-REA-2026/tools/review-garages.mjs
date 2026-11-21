@@ -48,42 +48,24 @@ try {
    return {phase:document.querySelector('#countdown')?.dataset.phase,state:g.race.state,remaining:g.race.countdown,
     fpsLabel:document.querySelector('#hud-fps')?.textContent,lamps:document.querySelectorAll('.start-lamp').length,musicActive:!!g.audio.startMusic,muted:g.audio.isMuted};
   },phase);
-  if(report.fpsLabel!=='CAPTURA · V6' || report.phase!==phase || report.lamps!==3 || (phase==='green' && report.state!=='racing'))throw Error('Unsynchronized start signal: '+JSON.stringify(report));
+  if(report.fpsLabel!=='CAPTURA · V6' || report.phase!==phase || report.lamps!==3 || report.musicActive || (phase==='green' && report.state!=='racing'))throw Error('Unsynchronized or noisy start signal: '+JSON.stringify(report));
   startPhases.push(report);
   await page.screenshot({path:`review/garages/salida-${phase}.png`});
  }
- const sound=await page.evaluate(async()=>{
-  const Score=window.__HORIZON_GAME__.audio.startMusic.constructor;
-  const sampleRate=48000, seconds=6.5, context=new OfflineAudioContext(2,sampleRate*seconds,sampleRate);
-  const master=context.createGain();master.gain.value=.55;master.connect(context.destination);
-  const score=new Score(context,master);score.update('red',5.2,5.2);
-  const suspended=[];
-  for(let i=1;i<65;i++) {
-   suspended.push(context.suspend(i/10).then(()=>{
-    const remaining=5.2-context.currentTime;
-    score.update(remaining>2?'red':remaining>0?'yellow':context.currentTime<6.4?'green':null,remaining,5.2);
-    return context.resume();
-   }));
-  }
-  const buffer=await context.startRendering();await Promise.all(suspended);
-  const count=buffer.length, bytes=new ArrayBuffer(44+count*4), view=new DataView(bytes);
-  const text=(offset,s)=>{for(let i=0;i<s.length;i++)view.setUint8(offset+i,s.charCodeAt(i));};
-  text(0,'RIFF');view.setUint32(4,36+count*4,true);text(8,'WAVE');text(12,'fmt ');view.setUint32(16,16,true);
-  view.setUint16(20,1,true);view.setUint16(22,2,true);view.setUint32(24,sampleRate,true);view.setUint32(28,sampleRate*4,true);
-  view.setUint16(32,4,true);view.setUint16(34,16,true);text(36,'data');view.setUint32(40,count*4,true);
-  let peak=0, square=0;
-  for(let i=0;i<count;i++)for(let channel=0;channel<2;channel++) {
-   const value=buffer.getChannelData(channel)[i];peak=Math.max(peak,Math.abs(value));square+=value*value;
-   view.setInt16(44+(i*2+channel)*2,Math.round(Math.max(-1,Math.min(1,value))*32767),true);
-  }
-  let binary='';const data=new Uint8Array(bytes);
-  for(let i=0;i<data.length;i+=8192)binary+=String.fromCharCode(...data.subarray(i,i+8192));
-  return {base64:btoa(binary),peak,rms:Math.sqrt(square/(count*2)),seconds};
+ // Red/yellow/green lights are visual only. No start music is instantiated.
+ const sound=await page.evaluate(()=>{
+  const audio=window.__HORIZON_GAME__.audio;
+  const startSilent=audio.startMusic===undefined && !audio.isVictoryPlaying;
+  if(!startSilent)throw Error('Countdown music should be removed');
+  audio.playVictory();
+  const originalVictory=audio.isVictoryPlaying && !!audio.victoryFanfare?.isPlaying;
+  if(!originalVictory)throw Error('Original victory fanfare failed to start');
+  const levels={music:audio.musicBus.gain.value,master:audio.masterGain.gain.value};
+  audio.silence();
+  if(audio.isVictoryPlaying)throw Error('Victory music did not stop on silence');
+  return {startSilent,originalVictory,levels};
  });
- if(sound.peak>=1 || sound.rms<.01)throw Error('Start music is silent or clipped');
- await writeFile('review/garages/salida-tension.wav',Buffer.from(sound.base64,'base64'));
- const {base64,...audioMetrics}=sound;
- await writeFile('review/garages/start-checks.json',JSON.stringify({startPhases,audioMetrics},null,2));
+ await writeFile('review/garages/start-checks.json',JSON.stringify({startPhases,victory:sound},null,2));
  // Real animation pacing, four simulated cars. Software CI results are not a
  // prediction of the laptop GPU. Keep the hardware/conditions in the report.
  const benchmark=process.env.SKIP_RACE_BENCHMARK ? {skipped:"Existing software performance baseline retained; this run checks signs and start synchronization."} : await page.evaluate(async()=>{
