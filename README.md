@@ -6,9 +6,9 @@ Juego de carreras 3D para Chrome desarrollado en **Rick2818/Forza-El-Salvador** 
 
 ## Estado del proyecto
 
-- **Producción:** rama `main`. La última versión pública comprobada parte de `f11313d`.
-- **Revisión de calidad:** rama `review/monzon-open-garages`, [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6).
-- Los cambios de iluminación, pinos, talleres y competencia están en revisión. Su publicación en GitHub Pages requiere aprobación visual y de audio.
+- **Producción:** versión aprobada incorporada a `main` mediante el merge `66ba205`, el 21 de noviembre de 2026. GitHub Actions publica el sitio y permite comprobar el resultado del despliegue.
+- **Revisión aprobada:** [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6), integrado.
+- Los cambios de iluminación, pinos, talleres y competencia tienen aprobación visual y de audio del usuario. La revisión `ab1eae3` pasó 104 pruebas, compilación y capturas/controles en navegador (Actions `44917119620`).
 - **Objetivo: 60 FPS en la laptop. Sigue pendiente medirlos en ese equipo.** Las capturas y simulaciones automáticas no certifican ese rendimiento.
 
 ## Contenido activo

@@ -43,3 +43,7 @@ La IA anterior completaba las seis carreras pero no cambiaba el liderato en Medi
 Se corrige además la pinza integrada en el grupo accent de cada rueda del Ferrari y se verifica que las pinzas del Ferrari/Porsche no giran con el rin. El jugador recibe ahora un perfil de motor según el auto elegido; son perfiles sintéticos, no grabaciones de fabricante. El control de volumen mantiene el foco sin iniciar una carrera accidentalmente con las flechas del teclado.
 
 Validación local: 103 pruebas y compilación correctas. Capturas finales de esta segunda pasada y prueba de interfaz en Actions pendientes de registrar al terminar. No se publica main ni Pages.
+
+## Aprobación e incorporación a producción
+
+El 21 de noviembre de 2026 el usuario aprobó las capturas y el audio. La revisión ab1eae3 pasó 104 pruebas, compilación y comprobación de teclado/capturas en Actions 44917119620. El PR #6 se incorporó a main mediante 66ba205. Las limitaciones de conducción manual y medición de 60 FPS en la laptop siguen vigentes; la aprobación visual no sustituye esas pruebas.

@@ -8,10 +8,10 @@ Repositorio: **Rick2818/Forza-El-Salvador**. Juego publicado: https://rick2818.g
 
 | Área | Estado |
 | --- | --- |
-| Versión pública | `main`, última base pública comprobada `f11313d` |
-| Versión mejorada | `review/monzon-open-garages`, [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6), borrador |
-| Validación | Pruebas automáticas y compilación; seis carreras físicas completas; capturas WebGL en Actions |
-| Publicación de mejoras | Pendiente de aprobación visual y de audio |
+| Versión aprobada | Integrada en `main`, merge `66ba205`; publicación automática mediante GitHub Actions |
+| Revisión de calidad | [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6), aprobado e integrado |
+| Validación | 104 pruebas y compilación; seis carreras físicas completas; capturas WebGL y controles aprobados en Actions `44917119620` |
+| Aprobación del usuario | Visual y audio aprobados el 21 de noviembre de 2026 |
 | 60 FPS en la laptop | Objetivo pendiente de comprobar; no es una medición obtenida |
 | Fidelidad artística | En revisión; algunos vehículos y sonidos aún necesitan refinamiento |
 
@@ -154,6 +154,6 @@ Las marcas y nombres identifican los vehículos y talleres; el juego no está af
 
 ## Publicación y pendientes
 
-`.github/workflows/horizon-pages.yml` publica desde `main`. La rama de revisión conserva el trabajo sin cambiar la versión pública. **Aprobar primero las capturas y el audio; después incorporar a `main`, comprobar Actions y verificar la URL pública.** Actualizar una rama o abrir un PR no equivale a publicar el juego.
+`.github/workflows/horizon-pages.yml` publica desde `main`. El usuario aprobó las capturas y el audio de esta revisión el 21 de noviembre de 2026; el PR #6 se integró mediante `66ba205`. El resultado de publicación se comprueba en Actions y en la URL pública. Para futuras revisiones visuales, aprobar las capturas y el audio antes de incorporarlas a producción. Actualizar una rama o abrir un PR no equivale a publicar el juego.
 
 Antes de aprobar una entrega final quedan: conducción manual completa en ambos circuitos, impactos en barreras y escapatorias, revisión visual en movimiento, escucha de mezcla y medición sostenida en la laptop. La fidelidad de algunas carrocerías y el audio sintetizado siguen siendo oportunidades de mejora; no se garantiza equivalencia visual con un título AAA.
