@@ -18,6 +18,7 @@ export interface MenuCallbacks {
   onVictoryTrack: (file: File | null) => boolean;
   onPerformanceReport: () => void;
   onSelectDifficulty: (difficulty: Difficulty) => void;
+  onToggleOncoming: (enabled: boolean) => void;
   onSelectCircuit: (id: string) => void;
   onSelectVehicle: (id: string) => Promise<void>;
 }
@@ -44,6 +45,7 @@ export class Menu {
   private callbacks: MenuCallbacks;
   private qualityLabel = "EQUILIBRADA";
   private difficulty: Difficulty = "medio";
+  private oncomingEnabled = false;
   private selectedCircuitId = DEFAULT_CIRCUIT_ID;
   private activeSetupTab: "autos" | "circuitos" = "autos";
   private visible = false;
@@ -60,6 +62,11 @@ export class Menu {
     this.overlay.addEventListener("click", this.onClick);
     this.overlay.addEventListener("change", event => {
       const target = event.target as HTMLInputElement | HTMLSelectElement;
+      if (target.dataset.oncoming === "toggle" && target instanceof HTMLInputElement) {
+        this.oncomingEnabled = target.checked;
+        this.callbacks.onToggleOncoming(target.checked);
+        return;
+      }
       if (target.dataset.victoryTrack === "file" && target instanceof HTMLInputElement) {
         const file = target.files?.[0] ?? null;
         const accepted = this.callbacks.onVictoryTrack(file);
@@ -174,6 +181,7 @@ export class Menu {
   get isGarageOpen(): boolean { return this.garageOpen; }
   setSelectedVehicle(id: string): void { this.selectedId = id; }
   setDifficulty(difficulty: Difficulty): void { this.difficulty = difficulty; }
+  setOncomingEnabled(enabled: boolean): void { this.oncomingEnabled = enabled; }
   setSelectedCircuit(id: string): void { this.selectedCircuitId = id; }
 
   get isVisible(): boolean {
@@ -237,6 +245,13 @@ export class Menu {
           </div>
           <div class="difficulty-help">Fácil: rivales más lentos · Medio: adelantamientos y defensa · Difícil: presión constante y máxima competitividad.</div>
         </div>
+        <fieldset class="traffic-panel"><legend>🚘 Tráfico en sentido contrario</legend>
+          <label class="traffic-switch">
+            <input type="checkbox" data-oncoming="toggle" aria-label="Activar coches en sentido contrario" ${this.oncomingEnabled ? "checked" : ""}>
+            <span><strong>${this.oncomingEnabled ? "Activado" : "Desactivado"}</strong> · 2 coches adicionales que circulan en dirección contraria.</span>
+          </label>
+          <p>Opcional: puedes correr sin ellos. Los choques físicos con los tres rivales están siempre activados.</p>
+        </fieldset>
         ${this.audioPanel()}
         <div class="menu-actions">
           <button class="btn primary" data-action="start">Iniciar carrera</button>
