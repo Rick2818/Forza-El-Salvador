@@ -38,8 +38,8 @@ def tube(name,points,radius,mat):
  o=bpy.data.objects.new('Cockpit_V11_'+name,data);bpy.context.collection.objects.link(o);o.data.materials.append(mat)
  bpy.ops.object.select_all(action='DESELECT');o.select_set(True);bpy.context.view_layer.objects.active=o;bpy.ops.object.convert(target='MESH')
  return bpy.context.object
-# Lower only the connected, broad lining sheet into a cabin tub. Keep the
-# existing seats, parcel shelf, dashboard and every exterior/wheel vertex.
+# Preserve the approved cabin lining: the exterior shell beneath it is red.
+# Place the new details above that lining rather than expose painted hull.
 o=bpy.data.objects['body_leather'];adj=[set() for _ in o.data.vertices]
 for e in o.data.edges:
  a,b=e.vertices;adj[a].add(b);adj[b].add(a)
@@ -55,22 +55,18 @@ for vertex in o.data.vertices:
 if len(sheet)!=273:raise RuntimeError('Approved cabin sheet changed; inspect before editing')
 def smooth(a,b,x):
  t=max(0,min(1,(x-a)/(b-a)));return t*t*(3-2*t)
-for i in sheet:
- v=o.data.vertices[i];world=o.matrix_world@v.co
- weight=smooth(-1.08,-.82,world.x)*(1-smooth(.40,.62,world.x))*(1-smooth(.50,.63,abs(world.y)))
- world.z=world.z*(1-weight)+.62*weight;v.co=o.matrix_world.inverted()@world
 for side in [-1,1]:
  y=side*.34
- box('seat_cushion',(-.32,y,.695),(.44,.36,.12),leather,.04)
+ box('seat_cushion',(-.32,y,.86),(.44,.36,.12),leather,.04)
  box('headrest',(-.585,y,1.105),(.105,.235,.09),leather,.035)
  for offset in [-.12,.12]:
-  tube('seat_stitch',[(x,y+offset,.762+.003*math.sin(i*math.pi/10)) for i,x in enumerate([-.49+i*.033 for i in range(11)])],.0017,stitch)
+  tube('seat_stitch',[(x,y+offset,.927+.003*math.sin(i*math.pi/10)) for i,x in enumerate([-.49+i*.033 for i in range(11)])],.0017,stitch)
  # Inset door tops below the glass, with a distinct armrest/handle.
- box('door_armrest',(-.12,side*.59,.80),(.48,.055,.055),trim,.015)
- box('door_handle',(.015,side*.565,.84),(.095,.014,.018),alloy,.005)
-box('center_console',(-.04,0,.735),(.62,.15,.09),trim,.025)
-box('console_alloy',(.06,0,.785),(.20,.105,.009),alloy,.008)
-for x in [-.01,.045,.10]:box('console_switch',(x,0,.794),(.022,.04,.01),trim,.004)
+ box('door_armrest',(-.12,side*.59,.87),(.48,.055,.055),trim,.015)
+ box('door_handle',(.015,side*.565,.915),(.095,.014,.018),alloy,.005)
+box('center_console',(-.04,0,.90),(.62,.15,.09),trim,.025)
+box('console_alloy',(.06,0,.95),(.20,.105,.009),alloy,.008)
+for x in [-.01,.045,.10]:box('console_switch',(x,0,.96),(.022,.04,.01),trim,.004)
 # A three-spoke wheel and a recessed instrument binnacle: authored detail,
 # deliberately not represented as a certified factory dashboard.
 center=Vector((.26,-.34,.965))
@@ -98,6 +94,6 @@ bpy.context.preferences.filepaths.save_version=0
 blend=ROOT/'tools/blender/selected-sources/ferrari-california-t-art-v11.blend'
 bpy.ops.wm.save_as_mainfile(filepath=str(blend),compress=True)
 bpy.ops.export_scene.gltf(filepath=str(asset),export_format='GLB',export_extras=True,export_animations=False)
-report={'sourceSha256':source_hash,'outputSha256':hashlib.sha256(asset.read_bytes()).hexdigest(),'paintLinearRGBA':paint_before,'cabinSheetVertices':len(sheet),'status':'implemented; engine visual review required','factoryDashboardReplica':False}
+report={'sourceSha256':source_hash,'outputSha256':hashlib.sha256(asset.read_bytes()).hexdigest(),'paintLinearRGBA':paint_before,'cabinSheetVerticesChanged':0,'approvedCabinLinerPreserved':True,'status':'implemented; engine visual review required','factoryDashboardReplica':False}
 out=ROOT/'docs/quality/v11';out.mkdir(parents=True,exist_ok=True);(out/'ferrari-cockpit.json').write_text(json.dumps(report,indent=2)+'\n')
 print('FERRARI_COCKPIT',json.dumps(report))

@@ -88,7 +88,7 @@ export class Vehicle {
     if (opts.vehicleId === "ferrari-california-t" && this.visual.paint instanceof THREE.MeshPhysicalMaterial &&
         scene.userData.vehicleReflectionEnvironment instanceof THREE.Texture) {
       this.visual.paint.envMap = scene.userData.vehicleReflectionEnvironment;
-      this.visual.paint.envMapIntensity = .65;
+      this.visual.paint.envMapIntensity = .45;
       this.visual.paint.needsUpdate = true;
     }
     this.isPlayer = opts.isPlayer ?? false;

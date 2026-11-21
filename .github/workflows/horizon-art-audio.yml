@@ -23,6 +23,7 @@ jobs:
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - run: npm ci
       - run: npm run build
+      - run: node tools/audit-ferrari-shell.mjs
       - run: npm install --no-save --package-lock=false playwright
       - run: npx playwright install --with-deps chromium
       - run: npm run preview > /tmp/horizon-art-preview.log 2>&1 &

@@ -9,8 +9,8 @@ Repositorio: **Rick2818/Forza-El-Salvador**. Juego publicado: https://rick2818.g
 | Área | Estado |
 | --- | --- |
 | Versión V10 | Siete autos seleccionables; física y conducción de Suzaka corregidas |
-| Validación local V10 | 175/175 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
-| Integración | Rama `quality/v10-race-stability`, PR #13; integración condicionada a los controles de calidad |
+| Validación local V10 | 178/178 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
+| Integración | Rama `quality/v10-race-stability`, PR #13; integración y publicación sujetas a los controles de calidad y verificación del SHA público |
 | Publicación | GitHub Pages solo despliega si pasan pruebas, auditorías y compilación; `build-info.json` identifica el commit servido |
 | 60 FPS en la laptop | Objetivo pendiente de medir en hardware real |
 | Fidelidad artística | Modelos aprobados conservados; el objetivo de calidad comercial todavía exige refinamiento y evaluación del jugador |
@@ -255,3 +255,13 @@ La IA mantiene su envolvente física de frenada aunque aumente la dificultad; re
 Evidencia y decisiones: `docs/quality/v10/AUDIT.md`, `TECHNOLOGY.md`, `validated-races.jsonl` y el informe de entrega. El workflow `horizon-v10-quality.yml` captura los siete autos en ambos circuitos, comprueba turbo, animación y gobernador en el navegador, conserva anuncios/audio y compara V9/V10. Los datos SwiftShader son diagnósticos por software; no representan la GPU del jugador.
 
 Reversión: conservar el commit anterior a integrar V10; revertir el merge de PR #13 y dejar que Pages vuelva a compilar. Verificar el SHA público de `build-info.json` tras cada publicación.
+
+## Acabado visual y sonoro — noviembre 2026
+
+Ferrari California T conserva las mallas originales, pintura y pivotes; incorpora 45 piezas de habitáculo (asientos, volante, instrumentos y consola), reflejos neutros precalculados y un acabado que conserva el rojo. El tablero es una interpretación del juego, no una reproducción certificada del fabricante. El piso oscuro aprobado se mantiene para ocultar la superficie pintada bajo el habitáculo. Fuente editable: `tools/blender/selected-sources/ferrari-california-t-art-v11.blend`; proceso reproducible: `tools/blender/refine-ferrari-cockpit.py`, partiendo del GLB aprobado de `3de9b8b`.
+
+Las sombras de contacto proyectadas de los cuatro autos usan una sola llamada de dibujo y ocho triángulos; no son ray tracing. El paddock y la tribuna de Suzaka se orientan según la pista actual y conservan más de doce metros de separación respecto al borde del asfalto; no se elimina la geometría aprobada.
+
+El audio conserva los controles y volumen del jugador, recupera el crecimiento con RPM y evita invertir energía en subgraves poco audibles. La envolvente final mantiene margen bajo clipping y se verifica después del mastering, con una prueba WebAudio determinista adicional. Lamborghini y Jesko tienen perfiles de cilindros propios y Yangwang no recibe pulsos de combustión, incluido su uso como rival. La salida sigue sin música y la celebración mantiene su control independiente.
+
+`docs/quality/v11/REPORT.md` detalla comprobaciones y límites. Las capturas y WAV comparativos se conservan en el artefacto `horizon-art-audio-evidence`. La incorporación de grabaciones automotrices licenciadas, el refinamiento individual de los otros seis interiores y la certificación de 60 FPS en la laptop siguen pendientes.
