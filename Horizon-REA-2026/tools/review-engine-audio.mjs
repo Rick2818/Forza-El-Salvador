@@ -85,8 +85,17 @@ try {
     audio.masterGain.disconnect(meter);
     if (measures.length !== 5 || measures.some(m => m.peak >= .99 || m.rms < .07))
       throw Error("Engine quiet or clipping at audible output " + JSON.stringify(measures));
-    if (measures[0].rms < .15 || measures[3].rms < .22)
-      throw Error("Engine still too weak at idle or high RPM " + JSON.stringify(measures));
+    // Baseline from previous V8 Chrome/SwiftShader run (post-master).
+    // Require at least 50% more RMS electrical signal at idle and redline,
+    // not merely a 50% increase in an upstream gain knob.
+    const previous = { idle: .3198, redline: .4114 };
+    const gainRatios = {
+      idle: Number((measures[0].rms / previous.idle).toFixed(3)),
+      redline: Number((measures[3].rms / previous.redline).toFixed(3))
+    };
+    if (gainRatios.idle < 1.50 || gainRatios.redline < 1.50)
+      throw Error("Motor output is not +50% above previous measured mix " +
+        JSON.stringify({gainRatios, measures}));
     if (measures[3].rms <= measures[0].rms * 1.25)
       throw Error("Engine does not grow with RPM " + JSON.stringify(measures));
     const blob = new Blob(parts, {type:mimeType});
@@ -106,7 +115,7 @@ try {
       oscillators: [audio.oscA?.type, audio.oscB?.type],
       engineVolumes: audio.getVolumes(),
       durationSeconds:3.0,
-      audibleMasterLevels: measures,
+      audibleMasterLevels: measures, gainRatios,
       outputBoost: audio.getEngineOutputBoost()
     };
   });
