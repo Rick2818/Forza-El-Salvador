@@ -32,6 +32,7 @@ export class RacePerformance {
     if (!this.complete && (this.warmup>0 || this.samples.length)) this.interruption=reason;
   }
   get complete(): boolean { return this.observedMs>=this.durationSeconds*1000; }
+  get recording(): boolean { return !this.interruption && !this.complete; }
   report() {
     const frames=stats(this.samples.map(s=>s.frame));
     const durationMs=this.samples.reduce((s,x)=>s+x.frame,0);

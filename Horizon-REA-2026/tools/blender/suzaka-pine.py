@@ -114,6 +114,11 @@ for index in range(3):
 
 # Export only runtime meshes. The far atlas is assembled outside Blender.
 for name, leaves in [('near',near),('medium',medium)]:
+    if name == 'medium':
+        for obj in wood:
+            bpy.context.view_layer.objects.active=obj
+            mod=obj.modifiers.new('distant branch budget','DECIMATE');mod.ratio=.22
+            bpy.ops.object.modifier_apply(modifier=mod.name)
     bpy.ops.object.select_all(action='DESELECT')
     near.hide_set(True); medium.hide_set(True)
     leaves.hide_set(False); leaves.select_set(True)

@@ -235,7 +235,7 @@ export class Game {
     this.performanceLog.reset();
     this.audio.silence();
     this.audio.ensure();
-    this.audio.setElectric(vehicleDesign(this.selectedVehicleId).powertrain === "electric");
+    this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
         this.race.state = "countdown";
     this.race.countdown = SETTINGS.race.countdown;
     this.state = "racing";
@@ -551,7 +551,7 @@ export class Game {
 
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender) {
-      const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing";
+      const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
       if (measured) this.gpuTimer.begin();
       this.renderer.render(this.scene, this.camera);
       if (measured) {
@@ -614,6 +614,8 @@ export class Game {
       this.hud.toast("Coche devuelto a pista", 1500);
     }
     if (this.state === "menu") {
+      const focused=document.activeElement;
+      if(focused instanceof HTMLInputElement || focused instanceof HTMLSelectElement || focused instanceof HTMLTextAreaElement || (focused instanceof HTMLElement && focused.isContentEditable))return;
       const wantsStart =
         this.input.consume("Enter") ||
         this.input.consume("Space") ||
@@ -633,6 +635,8 @@ export class Game {
     return {...this.performanceLog.report(),renderer:ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
       browser:navigator.userAgent,drivers:this.race.racers.length,drawCalls:this.renderer.info.render.calls,
       triangles:this.renderer.info.render.triangles,geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,
+      jsHeapMiB:(performance as unknown as {memory?:{usedJSHeapSize:number}}).memory?.usedJSHeapSize ?
+        (performance as unknown as {memory:{usedJSHeapSize:number}}).memory.usedJSHeapSize/1048576 : null,
       captureMode:this.captureMode};
   }
 

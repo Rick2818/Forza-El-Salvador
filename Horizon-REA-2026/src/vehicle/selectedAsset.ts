@@ -237,7 +237,7 @@ export function createSelectedVisual(id: string): CarVisual {
     authored.traverse(object => {
       if (!(object instanceof THREE.Mesh)) return;
       const names = [object.name, ...[object.material].flat().map(material => material.name)].join(" ");
-      if (/caliper|étrier|etrier|pinza|Etriers/i.test(names)) calipers.push(object);
+      if (/caliper|étrier|etrier|pinza|Etriers/i.test(names) || (isFerrari && /^wheel_[fr][lr]_accent$/.test(object.name))) calipers.push(object);
     });
     for (const caliper of calipers) steer.attach(caliper);
     return { steer, spin };

@@ -59,3 +59,12 @@ describe("close-up chase camera for driver and vehicle details", () => {
     expect(chase.toggle()).toBe("chase");
   });
 });
+
+it("anticipates a forward bend while retaining the close camera position",()=>{
+ const camera=new THREE.PerspectiveCamera(),chase=new ChaseCamera(camera),car=fakeCar(40);
+ chase.update(1/60,car,0,undefined,new THREE.Vector3(110,1.4,220));
+ const towards=new THREE.Vector3();camera.getWorldDirection(towards);
+ const straight=new THREE.PerspectiveCamera(),other=new ChaseCamera(straight);other.update(1/60,car,0);
+ const baseline=new THREE.Vector3();straight.getWorldDirection(baseline);
+ expect(towards.x).toBeGreaterThan(baseline.x);expect(camera.position.distanceTo(straight.position)).toBeLessThan(.08);
+});

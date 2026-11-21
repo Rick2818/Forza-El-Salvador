@@ -64,7 +64,7 @@ export class PineForest {
     const authored=obj.material as THREE.MeshStandardMaterial;
     const material=new THREE.MeshLambertMaterial({name:authored.name,map:authored.map,
      color:authored.color,vertexColors:!!obj.geometry.getAttribute('color'),
-     alphaTest:/needle/i.test(authored.name)?.4:0,side:THREE.DoubleSide});
+     alphaTest: /needle/i.test(authored.name) ? .4 : 0,side:THREE.DoubleSide});
     // Lambert foliage has no specular sheen and needs no environment sampling.
     const geometry=obj.geometry.clone().applyMatrix4(obj.matrixWorld);
     const mesh=new THREE.InstancedMesh(geometry,material,this.placements.length);
@@ -83,7 +83,7 @@ export class PineForest {
    planes.push(geometry);
   }
   const geometry=mergeGeometries(planes,false);planes.forEach(g=>g.dispose());
-  const far=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({map:atlas,alphaTest:.4,
+  const far=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({map:atlas,color:new THREE.Color(1.7,1.7,1.7),alphaTest:.4,
    side:THREE.DoubleSide,toneMapped:false}),this.placements.length);
   far.name='suzaka-pine-impostors';far.count=0;far.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   this.group.add(far);this.tiers.push([far]);
@@ -98,7 +98,7 @@ export class PineForest {
   for(const tree of this.placements) {
    const distance=Math.hypot(tree.x-center.x,tree.z-center.z);
    if(distance>1100)continue;
-   const tier=distance<110?0:distance<290?1:2,index=counts[tier]++;
+   const tier=distance<75?0:distance<180?1:2,index=counts[tier]++;
    position.set(tree.x,tree.y,tree.z);scale.set(tree.width*tree.height/15.8,tree.height/15.8,tree.width*tree.height/15.8);
    rotation.setFromAxisAngle(axis,tree.yaw);matrix.compose(position,rotation,scale);
    tint.setRGB(tree.shade,tree.shade,tree.shade);

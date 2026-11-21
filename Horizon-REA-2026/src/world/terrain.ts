@@ -80,11 +80,13 @@ export class TerrainField {
   private readonly heights: Float32Array;
   private readonly isSparda: boolean;
   private readonly isDesert: boolean;
+  private readonly isSuzaka: boolean;
   private readonly isMonzon: boolean;
   private readonly roadSamples: readonly THREE.Vector3[];
   private readonly count = TERRAIN_SEGMENTS + 1;
 
   constructor(track: TrackLike) {
+    this.isSuzaka = track.circuit?.id === "suzaka";
     this.isSparda = track.circuit?.id === "sparda";
     this.isDesert = track.circuit?.id === "sakhir-horizon";
     this.isMonzon = track.circuit?.id === "monzon";
@@ -135,6 +137,10 @@ export class TerrainField {
       const outskirts = smoothstep(18, 90, trackDistance);
       return TERRAIN_NEAR_Y - 1.5 * outskirts +
         (fbm(x * 0.003, z * 0.003, 3) - .5) * 6 * outskirts;
+    }
+    if (this.isSuzaka) {
+      const outside=smoothstep(24,160,trackDistance);
+      return TERRAIN_NEAR_Y+(fbm(x*.002,z*.002,3)-.5)*18*outside;
     }
     if (this.isMonzon) {
       // A low park landscape keeps corner sightlines open.

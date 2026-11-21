@@ -31,3 +31,15 @@ Objetivo técnico: 60 FPS en la laptop, sin afirmar que se han logrado hasta med
 `npm test` usa los GLB reales y Rapier; sustituye únicamente decodificación de imagen cuando falta en Node. Las seis carreras son simulaciones físicas a 60 Hz, NO pruebas gráficas de 60 FPS. Resultados JSONL en el artefacto de revisión. `npm run build` comprueba tipos y producción. Capturas reales WebGL por `tools/review-quality.mjs` y `tools/review-garages.mjs`, sin publicar Pages.
 
 Pendiente: conducción manual completa, impactos contra todas las barreras y escapatorias, estabilidad visual en movimiento, escucha de mezcla final y una sesión de al menos 120 s tras calentamiento EN LA LAPTOP. El navegador gráfico local del ejecutor no puede iniciarse por restricción de sockets; se utiliza el navegador de CI para las capturas, sin presentar su software renderer como GPU del usuario. La aprobación visual/audio es anterior a modificar main y verificar GitHub Pages.
+
+## Segunda pasada
+
+Las capturas de la primera pasada (Actions 44915333970, commit 36f5add) mostraron pintura rosada y metales blancos en Suzaka: el entorno HDR del cielo aportaba demasiada irradiancia, aunque el color base del Ferrari era correcto. Se reduce la intensidad del entorno diurno y se equilibran sol/relleno; el material aprobado del Ferrari permanece intacto. También se sustituyen los taludes altos del trazado por terreno ondulado bajo, dejando la cordillera a distancia.
+
+Los pinos de distancia media conservan 4307 triángulos (antes 8166), pasan al atlas lejano desde 180 m y al modelo cercano dentro de 75 m. El archivo fuente editable de Blender queda en tools/blender/sources/suzaka-pine.blend.gz.
+
+La IA anterior completaba las seis carreras pero no cambiaba el liderato en Medio/Difícil. La segunda pasada permite aceleración completa cuando queda margen, modula el pequeño error según la potencia y usa fases de ataque en recta contra cualquier rival. Con los mismos cuatro GLB y sin recolocaciones de emergencia: Monzón Fácil/Medio/Difícil presenta 3/2/3 cambios de líder sostenidos; Suzaka 4/4/3. Cada cambio exige 1,5 s de liderato; todos terminan tres vueltas y las muestras de salida del asfalto son cero en estas pruebas. No equivale a conducción manual validada ni garantiza que cada jugador pueda ganar. Resultados completos en el artefacto JSONL.
+
+Se corrige además la pinza integrada en el grupo accent de cada rueda del Ferrari y se verifica que las pinzas del Ferrari/Porsche no giran con el rin. El jugador recibe ahora un perfil de motor según el auto elegido; son perfiles sintéticos, no grabaciones de fabricante. El control de volumen mantiene el foco sin iniciar una carrera accidentalmente con las flechas del teclado.
+
+Validación local: 103 pruebas y compilación correctas. Capturas finales de esta segunda pasada y prueba de interfaz en Actions pendientes de registrar al terminar. No se publica main ni Pages.

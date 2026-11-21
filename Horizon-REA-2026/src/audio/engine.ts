@@ -56,6 +56,7 @@ export class GameAudio {
   private muted = false;
   private started = false;
   private electric = false;
+  private vehicleId="ferrari-california-t";
   private startMusic: StartMusic | null = null;
   private readonly rivals = new Map<string, RivalVoice>();
 
@@ -75,6 +76,10 @@ export class GameAudio {
     try { localStorage.setItem("horizon.audio",JSON.stringify(this.volumes)); } catch { /* optional */ }
   }
 
+  setVehicle(id: string, electric=false): void {
+    this.vehicleId=id;this.setElectric(electric);
+    if(this.oscB && id==="porsche-911")this.oscB.type="triangle";
+  }
   setElectric(on: boolean): void {
     this.electric = on;
     if (this.oscA) this.oscA.type = on ? "sine" : "sawtooth";
@@ -173,7 +178,7 @@ export class GameAudio {
     const rev = Math.min(1, Math.max(0, rpm / 8000));
 
     // Firing frequency rises with rpm and speed, never fully silent at idle.
-    const base = this.electric ? 90 + speed * 520 : 48 + rev * 150 + speed * 40;
+    const base = this.electric ? 90 + speed * 520 : (48 + rev * 150 + speed * 40)*Math.sqrt((ENGINE_CYLINDERS[this.vehicleId]??8)/8);
     if (this.oscA) this.oscA.frequency.setTargetAtTime(base, now, 0.06);
     if (this.oscB) this.oscB.frequency.setTargetAtTime(base * 0.5, now, 0.06);
     if (this.engineFilter) {

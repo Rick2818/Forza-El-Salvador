@@ -94,6 +94,16 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
       expect(triangles).toBe(expectedTriangles);
       expect(a.wheels).toHaveLength(4);
       expect(a.taillightMat).not.toBe(b.taillightMat);
+      if(["ferrari-california-t","porsche-911"].includes(design.id)) {
+        for(const wheel of a.wheels) {
+          expect(wheel.steer.children.length).toBeGreaterThan(1);
+          // Compare fixed geometry under a wheel spin; the caliper stays put.
+          const fixed=wheel.steer.children.find(child=>child!==wheel.spin);
+          a.root.updateMatrixWorld(true);const before=fixed.matrixWorld.clone();
+          wheel.spin.rotation.x=1.3;a.root.updateMatrixWorld(true);
+          expect(fixed.matrixWorld.elements).toEqual(before.elements);
+        }
+      }
       const mounts = wheelConnections(design.id);
       a.wheels.forEach((wheel, i) => {
         expect(wheel.steer.position.x).toBeCloseTo(mounts[i].x, 5);
@@ -149,7 +159,12 @@ it.each(["monzon", "suzaka"].flatMap(circuit => ["facil", "medio", "dificil"].ma
   const race = new Race(world, new THREE.Scene(), track, "ferrari-california-t", difficulty);
   race.state = "racing";
   const pilot = new AIDriver(race.player.vehicle, track, -2.7, .94, 1, "estratega", difficulty);
-  let leaderChanges=0,previousLeader=0;const peakSpeeds=new Map();
+  let leaderChanges=0,previousLeader=0,candidate=0,held=0;
+  const peakSpeeds=new Map(),offTrackSeconds=new Map(),recoveries=new Map(),leadHistory=[];
+  for(const racer of race.racers) {
+    const place=racer.vehicle.place.bind(racer.vehicle);
+    racer.vehicle.place=(...args)=>{recoveries.set(racer.id,(recoveries.get(racer.id)??0)+1);return place(...args);};
+  }
   for (let frame = 0; frame < 60 * 900 && !race.racers.every(r => r.finished); frame++) {
     const traffic = race.racers.filter(r => !r.isPlayer && !r.finished).map(r => ({
       position: r.vehicle.position.clone(), speed: r.vehicle.speed, isPlayer: false, racerId: r.id
@@ -159,14 +174,20 @@ it.each(["monzon", "suzaka"].flatMap(circuit => ["facil", "medio", "dificil"].ma
     for(const r of race.racers)peakSpeeds.set(r.id,Math.max(peakSpeeds.get(r.id)??0,r.vehicle.speedKph));
     if(frame%30===0 && !race.racers.some(r=>r.finished)) {
       const leader=[...race.racers].sort((a,b)=>(b.lap+b.progress)-(a.lap+a.progress))[0].id;
-      if(previousLeader && leader!==previousLeader)leaderChanges++;previousLeader=leader;
+      if(leader!==candidate) {candidate=leader;held=.5;} else held+=.5;
+      if(held>=1.5 && previousLeader!==leader) {
+        if(previousLeader)leaderChanges++;previousLeader=leader;leadHistory.push({seconds:frame/60,leader});
+      }
+      for(const r of race.racers)if(!r.vehicle.onTrack)offTrackSeconds.set(r.id,(offTrackSeconds.get(r.id)??0)+.5);
     }
   }
   appendFileSync("review/quality/race-validation.jsonl",JSON.stringify({circuit,difficulty,
-    simulationSeconds:race.elapsed,physicsHz:60,rendering:false,leaderChanges,
+    simulationSeconds:race.elapsed,physicsHz:60,rendering:false,leaderChanges,leadHistory,
     drivers:race.racers.map(r=>({id:r.id,car:r.vehicle.vehicleId,finished:r.finished,finishSeconds:r.finishTime,
-      bestLapSeconds:r.bestLap,peakKph:peakSpeeds.get(r.id)}))})+"\n");
+      bestLapSeconds:r.bestLap,peakKph:peakSpeeds.get(r.id),offTrackSeconds:offTrackSeconds.get(r.id)??0,recoveries:recoveries.get(r.id)??0}))})+"\n");
   expect(race.racers.every(r => r.finished)).toBe(true);
+  expect([...recoveries.values()].reduce((a,b)=>a+b,0)).toBe(0);
+  expect(leaderChanges).toBeGreaterThan(0);
   race.dispose();
   world.free();
 }, 180000);

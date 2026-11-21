@@ -11,6 +11,12 @@ try {
   await page.addInitScript(id=>localStorage.setItem('horizon.circuit',id),circuit);
   await page.goto('http://127.0.0.1:4173/');
   await page.getByRole('button',{name:'Iniciar carrera',exact:true}).waitFor({timeout:120000});
+  // Range keys adjust the mixer; they must not trigger the menu's drive-to-start shortcut.
+  const volume=page.getByLabel('Motores y neumáticos',{exact:true});
+  await volume.focus();await volume.press('Home');await volume.press('ArrowUp');
+  await page.waitForFunction(()=>window.__HORIZON_GAME__?.audio.getVolumes().engines===.05);
+  if(await page.evaluate(()=>window.__HORIZON_GAME__.state)!=='menu')throw Error('Volume input started the race');
+  await volume.press('End');
   await page.evaluate(()=>window.__HORIZON_GAME__.prepareCapture());
   if(circuit==='monzon') await page.waitForFunction(()=>window.__HORIZON_GAME__.scene.getObjectByName('monzon-open-garages')?.userData.ready,{timeout:90000});
   else await page.waitForFunction(()=>window.__HORIZON_GAME__.scene.getObjectByName('suzaka-pine-forest')?.userData.ready,{timeout:90000});
@@ -36,7 +42,8 @@ try {
     g.renderer.render(g.scene,g.camera);
     return {image:g.renderer.domElement.toDataURL('image/png'),drawCalls:g.renderer.info.render.calls,
      triangles:g.renderer.info.render.triangles,position:g.camera.position.toArray(),car:player.vehicleId,
-     resolution:[g.renderer.domElement.width,g.renderer.domElement.height],fpsLabel:document.querySelector('#hud-fps')?.textContent};
+     resolution:[g.renderer.domElement.width,g.renderer.domElement.height],forestCounts:g.scene.getObjectByName("suzaka-pine-forest")?.userData.counts,
+     fpsLabel:document.querySelector('#hud-fps')?.textContent};
    },{metres,name});
    const {image,...details}=data;
    const path=`review/quality/${circuit}-${name}.png`;
@@ -62,6 +69,7 @@ try {
   // Pausing must expose the performance report without claiming a captured FPS.
   await page.evaluate(()=>window.__HORIZON_GAME__.pause());
   await page.getByRole('button',{name:'Descargar informe de rendimiento'}).waitFor();
+  await page.getByLabel('Música de salida',{exact:true}).waitFor();
   if(await page.evaluate(()=>window.__HORIZON_GAME__.performanceReport().frames)!==0)throw Error('Capture contaminated wall-clock performance log');
   await page.close();
  }
