@@ -64,6 +64,8 @@ export class Menu {
       const target = event.target as HTMLInputElement | HTMLSelectElement;
       if (target.dataset.oncoming === "toggle" && target instanceof HTMLInputElement) {
         this.oncomingEnabled = target.checked;
+        const label = this.overlay.querySelector<HTMLElement>(".traffic-switch strong");
+        if (label) label.textContent = target.checked ? "Activado" : "Desactivado";
         this.callbacks.onToggleOncoming(target.checked);
         return;
       }
