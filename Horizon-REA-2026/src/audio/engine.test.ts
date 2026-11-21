@@ -205,7 +205,7 @@ it("keeps countdown music silent and starts the full-level original victory only
   expect(ctx.gains[0].gain.value).toBe(1);
   audio.silence();
   expect(audio.isVictoryPlaying).toBe(false);
-  expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+  expect(ctx.gains[0].gain.value).toBeCloseTo(RACING_MASTER_LEVEL);
   audio.playVictory();
   expect(audio.isVictoryPlaying).toBe(true);
 });
