@@ -12,6 +12,7 @@ try {
  for(const circuit of ['monzon','suzaka']) {
   const page=await browser.newPage({viewport:{width:1920,height:1080},deviceScaleFactor:1});
   page.on('pageerror',e=>report.errors.push(`${circuit}: ${e.message}`));
+  if(process.env.CHECK_PREVIEWS==='1')page.on('response',r=>{if(r.status()>=400)report.errors.push(`${circuit}: HTTP ${r.status()} ${r.url()}`);});
   await page.addInitScript(id=>localStorage.setItem('horizon.circuit',id),circuit);
   const started=Date.now();
   await page.goto(baseURL);

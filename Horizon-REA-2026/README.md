@@ -8,23 +8,26 @@ Repositorio: **Rick2818/Forza-El-Salvador**. Juego publicado: https://rick2818.g
 
 | Área | Estado |
 | --- | --- |
-| Versión aprobada | Integrada en `main`, merge `66ba205`; publicación automática mediante GitHub Actions |
-| Revisión de calidad | [PR #6](https://github.com/Rick2818/Forza-El-Salvador/pull/6), aprobado e integrado |
-| Validación | 104 pruebas y compilación; seis carreras físicas completas; capturas WebGL y controles aprobados en Actions `44917119620` |
-| Aprobación del usuario | Visual y audio aprobados el 21 de noviembre de 2026 |
-| 60 FPS en la laptop | Objetivo pendiente de comprobar; no es una medición obtenida |
-| Fidelidad artística | En revisión; algunos vehículos y sonidos aún necesitan refinamiento |
+| Versión V10 | Siete autos seleccionables; física y conducción de Suzaka corregidas |
+| Validación local V10 | 175/175 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
+| Integración | Rama `quality/v10-race-stability`, PR #13; integración condicionada a los controles de calidad |
+| Publicación | GitHub Pages solo despliega si pasan pruebas, auditorías y compilación; `build-info.json` identifica el commit servido |
+| 60 FPS en la laptop | Objetivo pendiente de medir en hardware real |
+| Fidelidad artística | Modelos aprobados conservados; el objetivo de calidad comercial todavía exige refinamiento y evaluación del jugador |
 
 Las capturas proceden del motor real del juego, no de fotografías de referencia. Las imágenes de revisión con la leyenda **CAPTURA** usan poses y pasos controlados; no son un contador de FPS medidos. Los circuitos son trazados originales inspirados en disciplinas de automovilismo, sin afiliación con los autódromos reales ni con Forza.
 
 ## Autos, pistas y dificultades
 
-Solo cuatro autos activos:
+Siete autos seleccionables (cuatro participantes por carrera):
 
 - Ferrari California T: material rojo cereza aprobado, opaco, con barniz suave.
 - Porsche 911: grafito oscuro y pinzas amarillas.
 - Bugatti Chiron: negro y cobre.
 - Mercedes-Benz AMG GT Black Series: rojo, configuración visual Safety Car.
+- Lamborghini Aventador Roadster: azul metálico.
+- Yangwang U9: negro, propulsión eléctrica.
+- Koenigsegg Jesko Odin: grafito y dorado.
 
 Solo dos circuitos seleccionables:
 
@@ -49,9 +52,9 @@ Configuración arcade aprobada (no son especificaciones de fábrica). La velocid
 | Yangwang U9 | 200 mph (321,9 km/h) |
 | **Bugatti Chiron** | **230 mph (370,1 km/h)** |
 
-Los siete registros de `vehicle-designs.json` ahora tienen sus valores en m/s exactos (200 mph = 89.408 m/s, 230 mph = 102.8192 m/s). El controlador limita físicamente la componente longitudinal después de la simulación Rapier: turbo, cuesta abajo y altas RPM no pueden superar el techo configurado. Las velocidades siguen dependiendo de aceleración, curvas y longitud de recta: son **límites**, no velocidades garantizadas en cualquier sector.
+Los siete registros de `vehicle-designs.json` ahora tienen sus valores en m/s exactos (200 mph = 89.408 m/s, 230 mph = 102.8192 m/s). El controlador limita físicamente la velocidad horizontal después de cada paso de la simulación Rapier, también cuando no se renderiza: turbo, cuesta abajo y altas RPM no pueden superar el techo configurado. Las velocidades siguen dependiendo de aceleración, curvas y longitud de recta: son **límites**, no velocidades garantizadas en cualquier sector.
 
-El turbo de competición se activa **automáticamente** al llegar a **100 mph (160,9344 km/h)** con acelerador pulsado y neumáticos sobre la pista, solo para el jugador. Da un impulso de fuerza durante **2,2 segundos**, seguido de un tiempo de recarga de **6 segundos**, con **llamas naranja y amarillo** saliendo de los escapes y un indicador TURBO en el velocímetro. No se activa parado, en reversa, fuera de pista ni durante la cuenta regresiva; no implica un escape real en los coches eléctricos, es un recurso de fantasía del videojuego.
+El turbo de competición se activa **automáticamente** al llegar a **100 mph (160,9344 km/h)** con acelerador pulsado y neumáticos sobre la pista, solo para el jugador. Da un impulso de fuerza durante **2,2 segundos**, seguido de un tiempo de recarga de **6 segundos**, con **llamas naranja y amarillo** saliendo de los escapes y un indicador TURBO en el velocímetro. Se cancela al frenar o usar el freno de mano. No se activa parado, en reversa, fuera de pista ni durante la cuenta regresiva; no implica un escape real en los coches eléctricos, es un recurso de fantasía del videojuego.
 
 Se corrigió la animación de ruedas: las dos delanteras muestran el giro de la dirección física, las traseras no giran lateralmente y las cuatro rotan según la distancia recorrida, incluyendo diferencia entre llanta interior y exterior en curva. Las pinzas de freno quedan fijas respecto al soporte de dirección. No se han cambiado los modelos GLB, la pintura, los cristales ni la geometría de los circuitos.
 
@@ -172,9 +175,9 @@ Auditoría, prioridades, segunda pasada y límites: [docs/QUALITY-AUDIT-2026-11.
 
 ## Pruebas y evidencia
 
-`npm test` cubre materiales, selección de cuatro autos, pivotes, conservación de geometría al agrupar mallas, pinzas de freno, física Rapier, seis carreras de tres vueltas, niveles de dificultad, salida sincronizada, cronómetro, audio y registro de rendimiento. En Node se sustituye la decodificación de imágenes, conservando el análisis real de GLB, geometría, materiales y física.
+`npm test` cubre materiales, selección de siete autos, pivotes, conservación de geometría al agrupar mallas, pinzas de freno, física Rapier, 42 carreras de tres vueltas, niveles de dificultad, salida sincronizada, cronómetro, audio y registro de rendimiento. En Node se sustituye la decodificación de imágenes, conservando el análisis real de GLB, geometría, materiales y física.
 
-Las seis carreras usan un conductor de prueba automático para el jugador. La segunda pasada registra cambios de líder sostenidos durante al menos 1,5 segundos: Monzón **3/2/3**, Suzaka **4/4/3** en Fácil/Medio/Difícil; todos terminan y no necesitan recolocación de emergencia. Los resultados se guardan en `review/quality/race-validation.jsonl` dentro del artefacto de Actions. Estas simulaciones no equivalen a una prueba de FPS ni a una validación humana de la conducción.
+Como referencia histórica, las seis carreras de la segunda pasada usaron un conductor de prueba automático para el jugador y registraron cambios de líder sostenidos durante al menos 1,5 segundos: Monzón **3/2/3**, Suzaka **4/4/3** en Fácil/Medio/Difícil; todos terminan y no necesitan recolocación de emergencia. Los resultados se guardan en `review/quality/race-validation.jsonl` dentro del artefacto de Actions. Estas simulaciones no equivalen a una prueba de FPS ni a una validación humana de la conducción.
 
 Pruebas de velocidad máxima en un plano, 180 segundos de simulación: Ferrari **205,0 mph**, Porsche **205,0 mph**, Bugatti **234,6 mph**, Mercedes **202,0 mph**. No significa que cada recta permita alcanzar esos máximos.
 
@@ -190,7 +193,7 @@ El artefacto **monzon-garages-review** permite revisar la rama sin publicar Page
 La física usa pasos fijos de **60 Hz**. Ese número no representa los FPS gráficos.
 
 1. Probar la versión que se desea evaluar en la laptop, con Chrome enfocado y conectado a corriente.
-2. Anotar CPU/GPU, resolución de pantalla y calidad; correr con los cuatro autos.
+2. Anotar CPU/GPU, resolución de pantalla y calidad; correr con los siete autos.
 3. Mantener la carrera continua durante **15 segundos de calentamiento y 120 segundos de medición** por circuito.
 4. Al finalizar, pausar y pulsar **Descargar informe de rendimiento**. La pausa posterior no invalida una medición ya completada.
 5. Revisar el estado `complete`, FPS medio, percentiles, 1 % bajo, tiempos CPU/GPU cuando estén disponibles, resolución, calidad, geometrías y texturas. Si hubo pérdida de foco o pausa antes de completar, reiniciar la carrera y repetir.
@@ -242,3 +245,13 @@ Las marcas y nombres identifican los vehículos y talleres; el juego no está af
 `.github/workflows/horizon-pages.yml` publica desde `main`. El usuario aprobó las capturas y el audio de esta revisión el 21 de noviembre de 2026; el PR #6 se integró mediante `66ba205`. El resultado de publicación se comprueba en Actions y en la URL pública. Para futuras revisiones visuales, aprobar las capturas y el audio antes de incorporarlas a producción. Actualizar una rama o abrir un PR no equivale a publicar el juego.
 
 Antes de aprobar una entrega final quedan: conducción manual completa en ambos circuitos, impactos en barreras y escapatorias, revisión visual en movimiento, escucha de mezcla y medición sostenida en la laptop. La fidelidad de algunas carrocerías y el audio sintetizado siguen siendo oportunidades de mejora; no se garantiza equivalencia visual con un título AAA.
+
+## Auditoría y validación V10
+
+Diagnóstico reproducido sobre `bfe6f0b`: 118/120 pruebas aprobadas; Bugatti bloqueado en Suzaka difícil y una fixture de adelantamiento incompleta. V10 conserva las pruebas competitivas, añade validación completa de siete configuraciones y restaura el bloqueo de publicación ante fallos.
+
+La IA mantiene su envolvente física de frenada aunque aumente la dificultad; reduce velocidad y evita adelantar en la sección elevada, distingue el tránsito bajo el puente y corrige la dirección al retroceder. Los nuevos autos cargan al seleccionarlos, manteniendo la descarga inicial de cuatro modelos. Lamborghini, Jesko y U9 tienen potencia suficiente para alcanzar sus 200 mph en recta larga.
+
+Evidencia y decisiones: `docs/quality/v10/AUDIT.md`, `TECHNOLOGY.md`, `validated-races.jsonl` y el informe de entrega. El workflow `horizon-v10-quality.yml` captura los siete autos en ambos circuitos, comprueba turbo, animación y gobernador en el navegador, conserva anuncios/audio y compara V9/V10. Los datos SwiftShader son diagnósticos por software; no representan la GPU del jugador.
+
+Reversión: conservar el commit anterior a integrar V10; revertir el merge de PR #13 y dejar que Pages vuelva a compilar. Verificar el SHA público de `build-info.json` tras cada publicación.

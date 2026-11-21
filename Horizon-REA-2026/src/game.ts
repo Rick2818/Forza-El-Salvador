@@ -1,6 +1,7 @@
 import { RacePerformance, GPUFrameTimer } from "./render/performance";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
+import { RELEASE_LABEL } from "./core/version";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { Environment } from "./world/environment";
@@ -188,7 +189,7 @@ export class Game {
 
   private installDebugApi(): void {
     const api = {
-      version: "0.1.0",
+      version: RELEASE_LABEL,
       stats: () => ({
         state: this.state,
         vehicleId: this.race.vehicleId,
