@@ -3,6 +3,9 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { createCarVisual, type CarVisual, BODY_CENTER_Y } from "./carModel";
 import { SETTINGS } from "../core/settings";
 import { damp, clamp } from "../core/mathx";
+import { TurboFlames } from "../render/turboFlames";
+import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
+import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
@@ -57,7 +60,14 @@ export class Vehicle {
   readonly vehicleId: string | undefined;
   readonly electric: boolean;
   private readonly wheelMounts: typeof WHEELS;
+  private readonly wheelRadius: number;
+  private readonly wheelRoll = [0, 0, 0, 0];
+  private turboState = createTurboState();
+  private readonly turboFlames: TurboFlames | null;
   private readonly tuning;
+
+  get turboActive(): boolean { return this.turboState.active > 0; }
+  get speedLimitMph(): number { return this.tuning.topSpeed / 0.44704; }
 
   get highSpeedPowerMultiplier(): number {
     const launch = this.vehicleId === "bugatti-chiron" ? 1.2 : this.vehicleId === "mercedes-amg-gt-black-series" ? 1.08 : this.vehicleId === "porsche-911" ? 1.02 : 1;
@@ -71,8 +81,12 @@ export class Vehicle {
     this.electric = design?.powertrain === "electric";
     this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
+    this.wheelRadius = design?.wheelRadius ?? .36;
     this.visual = opts.vehicleId ? createSelectedVisual(opts.vehicleId) : createCarVisual(opts);
     this.isPlayer = opts.isPlayer ?? false;
+    this.turboFlames = this.isPlayer
+      ? new TurboFlames(this.visual.root, design?.length ?? 4.5, design?.width ?? 1.9)
+      : null;
     scene.add(this.visual.root);
 
     this.body = world.createRigidBody(
@@ -104,7 +118,7 @@ export class Vehicle {
         { x: 0, y: -1, z: 0 },
         { x: -1, y: 0, z: 0 },
         SETTINGS.physics.suspensionRest,
-        design?.wheelRadius ?? .36
+        this.wheelRadius
       );
       this.controller.setWheelSuspensionStiffness(i, SETTINGS.physics.suspensionStiffness);
       this.controller.setWheelSuspensionCompression(i, SETTINGS.physics.suspensionCompression);
@@ -140,6 +154,8 @@ export class Vehicle {
     this.rpm = ENGINE_IDLE_RPM;
     this.speed = 0;
     this.steerAngle = 0;
+    this.turboState = createTurboState();
+    this.wheelRoll.fill(0);
     this.syncVisual();
   }
 
@@ -177,6 +193,10 @@ export class Vehicle {
     const p = SETTINGS.physics;
     const throttle = this.controls.throttle;
     const brake = this.controls.brake;
+    // Auto-activate a brief, cooldown-limited arcade nitro burst at 100 mph.
+    // No turbo in reverse, in countdown, or during off-track excursions.
+    this.turboState = stepTurbo(this.turboState, dt, speed, throttle,
+      this.onTrack, this.isPlayer);
 
     let engineForce = 0;
     if (throttle > 0.01 && absSpeed < this.tuning.topSpeed) {
@@ -211,7 +231,9 @@ export class Vehicle {
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(_q);
     fwd.y = 0;
     if (fwd.lengthSq() > 1e-4) fwd.normalize();
-    const drive = engineForce - reverseForce;
+    const nitro = this.turboActive && !this.controls.handbrake &&
+      speed < this.tuning.topSpeed ? TURBO_FORCE_N : 0;
+    const drive = engineForce + nitro - reverseForce;
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
     }
@@ -266,6 +288,14 @@ export class Vehicle {
     this.steerAngle = damp(this.steerAngle, steeringAngleAt(this.speed, input.steer, this.tuning.steer), 11, dt);
     this.applyForces(dt, this.smoothedGrip);
 
+    // Render wheel rolling from travelled distance, not the raycast wheel
+    // controller, which does not spin reliably with body-centre propulsion.
+    const yawRate = this.body.angvel().y;
+    for (let i = 0; i < this.wheelMounts.length; i++) {
+      this.wheelRoll[i] = nextWheelRoll(this.wheelRoll[i], this.speed, yawRate,
+        this.wheelMounts[i].x, this.wheelRadius, dt);
+    }
+
     // Stability guard: a kerb strike or a hard landing must not send the car
     // spinning at 40 rad/s and then flying across the map.
     const av = this.body.angvel();
@@ -287,7 +317,27 @@ export class Vehicle {
     this.slip = Math.max(0, Math.abs(local.x) - 0.6);
   }
 
-  syncVisual(): void {
+  private enforceTopSpeed(): void {
+    const vel = this.body.linvel();
+    const rot = this.body.rotation();
+    const q = _q.set(rot.x, rot.y, rot.z, rot.w);
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    fwd.y = 0;
+    if (fwd.lengthSq() < .5) return;
+    fwd.normalize();
+    const forwardSpeed = vel.x * fwd.x + vel.z * fwd.z;
+    if (forwardSpeed > this.tuning.topSpeed) {
+      const excess = forwardSpeed - this.tuning.topSpeed;
+      this.body.setLinvel({ x: vel.x - fwd.x * excess, y: vel.y,
+        z: vel.z - fwd.z * excess }, true);
+      this.speed = this.tuning.topSpeed;
+    }
+  }
+
+  syncVisual(dt = 0): void {
+    // Governor acts AFTER each world step; an engine or nitro burst cannot
+    // overshoot the configured 200 mph / Bugatti 230 mph speed ceiling.
+    this.enforceTopSpeed();
     const t = this.body.translation();
     const r = this.body.rotation();
     this.visual.root.position.set(t.x, t.y, t.z);
@@ -296,12 +346,17 @@ export class Vehicle {
     for (let i = 0; i < this.visual.wheels.length; i++) {
       const wheel = this.visual.wheels[i];
       const suspension = this.controller.wheelSuspensionLength(i);
-      const rotation = this.controller.wheelRotation(i);
-      const steering = this.controller.wheelSteering(i);
       wheel.steer.position.y = this.wheelMounts[i].y - (suspension ?? SETTINGS.physics.suspensionRest);
-      wheel.steer.rotation.y = steering ?? 0;
-      wheel.spin.rotation.x = rotation ?? 0;
+      wheel.steer.rotation.y = visibleWheelSteer(this.steerAngle, this.wheelMounts[i].front);
+      wheel.spin.rotation.x = this.wheelRoll[i];
     }
+    this.turboFlames?.update(dt, this.turboActive);
+  }
+
+  wheelVisualDebug(): { steer: number; roll: number }[] {
+    return this.visual.wheels.map(wheel => ({
+      steer: wheel.steer.rotation.y, roll: wheel.spin.rotation.x
+    }));
   }
 
   wheelDebug(): { contact: boolean; len: number; force: number; susp: number }[] {
@@ -327,6 +382,7 @@ export class Vehicle {
   }
 
   dispose(world: RAPIER.World): void {
+    this.turboFlames?.dispose();
     world.removeVehicleController(this.controller);
     world.removeRigidBody(this.body);
     if (this.vehicleId) disposeSelectedVisual(this.visual);
