@@ -155,7 +155,7 @@ it("raises V10 idle and acceleration to a medium-strong mix with peak control", 
   const audio = new GameAudio();
   audio.ensure();
   const ctx = Context.current;
-  expect(ctx.compressors).toHaveLength(1);
+  expect(ctx.compressors).toHaveLength(2); // engine bus + separate victory bus
   expect(ctx.compressors[0].threshold.value).toBe(-16);
   expect(ctx.compressors[0].ratio.value).toBe(3);
   const motorGain = ctx.gains[3];
