@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { makeRng } from "../core/mathx";
 import { createBannerTexture } from "./textures";
 import type { Track } from "./track";
@@ -136,16 +137,25 @@ export class MonzonScenery {
     bridge.rotation.y = -Math.PI / 2;
     this.group.add(bridge);
 
-    // Instanced broadleaf park; no individual tree draw calls on Samsung/Chrome.
+    // Batch the branches with the trunks so the park still uses two draw calls.
     const trees = 460;
-    const trunk = new THREE.InstancedMesh(
-      new THREE.CylinderGeometry(0.18, 0.27, 1, 5),
-      material(0x5b432c), trees
-    );
+    const bark = new THREE.MeshStandardMaterial({
+      color: 0x65452e, roughness: 0.96, emissive: 0x65452e, emissiveIntensity: 0.12
+    });
+    const barkParts = [new THREE.CylinderGeometry(0.18, 0.27, 1, 5)];
+    for (const direction of [-1, 1]) {
+      barkParts.push(new THREE.CylinderGeometry(0.055, 0.12, 0.46, 5)
+        .rotateZ(direction * 1.10).translate(-direction * 0.19, 0.41, 0)
+        .scale(4, 1, 1));
+    }
+    const trunkGeometry = mergeGeometries(barkParts);
+    barkParts.forEach((part) => part.dispose());
+    const trunk = new THREE.InstancedMesh(trunkGeometry, bark, trees);
     const crowns = new THREE.InstancedMesh(
       new THREE.IcosahedronGeometry(1, 1),
-      // White base avoids multiplying every per-instance green into dull olive.
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.94, metalness: 0 }), trees
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff, roughness: 0.96, emissive: 0x193c25, emissiveIntensity: 0.14
+      }), trees
     );
     trunk.name = "monzon-tree-trunks";
     crowns.name = "monzon-tree-canopies";
@@ -175,7 +185,7 @@ export class MonzonScenery {
       scale.set(4.2 + rng() * 2.9, height * 0.42, 4.0 + rng() * 2.6);
       matrix.compose(position, rotation, scale);
       crowns.setMatrixAt(count, matrix);
-      color.setHSL(0.30 + rng() * 0.075, 0.55 + rng() * 0.18, 0.35 + rng() * 0.16);
+      color.setHSL(0.34 + rng() * 0.045, 0.42 + rng() * 0.12, 0.20 + rng() * 0.08, THREE.SRGBColorSpace);
       crowns.setColorAt(count, color);
       count++;
     }
