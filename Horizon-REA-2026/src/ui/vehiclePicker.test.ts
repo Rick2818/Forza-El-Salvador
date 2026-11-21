@@ -7,7 +7,7 @@ describe("selection of the four playable vehicles", () => {
     const markup = vehiclePickerMarkup("ferrari-california-t");
     expect(SELECTED_VEHICLES).toHaveLength(4);
     expect((markup.match(/data-action="select-vehicle"/g) ?? [])).toHaveLength(4);
-    expect(markup).not.toContain("<img");
+    expect(markup).toContain("vehicles/previews/");
     for (const car of SELECTED_VEHICLES) {
       expect(markup).toContain(`data-vehicle-id="${car.id}"`);
       expect(markup).toContain(car.name);
