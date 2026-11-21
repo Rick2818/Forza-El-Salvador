@@ -38,9 +38,12 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
       tangentAt: () => new THREE.Vector3(0, 0, 1), progress: (i) => i / 100 };
     for (const design of VEHICLE_DESIGNS) {
       const race = new Race(world, scene, track, design.id);
-      expect(world.bodies.len()).toBe(4);
+      expect(world.bodies.len()).toBe(VEHICLE_DESIGNS.length);
       expect(race.player.vehicle.vehicleId).toBe(design.id);
-      expect(new Set(race.racers.map((r) => r.vehicle.vehicleId)).size).toBe(4);
+      expect(new Set(race.racers.map((r) => r.vehicle.vehicleId)).size).toBe(VEHICLE_DESIGNS.length);
+      const rivals = race.racers.filter((racer) => !racer.isPlayer);
+      expect(rivals).toHaveLength(VEHICLE_DESIGNS.length - 1);
+      expect(rivals.every((racer) => racer.ai?.vehicle === racer.vehicle)).toBe(true);
       expect(race.elapsed).toBe(0);
       expect(race.player.lap).toBe(1);
       race.dispose();

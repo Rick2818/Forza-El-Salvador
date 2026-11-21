@@ -54,10 +54,13 @@ export interface RaceSnapshot {
 }
 
 const ROSTER = [
-  { name: "K. VOSS", paint: 0x0057ff, accent: 0x00e5ff, lane: -2.7, skill: 0.955, personality: "defensor" as RivalPersonality },
-  { name: "A. MIRAI", paint: 0xe10600, accent: 0xffd400, lane: 2.7, skill: 0.94, personality: "atacante" as RivalPersonality },
-  { name: "R. SANTOS", paint: 0x7b00ff, accent: 0xc6ff00, lane: -2.7, skill: 0.925, personality: "estratega" as RivalPersonality }
-];
+  { name: "K. VOSS", accent: 0x00e5ff, skill: 0.955, personality: "defensor" },
+  { name: "A. MIRAI", accent: 0xffd400, skill: 0.940, personality: "atacante" },
+  { name: "R. SANTOS", accent: 0xc6ff00, skill: 0.925, personality: "estratega" },
+  { name: "L. REYES", accent: 0xff831a, skill: 0.950, personality: "atacante" },
+  { name: "M. CRUZ", accent: 0xc797ff, skill: 0.935, personality: "defensor" },
+  { name: "S. VEGA", accent: 0x62f5c4, skill: 0.920, personality: "estratega" }
+] satisfies { name: string; accent: number; skill: number; personality: RivalPersonality }[];
 
 export class Race {
   readonly racers: Racer[] = [];
@@ -84,46 +87,36 @@ export class Race {
     });
     this.player = this.makeRacer(playerVehicle, "TÚ", true, 1);
 
-    // Grid: rivals ahead, player third, one rival behind.
-    const layout = [
-      { racer: ROSTER[0], slot: 0 },
-      { racer: ROSTER[1], slot: 1 },
-      { racer: this.player, slot: 2 },
-      { racer: ROSTER[2], slot: 3 }
-    ];
-    const ds = this.track.segmentLength;
-    const slots = [
-      { metres: 18, lane: -3.1 },
-      { metres: 9, lane: 3.1 },
-      { metres: 6, lane: -3.1 },
-      { metres: 1, lane: 3.1 }
-    ];
-
-    const rivals: Racer[] = [];
-    for (const entry of layout) {
-      if (entry.racer === this.player) continue;
-      const cfg = ROSTER[rivals.length];
-      const opponent = VEHICLE_DESIGNS.filter((d) => d.id !== vehicleId)[rivals.length];
+    const playerSlot = 2;
+    const rivals = VEHICLE_DESIGNS.filter((design) => design.id !== vehicleId).map((opponent, i) => {
+      const cfg = ROSTER[i];
       const vehicle = new Vehicle(this.world, scene, {
         paintColor: Number.parseInt(opponent.paint.slice(1), 16),
         accentColor: cfg.accent,
-        number: 12 + rivals.length * 7,
+        number: 12 + i * 7,
         vehicleId: opponent.id
       });
-      const racer = this.makeRacer(vehicle, cfg.name, false, 2 + rivals.length);
-      racer.ai = new AIDriver(vehicle, this.track, cfg.lane, cfg.skill, rivals.length * 1.9, cfg.personality, difficulty);
-      rivals.push(racer);
-    }
-    const ordered = [rivals[0], rivals[1], this.player, rivals[2]];
+      const racer = this.makeRacer(vehicle, cfg.name, false, 2 + i);
+      const slot = i < playerSlot ? i : i + 1;
+      racer.ai = new AIDriver(vehicle, this.track, slot % 2 === 0 ? -2.7 : 2.7,
+        cfg.skill, i * 1.9, cfg.personality, difficulty);
+      return racer;
+    });
+
+    const ordered = [...rivals];
+    ordered.splice(playerSlot, 0, this.player);
+    const ds = this.track.segmentLength;
     ordered.forEach((racer, i) => {
-      const slot = slots[i];
-      const index = this.track.startIndex + Math.round(slot.metres / ds);
+      const lane = i % 2 === 0 ? -3.1 : 3.1;
+      // Stagger two columns, keeping the last car beyond the lap timing line.
+      const metres = 1 + (ordered.length - 1 - i) * 8;
+      const index = this.track.startIndex + Math.round(metres / ds);
       const base = this.track.sampleAt(index);
       const right = this.track.rightAt(index);
       const tangent = this.track.tangentAt(index);
       racer.hint = index;
       racer.vehicle.place(
-        new THREE.Vector3(base.x + right.x * slot.lane, base.y, base.z + right.z * slot.lane),
+        new THREE.Vector3(base.x + right.x * lane, base.y, base.z + right.z * lane),
         Math.atan2(tangent.x, tangent.z)
       );
       racer.progress = this.track.progress(index);

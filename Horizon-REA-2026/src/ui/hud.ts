@@ -74,7 +74,7 @@ export class HUD {
     wrap.innerHTML = `
       <div id="hud">
         <div class="hud-pos">
-          <div class="stat accent"><div class="label">Posición</div><div class="value" id="hud-pos">1<small>/4</small></div></div>
+          <div class="stat accent"><div class="label">Posición</div><div class="value" id="hud-pos">1</div></div>
           <div class="stat"><div class="label">Vuelta</div><div class="value" id="hud-lap">1<small>/3</small></div></div>
         </div>
         <div class="hud-timing panel">
