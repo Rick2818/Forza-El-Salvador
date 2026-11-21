@@ -475,6 +475,7 @@ export class GameAudio {
     this.victoryLoading = job;
     void job.finally(() => {
       if (this.victoryLoading === job) this.victoryLoading = null;
+      if (this.victoryFile && this.victoryFile !== file) this.prepareVictoryAudio();
     });
   }
 
