@@ -1,0 +1,32 @@
+name: Verificar V9 turbo, ruedas y velocidades
+on:
+  push:
+    branches: [feat/auto-turbo-flames-wheel-steering]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test && npm run build
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: npm run preview > /tmp/forza-v9-preview.log 2>&1 &
+      - run: node tools/review-turbo-wheels.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: V9-turbo-llantas-velocidades
+          path: Horizon-REA-2026/review/turbo
