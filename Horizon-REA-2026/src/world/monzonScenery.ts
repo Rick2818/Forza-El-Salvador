@@ -151,8 +151,15 @@ export class MonzonScenery {
     const trunkGeometry = mergeGeometries(barkParts);
     barkParts.forEach((part) => part.dispose());
     const trunk = new THREE.InstancedMesh(trunkGeometry, bark, trees);
+    const leafParts = [
+      new THREE.IcosahedronGeometry(1, 1).scale(.84, 1, .84),
+      new THREE.IcosahedronGeometry(1, 1).scale(.70, .77, .67).translate(.5, -.23, .17),
+      new THREE.IcosahedronGeometry(1, 1).scale(.64, .82, .73).translate(-.44, -.12, -.21)
+    ];
+    const canopyGeometry = mergeGeometries(leafParts);
+    leafParts.forEach((part) => part.dispose());
     const crowns = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(1, 1),
+      canopyGeometry,
       new THREE.MeshStandardMaterial({
         color: 0xffffff, roughness: 0.96, emissive: 0x193c25, emissiveIntensity: 0.14
       }), trees
@@ -195,5 +202,26 @@ export class MonzonScenery {
     crowns.instanceMatrix.needsUpdate = true;
     if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true;
     this.group.add(trunk, crowns);
+
+    // Static building parts sharing a material render in one batch.
+    const batches = new Map<THREE.Material, THREE.BufferGeometry[]>();
+    this.group.updateMatrixWorld(true);
+    for (const object of [...this.group.children]) {
+      if (!(object instanceof THREE.Mesh) || object.geometry !== unitBox ||
+          Array.isArray(object.material)) continue;
+      const parts = batches.get(object.material) ?? [];
+      parts.push(unitBox.clone().applyMatrix4(object.matrix));
+      batches.set(object.material, parts);
+      this.group.remove(object);
+    }
+    for (const [mat, parts] of batches) {
+      const geometry = mergeGeometries(parts);
+      parts.forEach((part) => part.dispose());
+      const buildings = new THREE.Mesh(geometry, mat);
+      buildings.name = "monzon-static-scenery";
+      buildings.receiveShadow = true;
+      this.group.add(buildings);
+    }
+    unitBox.dispose();
   }
 }

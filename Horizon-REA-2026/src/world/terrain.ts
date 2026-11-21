@@ -136,6 +136,11 @@ export class TerrainField {
       return TERRAIN_NEAR_Y - 1.5 * outskirts +
         (fbm(x * 0.003, z * 0.003, 3) - .5) * 6 * outskirts;
     }
+    if (this.isMonzon) {
+      // A low park landscape keeps corner sightlines open.
+      const outskirts = smoothstep(24, 140, trackDistance);
+      return TERRAIN_NEAR_Y + (fbm(x * .003, z * .003, 3) - .5) * 9 * outskirts;
+    }
     // Flat and just below the road next to the circuit; the bank then falls
     // away to the valley floor before the hills start.
     const flat = smoothstep(15, 88, trackDistance);
