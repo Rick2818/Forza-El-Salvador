@@ -1,5 +1,4 @@
-import { StartMusic } from "./startMusic";
-import type { StartSignalPhase } from "../race/startSignal";
+import { VictoryFanfare } from "./victoryMusic";
 export interface AudioVolumes { engines: number; music: number }
 export type EngineSoundProfile = "v10" | "vehiculo";
 
@@ -107,7 +106,13 @@ export class GameAudio {
   private started = false;
   private electric = false;
   private vehicleId="ferrari-california-t";
-  private startMusic: StartMusic | null = null;
+  private victoryFanfare: VictoryFanfare | null = null;
+  private victoryLimiter: DynamicsCompressorNode | null = null;
+  private victoryUrl: string | null = null;
+  private victoryName: string | null = null;
+  private victoryElement: HTMLAudioElement | null = null;
+  private victorySource: MediaElementAudioSourceNode | null = null;
+  private victoryActive = false;
   private readonly rivals = new Map<string, RivalVoice>();
 
   constructor() {
@@ -171,7 +176,7 @@ export class GameAudio {
     }
     if(this.ctx) {
       this.enginesBus?.gain.setTargetAtTime(this.volumes.engines,this.ctx.currentTime,.05);
-      this.musicBus?.gain.setTargetAtTime(this.volumes.music,this.ctx.currentTime,.05);
+      this.musicBus?.gain.setTargetAtTime(this.victoryActive ? 1 : this.volumes.music,this.ctx.currentTime,.05);
     }
     try { localStorage.setItem("horizon.audio",JSON.stringify(this.volumes)); } catch { /* optional */ }
   }
@@ -232,7 +237,18 @@ export class GameAudio {
     this.enginesBus.connect(engineLimiter);
     engineLimiter.connect(master);
     this.engineLimiter = engineLimiter;
-    this.musicBus=ctx.createGain();this.musicBus.gain.value=this.volumes.music;this.musicBus.connect(master);
+    // A separate, peak-limited victory bus. No music during the countdown.
+    this.musicBus = ctx.createGain();
+    this.musicBus.gain.value = this.volumes.music;
+    const victoryLimiter = ctx.createDynamicsCompressor();
+    victoryLimiter.threshold.value = -9;
+    victoryLimiter.knee.value = 8;
+    victoryLimiter.ratio.value = 9;
+    victoryLimiter.attack.value = .003;
+    victoryLimiter.release.value = .19;
+    this.musicBus.connect(victoryLimiter);
+    victoryLimiter.connect(master);
+    this.victoryLimiter = victoryLimiter;
 
     // ---- Exhaust: broadband combustion pulses with controlled low mids,
     // plus physical crankshaft body and subtle tonal induction. All sources
@@ -419,15 +435,83 @@ export class GameAudio {
     }
   }
 
-  updateStartSignal(phase: StartSignalPhase | null, remaining: number, total: number): void {
-    if (!this.ctx || !this.masterGain) return;
-    if (!this.startMusic && phase) this.startMusic = new StartMusic(this.ctx, this.musicBus!);
-    this.startMusic?.update(phase, remaining, total);
+  /**
+   * Accept a user-selected, locally held licensed audio file. Files are never
+   * uploaded to GitHub or sent to any server; object URLs last this session.
+   * The game does not bundle or redistribute Queen's recording.
+   */
+  setVictoryTrack(file: File | null): boolean {
+    if (file && (file.size > 50 * 1024 * 1024 ||
+        (!file.type.startsWith("audio/") && !/\\.(mp3|ogg|wav|m4a|aac|webm)$/i.test(file.name)))) {
+      return false;
+    }
+    this.stopVictory();
+    if (this.victoryUrl) URL.revokeObjectURL(this.victoryUrl);
+    this.victoryUrl = file ? URL.createObjectURL(file) : null;
+    this.victoryName = file?.name ?? null;
+    return true;
+  }
+
+  getVictoryTrackName(): string | null { return this.victoryName; }
+  get isVictoryPlaying(): boolean { return this.victoryActive; }
+
+  private playOriginalVictory(): void {
+    if (!this.ctx || !this.victoryLimiter || !this.victoryActive) return;
+    this.victoryFanfare ??= new VictoryFanfare(this.ctx, this.musicBus!);
+    this.victoryFanfare.play();
+  }
+
+  /** At the result screen, sound the original cue or a local licensed song. */
+  playVictory(): void {
+    this.ensure();
+    if (!this.ctx || !this.musicBus || !this.masterGain) return;
+    this.silence();
+    this.victoryActive = true;
+    const now = this.ctx.currentTime;
+    // 100% victory music bus; never exceed unity. The limiter catches peaks.
+    this.musicBus.gain.setTargetAtTime(1, now, .06);
+    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : .75, now, .08);
+    if (!this.victoryUrl || typeof Audio === "undefined" || !this.victoryLimiter) {
+      this.playOriginalVictory();
+      return;
+    }
+    try {
+      const media = new Audio(this.victoryUrl);
+      media.preload = "auto";
+      media.volume = 1;
+      const source = this.ctx.createMediaElementSource(media);
+      source.connect(this.musicBus);
+      this.victoryElement = media;
+      this.victorySource = source;
+      media.addEventListener("ended", () => this.stopVictory(), {once:true});
+      void media.play().catch(() => {
+        // Autoplay denial or unsupported codec: fall back to original music.
+        if (this.victoryActive) this.playOriginalVictory();
+      });
+    } catch {
+      this.playOriginalVictory();
+    }
+  }
+
+  private stopVictory(): void {
+    this.victoryFanfare?.stop();
+    if (this.victoryElement) {
+      this.victoryElement.pause();
+      this.victoryElement.removeAttribute("src");
+      this.victoryElement = null;
+    }
+    this.victorySource?.disconnect();
+    this.victorySource = null;
+    this.victoryActive = false;
+    if (this.ctx) {
+      this.musicBus?.gain.setTargetAtTime(this.volumes.music, this.ctx.currentTime, .06);
+      this.masterGain?.gain.setTargetAtTime(this.muted ? 0 : .55, this.ctx.currentTime, .06);
+    }
   }
 
   /** Fade everything out (pause, menu, results) without closing the context. */
   silence(): void {
-    this.startMusic?.silence();
+    this.stopVictory();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.engineGain?.gain.setTargetAtTime(0, now, 0.06);
@@ -438,7 +522,7 @@ export class GameAudio {
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.masterGain && this.ctx) {
-      const target = muted ? 0 : 0.55;
+      const target = muted ? 0 : (this.victoryActive ? .75 : .55);
       this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
     }
   }
