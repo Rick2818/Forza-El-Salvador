@@ -35,6 +35,28 @@ Cada carrera tiene un jugador, tres rivales físicos y tres vueltas. **Fácil, M
 
 La salida automática comparte el reloj de carrera entre rojo, amarillo y verde. Los cuatro autos permanecen detenidos hasta el verde. La salida es completamente silenciosa musicalmente; al finalizar la carrera se activa una celebración sonora original o el archivo local seleccionado por el jugador; los motores del jugador y los rivales se sintetizan con Web Audio. Motores/neumáticos y música tienen controles separados; `M` silencia el conjunto. No se presentan estos perfiles como grabaciones de los motores originales.
 
+## Turbo automático, llamas y ruedas animadas — actualización V9
+
+Configuración arcade aprobada (no son especificaciones de fábrica). La velocidad en el HUD se expresa en **MPH**:
+
+| Auto | Velocidad máxima del juego |
+| --- | ---: |
+| Ferrari California T | 200 mph (321,9 km/h) |
+| Porsche 911 | 200 mph (321,9 km/h) |
+| Lamborghini Aventador Roadster | 200 mph (321,9 km/h) |
+| Mercedes-Benz AMG GT Black Series | 200 mph (321,9 km/h) |
+| Koenigsegg Jesko Odin | 200 mph (321,9 km/h) |
+| Yangwang U9 | 200 mph (321,9 km/h) |
+| **Bugatti Chiron** | **230 mph (370,1 km/h)** |
+
+Los siete registros de `vehicle-designs.json` ahora tienen sus valores en m/s exactos (200 mph = 89.408 m/s, 230 mph = 102.8192 m/s). El controlador limita físicamente la componente longitudinal después de la simulación Rapier: turbo, cuesta abajo y altas RPM no pueden superar el techo configurado. Las velocidades siguen dependiendo de aceleración, curvas y longitud de recta: son **límites**, no velocidades garantizadas en cualquier sector.
+
+El turbo de competición se activa **automáticamente** al llegar a **100 mph (160,9344 km/h)** con acelerador pulsado y neumáticos sobre la pista, solo para el jugador. Da un impulso de fuerza durante **2,2 segundos**, seguido de un tiempo de recarga de **6 segundos**, con **llamas naranja y amarillo** saliendo de los escapes y un indicador TURBO en el velocímetro. No se activa parado, en reversa, fuera de pista ni durante la cuenta regresiva; no implica un escape real en los coches eléctricos, es un recurso de fantasía del videojuego.
+
+Se corrigió la animación de ruedas: las dos delanteras muestran el giro de la dirección física, las traseras no giran lateralmente y las cuatro rotan según la distancia recorrida, incluyendo diferencia entre llanta interior y exterior en curva. Las pinzas de freno quedan fijas respecto al soporte de dirección. No se han cambiado los modelos GLB, la pintura, los cristales ni la geometría de los circuitos.
+
+Las pruebas automáticas incluyen `src/sim/turbo.test.ts`, `src/sim/wheelMotion.test.ts`, `src/vehicle/speedCaps.test.ts` y `tools/review-turbo-wheels.mjs`, que comprueba el efecto real en Three.js y Rapier. El objetivo de 60 FPS requiere medición en hardware real; estas geometrías son ligeras y no implican que se haya certificado una tasa constante.
+
 ## Publicidad conceptual en los dos circuitos
 
 La revisión de partners incorpora **Aramco, AWS, DHL, Heineken, Lenovo, LVMH, MSC Cruises, Pirelli, Qatar Airways y Salesforce** tanto en Monzón como en Suzaka. V8 amplía la pauta original de solo 20 vallas a **80 posiciones objetivo por vuelta (ocho apariciones por marca)** repartidas por todos los sectores del trazado; una ubicación solo se materializa si supera las comprobaciones de seguridad. El planificador no desplaza las vallas a kilómetros de su sector, evitando el efecto de publicidad amontonada cerca de la salida. La publicidad del área de garajes y los pórticos existentes se mantiene. Se excluyen los boxes/tribuna de Monzón, cruces de Suzaka y zonas elevadas sin terreno seguro. El atlas de Canvas sigue compartido, con marcos y soportes instanciados. Se comprueba la cobertura real por deciles de la vuelta y se capturan vistas en sectores medio y final, no solo cerca de salida.
