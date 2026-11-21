@@ -1,7 +1,7 @@
 name: Revisar garajes de Monzon sin publicar
 on:
   push:
-    branches: [review/monzon-open-garages]
+    branches: [review/monzon-open-garages, feature/trackside-partners-monzon-suzaka]
   workflow_dispatch:
 permissions:
   contents: read
