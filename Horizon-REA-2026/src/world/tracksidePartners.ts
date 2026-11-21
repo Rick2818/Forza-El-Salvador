@@ -159,10 +159,15 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
   const up = new THREE.Vector3(0, 1, 0);
   placements.forEach((board, i) => {
     const halfW = BOARD_WIDTH / 2;
-    const x1 = board.x - board.tangentX * halfW;
-    const x2 = board.x + board.tangentX * halfW;
-    const z1 = board.z - board.tangentZ * halfW;
-    const z2 = board.z + board.tangentZ * halfW;
+    // Move the printed surface in front of the metal backing; without this
+    // offset it intersects the frame and becomes invisible/z-fights.
+    const right = track.rights[board.sampleIndex];
+    const faceX = board.x - right.x * board.side * .12;
+    const faceZ = board.z - right.z * board.side * .12;
+    const x1 = faceX - board.tangentX * halfW;
+    const x2 = faceX + board.tangentX * halfW;
+    const z1 = faceZ - board.tangentZ * halfW;
+    const z2 = faceZ + board.tangentZ * halfW;
     const bottom = board.y + 2.0;
     const top = bottom + BOARD_HEIGHT;
     vertices.push(x1, bottom, z1, x2, bottom, z2,
