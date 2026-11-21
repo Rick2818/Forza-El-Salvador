@@ -1,0 +1,32 @@
+name: Verificar volumen V10 sin publicar
+on:
+  push:
+    branches: [fix/v10-engine-medium-strong]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test && npm run build
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: npm run preview > /tmp/horizon-audio-preview.log 2>&1 &
+      - run: node tools/review-engine-audio.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v10-medium-strong-review
+          path: Horizon-REA-2026/review/audio
