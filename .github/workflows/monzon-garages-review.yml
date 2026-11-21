@@ -27,6 +27,7 @@ jobs:
       # Fail fast when loudness or clipping is still wrong, before expensive 3D captures.
       - run: node tools/review-engine-audio.mjs
       - run: node tools/review-turbo-wheels.mjs
+      - run: node tools/review-v10.mjs
       - run: node tools/review-garages.mjs
         env:
           SKIP_RACE_BENCHMARK: '1'
@@ -42,3 +43,4 @@ jobs:
             Horizon-REA-2026/review/partners
             Horizon-REA-2026/review/audio
             Horizon-REA-2026/review/turbo
+            Horizon-REA-2026/review/v10

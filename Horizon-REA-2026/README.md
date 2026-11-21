@@ -9,7 +9,7 @@ Repositorio: **Rick2818/Forza-El-Salvador**. Juego publicado: https://rick2818.g
 | Área | Estado |
 | --- | --- |
 | Versión V10 | Siete autos seleccionables; física y conducción de Suzaka corregidas |
-| Validación local V10 | 179/179 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
+| Validación local V10 | 211/211 pruebas; 42 carreras de tres vueltas, todas finalizadas sin recuperaciones por teletransporte |
 | Integración | Rama `quality/v10-race-stability`, PR #13; integración y publicación sujetas a los controles de calidad y verificación del SHA público |
 | Publicación | GitHub Pages solo despliega si pasan pruebas, auditorías y compilación; `build-info.json` identifica el commit servido |
 | 60 FPS en la laptop | Objetivo pendiente de medir en hardware real |
@@ -265,3 +265,9 @@ Las sombras de contacto proyectadas de los cuatro autos usan una sola llamada de
 El audio conserva los controles y volumen del jugador, recupera el crecimiento con RPM y evita invertir energía en subgraves poco audibles. La envolvente final mantiene margen bajo clipping y se verifica después del mastering, con una prueba WebAudio determinista adicional. Lamborghini y Jesko tienen perfiles de cilindros propios y Yangwang no recibe pulsos de combustión, incluido su uso como rival. La salida sigue sin música y la celebración mantiene su control independiente.
 
 `docs/quality/v11/REPORT.md` detalla comprobaciones y límites. Las capturas y WAV comparativos se conservan en el artefacto `horizon-art-audio-evidence`. La incorporación de grabaciones automotrices licenciadas, el refinamiento individual de los otros seis interiores y la certificación de 60 FPS en la laptop siguen pendientes.
+
+## Turbo y estabilidad en curvas
+
+El turbo automático conserva el umbral de 100 mph y los límites de 200/230 mph. La potencia extra entra progresivamente, disminuye según la carga del giro y se corta cuando la dirección, rotación o deslizamiento exigen demasiado agarre. Una curva exigente cancela la ráfaga activa y respeta la recarga; si todavía no se activó, espera a que el auto esté estable. La aceleración normal y la dirección siguen bajo control del jugador. No es un piloto automático ni elimina la necesidad de frenar antes de curvas cerradas.
+
+La regresión `tests/turbo-corner.test.mjs` usa Rapier y los pivotes de los siete GLB reales en 28 giros de ambos sentidos. `docs/quality/turbo-control/comparison.json` conserva condiciones y resultados antes/después: Ferrari, giro moderado, máximo del indicador de deslizamiento 35.64→0.59 m/s; Bugatti 30.89→0.54 m/s. Son maniobras controladas sobre plano, no certificación de todas las curvas ni de FPS. Las carreras completas y los controles WebGL complementan esta prueba.

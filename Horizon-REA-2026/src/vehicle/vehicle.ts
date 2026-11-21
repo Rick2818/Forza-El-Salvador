@@ -5,6 +5,7 @@ import { SETTINGS } from "../core/settings";
 import { damp, clamp } from "../core/mathx";
 import { TurboFlames } from "../render/turboFlames";
 import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
+import { turboTractionFactor } from "../sim/turboTraction";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
@@ -63,12 +64,14 @@ export class Vehicle {
   private readonly wheelRadius: number;
   private readonly wheelRoll = [0, 0, 0, 0];
   private turboState = createTurboState();
+  private turboDelivery = 0;
   private readonly turboFlames: TurboFlames | null;
   private readonly tuning;
   private readonly forceForward = new THREE.Vector3();
   private readonly localVelocity = new THREE.Vector3();
 
-  get turboActive(): boolean { return this.turboState.active > 0; }
+  get turboActive(): boolean { return this.turboState.active > 0 && this.turboDelivery > .01; }
+  get turboStrength(): number { return this.turboActive ? this.turboDelivery : 0; }
   get speedLimitMph(): number { return this.tuning.topSpeed / 0.44704; }
 
   get highSpeedPowerMultiplier(): number {
@@ -163,6 +166,7 @@ export class Vehicle {
     this.speed = 0;
     this.steerAngle = 0;
     this.turboState = createTurboState();
+    this.turboDelivery = 0;
     this.wheelRoll.fill(0);
     this.syncVisual();
   }
@@ -201,10 +205,21 @@ export class Vehicle {
     const p = SETTINGS.physics;
     const throttle = this.controls.throttle;
     const brake = this.controls.brake;
+    const lateralSpeed = velocity.x * forward.z - velocity.z * forward.x;
+    const wheelbase = Math.abs(this.wheelMounts[0].z - this.wheelMounts[2].z);
+    const requestedSteer = steeringAngleAt(speed, this.controls.steer, this.tuning.steer);
+    const cornerSteer = Math.max(Math.abs(requestedSteer), Math.abs(this.steerAngle));
+    const traction = turboTractionFactor(speed, cornerSteer, wheelbase,
+      lateralSpeed, this.body.angvel().y, grip);
     // Auto-activate a brief, cooldown-limited arcade nitro burst at 100 mph.
     // No turbo in reverse, in countdown, or during off-track excursions.
     this.turboState = stepTurbo(this.turboState, dt, speed, throttle,
-      this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake);
+      this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01);
+    // Ease boost in on a straight. Reduce it immediately when tyre capacity
+    // is needed for a turn; never push through braking, countersteer or a slide.
+    const delivery = this.turboState.active > 0 ? traction : 0;
+    this.turboDelivery = delivery < this.turboDelivery ? delivery :
+      damp(this.turboDelivery, delivery, 12, dt);
 
     let engineForce = 0;
     if (throttle > 0.01 && absSpeed < this.tuning.topSpeed) {
@@ -239,7 +254,7 @@ export class Vehicle {
     // pitch moment that flips the car at low speed.
     const fwd = forward;
     const nitro = this.turboActive && !this.controls.handbrake &&
-      speed < this.tuning.topSpeed ? TURBO_FORCE_N : 0;
+      speed < this.tuning.topSpeed ? TURBO_FORCE_N * this.turboDelivery : 0;
     const drive = engineForce + nitro - reverseForce;
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
