@@ -108,10 +108,11 @@ export class GameAudio {
   private vehicleId="ferrari-california-t";
   private victoryFanfare: VictoryFanfare | null = null;
   private victoryLimiter: DynamicsCompressorNode | null = null;
-  private victoryUrl: string | null = null;
+  private victoryFile: File | null = null;
   private victoryName: string | null = null;
-  private victoryElement: HTMLAudioElement | null = null;
-  private victorySource: MediaElementAudioSourceNode | null = null;
+  private victoryBuffer: AudioBuffer | null = null;
+  private victoryLoading: Promise<void> | null = null;
+  private victorySource: AudioBufferSourceNode | null = null;
   private victoryActive = false;
   private readonly rivals = new Map<string, RivalVoice>();
 
@@ -324,6 +325,7 @@ export class GameAudio {
 
     this.skidGain = skidGain;
     this.started = true;
+    this.prepareVictoryAudio();
   }
 
   /** Drive the engine sound from the vehicle state. Called every frame. */
@@ -446,10 +448,34 @@ export class GameAudio {
       return false;
     }
     this.stopVictory();
-    if (this.victoryUrl) URL.revokeObjectURL(this.victoryUrl);
-    this.victoryUrl = file ? URL.createObjectURL(file) : null;
+    this.victoryFile = file;
+    this.victoryBuffer = null;
     this.victoryName = file?.name ?? null;
+    if (file) this.prepareVictoryAudio();
     return true;
+  }
+
+  /**
+   * Decode the user's local file with an already unlocked AudioContext.
+   * WebAudio buffer playback at the finish is not subject to HTMLMediaElement
+   * autoplay restrictions. Nothing is transmitted off the user's device.
+   */
+  private prepareVictoryAudio(): void {
+    const file = this.victoryFile, ctx = this.ctx;
+    if (!ctx || !file || this.victoryBuffer || this.victoryLoading) return;
+    const job = (async () => {
+      try {
+        const bytes = await file.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(bytes);
+        if (file === this.victoryFile) this.victoryBuffer = decoded;
+      } catch {
+        // Unsupported codec or corrupt file: fall back to original fanfare.
+      }
+    })();
+    this.victoryLoading = job;
+    void job.finally(() => {
+      if (this.victoryLoading === job) this.victoryLoading = null;
+    });
   }
 
   getVictoryTrackName(): string | null { return this.victoryName; }
@@ -471,23 +497,20 @@ export class GameAudio {
     // 100% victory music bus; never exceed unity. The limiter catches peaks.
     this.musicBus.gain.setTargetAtTime(this.volumes.music, now, .06);
     this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 1, now, .08);
-    if (!this.victoryUrl || typeof Audio === "undefined" || !this.victoryLimiter) {
+    if (!this.victoryBuffer) {
+      this.prepareVictoryAudio();
       this.playOriginalVictory();
       return;
     }
     try {
-      const media = new Audio(this.victoryUrl);
-      media.preload = "auto";
-      media.volume = 1;
-      const source = this.ctx.createMediaElementSource(media);
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.victoryBuffer;
       source.connect(this.musicBus);
-      this.victoryElement = media;
+      source.onended = () => {
+        if (this.victorySource === source) this.stopVictory();
+      };
       this.victorySource = source;
-      media.addEventListener("ended", () => this.stopVictory(), {once:true});
-      void media.play().catch(() => {
-        // Autoplay denial or unsupported codec: fall back to original music.
-        if (this.victoryActive) this.playOriginalVictory();
-      });
+      source.start();
     } catch {
       this.playOriginalVictory();
     }
@@ -495,13 +518,13 @@ export class GameAudio {
 
   private stopVictory(): void {
     this.victoryFanfare?.stop();
-    if (this.victoryElement) {
-      this.victoryElement.pause();
-      this.victoryElement.removeAttribute("src");
-      this.victoryElement = null;
+    if (this.victorySource) {
+      const source = this.victorySource;
+      this.victorySource = null;
+      source.onended = null;
+      try { source.stop(); } catch { /* source may already have finished */ }
+      source.disconnect();
     }
-    this.victorySource?.disconnect();
-    this.victorySource = null;
     this.victoryActive = false;
     if (this.ctx) {
       this.musicBus?.gain.setTargetAtTime(this.volumes.music, this.ctx.currentTime, .06);
