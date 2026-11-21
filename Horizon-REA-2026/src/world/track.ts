@@ -289,7 +289,7 @@ export class Track {
     this.buildGantry();
 
     // ---- Trackside lamps: instanced poles with glowing heads.
-    if (this.circuit.id !== "monzon" && this.circuit.id !== "suzaka" && this.circuit.id !== "sparda") this.buildLamps(barrierOffset);
+    if (this.circuit.id !== "suzaka" && this.circuit.id !== "sparda") this.buildLamps(barrierOffset);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
