@@ -97,7 +97,7 @@ try {
       const sectors = Array.from({length: 10}, () => 0);
       entries.forEach(entry => sectors[Math.floor(entry.sampleIndex / track.samples.length * 10)]++);
       if (entries.length < 60 || Object.values(counts).some(n => n < 5) ||
-          sectors.filter(n => n > 0).length < 8 ||
+          sectors.filter(n => n > 0).length < 10 ||
           sectors.slice(5).reduce((a, b) => a + b, 0) < 20) {
         throw Error("Missing full-lap advertising in " + id + ": " +
           JSON.stringify({counts, sectors, total:entries.length}));
