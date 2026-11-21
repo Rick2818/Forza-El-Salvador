@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { vehiclePickerMarkup } from "./vehiclePicker";
 import { SELECTED_VEHICLES } from "../vehicle/roster";
 
-describe("selection of the seven approved vehicles", () => {
+describe("selection of the four playable vehicles", () => {
   it("offers all approved cars in the visible Autos tab", () => {
     const markup = vehiclePickerMarkup("ferrari-california-t");
-    expect(SELECTED_VEHICLES).toHaveLength(7);
-    expect((markup.match(/data-action="select-vehicle"/g) ?? [])).toHaveLength(7);
+    expect(SELECTED_VEHICLES).toHaveLength(4);
+    expect((markup.match(/data-action="select-vehicle"/g) ?? [])).toHaveLength(4);
+    expect(markup).not.toContain("<img");
     for (const car of SELECTED_VEHICLES) {
       expect(markup).toContain(`data-vehicle-id="${car.id}"`);
       expect(markup).toContain(car.name);

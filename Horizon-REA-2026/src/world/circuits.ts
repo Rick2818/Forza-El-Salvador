@@ -383,7 +383,8 @@ export function analyzeCircuitDefinition(circuit: CircuitDefinition): CircuitMet
   };
 }
 
-/** All validated, playable circuits, including the grade-separated Suzaka. */
+/** Circuits available in the current race rotation. */
 export function availableCircuits(): CircuitDefinition[] {
-  return CIRCUITS.filter((circuit) => analyzeCircuitDefinition(circuit).ok);
+  return CIRCUITS.filter((circuit) => (circuit.id === "monzon" || circuit.id === "suzaka") &&
+    analyzeCircuitDefinition(circuit).ok);
 }

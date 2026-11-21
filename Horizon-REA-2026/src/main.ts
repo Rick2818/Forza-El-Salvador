@@ -3,7 +3,7 @@ import "./styles.css";
 import { Game } from "./game";
 import { preloadCarAsset, USE_BLENDER_SHELL } from "./vehicle/carAsset";
 import { Track } from "./world/track";
-import { DEFAULT_CIRCUIT_ID, getCircuit } from "./world/circuits";
+import { availableCircuits, DEFAULT_CIRCUIT_ID, getCircuit } from "./world/circuits";
 import { VEHICLE_DESIGNS, loadSelectedVehicle } from "./vehicle/selectedAsset";
 
 const loading = document.createElement("div");
@@ -42,7 +42,7 @@ async function boot(): Promise<void> {
   }
   await nextFrame();
 
-  progress(38, "Cargando los siete modelos 3D de prueba…");
+  progress(38, "Cargando los cuatro modelos 3D…");
   await Promise.all(VEHICLE_DESIGNS.map((d) => loadSelectedVehicle(d.id)));
 
   const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
@@ -54,7 +54,7 @@ async function boot(): Promise<void> {
 
   let circuitId = DEFAULT_CIRCUIT_ID;
   try { circuitId = localStorage.getItem("horizon.circuit") ?? DEFAULT_CIRCUIT_ID; } catch { /* default */ }
-  const selectedCircuit = getCircuit(circuitId) ?? getCircuit(DEFAULT_CIRCUIT_ID)!;
+  const selectedCircuit = availableCircuits().find((circuit) => circuit.id === circuitId) ?? getCircuit(DEFAULT_CIRCUIT_ID)!;
   const track = new Track(selectedCircuit);
   track.build();
 

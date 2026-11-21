@@ -56,10 +56,7 @@ export interface RaceSnapshot {
 const ROSTER = [
   { name: "K. VOSS", accent: 0x00e5ff, skill: 0.955, personality: "defensor" },
   { name: "A. MIRAI", accent: 0xffd400, skill: 0.940, personality: "atacante" },
-  { name: "R. SANTOS", accent: 0xc6ff00, skill: 0.925, personality: "estratega" },
-  { name: "L. REYES", accent: 0xff831a, skill: 0.950, personality: "atacante" },
-  { name: "M. CRUZ", accent: 0xc797ff, skill: 0.935, personality: "defensor" },
-  { name: "S. VEGA", accent: 0x62f5c4, skill: 0.920, personality: "estratega" }
+  { name: "R. SANTOS", accent: 0xc6ff00, skill: 0.925, personality: "estratega" }
 ] satisfies { name: string; accent: number; skill: number; personality: RivalPersonality }[];
 
 export class Race {

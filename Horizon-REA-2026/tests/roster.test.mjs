@@ -1,42 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
-import { SELECTED_VEHICLES, referenceUrl } from "../src/vehicle/roster";
+import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { SELECTED_VEHICLES } from "../src/vehicle/roster";
 import { garageMarkup } from "../src/ui/garage";
 
-describe("selected vehicle references", () => {
-  it("ships all six attached photographs as actual, nonempty image files", () => {
-    const photos = SELECTED_VEHICLES.filter((car) => car.referenceImage);
-    expect(photos).toHaveLength(6);
-    for (const car of photos) {
-      const file = new URL(`../public/${car.referenceImage}`, import.meta.url);
-      expect(existsSync(file), car.id).toBe(true);
-      expect(readFileSync(file).length, car.id).toBeGreaterThan(1000);
-    }
-  });
-
-  it("resolves images under a GitHub Pages project prefix", () => {
-    vi.stubEnv("BASE_URL", "/Forza-El-Salvador/");
-    try {
-      expect(referenceUrl(SELECTED_VEHICLES[1])).toBe(
-        "/Forza-El-Salvador/vehicles/references/yangwang-u9.jpg"
-      );
-      expect(referenceUrl(SELECTED_VEHICLES[0])).toBeNull();
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
-
-  it("offers seven approved models with the selected one marked", () => {
+describe("playable vehicles", () => {
+  it("offers the four game models without displaying reference photos", () => {
     const html = garageMarkup("ferrari-california-t");
-    expect(new Set(SELECTED_VEHICLES.map((car) => car.id)).size).toBe(7);
+    expect(SELECTED_VEHICLES.map((car) => car.id)).toEqual([
+      "ferrari-california-t", "porsche-911", "bugatti-chiron", "mercedes-amg-gt-black-series"
+    ]);
     for (const car of SELECTED_VEHICLES) {
       expect(html).toContain(`data-vehicle-id="${car.id}"`);
       expect(existsSync(new URL(`../public/${car.modelUrl}`, import.meta.url))).toBe(true);
     }
-    expect(html.match(/Modelo aprobado/g)).toHaveLength(7);
-    expect(html.match(/data-action="select-vehicle"/g)).toHaveLength(7);
+    expect(html.match(/Modelo aprobado/g)).toHaveLength(4);
+    expect(html.match(/data-action="select-vehicle"/g)).toHaveLength(4);
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
-    expect(html).toContain("Fotografía pendiente");
+    expect(html).not.toContain("<img");
     expect(html).not.toContain('data-action="start"');
   });
 });

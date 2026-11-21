@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
+import { SELECTED_VEHICLES } from "./roster";
 import { BODY_CENTER_Y, createSolidPaintMaterial, type CarVisual } from "./carModel";
 
 export type VehicleDesign = (typeof designs)[number];
-export const VEHICLE_DESIGNS: readonly VehicleDesign[] = designs;
+export const VEHICLE_DESIGNS: readonly VehicleDesign[] = SELECTED_VEHICLES.map((car) => designs.find((design) => design.id === car.id)!);
 export const DEFAULT_SELECTED_ID = "ferrari-california-t";
 const cache = new Map<string, THREE.Group>();
 const pending = new Map<string, Promise<void>>();

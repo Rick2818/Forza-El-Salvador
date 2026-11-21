@@ -163,7 +163,7 @@ export class Menu {
         <h1 class="title">Horizon <em>El Salvador</em></h1>
         <p class="sub">
           Carreras 3D en tiempo real en Chrome: ${trackLengthKm.toFixed(2)} km,
-          siete autos en pista, con seis rivales controlados por IA.
+          cuatro autos en pista, con tres rivales controlados por IA.
         </p>
         <div class="setup-tabs" role="tablist" aria-label="Configurar la carrera">
           <button id="tab-autos" class="setup-tab ${this.activeSetupTab === "autos" ? "is-active" : ""}"
@@ -197,7 +197,7 @@ export class Menu {
           <div class="spec-list">
             <div class="brand" style="margin-bottom:2px">Ficha técnica</div>
             <div class="spec"><span>Conducción</span><b>Ajuste experimental</b></div>
-            <div class="spec"><span>Modelos</span><b>7 prototipos 3D</b></div>
+            <div class="spec"><span>Modelos</span><b>4 modelos 3D</b></div>
             <div class="spec"><span>Fidelidad visual</span><b>En revisión</b></div>
             <div class="spec"><span>Vueltas</span><b>3</b></div>
             <div class="spec"><span>Rivales IA</span><b>3 · estilos individuales</b></div>

@@ -10,9 +10,8 @@ import {
 } from "./circuits";
 
 describe("circuits", () => {
-  it("ships at least three usable circuits", () => {
-    expect(CIRCUITS.length).toBeGreaterThanOrEqual(3);
-    expect(availableCircuits().length).toBe(CIRCUITS.length);
+  it("offers only Monzón and Suzaka for racing", () => {
+    expect(availableCircuits().map((circuit) => circuit.id)).toEqual(["monzon", "suzaka"]);
   });
 
   it.each(CIRCUITS.map((circuit) => [circuit.id, circuit] as const))(
@@ -70,12 +69,12 @@ describe("circuits", () => {
     expect(availableCircuits().some(c => c.id === "suzaka")).toBe(true);
   });
 
-  it("shows both additional international tracks only after their safety audits pass", () => {
+  it("retains the audited layouts outside the current race rotation", () => {
     for (const id of ["sparda", "sakhir-horizon"]) {
       const circuit = getCircuit(id)!;
       const audit = analyzeCircuitDefinition(circuit);
       expect(audit.ok, id + ": " + audit.issues.join(", ")).toBe(true);
-      expect(availableCircuits().some(c => c.id === id)).toBe(true);
+      expect(availableCircuits().some(c => c.id === id)).toBe(false);
     }
   });
 

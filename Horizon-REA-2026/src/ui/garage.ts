@@ -1,4 +1,4 @@
-import { SELECTED_VEHICLES, referenceUrl } from "../vehicle/roster";
+import { SELECTED_VEHICLES } from "../vehicle/roster";
 
 export function garageMarkup(selectedId?: string): string {
   return `<section class="vehicle-garage" aria-labelledby="garage-title">
@@ -7,13 +7,7 @@ export function garageMarkup(selectedId?: string): string {
     <p class="garage-intro">Elegí tu auto para la carrera.</p>
     <p id="garage-status" role="status" aria-live="polite"></p>
     <div class="vehicle-grid">${SELECTED_VEHICLES.map((car) => {
-      const src = referenceUrl(car);
       return `<article class="vehicle-card" data-vehicle-id="${car.id}">
-        ${src
-          ? `<a class="vehicle-image" href="${src}" target="_blank" rel="noopener" aria-label="Ampliar referencia de ${car.name}">
-              <img src="${src}" alt="Referencia de ${car.name}, ${car.finish}" loading="lazy" decoding="async" />
-            </a>`
-          : `<div class="vehicle-image vehicle-image-pending">Fotografía pendiente</div>`}
         <div class="vehicle-copy">
           <span class="vehicle-status">Modelo aprobado</span>
           <h3>${car.name}</h3><p class="vehicle-finish">${car.finish}</p>
