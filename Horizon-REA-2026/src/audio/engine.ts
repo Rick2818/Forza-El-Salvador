@@ -214,7 +214,19 @@ export class GameAudio {
     master.gain.value = this.muted ? 0 : 0.55;
     master.connect(ctx.destination);
     this.masterGain = master;
-    this.enginesBus=ctx.createGain();this.enginesBus.gain.value=this.volumes.engines;this.enginesBus.connect(master);
+    // Medium-strong engine mix: compress the entire motor/tyre bus before
+    // the master, leaving the separate start-music bus and volume untouched.
+    // Gentle compression prevents simultaneous rival engines from clipping.
+    this.enginesBus = ctx.createGain();
+    this.enginesBus.gain.value = this.volumes.engines;
+    const engineLimiter = ctx.createDynamicsCompressor();
+    engineLimiter.threshold.value = -16;
+    engineLimiter.knee.value = 18;
+    engineLimiter.ratio.value = 3;
+    engineLimiter.attack.value = .004;
+    engineLimiter.release.value = .16;
+    this.enginesBus.connect(engineLimiter);
+    engineLimiter.connect(master);
     this.musicBus=ctx.createGain();this.musicBus.gain.value=this.volumes.music;this.musicBus.connect(master);
 
     // ---- Exhaust: broadband combustion pulses with controlled low mids,
@@ -313,17 +325,19 @@ export class GameAudio {
       this.electric ? 60 + speed * 220 : crankHz, now, .06);
     if (this.engineFilter) {
       this.engineFilter.frequency.setTargetAtTime(
-        this.electric ? 740 : 520 + rev * 1450 + t * 1250, now, .09);
+        this.electric ? 740 : 650 + rev * 1500 + t * 1450, now, .09);
     }
     if (this.combustionGain) this.combustionGain.gain.setTargetAtTime(
-      this.electric ? .02 : .64 + t * .42, now, .1);
+      this.electric ? .02 : .76 + t * .48, now, .1);
     if (this.crankGain) this.crankGain.gain.setTargetAtTime(
-      this.electric ? .08 : .23 + (1 - rev) * .12, now, .1);
+      this.electric ? .08 : .30 + (1 - rev) * .14, now, .1);
     if (this.intakeGain) this.intakeGain.gain.setTargetAtTime(
-      this.electric ? .01 : .04 + t * .12, now, .1);
+      this.electric ? .01 : .06 + t * .16, now, .1);
     if (this.engineGain) {
-      const level = this.electric ? (.03 + t * .08 + speed * .03)
-        : .12 + t * .16 + rev * .11;
+      // +7 to +10 dB in the audible power band, with a clearly audible
+      // idle. Keep the motor below unity gain; compressor catches race peaks.
+      const level = this.electric ? (.04 + t * .09 + speed * .04)
+        : .34 + t * .29 + rev * .18;
       this.engineGain.gain.setTargetAtTime(level, now, .09);
     }
     if (this.skidGain) {
@@ -396,7 +410,7 @@ export class GameAudio {
         Math.max(-1, Math.min(1, (dx * listener.rightX + dz * listener.rightZ) /
           Math.max(5, distance))), now, .08);
       voice.gain.gain.setTargetAtTime(
-        this.muted ? 0 : attenuation * (.025 + throttle * .06 + revs / 9000 * .025), now, .1);
+        this.muted ? 0 : attenuation * (.035 + throttle * .065 + revs / 9000 * .025), now, .1);
     }
   }
 
