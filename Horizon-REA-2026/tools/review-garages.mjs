@@ -36,13 +36,20 @@ try {
  // prediction of the laptop GPU. Keep the hardware/conditions in the report.
  const benchmark=await page.evaluate(async()=>{
   const g=window.__HORIZON_GAME__;g.captureMode=true;g.race.state='racing';g.state='racing';g.skipRender=false;
-  const frames=[];let last=performance.now();
-  for(let i=0;i<20;i++) {
+  const Driver=g.race.racers.find(r=>!r.isPlayer).ai.constructor;
+  const pilot=new Driver(g.race.player.vehicle,g.track,-2.7,.94,1,'estratega','medio');
+  const frames=[];let last=performance.now(), start=last, warmup=15, elapsed=0;
+  while(performance.now()-start<20000 || frames.length<60) {
    await new Promise(requestAnimationFrame);
-   g.advance(1/60);
-   const now=performance.now();frames.push(now-last);last=now;
+   const now=performance.now(), frameMs=now-last, dt=Math.min(frameMs/1000,.05);last=now;
+   const traffic=g.race.racers.filter(r=>!r.isPlayer).map(r=>({position:r.vehicle.position.clone(),speed:r.vehicle.speed,isPlayer:false,racerId:r.id}));
+   g.overrideInput=pilot.plan(dt,elapsed,traffic);g.advance(dt);elapsed+=dt;
+   if(warmup>0){warmup--;start=performance.now();last=start;continue;}
+   frames.push(frameMs);
+   if(performance.now()-start>60000)break;
   }
-  return {meanFps:1000/(frames.reduce((a,b)=>a+b,0)/frames.length),minFrameMs:Math.min(...frames),maxFrameMs:Math.max(...frames),samples:frames.length,renderer:g.renderer.getContext().getParameter(g.renderer.getContext().RENDERER),conditions:'1920x1080, balanced, four cars, software SwiftShader on GitHub Ubuntu; not user laptop.'};
+  const sorted=[...frames].sort((a,b)=>a-b), duration=frames.reduce((a,b)=>a+b,0);
+  return {meanFps:1000/(duration/frames.length),p95FrameMs:sorted[Math.floor(sorted.length*.95)],minFrameMs:Math.min(...frames),maxFrameMs:Math.max(...frames),samples:frames.length,durationSeconds:duration/1000,simulationSeconds:elapsed,drivers:g.race.racers.length,renderer:g.renderer.getContext().getParameter(g.renderer.getContext().RENDERER),conditions:'1920x1080, balanced, no adaptive resolution, four cars racing with AI player test driver, software SwiftShader on GitHub Ubuntu; not user laptop.'};
  });
  await writeFile('review/garages/metrics.json',JSON.stringify({metrics,benchmark,errors},null,2));
  if(errors.length)throw Error(errors.join('\n'));
