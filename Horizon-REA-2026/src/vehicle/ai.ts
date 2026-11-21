@@ -11,6 +11,7 @@ export interface TrafficCar {
   speed: number;
   isPlayer: boolean;
   racerId?: number;
+  oncoming?: boolean;
 }
 
 export const DIFFICULTY_TUNING = {
@@ -30,7 +31,7 @@ const _forward = new THREE.Vector3();
 const _target = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 
-type Nearby = { gap: number; lane: number; speed: number; racerId?: number };
+type Nearby = { gap: number; lane: number; speed: number; racerId?: number; oncoming?: boolean };
 
 /**
  * Competidores físicos con estrategia, no coches guiados por una animación:
@@ -98,7 +99,8 @@ export class AIDriver {
         gap: dx * tangent.x + dz * tangent.z,
         lane: ownLane + dx * right.x + dz * right.z,
         speed: Math.abs(other.speed),
-        racerId: other.racerId
+        racerId: other.racerId,
+        oncoming: other.oncoming
       };
     });
 
@@ -144,6 +146,8 @@ export class AIDriver {
       .sort((a, b) => a.gap - b.gap)[0];
     const chaser = nearby.find(o => o.gap < -9 && o.gap > -25 &&
       Math.abs(o.lane - ownLane) > 1.3 && o.speed > speed + 1);
+    const headOn = nearby.filter(other => other.oncoming && other.gap > 0 && other.gap < 75 &&
+      Math.abs(other.lane - ownLane) < 4.5).sort((a, b) => a.gap - b.gap)[0];
     const wander = Math.sin(time * 0.27 + this.phase) * 0.35;
     let desiredLane = this.baseLane + wander;
 
@@ -170,6 +174,9 @@ export class AIDriver {
     if (recovering || onBridge) {
       this.pass = null;
       desiredLane = 0;
+    } else if (headOn) {
+      this.pass = null;
+      desiredLane = headOn.lane >= 0 ? -3.8 : 3.8;
     } else if (this.pass) {
       desiredLane = this.pass.lane;
     } else if (chaser && tuning.pressure > 0.2 &&
@@ -215,6 +222,7 @@ export class AIDriver {
       }
     }
 
+    if (headOn) targetSpeed = Math.min(targetSpeed, Math.max(7, (headOn.gap - 8) * 0.55));
     if (recovering) targetSpeed = Math.min(targetSpeed, 12);
     else if (Math.abs(headingError) > .3 || v.slip > 3) {
       // Regain alignment before asking the highway engine to accelerate.
