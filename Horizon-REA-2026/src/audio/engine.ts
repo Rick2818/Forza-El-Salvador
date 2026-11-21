@@ -11,8 +11,8 @@ const REF_RPM = 3600;
 const ENGINE_IDLE = 850;
 // The earlier 0.55 master attenuated an already-compressed engine too much.
 // Louder racing mix with a separate soft peak guard; victory stays independent.
-export const RACING_MASTER_LEVEL = 0.82;
-export const ENGINE_OUTPUT_BOOST = 2.4;
+export const RACING_MASTER_LEVEL = 0.94;
+export const ENGINE_OUTPUT_BOOST = 4.0;
 export function enginePulseHz(rpm: number, cylinders: number): number {
   return Math.max(ENGINE_IDLE, Math.min(10500, rpm)) / 60 * cylinders / 2;
 }
@@ -245,7 +245,10 @@ export class GameAudio {
     engineLimiter.attack.value = .004;
     engineLimiter.release.value = .16;
     this.enginesBus.connect(engineLimiter);
-    // +7.6 dB post-compression makeup gain. The second compressor's
+    // +12 dB post-compression makeup gain, 67% more than prior 2.4x.
+    // The racing master also rises from 0.82 to 0.94, for ~91% extra
+    // pre-limiter electrical gain in total. Verify final RMS separately.
+    // The second compressor's
     // steep ratio confines boosted engine peaks before the master bus.
     const outputBoost = ctx.createGain();
     outputBoost.gain.value = ENGINE_OUTPUT_BOOST;
