@@ -37,7 +37,7 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 
 ## Publicidad conceptual en los dos circuitos
 
-La revisión de partners incorpora **Aramco, AWS, DHL, Heineken, Lenovo, LVMH, MSC Cruises, Pirelli, Qatar Airways y Salesforce** tanto en Monzón como en Suzaka. Cada nombre aparece dos veces por vuelta, en vallas 3D más allá de las barreras de seguridad. El planificador evita los boxes, la tribuna de Monzón, el cruce de Suzaka y los puntos elevados sin soporte en terreno. Usa un solo atlas de texturas de Canvas, un lote de carteles y soportes instanciados para controlar el coste gráfico.
+La revisión de partners incorpora **Aramco, AWS, DHL, Heineken, Lenovo, LVMH, MSC Cruises, Pirelli, Qatar Airways y Salesforce** tanto en Monzón como en Suzaka. V8 amplía la pauta original de solo 20 vallas a **80 posiciones objetivo por vuelta (ocho apariciones por marca)** repartidas por todos los sectores del trazado; una ubicación solo se materializa si supera las comprobaciones de seguridad. El planificador no desplaza las vallas a kilómetros de su sector, evitando el efecto de publicidad amontonada cerca de la salida. La publicidad del área de garajes y los pórticos existentes se mantiene. Se excluyen los boxes/tribuna de Monzón, cruces de Suzaka y zonas elevadas sin terreno seguro. El atlas de Canvas sigue compartido, con marcos y soportes instanciados. Se comprueba la cobertura real por deciles de la vuelta y se capturan vistas en sectores medio y final, no solo cerca de salida.
 
 **Alcance legal:** son representaciones tipográficas conceptuales para revisión, no logotipos oficiales ni patrocinios acreditados. Antes de explotar comercialmente el juego con las marcas es necesario obtener los derechos/autorizaciones correspondientes y verificar las restricciones publicitarias aplicables (especialmente bebidas alcohólicas).
 
@@ -71,6 +71,12 @@ Se retiró por completo la música de la cuenta regresiva. Las luces roja, amari
 La canción comercial **«We Are the Champions» de Queen** no está incluida en el repositorio, por estar protegida por derechos de autor. En el menú **Sonido → Audio de victoria propio** el jugador puede seleccionar un archivo local de audio que tenga derecho a usar: se reproduce al final sin subirlo al servidor ni incluirlo en la distribución pública. El archivo se mantiene solo durante la sesión del navegador; tras recargar o cambiar de circuito puede ser necesario seleccionarlo nuevamente. Sin archivo seleccionado se usa el tema de victoria original. No se almacena ni transmite la música a GitHub.
 
 Pruebas: unidad para el tema original, comprobación de ausencia de música de cuenta regresiva, semáforo sincronizado, activación de celebración al llegar a resultados, respeto de mute y limitación de picos.
+
+## Ajuste reforzado de volumen V10 y auditoría acústica
+
+El primer incremento medio-fuerte seguía siendo insuficiente en altavoces: el sonido pasaba por un volumen maestro de 0.55 y solo se medía hasta el primer compresor, no la señal final que oye el jugador. La mezcla actual aumenta el nivel de carrera a **0.82**, introduce **2.4× de ganancia de recuperación** tras la compresión del motor y un segundo compresor de picos, sin alterar la música de victoria. El control **Motores y neumáticos** continúa respetando el volumen guardado por el usuario: comprobar que no esté bajo o en 0 %, y que el botón M no esté silenciado.
+
+La prueba `tools/review-engine-audio.mjs` graba y mide RMS y picos **después del volumen maestro** con RPM de ralentí, media y altas revoluciones, rechazando audio muy tenue o digitalmente saturado. Esto verifica señal electrónica del navegador, no sonoridad real del dispositivo o auriculares.
 
 ## Ajuste de volumen medio-fuerte del V10
 
