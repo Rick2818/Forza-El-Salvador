@@ -73,7 +73,7 @@ export class MonzonGarages {
       const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace;
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(14.8, 1.85),
         new THREE.MeshBasicMaterial({map, toneMapped: false}));
-      sign.name = "garage-brand"; sign.position.set(bay.x, 4.95, 29.98); sign.rotation.y = Math.PI;
+      sign.name = "garage-brand"; sign.position.set(bay.x, 4.95, 29.75); sign.rotation.y = Math.PI;
       this.group.add(sign);
       this.brandSigns.push({bay, canvas, map});
     }

@@ -512,7 +512,7 @@ export class Game {
       this.audio.updateStartSignal(signal, this.race.countdown, SETTINGS.race.countdown);
 
       const snapshot = this.race.snapshot(drive as Input);
-      this.hud.update(dt, snapshot, player, this.race.racers, this.fps);
+      this.hud.update(dt, snapshot, player, this.race.racers, this.captureMode ? NaN : this.fps);
 
       if (snapshot.playerFinished) {
         this.finishDelay += dt;
