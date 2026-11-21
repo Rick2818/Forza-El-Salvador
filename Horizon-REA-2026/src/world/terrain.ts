@@ -80,12 +80,14 @@ export class TerrainField {
   private readonly heights: Float32Array;
   private readonly isSparda: boolean;
   private readonly isDesert: boolean;
+  private readonly isMonzon: boolean;
   private readonly roadSamples: readonly THREE.Vector3[];
   private readonly count = TERRAIN_SEGMENTS + 1;
 
   constructor(track: TrackLike) {
     this.isSparda = track.circuit?.id === "sparda";
     this.isDesert = track.circuit?.id === "sakhir-horizon";
+    this.isMonzon = track.circuit?.id === "monzon";
     this.roadSamples = track.samples;
     // Centre the terrain on the currently selected layout. Monzon is much
     // larger than the original coastal circuits and must not run off the mesh.
@@ -142,11 +144,16 @@ export class TerrainField {
     const ridge = Math.pow(fbm(x * 0.0019 + 4.2, z * 0.0019 - 8.1, 4), 1.35);
     const hills = rise * (ridge * 112 + 18);
     const bumps = fbm(x * 0.012, z * 0.012, 3) * 4.2 * smoothstep(300, 600, r);
-    return (
+    const height = (
       TERRAIN_NEAR_Y +
       (TERRAIN_BASE_Y - TERRAIN_NEAR_Y) * flat +
       (hills + bumps) * flat
     );
+    // Grade the service paddock at track level. The old hill rose through the
+    // pit lane and the closed building, hiding props several metres below it.
+    const service = this.isMonzon ? smoothstep(-100, -35, x) * (1-smoothstep(650, 740, x)) *
+      smoothstep(-45, -5, z) * (1-smoothstep(110, 190, z)) : 0;
+    return height * (1-service) + TERRAIN_NEAR_Y * service;
   }
 
   /** Bilinear sample. Used by trees, rocks and the camera-side props. */

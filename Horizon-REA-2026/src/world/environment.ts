@@ -8,6 +8,7 @@ import { createSuzakaMountain, installSuzakaScenery } from "./suzakaScenery";
 import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
+import { MonzonGarages } from "./monzonGarages";
 
 /**
  * Night-time circuit surroundings: starry dome, analytic moon, layered ridge
@@ -24,6 +25,7 @@ export class Environment {
   private readonly sky: NightSky | null;
   private readonly shadowSize = 34;
   private time = 0;
+  private garages: MonzonGarages | null = null;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
     const isMonzon = track.circuit.id === "monzon";
@@ -102,6 +104,8 @@ export class Environment {
 
     if (isMonzon) {
       scene.add(new MonzonScenery(track, this.terrain).group);
+      this.garages = new MonzonGarages(scene);
+      void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
       scene.add(createSuzakaMountain());
       // Load only editable Blender landmarks. The driveable surface and all
@@ -146,6 +150,7 @@ export class Environment {
   /** Follow the player with the sky dome and the shadow frustum. */
   update(center: THREE.Vector3, dt: number): void {
     this.time += dt;
+    this.garages?.update(center);
     this.sky?.update(center, this.time);
     this.moon.position.copy(center).addScaledVector(this.moonDirection, 140);
     this.moon.target.position.copy(center);
