@@ -48,11 +48,16 @@ export class TurboFlames {
     }
   }
   dispose(): void {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
     this.root.traverse(child => {
       if (!(child instanceof THREE.Mesh)) return;
-      child.geometry.dispose();
-      (child.material as THREE.Material).dispose();
+      geometries.add(child.geometry);
+      const entries = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of entries) materials.add(material);
     });
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
     this.root.removeFromParent();
   }
 }
