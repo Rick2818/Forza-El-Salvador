@@ -30,7 +30,7 @@ try {
       throw Error("V10 mode is not active");
     const source = audio.combustion;
     const ctx = audio.ctx;
-    if (!ctx || !source?.buffer || !audio.enginesBus)
+    if (!ctx || !source?.buffer || !audio.enginesBus || !audio.engineLimiter)
       throw Error("Engine combustion loop was not built");
     const pcm = source.buffer.getChannelData(0);
     const peak = Math.max(...pcm);
@@ -42,7 +42,19 @@ try {
 
     // Recorded from the WebAudio motor bus, intentionally not the race music.
     const destination = ctx.createMediaStreamDestination();
-    audio.enginesBus.connect(destination);
+    // Record the motor AFTER the engine-only compressor, leaving music out.
+    audio.engineLimiter.connect(destination);
+    const meter = ctx.createAnalyser();
+    meter.fftSize = 2048;
+    audio.engineLimiter.connect(meter);
+    const measures = [];
+    const recordLevel = rpm => {
+      const data = new Float32Array(meter.fftSize);
+      meter.getFloatTimeDomainData(data);
+      let peak = 0, sum = 0;
+      for (const v of data) { peak = Math.max(peak, Math.abs(v)); sum += v*v; }
+      measures.push({rpm, peak: Number(peak.toFixed(4)), rms: Number(Math.sqrt(sum/data.length).toFixed(4))});
+    };
     const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
       ? "audio/webm;codecs=opus" : "audio/webm";
     const parts = [];
@@ -53,17 +65,27 @@ try {
     const hold = ms => new Promise(resolve => setTimeout(resolve, ms));
     audio.update(950, .12, 0, 0);
     await hold(550);
+    recordLevel(950);
     audio.update(3000, .55, 75, 0);
     await hold(650);
+    recordLevel(3000);
     audio.update(5800, .95, 155, 0);
     await hold(650);
+    recordLevel(5800);
     audio.update(7800, 1, 220, 0);
     await hold(600);
+    recordLevel(7800);
     audio.update(2800, 0, 120, 0);
     await hold(550);
+    recordLevel(2800);
     recorder.stop();
     await stopped;
-    audio.enginesBus.disconnect(destination);
+    audio.engineLimiter.disconnect(destination);
+    audio.engineLimiter.disconnect(meter);
+    if (measures.length !== 5 || measures.some(m => m.peak >= 1 || m.rms < .01))
+      throw Error("Engine quiet or clipping after limiter " + JSON.stringify(measures));
+    if (measures[3].rms <= measures[0].rms * 1.25)
+      throw Error("Engine does not grow with RPM " + JSON.stringify(measures));
     const blob = new Blob(parts, {type:mimeType});
     if (blob.size < 1200) throw Error("Engine browser demo is missing or empty");
     const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -80,7 +102,8 @@ try {
       sampleRate:ctx.sampleRate,
       oscillators: [audio.oscA?.type, audio.oscB?.type],
       engineVolumes: audio.getVolumes(),
-      durationSeconds:3.0
+      durationSeconds:3.0,
+      postLimiterLevels: measures
     };
   });
   if (errors.length) throw Error("Browser JS errors: " + errors.join("; "));
