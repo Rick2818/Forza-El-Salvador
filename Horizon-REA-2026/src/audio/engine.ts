@@ -336,7 +336,6 @@ export class GameAudio {
   updateRivals(listener: EngineListener, engines: readonly RivalEngineState[]): void {
     const ctx = this.ctx;
     if (!this.started || !ctx || !this.masterGain) return;
-    const active = new Set(engines.map(engine => engine.id));
     for (const [id, voice] of this.rivals) {
       const current = engines.find(engine => engine.id === id);
       if (current && voice.cylinders === this.effectiveCylinders(current.vehicleId)) continue;
