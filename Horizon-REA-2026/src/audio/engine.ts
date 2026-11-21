@@ -176,7 +176,7 @@ export class GameAudio {
     }
     if(this.ctx) {
       this.enginesBus?.gain.setTargetAtTime(this.volumes.engines,this.ctx.currentTime,.05);
-      this.musicBus?.gain.setTargetAtTime(this.victoryActive ? 1 : this.volumes.music,this.ctx.currentTime,.05);
+      this.musicBus?.gain.setTargetAtTime(this.volumes.music,this.ctx.currentTime,.05);
     }
     try { localStorage.setItem("horizon.audio",JSON.stringify(this.volumes)); } catch { /* optional */ }
   }
@@ -469,8 +469,8 @@ export class GameAudio {
     this.victoryActive = true;
     const now = this.ctx.currentTime;
     // 100% victory music bus; never exceed unity. The limiter catches peaks.
-    this.musicBus.gain.setTargetAtTime(1, now, .06);
-    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : .75, now, .08);
+    this.musicBus.gain.setTargetAtTime(this.volumes.music, now, .06);
+    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 1, now, .08);
     if (!this.victoryUrl || typeof Audio === "undefined" || !this.victoryLimiter) {
       this.playOriginalVictory();
       return;
@@ -522,7 +522,7 @@ export class GameAudio {
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.masterGain && this.ctx) {
-      const target = muted ? 0 : (this.victoryActive ? .75 : .55);
+      const target = muted ? 0 : (this.victoryActive ? 1 : .55);
       this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
     }
   }
