@@ -26,6 +26,13 @@ try {
       const tangent = track.tangentAt(index);
       const player = game.race.player.vehicle;
       player.place(position, Math.atan2(tangent.x, tangent.z));
+      // Settle the raycast suspension after moving to the review location.
+      for (let step = 0; step < 60; step++) {
+        for (const racer of game.race.racers) {
+          racer.vehicle.update(1 / 60, {throttle: 0, brake: 0, steer: 0, handbrake: true}, 1);
+        }
+        game.world.step();
+      }
       player.syncVisual();
       game.race.state = "idle";
       game.chase.mode = "chase";
