@@ -69,7 +69,7 @@ try {
   // Pausing must expose the performance report without claiming a captured FPS.
   await page.evaluate(()=>window.__HORIZON_GAME__.pause());
   await page.getByRole('button',{name:'Descargar informe de rendimiento'}).waitFor();
-  await page.getByLabel('Música de salida',{exact:true}).waitFor();
+  await page.getByLabel('Música de victoria',{exact:true}).waitFor();
   if(await page.evaluate(()=>window.__HORIZON_GAME__.performanceReport().frames)!==0)throw Error('Capture contaminated wall-clock performance log');
   await page.close();
  }

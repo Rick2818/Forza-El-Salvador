@@ -1,5 +1,4 @@
-import { StartMusic } from "./startMusic";
-import type { StartSignalPhase } from "../race/startSignal";
+import { VictoryFanfare } from "./victoryMusic";
 export interface AudioVolumes { engines: number; music: number }
 export type EngineSoundProfile = "v10" | "vehiculo";
 
@@ -88,6 +87,7 @@ const ENGINE_CYLINDERS: Record<string, number> = {
 export class GameAudio {
   private volumes: AudioVolumes = {engines:1,music:1};
   private enginesBus: GainNode | null = null;
+  private engineLimiter: DynamicsCompressorNode | null = null;
   private musicBus: GainNode | null = null;
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -106,7 +106,14 @@ export class GameAudio {
   private started = false;
   private electric = false;
   private vehicleId="ferrari-california-t";
-  private startMusic: StartMusic | null = null;
+  private victoryFanfare: VictoryFanfare | null = null;
+  private victoryLimiter: DynamicsCompressorNode | null = null;
+  private victoryFile: File | null = null;
+  private victoryName: string | null = null;
+  private victoryBuffer: AudioBuffer | null = null;
+  private victoryLoading: Promise<void> | null = null;
+  private victorySource: AudioBufferSourceNode | null = null;
+  private victoryActive = false;
   private readonly rivals = new Map<string, RivalVoice>();
 
   constructor() {
@@ -187,6 +194,9 @@ export class GameAudio {
     if (this.oscB) this.oscB.type = "sine";
   }
 
+  /** Dynamics reduction in dB for diagnostics and safe race mixing. */
+  getEngineReduction(): number { return this.engineLimiter?.reduction ?? 0; }
+
   get isMuted(): boolean {
     return this.muted;
   }
@@ -214,8 +224,32 @@ export class GameAudio {
     master.gain.value = this.muted ? 0 : 0.55;
     master.connect(ctx.destination);
     this.masterGain = master;
-    this.enginesBus=ctx.createGain();this.enginesBus.gain.value=this.volumes.engines;this.enginesBus.connect(master);
-    this.musicBus=ctx.createGain();this.musicBus.gain.value=this.volumes.music;this.musicBus.connect(master);
+    // Medium-strong engine mix: compress the entire motor/tyre bus before
+    // the master, leaving the separate start-music bus and volume untouched.
+    // Gentle compression prevents simultaneous rival engines from clipping.
+    this.enginesBus = ctx.createGain();
+    this.enginesBus.gain.value = this.volumes.engines;
+    const engineLimiter = ctx.createDynamicsCompressor();
+    engineLimiter.threshold.value = -16;
+    engineLimiter.knee.value = 18;
+    engineLimiter.ratio.value = 3;
+    engineLimiter.attack.value = .004;
+    engineLimiter.release.value = .16;
+    this.enginesBus.connect(engineLimiter);
+    engineLimiter.connect(master);
+    this.engineLimiter = engineLimiter;
+    // A separate, peak-limited victory bus. No music during the countdown.
+    this.musicBus = ctx.createGain();
+    this.musicBus.gain.value = this.volumes.music;
+    const victoryLimiter = ctx.createDynamicsCompressor();
+    victoryLimiter.threshold.value = -9;
+    victoryLimiter.knee.value = 8;
+    victoryLimiter.ratio.value = 9;
+    victoryLimiter.attack.value = .003;
+    victoryLimiter.release.value = .19;
+    this.musicBus.connect(victoryLimiter);
+    victoryLimiter.connect(master);
+    this.victoryLimiter = victoryLimiter;
 
     // ---- Exhaust: broadband combustion pulses with controlled low mids,
     // plus physical crankshaft body and subtle tonal induction. All sources
@@ -291,6 +325,7 @@ export class GameAudio {
 
     this.skidGain = skidGain;
     this.started = true;
+    this.prepareVictoryAudio();
   }
 
   /** Drive the engine sound from the vehicle state. Called every frame. */
@@ -313,17 +348,19 @@ export class GameAudio {
       this.electric ? 60 + speed * 220 : crankHz, now, .06);
     if (this.engineFilter) {
       this.engineFilter.frequency.setTargetAtTime(
-        this.electric ? 740 : 520 + rev * 1450 + t * 1250, now, .09);
+        this.electric ? 740 : 650 + rev * 1500 + t * 1450, now, .09);
     }
     if (this.combustionGain) this.combustionGain.gain.setTargetAtTime(
-      this.electric ? .02 : .64 + t * .42, now, .1);
+      this.electric ? .02 : .76 + t * .48, now, .1);
     if (this.crankGain) this.crankGain.gain.setTargetAtTime(
-      this.electric ? .08 : .23 + (1 - rev) * .12, now, .1);
+      this.electric ? .08 : .30 + (1 - rev) * .14, now, .1);
     if (this.intakeGain) this.intakeGain.gain.setTargetAtTime(
-      this.electric ? .01 : .04 + t * .12, now, .1);
+      this.electric ? .01 : .06 + t * .16, now, .1);
     if (this.engineGain) {
-      const level = this.electric ? (.03 + t * .08 + speed * .03)
-        : .12 + t * .16 + rev * .11;
+      // +7 to +10 dB in the audible power band, with a clearly audible
+      // idle. Keep the motor below unity gain; compressor catches race peaks.
+      const level = this.electric ? (.04 + t * .09 + speed * .04)
+        : .34 + t * .29 + rev * .18;
       this.engineGain.gain.setTargetAtTime(level, now, .09);
     }
     if (this.skidGain) {
@@ -396,19 +433,109 @@ export class GameAudio {
         Math.max(-1, Math.min(1, (dx * listener.rightX + dz * listener.rightZ) /
           Math.max(5, distance))), now, .08);
       voice.gain.gain.setTargetAtTime(
-        this.muted ? 0 : attenuation * (.025 + throttle * .06 + revs / 9000 * .025), now, .1);
+        this.muted ? 0 : attenuation * (.035 + throttle * .065 + revs / 9000 * .025), now, .1);
     }
   }
 
-  updateStartSignal(phase: StartSignalPhase | null, remaining: number, total: number): void {
-    if (!this.ctx || !this.masterGain) return;
-    if (!this.startMusic && phase) this.startMusic = new StartMusic(this.ctx, this.musicBus!);
-    this.startMusic?.update(phase, remaining, total);
+  /**
+   * Accept a user-selected, locally held licensed audio file. Files are never
+   * uploaded to GitHub or sent to any server; object URLs last this session.
+   * The game does not bundle or redistribute Queen's recording.
+   */
+  setVictoryTrack(file: File | null): boolean {
+    if (file && (file.size > 50 * 1024 * 1024 ||
+        (!file.type.startsWith("audio/") && !/\\.(mp3|ogg|wav|m4a|aac|webm)$/i.test(file.name)))) {
+      return false;
+    }
+    this.stopVictory();
+    this.victoryFile = file;
+    this.victoryBuffer = null;
+    this.victoryName = file?.name ?? null;
+    if (file) this.prepareVictoryAudio();
+    return true;
+  }
+
+  /**
+   * Decode the user's local file with an already unlocked AudioContext.
+   * WebAudio buffer playback at the finish is not subject to HTMLMediaElement
+   * autoplay restrictions. Nothing is transmitted off the user's device.
+   */
+  private prepareVictoryAudio(): void {
+    const file = this.victoryFile, ctx = this.ctx;
+    if (!ctx || !file || this.victoryBuffer || this.victoryLoading) return;
+    const job = (async () => {
+      try {
+        const bytes = await file.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(bytes);
+        if (file === this.victoryFile) this.victoryBuffer = decoded;
+      } catch {
+        // Unsupported codec or corrupt file: fall back to original fanfare.
+      }
+    })();
+    this.victoryLoading = job;
+    void job.finally(() => {
+      if (this.victoryLoading === job) this.victoryLoading = null;
+      if (this.victoryFile && this.victoryFile !== file) this.prepareVictoryAudio();
+    });
+  }
+
+  getVictoryTrackName(): string | null { return this.victoryName; }
+  get isVictoryPlaying(): boolean { return this.victoryActive; }
+
+  private playOriginalVictory(): void {
+    if (!this.ctx || !this.victoryLimiter || !this.victoryActive) return;
+    this.victoryFanfare ??= new VictoryFanfare(this.ctx, this.musicBus!);
+    this.victoryFanfare.play();
+  }
+
+  /** At the result screen, sound the original cue or a local licensed song. */
+  playVictory(): void {
+    this.ensure();
+    if (!this.ctx || !this.musicBus || !this.masterGain) return;
+    this.silence();
+    this.victoryActive = true;
+    const now = this.ctx.currentTime;
+    // 100% victory music bus; never exceed unity. The limiter catches peaks.
+    this.musicBus.gain.setTargetAtTime(this.volumes.music, now, .06);
+    this.masterGain.gain.setTargetAtTime(this.muted ? 0 : 1, now, .08);
+    if (!this.victoryBuffer) {
+      this.prepareVictoryAudio();
+      this.playOriginalVictory();
+      return;
+    }
+    try {
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.victoryBuffer;
+      source.connect(this.musicBus);
+      source.onended = () => {
+        if (this.victorySource === source) this.stopVictory();
+      };
+      this.victorySource = source;
+      source.start();
+    } catch {
+      this.playOriginalVictory();
+    }
+  }
+
+  private stopVictory(): void {
+    this.victoryFanfare?.stop();
+    if (this.victorySource) {
+      const source = this.victorySource;
+      this.victorySource = null;
+      source.onended = null;
+      try { source.stop(); } catch { /* source may already have finished */ }
+      source.disconnect();
+    }
+    this.victoryActive = false;
+    if (this.ctx) {
+      this.musicBus?.gain.setTargetAtTime(this.volumes.music, this.ctx.currentTime, .06);
+      this.masterGain?.gain.setTargetAtTime(this.muted ? 0 : .55, this.ctx.currentTime, .06);
+    }
   }
 
   /** Fade everything out (pause, menu, results) without closing the context. */
   silence(): void {
-    this.startMusic?.silence();
+    this.stopVictory();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.engineGain?.gain.setTargetAtTime(0, now, 0.06);
@@ -419,7 +546,7 @@ export class GameAudio {
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.masterGain && this.ctx) {
-      const target = muted ? 0 : 0.55;
+      const target = muted ? 0 : (this.victoryActive ? 1 : .55);
       this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
     }
   }

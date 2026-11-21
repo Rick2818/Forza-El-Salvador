@@ -4,12 +4,20 @@ import { GameAudio, enginePulseHz, type RivalEngineState } from "./engine";
 class Param {
   value = 0;
   setTargetAtTime(value: number) { this.value = value; }
+  setValueAtTime(value: number) { this.value = value; }
+  linearRampToValueAtTime(value: number) { this.value = value; }
+  exponentialRampToValueAtTime(value: number) { this.value = value; }
 }
 class Node {
   gain = new Param();
   frequency = new Param();
   playbackRate = new Param();
   Q = new Param();
+  threshold = new Param();
+  knee = new Param();
+  ratio = new Param();
+  attack = new Param();
+  release = new Param();
   pan = new Param();
   type = "";
   loop = false;
@@ -17,7 +25,7 @@ class Node {
   stop = vi.fn();
   disconnect = vi.fn();
   connect = vi.fn();
-  start() {}
+  start = vi.fn();
 }
 class Context {
   static current: Context;
@@ -29,13 +37,16 @@ class Context {
   pans: Node[] = [];
   oscillators: Node[] = [];
   bufferSources: Node[] = [];
+  compressors: Node[] = [];
   constructor() { Context.current = this; }
   createGain() { const node = new Node(); this.gains.push(node); return node; }
   createStereoPanner() { const node = new Node(); this.pans.push(node); return node; }
   createOscillator() { const node = new Node(); this.oscillators.push(node); return node; }
   createBiquadFilter() { return new Node(); }
+  createDynamicsCompressor() { const node = new Node(); this.compressors.push(node); return node; }
   createBufferSource() { const node = new Node(); this.bufferSources.push(node); return node; }
   createBuffer() { return {getChannelData: () => new Float32Array(40)}; }
+  decodeAudioData(_data: ArrayBuffer) { return Promise.resolve(this.createBuffer()); }
   resume() { return Promise.resolve(); }
 }
 afterEach(() => vi.unstubAllGlobals());
@@ -139,3 +150,87 @@ it("rebuilds rival cylinder timbre when changing audio profile",()=>{
  expect(ctx.gains.at(-2)!.gain.value).toBe(0);
 });
 
+
+it("raises V10 idle and acceleration to a medium-strong mix with peak control", () => {
+  vi.stubGlobal("window", {AudioContext:Context});
+  const audio = new GameAudio();
+  audio.ensure();
+  const ctx = Context.current;
+  expect(ctx.compressors).toHaveLength(2); // engine bus + separate victory bus
+  expect(ctx.compressors[0].threshold.value).toBe(-16);
+  expect(ctx.compressors[0].ratio.value).toBe(3);
+  const motorGain = ctx.gains[3];
+  const musicBus = ctx.gains[2];
+  audio.update(850, 0, 0, 0);
+  const idle = motorGain.gain.value;
+  expect(idle).toBeGreaterThan(.35);
+  expect(idle).toBeLessThan(.43);
+  audio.update(7800, 1, 200, 0);
+  const full = motorGain.gain.value;
+  expect(full).toBeGreaterThan(.75);
+  expect(full).toBeLessThan(1);
+  expect(full).toBeGreaterThan(idle * 2);
+  expect(musicBus.gain.value).toBe(1);
+  audio.setVolumes({engines: .5, music: .75});
+  expect(ctx.gains[1].gain.value).toBe(.5);
+  expect(musicBus.gain.value).toBe(.75);
+  audio.setMuted(true);
+  expect(ctx.gains[0].gain.value).toBe(0);
+  audio.setMuted(false);
+  expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+});
+
+it("keeps countdown music silent and starts the full-level original victory only at results", () => {
+  vi.stubGlobal("window", {AudioContext:Context});
+  const audio = new GameAudio();
+  audio.ensure();
+  const ctx = Context.current;
+  const oscillatorsBefore = ctx.oscillators.length;
+  expect(audio.isVictoryPlaying).toBe(false);
+  audio.update(4000,.8,100,0);
+  expect(ctx.oscillators.length).toBe(oscillatorsBefore);
+  audio.playVictory();
+  expect(audio.isVictoryPlaying).toBe(true);
+  expect(ctx.oscillators.length).toBeGreaterThan(oscillatorsBefore + 25);
+  expect(ctx.gains[0].gain.value).toBe(1);
+  expect(ctx.gains[2].gain.value).toBe(1);
+  audio.setVolumes({music:.6});
+  expect(ctx.gains[2].gain.value).toBeCloseTo(.6);
+  audio.setMuted(true);
+  expect(ctx.gains[0].gain.value).toBe(0);
+  audio.setMuted(false);
+  expect(ctx.gains[0].gain.value).toBe(1);
+  audio.silence();
+  expect(audio.isVictoryPlaying).toBe(false);
+  expect(ctx.gains[0].gain.value).toBeCloseTo(.55);
+  audio.playVictory();
+  expect(audio.isVictoryPlaying).toBe(true);
+});
+
+it("plays a chosen local audio file from the decoded buffer without publishing it", async () => {
+  vi.stubGlobal("window", {AudioContext:Context});
+  const audio = new GameAudio();
+  const acceptedFile = {
+    name: "licensed-victory.wav",
+    type: "audio/wav",
+    size: 128,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(128))
+  } as File;
+  expect(audio.setVictoryTrack(acceptedFile)).toBe(true);
+  expect(audio.getVictoryTrackName()).toBe("licensed-victory.wav");
+  audio.ensure();
+  await vi.waitFor(() => {
+    expect(Context.current.bufferSources).toHaveLength(2); // combustion and tyre noise
+    expect((audio as unknown as {victoryBuffer:unknown}).victoryBuffer).toBeTruthy();
+  });
+  audio.playVictory();
+  expect(audio.isVictoryPlaying).toBe(true);
+  const played = Context.current.bufferSources.at(-1)!;
+  expect(played.start).toHaveBeenCalledOnce();
+  expect(played.buffer).toBeDefined();
+  expect(audio.setVictoryTrack({name:"huge.wav",size:60*1024*1024,type:"audio/wav"} as File)).toBe(false);
+  audio.silence();
+  expect(played.stop).toHaveBeenCalledOnce();
+  audio.setVictoryTrack(null);
+  expect(audio.getVictoryTrackName()).toBeNull();
+});

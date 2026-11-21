@@ -33,7 +33,7 @@ Solo dos circuitos seleccionables:
 
 Cada carrera tiene un jugador, tres rivales físicos y tres vueltas. **Fácil, Medio y Difícil** cambian ritmo, reacción y presión de adelantamiento. Los rivales frenan según el trazado, buscan espacios y disputan la punta usando los mismos coches físicos. Los parámetros son ajustes del videojuego, no prestaciones reales homologadas.
 
-La salida automática comparte el reloj de carrera entre rojo, amarillo y verde. Los cuatro autos permanecen detenidos hasta el verde. La música original de tensión termina con la señal de salida; los motores del jugador y los rivales se sintetizan con Web Audio. Motores/neumáticos y música tienen controles separados; `M` silencia el conjunto. No se presentan estos perfiles como grabaciones de los motores originales.
+La salida automática comparte el reloj de carrera entre rojo, amarillo y verde. Los cuatro autos permanecen detenidos hasta el verde. La salida es completamente silenciosa musicalmente; al finalizar la carrera se activa una celebración sonora original o el archivo local seleccionado por el jugador; los motores del jugador y los rivales se sintetizan con Web Audio. Motores/neumáticos y música tienen controles separados; `M` silencia el conjunto. No se presentan estos perfiles como grabaciones de los motores originales.
 
 ## Publicidad conceptual en los dos circuitos
 
@@ -64,6 +64,22 @@ La batería `src/world/tracksidePartners.test.ts` verifica el catálogo, los val
 
 La publicación de V7 solo debe considerarse confirmada tras el workflow en GitHub Pages y una petición HTTP satisfactoria al sitio. Los 60 FPS siguen condicionados a una sesión de prueba en hardware real; render SwiftShader de CI no certifica el rendimiento de la laptop.
 
+## Música al terminar la carrera; salida sin música
+
+Se retiró por completo la música de la cuenta regresiva. Las luces roja, amarilla y verde siguen funcionando, sin música. Al mostrar el resultado de la carrera, se activa la celebración musical original `VictoryFanfare` con volumen alto, pero limitado contra saturación. El control del menú se llama **Música de victoria** y empieza en 100 %; el botón M continúa silenciando todo.
+
+La canción comercial **«We Are the Champions» de Queen** no está incluida en el repositorio, por estar protegida por derechos de autor. En el menú **Sonido → Audio de victoria propio** el jugador puede seleccionar un archivo local de audio que tenga derecho a usar: se reproduce al final sin subirlo al servidor ni incluirlo en la distribución pública. El archivo se mantiene solo durante la sesión del navegador; tras recargar o cambiar de circuito puede ser necesario seleccionarlo nuevamente. Sin archivo seleccionado se usa el tema de victoria original. No se almacena ni transmite la música a GitHub.
+
+Pruebas: unidad para el tema original, comprobación de ausencia de música de cuenta regresiva, semáforo sincronizado, activación de celebración al llegar a resultados, respeto de mute y limitación de picos.
+
+## Ajuste de volumen medio-fuerte del V10
+
+Se elevó la ganancia dinámica del motor desde el ralentí hasta altas RPM para corregir el volumen excesivamente débil: el nivel programado pasa de aproximadamente 0.14 a 0.36 en ralentí y de 0.39 a 0.81 a plena carga, antes del control del usuario. Se amplió moderadamente la presencia de combustión, bajos y admisión; un `DynamicsCompressorNode` en el bus de motores/neumáticos protege los picos al juntarse varios vehículos. El mezclador de la celebración se controla por separado y tiene limitador de picos.
+
+El ajuste **Motores y neumáticos** continúa siendo independiente y respeta el valor guardado por el jugador, incluido 0 %; el juego no sube por sorpresa un volumen que el usuario haya reducido manualmente. Para escucharlo, activar `V10 deportivo (sintetizado)`, ajustar Motores y neumáticos al 80–100 % y comprobar que el botón M no esté en silencio.
+
+`tools/review-engine-audio.mjs` mide RMS y picos del motor procesado a 950, 3000, 5800, 7800 y 2800 RPM, captura una muestra WebM y comprueba la ausencia de silencio y saturación. Es una prueba de salida digital, no una medición de volumen acústico real de los altavoces.
+
 ## Sonido deportivo V10 (perfil opcional; audio procedural)
 
 El sonido anterior estaba basado en ondas diente de sierra y cuadradas, lo que producía un zumbido tipo rasuradora. El nuevo motor de audio crea un **buffer periódico de impulsos de combustión** según cilindros/RPM, un componente grave de cigüeñal, una capa de admisión filtrada y cambios suaves de volumen/filtro al acelerar o desacelerar. También aplica atenuación espacial y Doppler limitado a los tres rivales.
@@ -72,7 +88,7 @@ Desde el menú de inicio o pausa, **Sonido del motor** permite escoger:
 - **V10 deportivo (sintetizado):** el mismo carácter de diez cilindros para todos los autos; es un efecto estético de carreras, seleccionado inicialmente.
 - **Perfil por vehículo (sintetizado):** conserva las configuraciones aproximadas por motor (Ferrari V8, Porsche seis cilindros, Bugatti W16 y Mercedes V8).
 
-El ajuste se guarda localmente cuando el navegador lo permite. Los motores/neumáticos mantienen su volumen independiente de la música de salida. La producción no contiene audios obtenidos de videos de terceros.
+El ajuste se guarda localmente cuando el navegador lo permite. Los motores/neumáticos mantienen su volumen independiente de la música de victoria. La producción no contiene audios obtenidos de videos de terceros.
 
 **Limitación fundamental:** los sonidos son procedurales, NO grabaciones de un V10 real; todavía se necesita evaluación auditiva en altavoces/auriculares y, para un simulador con grabación auténtica, muestras grabadas y licenciadas con capas de ralentí, carga, descarga y altas RPM. La respuesta del audio sí depende de RPM, acelerador, distancia y cambio de relación. No atribuir el sonido del V10 a los fabricantes de los cuatro vehículos.
 
@@ -137,7 +153,7 @@ Pruebas de velocidad máxima en un plano, 180 segundos de simulación: Ferrari *
 La tarea `.github/workflows/monzon-garages-review.yml` ejecuta pruebas y compilación, abre Chrome con WebGL/SwiftShader y genera:
 
 - `review/quality/`: recta, curva, chicana, boxes, puente, pinos y vistas de los cuatro autos en ambos circuitos; métricas de cada captura y resultados de carrera.
-- `review/garages/`: talleres, interior, vista de conducción, señales roja/amarilla/verde y muestra original de música WAV.
+- `review/garages/`: talleres, interior, vista de conducción, señales roja/amarilla/verde, silencio de salida y comprobación de celebración al finalizar.
 
 El artefacto **monzon-garages-review** permite revisar la rama sin publicar Pages. Los archivos de `review/` se generan durante la verificación; no se confunden con fotografías de referencia.
 
@@ -189,7 +205,7 @@ Las marcas y nombres identifican los vehículos y talleres; el juego no está af
 | `src/race/` | Carrera, vueltas, tiempos y clasificación |
 | `src/render/` | Cámaras, efectos, agrupación y medición de rendimiento |
 | `src/ui/` | Menú, selección, pausa y HUD |
-| `src/audio/` | Motores, rivales y música de salida |
+| `src/audio/` | Motores, rivales y música original de victoria |
 | `tools/` | Construcción de activos y capturas reproducibles |
 | `tests/` | Validaciones con modelos GLB y Rapier |
 
