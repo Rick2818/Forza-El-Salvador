@@ -11,7 +11,6 @@ try {
   await page.getByRole("button", {name: "Iniciar carrera", exact: true}).click();
   await page.evaluate(() => window.__HORIZON_GAME__.prepareCapture());
   await mkdir("review/monzon", {recursive: true});
-  await page.addStyleTag({content: "#countdown, #toast { visibility: hidden !important; }"});
   for (const [name, metres] of [["recta", 340], ["chicana", 1000], ["curva", 1800], ["boxes", 150]]) {
     const report = await page.evaluate(({name, metres}) => {
       const game = window.__HORIZON_GAME__;
@@ -34,12 +33,13 @@ try {
       game.chase.update(1 / 60, player, 0);
       game.environment.update(position, 1);
       game.renderer.render(game.scene, game.camera);
-      return {position: position.toArray(), drawCalls: game.renderer.info.render.calls,
+      return {image: game.renderer.domElement.toDataURL("image/png"), position: position.toArray(), drawCalls: game.renderer.info.render.calls,
         triangles: game.renderer.info.render.triangles, width: game.renderer.domElement.width,
         height: game.renderer.domElement.height};
     }, {name, metres});
-    await page.screenshot({path: "review/monzon/" + name + ".png"});
-    await writeFile("review/monzon/" + name + ".json", JSON.stringify(report, null, 2));
+    const {image, ...metrics} = report;
+    await writeFile("review/monzon/" + name + ".png", Buffer.from(image.split(",")[1], "base64"));
+    await writeFile("review/monzon/" + name + ".json", JSON.stringify(metrics, null, 2));
   }
   await writeFile("review/monzon/errors.json", JSON.stringify(errors));
   if (errors.length) throw Error(errors.join("\n"));
