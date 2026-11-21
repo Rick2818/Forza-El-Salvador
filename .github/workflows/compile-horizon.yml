@@ -31,6 +31,8 @@ jobs:
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - name: Instalar dependencias
         run: npm ci
+      - name: Probar física, IA, tráfico y audio
+        run: npm test
       - name: Compilar TypeScript y Vite
         run: npm run build
       - name: Comprobar archivos resultantes
