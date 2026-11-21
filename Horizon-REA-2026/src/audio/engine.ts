@@ -9,6 +9,10 @@ export type EngineSoundProfile = "v10" | "vehiculo";
  */
 const REF_RPM = 3600;
 const ENGINE_IDLE = 850;
+// The earlier 0.55 master attenuated an already-compressed engine too much.
+// Louder racing mix with a separate soft peak guard; victory stays independent.
+export const RACING_MASTER_LEVEL = 0.82;
+export const ENGINE_OUTPUT_BOOST = 2.4;
 export function enginePulseHz(rpm: number, cylinders: number): number {
   return Math.max(ENGINE_IDLE, Math.min(10500, rpm)) / 60 * cylinders / 2;
 }
@@ -88,6 +92,8 @@ export class GameAudio {
   private volumes: AudioVolumes = {engines:1,music:1};
   private enginesBus: GainNode | null = null;
   private engineLimiter: DynamicsCompressorNode | null = null;
+  private engineOutputBoost: GainNode | null = null;
+  private enginePeakGuard: DynamicsCompressorNode | null = null;
   private musicBus: GainNode | null = null;
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -195,7 +201,10 @@ export class GameAudio {
   }
 
   /** Dynamics reduction in dB for diagnostics and safe race mixing. */
-  getEngineReduction(): number { return this.engineLimiter?.reduction ?? 0; }
+  getEngineReduction(): number {
+    return (this.engineLimiter?.reduction ?? 0) + (this.enginePeakGuard?.reduction ?? 0);
+  }
+  getEngineOutputBoost(): number { return this.engineOutputBoost?.gain.value ?? ENGINE_OUTPUT_BOOST; }
 
   get isMuted(): boolean {
     return this.muted;
@@ -221,7 +230,7 @@ export class GameAudio {
     this.ctx = ctx;
 
     const master = ctx.createGain();
-    master.gain.value = this.muted ? 0 : 0.55;
+    master.gain.value = this.muted ? 0 : RACING_MASTER_LEVEL;
     master.connect(ctx.destination);
     this.masterGain = master;
     // Medium-strong engine mix: compress the entire motor/tyre bus before
@@ -236,8 +245,22 @@ export class GameAudio {
     engineLimiter.attack.value = .004;
     engineLimiter.release.value = .16;
     this.enginesBus.connect(engineLimiter);
-    engineLimiter.connect(master);
+    // +7.6 dB post-compression makeup gain. The second compressor's
+    // steep ratio confines boosted engine peaks before the master bus.
+    const outputBoost = ctx.createGain();
+    outputBoost.gain.value = ENGINE_OUTPUT_BOOST;
+    const peakGuard = ctx.createDynamicsCompressor();
+    peakGuard.threshold.value = -7;
+    peakGuard.knee.value = 4;
+    peakGuard.ratio.value = 18;
+    peakGuard.attack.value = .003;
+    peakGuard.release.value = .12;
+    engineLimiter.connect(outputBoost);
+    outputBoost.connect(peakGuard);
+    peakGuard.connect(master);
     this.engineLimiter = engineLimiter;
+    this.engineOutputBoost = outputBoost;
+    this.enginePeakGuard = peakGuard;
     // A separate, peak-limited victory bus. No music during the countdown.
     this.musicBus = ctx.createGain();
     this.musicBus.gain.value = this.volumes.music;
@@ -529,7 +552,7 @@ export class GameAudio {
     this.victoryActive = false;
     if (this.ctx) {
       this.musicBus?.gain.setTargetAtTime(this.volumes.music, this.ctx.currentTime, .06);
-      this.masterGain?.gain.setTargetAtTime(this.muted ? 0 : .55, this.ctx.currentTime, .06);
+      this.masterGain?.gain.setTargetAtTime(this.muted ? 0 : RACING_MASTER_LEVEL, this.ctx.currentTime, .06);
     }
   }
 
@@ -546,7 +569,7 @@ export class GameAudio {
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.masterGain && this.ctx) {
-      const target = muted ? 0 : (this.victoryActive ? 1 : .55);
+      const target = muted ? 0 : (this.victoryActive ? 1 : RACING_MASTER_LEVEL);
       this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
     }
   }
