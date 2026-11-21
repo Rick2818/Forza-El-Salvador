@@ -174,9 +174,19 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
       x1, top, z1, x2, top, z2);
     const v0 = 1 - (board.brandIndex + 1) / count + .002;
     const v1 = 1 - board.brandIndex / count - .002;
-    uv.push(0, v0, 1, v0, 0, v1, 1, v1);
+    // Print faces INTO the circuit. Reading the back of a DoubleSide
+    // billboard mirrors the lettering, so orient both winding and U to road.
+    if (board.side === -1) {
+      uv.push(0, v0, 1, v0, 0, v1, 1, v1);
+    } else {
+      uv.push(1, v0, 0, v0, 1, v1, 0, v1);
+    }
     const start = i * 4;
-    indices.push(start, start + 1, start + 2, start + 1, start + 3, start + 2);
+    if (board.side === -1) {
+      indices.push(start, start + 1, start + 2, start + 1, start + 3, start + 2);
+    } else {
+      indices.push(start, start + 2, start + 1, start + 1, start + 2, start + 3);
+    }
 
     rotation.setFromAxisAngle(up, -Math.atan2(board.tangentZ, board.tangentX));
     translation.set(board.x, board.y + 2 + BOARD_HEIGHT / 2, board.z);
@@ -201,7 +211,7 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   const panelMaterial = new THREE.MeshBasicMaterial({
-    map: atlas, side: THREE.DoubleSide, toneMapped: false
+    map: atlas, side: THREE.FrontSide, toneMapped: false
   });
   const banners = new THREE.Mesh(geometry, panelMaterial);
   banners.name = "partner-brand-billboards";
@@ -275,6 +285,12 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
       const t = track.tangents[index];
       panel.position.addScaledVector(t, -.135);
       group.add(panel);
+      // Second, correctly oriented face for spectators on the other side.
+      const back = panel.clone();
+      back.name = "partner-gantry-banner-reverse";
+      back.rotation.y += Math.PI;
+      back.position.addScaledVector(t, .27);
+      group.add(back);
     }
     break;
   }
