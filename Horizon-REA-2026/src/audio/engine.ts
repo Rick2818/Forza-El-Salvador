@@ -188,6 +188,9 @@ export class GameAudio {
     if (this.oscB) this.oscB.type = "sine";
   }
 
+  /** Dynamics reduction in dB for diagnostics and safe race mixing. */
+  getEngineReduction(): number { return this.engineLimiter?.reduction ?? 0; }
+
   get isMuted(): boolean {
     return this.muted;
   }
