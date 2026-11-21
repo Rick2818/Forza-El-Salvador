@@ -15,7 +15,7 @@
     "tuning": {
       "power": 8.5,
       "mass": 1,
-      "topSpeed": 96,
+      "topSpeed": 89.408,
       "grip": 1,
       "steer": 0.52
     },
@@ -40,7 +40,7 @@
     "tuning": {
       "power": 1.18,
       "mass": 1.24,
-      "topSpeed": 98,
+      "topSpeed": 89.408,
       "grip": 1.02,
       "steer": 0.52
     },
@@ -65,7 +65,7 @@
     "tuning": {
       "power": 1.22,
       "mass": 0.94,
-      "topSpeed": 103,
+      "topSpeed": 89.408,
       "grip": 1.02,
       "steer": 0.52
     },
@@ -90,7 +90,7 @@
     "tuning": {
       "power": 13,
       "mass": 1.2,
-      "topSpeed": 110,
+      "topSpeed": 102.8192,
       "grip": 1,
       "steer": 0.52
     },
@@ -115,7 +115,7 @@
     "tuning": {
       "power": 8.5,
       "mass": 1.01,
-      "topSpeed": 96,
+      "topSpeed": 89.408,
       "grip": 1,
       "steer": 0.52
     },
@@ -140,7 +140,7 @@
     "tuning": {
       "power": 1.1,
       "mass": 1.03,
-      "topSpeed": 98,
+      "topSpeed": 89.408,
       "grip": 1,
       "steer": 0.52
     },
@@ -165,7 +165,7 @@
     "tuning": {
       "power": 8.5,
       "mass": 1.06,
-      "topSpeed": 96,
+      "topSpeed": 89.408,
       "grip": 1.02,
       "steer": 0.52
     },
