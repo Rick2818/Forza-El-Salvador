@@ -230,7 +230,8 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
   // start-light gantry remains unobstructed and is not replaced.
   const offset = track.barrierLateralOffset + 3.7;
   for (let attempt = 0; attempt < 12; attempt++) {
-    const index = (track.startIndex + Math.round((150 + attempt * 28) / track.segmentLength)) % track.samples.length;
+    const distance = (track.circuit.id === "monzon" ? 750 : 150) + attempt * 28;
+    const index = (track.startIndex + Math.round(distance / track.segmentLength)) % track.samples.length;
     const p = track.samples[index], r = track.rights[index];
     if (!p || !r) continue;
     const leftX = p.x - r.x * offset, leftZ = p.z - r.z * offset;
