@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { SELECTED_VEHICLES } from "./roster";
@@ -230,6 +231,44 @@ export function createSelectedVisual(id: string): CarVisual {
     authored.position.set(0, 0, 0);
     return { steer, spin };
   });
+  // A rigid body and each wheel spin independently. Batch only within those
+  // parts, preserving every vertex, normal, UV, material and live wheel pivot.
+  const owned: THREE.BufferGeometry[] = [];
+  for (const part of [bodyRoot, ...wheels.map(wheel => wheel.spin)]) {
+    part.updateWorldMatrix(true, true);
+    const inverse = part.matrixWorld.clone().invert();
+    const bins = new Map<string, THREE.Mesh[]>();
+    part.traverse(object => {
+      if (!(object instanceof THREE.Mesh) || Array.isArray(object.material) ||
+          object.material.transparent || object instanceof THREE.SkinnedMesh) return;
+      // Keep the named, approved Ferrari rear details individually inspectable.
+      if (/^(Ferrari_rear_brake_ring|Sculpted_rear_valance)/.test(object.name)) return;
+      const attributes = Object.keys(object.geometry.attributes).sort().map(name => {
+        const a = object.geometry.getAttribute(name);
+        return `${name}:${a.itemSize}:${a.normalized}`;
+      }).join("/");
+      const key = `${object.material.uuid}/${!!object.geometry.index}/${attributes}/${object.castShadow}/${object.receiveShadow}`;
+      const bin = bins.get(key) ?? []; bin.push(object); bins.set(key, bin);
+    });
+    for (const meshes of bins.values()) {
+      if (meshes.length < 2) continue;
+      const geometries = meshes.map(mesh => mesh.geometry.clone().applyMatrix4(
+        new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld)));
+      const geometry = mergeGeometries(geometries, false);
+      geometries.forEach(g => g.dispose());
+      if (!geometry) continue;
+      geometry.computeBoundingSphere(); owned.push(geometry);
+      const merged = new THREE.Mesh(geometry, meshes[0].material);
+      merged.name = "rigid-vehicle-batch";
+      merged.castShadow = meshes[0].castShadow; merged.receiveShadow = meshes[0].receiveShadow;
+      for (const mesh of meshes) {
+        for (const child of [...mesh.children]) part.attach(child);
+        mesh.removeFromParent();
+      }
+      part.add(merged);
+    }
+  }
+  root.userData.ownedBatchGeometry = owned;
   return { root, bodyRoot, wheels, paint, taillightMat, headlightMat };
 }
 
@@ -242,5 +281,6 @@ export function disposeSelectedVisual(visual: CarVisual): void {
     }
   });
   for (const mat of materials) mat.dispose();
+  for (const geometry of visual.root.userData.ownedBatchGeometry ?? []) geometry.dispose();
   visual.root.removeFromParent();
 }

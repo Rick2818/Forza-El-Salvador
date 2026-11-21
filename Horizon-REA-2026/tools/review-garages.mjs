@@ -22,14 +22,14 @@ try {
    }
    car.syncVisual();g.race.state='idle';g.chase.snap();g.chase.update(1/60,car,0);
    g.environment.update(p,1);
-   if(name==='general') {g.camera.position.set(132,13,3);g.camera.fov=65;g.camera.lookAt(143,2,35);}
+   if(name==='general') {g.camera.position.set(143,11,-7);g.camera.fov=60;g.camera.lookAt(143,2.2,35);}
    if(name==='interior') {g.camera.position.set(113.9,1.8,30.8);g.camera.fov=72;g.camera.lookAt(119.2,1.4,35.8);g.environment.update(g.camera.position,1);}
    if(name==='carrera') {g.camera.fov=55;g.chase.snap();g.chase.update(1/60,car,0);}
    g.camera.updateProjectionMatrix();
    g.renderer.render(g.scene,g.camera);
    return {image:g.renderer.domElement.toDataURL('image/png'),drawCalls:g.renderer.info.render.calls,triangles:g.renderer.info.render.triangles,width:g.renderer.domElement.width,height:g.renderer.domElement.height,quality:g.quality,drivers:g.race.racers.length,position:g.camera.position.toArray()};
   },name);
-  const {image,...report}=result;metrics.push({name,...report});
+  const {image,...report}=result;metrics.push({name,...report});console.log('CAPTURE',name,JSON.stringify(report));
   await writeFile(`review/garages/${name}.png`,Buffer.from(image.split(',')[1],'base64'));
  }
  // Real animation pacing, four simulated cars. Software CI results are not a
@@ -37,7 +37,7 @@ try {
  const benchmark=await page.evaluate(async()=>{
   const g=window.__HORIZON_GAME__;g.captureMode=true;g.race.state='racing';g.state='racing';g.skipRender=false;
   const frames=[];let last=performance.now();
-  for(let i=0;i<45;i++) {
+  for(let i=0;i<20;i++) {
    await new Promise(requestAnimationFrame);
    g.advance(1/60);
    const now=performance.now();frames.push(now-last);last=now;

@@ -35,9 +35,11 @@ def cyl(name,a,b,r,material,detail=False,vertices=12):
     a,b=Vector(a),Vector(b);delta=b-a
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices,radius=r,depth=delta.length,location=(a+b)/2)
     o=bpy.context.object;o.rotation_euler=delta.to_track_quat('Z','Y').to_euler()
+    for poly in o.data.polygons:poly.use_smooth=len(poly.vertices)==4
     return finish(o,name,material,detail)
 def torus(name,loc,major,minor,material,rotation=(0,0,0),detail=False):
     bpy.ops.mesh.primitive_torus_add(major_radius=major,minor_radius=minor,major_segments=24,minor_segments=8,location=loc,rotation=rotation)
+    for poly in bpy.context.object.data.polygons:poly.use_smooth=True
     return finish(bpy.context.object,name,material,detail)
 
 # Right wall: workbench, cabinets and recognisable drawer trolley.
@@ -87,6 +89,7 @@ for level in [0,1]:
   z=.63+level*1.03;y=-4.46
   torus('spare-tire',(x,y,z),.285,.105,rubber,(math.pi/2,0,0))
   torus('rim-lip',(x,y+.10,z),.225,.02,steel,(math.pi/2,0,0))
+  for groove in [-.055,.055]:torus('tread-groove',(x,y+groove,z),.384,.007,dark,(math.pi/2,0,0),True)
   cyl('wheel-hub',(x,y-.11,z),(x,y+.12,z),.065,steel,vertices=10)
   for spoke in range(5):
    t=spoke*2*math.pi/5
@@ -112,6 +115,8 @@ ex,ey=-1.65,-2.4
 box('engine-stand-foot',(ex,ey,.11),(1.05,.95,.12),red)
 cyl('engine-stand-column',(ex,ey,.16),(ex,ey,.78),.075,red)
 box('engine-crankcase',(ex,ey,.94),(.66,.88,.38),dark,bevel=.055)
+for x in [ex-.44,ex+.44]:
+ for y in [ey-.35,ey+.35]:cyl('engine-stand-caster',(x,y-.035,.10),(x,y+.035,.10),.10,rubber,True,10)
 for side in [-1,1]:
  bank=box('V8-cylinder-bank',(ex+side*.26,ey,1.16),(.35,.96,.4),steel,bevel=.035);bank.rotation_euler[1]=side*.44
  cover=box('V8-valve-cover',(ex+side*.31,ey,1.40),(.28,1.02,.12),red,bevel=.04);cover.rotation_euler[1]=side*.44
@@ -123,6 +128,8 @@ for side in [-1,1]:
 box('intake-plenum',(ex,ey,1.53),(.25,.73,.20),steel,bevel=.035)
 cyl('throttle-body',(ex,ey+.36,1.54),(ex,ey+.55,1.54),.09,dark)
 cyl('alternator',(ex+.39,ey+.42,1.01),(ex+.39,ey+.56,1.01),.12,steel)
+for side in [-1,1]:
+ for z in [.97,1.04,1.11]:box('block-cooling-rib',(ex+side*.34,ey,z),(.025,.72,.024),steel,True)
 # Freestanding transmission, exhaust and brake rotors on a parts table.
 box('parts-table',(1.35,-6.8,.86),(2.4,.9,.08),steel)
 for x in [.3,2.4]:
@@ -147,7 +154,7 @@ for detail in [False,True]:
   bpy.context.view_layer.objects.active=objects[0];bpy.ops.object.join()
   obj=bpy.context.object;obj.name=('Detail_' if detail else 'Large_')+material.name
   bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
-  for poly in obj.data.polygons:poly.use_smooth=False
+
 root=os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))
 os.makedirs(os.path.join(root,'public/scenery'),exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=os.path.join(root,'public/scenery/monzon-garage-kit.glb'),export_format='GLB')

@@ -1,6 +1,29 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { batchStaticScenery } from "../render/staticBatch";
+import { makeRng } from "../core/mathx";
+
+function workshopFloorMap(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext("2d")!, rng = makeRng(6128);
+  ctx.fillStyle = "#9b9f9c"; ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 14000; i++) {
+    ctx.fillStyle = `rgba(${rng() > .5 ? "255,255,255" : "30,35,33"},.035)`;
+    ctx.fillRect(rng()*512, rng()*512, 1+rng()*2, 1+rng()*2);
+  }
+  ctx.strokeStyle = "rgba(35,43,40,.18)"; ctx.lineWidth = 1;
+  for (let i = 0; i <= 512; i += 128) {
+    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,512); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(512,i); ctx.stroke();
+  }
+  for (let i = 0; i < 30; i++) {
+    ctx.strokeStyle = "rgba(30,34,32,.055)"; ctx.lineWidth = 1+rng()*3;
+    const x = rng()*512, y = rng()*512;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+12+rng()*40,y+rng()*10); ctx.stroke();
+  }
+  const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace;
+  return map;
+}
 
 export const GARAGE_LAYOUT = [
   { name: "FERRARI", x: 118, color: 0xb41428 },
@@ -20,7 +43,7 @@ export class MonzonGarages {
   constructor(scene: THREE.Scene) {
     this.group.name = "monzon-open-garages";
     const concrete = new THREE.MeshStandardMaterial({color: 0x8e9899, roughness: .88});
-    const floor = new THREE.MeshStandardMaterial({color: 0x505b5c, roughness: .78});
+    const floor = new THREE.MeshStandardMaterial({color: 0x87928b, map: workshopFloorMap(), roughness: .84});
     const metal = new THREE.MeshStandardMaterial({color: 0x313d43, metalness: .5, roughness: .45});
     const markings = new THREE.MeshBasicMaterial({color: 0xc9b96a, toneMapped: false});
     const box = (name: string, x: number, y: number, z: number, w: number, h: number, d: number, material: THREE.Material) => {
@@ -54,10 +77,11 @@ export class MonzonGarages {
     }
     batchStaticScenery(this.group);
     scene.add(this.group);
-    // Only two nearby workshop lights are active, with no shadow maps. Their
+    // Four tightly bounded workshop lights use no shadow maps. Their
     // range ends before the racing asphalt, preserving the approved car paint.
-    for (let i = 0; i < 2; i++) {
-      const light = new THREE.PointLight(0xfff1df, 180, 24, 2);
+    for (const bay of GARAGE_LAYOUT) {
+      const light = new THREE.PointLight(0xfff1df, 140, 18, 2);
+      light.position.set(bay.x, 3.8, 35);
       light.castShadow = false; this.lights.push(light); scene.add(light);
     }
     this.update(new THREE.Vector3(140, 0, 0));
@@ -86,10 +110,8 @@ export class MonzonGarages {
   }
 
   update(position: THREE.Vector3): void {
-    const closest = [...GARAGE_LAYOUT].sort((a, b) => Math.abs(a.x-position.x) - Math.abs(b.x-position.x));
     this.lights.forEach((light, i) => {
-      light.position.set(closest[i].x, 3.8, 35);
-      light.intensity = Math.abs(closest[i].x-position.x) < 160 ? 180 : 0;
+      light.intensity = Math.abs(GARAGE_LAYOUT[i].x-position.x) < 160 ? 140 : 0;
     });
     if (position.distanceToSquared(this.lastEquipmentPosition) < 9) return;
     const matrix = new THREE.Matrix4();

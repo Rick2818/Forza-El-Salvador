@@ -82,6 +82,14 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
   for (const design of VEHICLE_DESIGNS) {
     it(`${design.id}: correct pivots, bounded geometry and independent brake materials`, () => {
       const a = createSelectedVisual(design.id), b = createSelectedVisual(design.id);
+      const raw = readFileSync(new URL(`../public/models/selected/${design.id}.glb`, import.meta.url));
+      const source = JSON.parse(raw.subarray(20, 20 + raw.readUInt32LE(12)).toString());
+      const expectedTriangles = source.nodes.reduce((sum, node) => sum + (node.mesh === undefined ? 0 :
+        source.meshes[node.mesh].primitives.reduce((n, primitive) => n + source.accessors[primitive.indices].count / 3, 0)), 0);
+      let triangles = 0;
+      a.root.traverse(object => { if (object.isMesh) triangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3; });
+      // Batching must preserve every triangle from the approved GLB.
+      expect(triangles).toBe(expectedTriangles);
       expect(a.wheels).toHaveLength(4);
       expect(a.taillightMat).not.toBe(b.taillightMat);
       const mounts = wheelConnections(design.id);
