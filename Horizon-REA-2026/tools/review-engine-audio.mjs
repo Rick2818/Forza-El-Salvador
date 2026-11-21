@@ -93,6 +93,19 @@ try {
     await recordLevel(2800);
     recorder.stop();
     await stopped;
+
+    // QA of player RPM response must exclude the three AI engine voices;
+    // they can remain loud during a forced physics pause and dominate the
+    // combined mix, making idle look louder than redline.
+    audio.silence();
+    await hold(240);
+    audio.update(950, .12, 0, 0);
+    await hold(600);
+    await recordLevel(950);
+    audio.update(7800, 1, 220, 0);
+    await hold(600);
+    await recordLevel(7800);
+    const playerOnly = measures.splice(5);
     audio.masterGain.disconnect(destination);
     audio.masterGain.disconnect(meter);
     if (measures.length !== 5 || measures.some(m => m.peak >= .99 || m.rms < .07))
@@ -108,8 +121,9 @@ try {
     if (gainRatios.idle < 1.50 || gainRatios.redline < 1.50)
       throw Error("Motor output is not +50% above previous measured mix " +
         JSON.stringify({gainRatios, measures}));
-    if (measures[3].rms <= measures[0].rms * 1.25)
-      throw Error("Engine does not grow with RPM " + JSON.stringify(measures));
+    if (playerOnly.length !== 2 || playerOnly[1].rms <= playerOnly[0].rms * 1.25)
+      throw Error("Player motor does not grow with RPM when rivals are muted " +
+        JSON.stringify(playerOnly));
     const blob = new Blob(parts, {type:mimeType});
     if (blob.size < 1200) throw Error("Engine browser demo is missing or empty");
     const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -127,7 +141,7 @@ try {
       oscillators: [audio.oscA?.type, audio.oscB?.type],
       engineVolumes: audio.getVolumes(),
       durationSeconds:3.0,
-      audibleMasterLevels: measures, gainRatios,
+      audibleMasterLevels: measures, gainRatios, playerOnly,
       outputBoost: audio.getEngineOutputBoost()
     };
   });
