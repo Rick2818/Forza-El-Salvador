@@ -157,21 +157,28 @@ html, body {
 }
 
 #countdown {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 168px;
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  color: #fff;
-  text-shadow: 0 0 80px rgba(255, 90, 31, 0.75), 0 20px 60px rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  pointer-events: none;
+  position: absolute; inset: 0; display: grid; place-items: center;
+  opacity: 0; transition: opacity .12s ease; pointer-events: none; z-index: 15;
 }
 #countdown.show { opacity: 1; }
-#countdown.pop { transform: scale(1.18); }
+.start-signal {
+  width: min(570px, 85vw); padding: 20px 26px 18px;
+  border: 2px solid #566069; border-radius: 26px;
+  background: linear-gradient(145deg, rgba(29,36,42,.98), rgba(5,9,13,.97));
+  box-shadow: 0 14px 45px #0009; text-align: center; color: #edf2f1;
+}
+.start-signal-title { font-size: 14px; font-weight: 800; letter-spacing: .2em; }
+.start-signal-lamps { display: flex; justify-content: center; gap: clamp(15px, 3vw, 32px); margin: 20px 0; }
+.start-lamp { width: clamp(65px, 9vw, 118px); aspect-ratio: 1; border: 7px solid #0a1015; border-radius: 50%;
+  background: #131c22; box-shadow: inset 0 4px 12px #000a, 0 0 0 1px #4c555e;
+}
+[data-phase="red"] .start-lamp.red { background: radial-gradient(circle at 38% 32%, #ffb1a7, #ef241d 48%, #9c0d12); box-shadow: 0 0 28px #ff302d55; }
+[data-phase="yellow"] .start-lamp.yellow { background: radial-gradient(circle at 38% 32%, #fff6af, #ffc51b 48%, #a65b04); box-shadow: 0 0 28px #ffd82a55; }
+[data-phase="green"] .start-lamp.green { background: radial-gradient(circle at 38% 32%, #d6ffbb, #39d841 48%, #087c32); box-shadow: 0 0 28px #37ed5755; }
+.start-signal-label { font-size: clamp(24px, 4vw, 38px); font-weight: 900; letter-spacing: .08em; }
+[data-phase="red"] .start-signal-label { color: #ff5b51; }
+[data-phase="yellow"] .start-signal-label { color: #ffdc5c; }
+[data-phase="green"] .start-signal-label { color: #7dff8b; }
 
 #toast {
   position: absolute;
@@ -561,3 +568,9 @@ button.difficulty-btn.is-active {
   object-fit: contain; background-color: #090e15;
 }
 .vehicle-pick-no-photo { display: grid; place-items: center; font-size: 28px; }
+
+.audio-panel { border:1px solid #334352; border-radius:12px; padding:14px 18px; margin:22px 0; color:#ced8e5; }
+.audio-panel legend { padding:0 8px; font-weight:700; }
+.audio-panel label { display:grid; grid-template-columns:minmax(140px,1fr) minmax(90px,2fr) 48px; align-items:center; gap:12px; margin:10px 0; }
+.audio-panel input { width:100%; accent-color:#ff824f; }
+.audio-panel output { text-align:right; font-variant-numeric:tabular-nums; }

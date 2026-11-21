@@ -10,6 +10,8 @@ const MODE_ORDER: CameraMode[] = ["chase", "hood", "wide"];
 const _forward = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _look = new THREE.Vector3();
+const _position = new THREE.Vector3();
+const _curve = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 
 export class ChaseCamera {
@@ -31,9 +33,9 @@ export class ChaseCamera {
     this.initialized = false;
   }
 
-  update(dt: number, vehicle: Vehicle, time: number, constrain?: (position: THREE.Vector3) => void): void {
+  update(dt: number, vehicle: Vehicle, time: number, constrain?: (position: THREE.Vector3) => void, roadAhead?: THREE.Vector3): void {
     const t = vehicle.body.translation();
-    const pos = new THREE.Vector3(t.x, t.y, t.z);
+    const pos = _position.set(t.x, t.y, t.z);
     _quat.set(vehicle.body.rotation().x, vehicle.body.rotation().y, vehicle.body.rotation().z, vehicle.body.rotation().w);
     _forward.set(0, 0, 1).applyQuaternion(_quat);
     _forward.y = 0;
@@ -44,24 +46,36 @@ export class ChaseCamera {
     const cameraSettings = SETTINGS.camera;
 
     if (this.mode === "hood") {
-      _desired.copy(pos).addScaledVector(_forward, 0.55).add(new THREE.Vector3(0, 0.95, 0));
-      _look.copy(pos).addScaledVector(_forward, 26).add(new THREE.Vector3(0, 0.75, 0));
+      _desired.copy(pos).addScaledVector(_forward, 0.55);
+      _desired.y+=.95;
+      _look.copy(pos).addScaledVector(_forward, 26);_look.y+=.75;
     } else if (this.mode === "wide") {
       // Panoramic: further back, lower, and aimed above the roof so the sky
       // and the star field stay in frame.
       const distance = 9.4 + clamp(speed * 0.02, 0, 0.9);
-      _desired.copy(pos).addScaledVector(_forward, -distance).add(new THREE.Vector3(0, 1.25, 0));
+      _desired.copy(pos).addScaledVector(_forward, -distance);
+      _desired.y+=1.25;
       _look.copy(pos).addScaledVector(_forward, 5.5);
       _look.y += 3.4;
     } else {
       const distance = cameraSettings.distance + clamp(speed * 0.0025, 0, 0.18);
       const height = cameraSettings.height + clamp(speed * 0.002, 0, 0.10);
-      _desired.copy(pos).addScaledVector(_forward, -distance).add(new THREE.Vector3(0, height, 0));
+      _desired.copy(pos).addScaledVector(_forward, -distance);
+      _desired.y+=height;
       // Show the sidewall that the rear bumper hides in a straight-on view.
       _desired.x += _forward.z * cameraSettings.lateralOffset;
       _desired.z -= _forward.x * cameraSettings.lateralOffset;
       _look.copy(pos).addScaledVector(_forward, cameraSettings.lookAhead + speed * 0.007);
       _look.y += 0.4;
+      // Anticipate the road without pulling the close chase away from the car.
+      // Ignore a route behind the driver while reversing or recovering.
+      if (roadAhead && speed>8) {
+        _curve.copy(roadAhead).sub(pos);_curve.y=0;_curve.normalize();
+        if (_curve.dot(_forward)>.2) {
+          const lateral=clamp(_curve.x*_forward.z-_curve.z*_forward.x,-.65,.65)*clamp(speed/35,0,1)*1.8;
+          _look.x+=_forward.z*lateral;_look.z-=_forward.x*lateral;
+        }
+      }
 
       const shake = clamp((speed - 45) / 45, 0, 1) * 0.035;
       if (shake > 0) {

@@ -79,5 +79,22 @@ it("silences rivals on pause, shares mute and releases obsolete voices", () => {
   expect(ctx.oscillators.at(-1)!.stop).toHaveBeenCalledOnce();
   audio.setMuted(false);
   audio.updateRivals(listener, [engine]);
-  expect(ctx.gains[4].gain.value).toBeGreaterThan(0);
+  expect(ctx.gains.at(-3)!.gain.value).toBeGreaterThan(0);
+});
+
+ it("separates engines and music while keeping the shared mute",()=>{
+  vi.stubGlobal("window",{AudioContext:Context});const audio=new GameAudio();audio.ensure();
+  const ctx=Context.current;audio.setVolumes({engines:0,music:.8});
+  expect(ctx.gains[1].gain.value).toBe(0);expect(ctx.gains[2].gain.value).toBeCloseTo(.8);
+  audio.setVolumes({engines:NaN,music:5});expect(audio.getVolumes()).toEqual({engines:0,music:1});
+  audio.setMuted(true);expect(ctx.gains[0].gain.value).toBe(0);
+  audio.setMuted(false);expect(ctx.gains[1].gain.value).toBe(0);
+ });
+
+it("gives the player the selected engine profile",()=>{
+ vi.stubGlobal("window",{AudioContext:Context});const audio=new GameAudio();audio.ensure();
+ const ctx=Context.current;audio.setVehicle("porsche-911");audio.update(4500,.8,120,0);
+ const six=ctx.oscillators[0].frequency.value;expect(ctx.oscillators[1].type).toBe("triangle");
+ audio.setVehicle("bugatti-chiron");audio.update(4500,.8,120,0);
+ expect(ctx.oscillators[0].frequency.value).toBeGreaterThan(six);
 });

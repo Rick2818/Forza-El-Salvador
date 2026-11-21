@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { VEHICLE_DESIGNS, loadSelectedVehicle, createSelectedVisual, disposeSelectedVisual,
@@ -18,6 +18,8 @@ beforeAll(async () => {
   // Node has no image decoder. Keep real GLB parsing, geometry and materials;
   // replace only bitmap decoding. This test does not certify rendered textures.
   vi.stubGlobal("createImageBitmap", async () => ({ width: 128, height: 128, close() {} }));
+  mkdirSync("review/quality",{recursive:true});
+  writeFileSync("review/quality/race-validation.jsonl", "");
   await RAPIER.init();
   const incomplete = { asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: "incomplete" }] };
   await expect(loadSelectedVehicle(VEHICLE_DESIGNS[0].id,
@@ -82,8 +84,26 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
   for (const design of VEHICLE_DESIGNS) {
     it(`${design.id}: correct pivots, bounded geometry and independent brake materials`, () => {
       const a = createSelectedVisual(design.id), b = createSelectedVisual(design.id);
+      const raw = readFileSync(new URL(`../public/models/selected/${design.id}.glb`, import.meta.url));
+      const source = JSON.parse(raw.subarray(20, 20 + raw.readUInt32LE(12)).toString());
+      const expectedTriangles = source.nodes.reduce((sum, node) => sum + (node.mesh === undefined ? 0 :
+        source.meshes[node.mesh].primitives.reduce((n, primitive) => n + source.accessors[primitive.indices].count / 3, 0)), 0);
+      let triangles = 0;
+      a.root.traverse(object => { if (object.isMesh) triangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3; });
+      // Batching must preserve every triangle from the approved GLB.
+      expect(triangles).toBe(expectedTriangles);
       expect(a.wheels).toHaveLength(4);
       expect(a.taillightMat).not.toBe(b.taillightMat);
+      if(["ferrari-california-t","porsche-911"].includes(design.id)) {
+        for(const wheel of a.wheels) {
+          expect(wheel.steer.children.length).toBeGreaterThan(1);
+          // Compare fixed geometry under a wheel spin; the caliper stays put.
+          const fixed=wheel.steer.children.find(child=>child!==wheel.spin);
+          a.root.updateMatrixWorld(true);const before=fixed.matrixWorld.clone();
+          wheel.spin.rotation.x=1.3;a.root.updateMatrixWorld(true);
+          expect(fixed.matrixWorld.elements).toEqual(before.elements);
+        }
+      }
       const mounts = wheelConnections(design.id);
       a.wheels.forEach((wheel, i) => {
         expect(wheel.steer.position.x).toBeCloseTo(mounts[i].x, 5);
@@ -125,10 +145,10 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
   }
 });
 
-it.each(["facil", "medio", "dificil"])("simulates three Suzaka laps at %s difficulty", (difficulty) => {
+it.each(["monzon", "suzaka"].flatMap(circuit => ["facil", "medio", "dificil"].map(difficulty => [circuit, difficulty])))("simulates three %s laps at %s difficulty", (circuit, difficulty) => {
   const world = new RAPIER.World({ x: 0, y: -13.5, z: 0 });
   world.timestep = 1 / 60;
-  const track = new Track(getCircuit("suzaka"));
+  const track = new Track(getCircuit(circuit));
   track.buildVisuals = () => {
     const road = new THREE.Mesh(track.ribbonGeometry(-track.halfWidth, track.halfWidth, .02, 12));
     road.name = "asphalt";
@@ -139,14 +159,35 @@ it.each(["facil", "medio", "dificil"])("simulates three Suzaka laps at %s diffic
   const race = new Race(world, new THREE.Scene(), track, "ferrari-california-t", difficulty);
   race.state = "racing";
   const pilot = new AIDriver(race.player.vehicle, track, -2.7, .94, 1, "estratega", difficulty);
+  let leaderChanges=0,previousLeader=0,candidate=0,held=0;
+  const peakSpeeds=new Map(),offTrackSeconds=new Map(),recoveries=new Map(),leadHistory=[];
+  for(const racer of race.racers) {
+    const place=racer.vehicle.place.bind(racer.vehicle);
+    racer.vehicle.place=(...args)=>{recoveries.set(racer.id,(recoveries.get(racer.id)??0)+1);return place(...args);};
+  }
   for (let frame = 0; frame < 60 * 900 && !race.racers.every(r => r.finished); frame++) {
     const traffic = race.racers.filter(r => !r.isPlayer && !r.finished).map(r => ({
       position: r.vehicle.position.clone(), speed: r.vehicle.speed, isPlayer: false, racerId: r.id
     }));
     race.update(1 / 60, pilot.plan(1 / 60, frame / 60, traffic));
     world.step();
+    for(const r of race.racers)peakSpeeds.set(r.id,Math.max(peakSpeeds.get(r.id)??0,r.vehicle.speedKph));
+    if(frame%30===0 && !race.racers.some(r=>r.finished)) {
+      const leader=[...race.racers].sort((a,b)=>(b.lap+b.progress)-(a.lap+a.progress))[0].id;
+      if(leader!==candidate) {candidate=leader;held=.5;} else held+=.5;
+      if(held>=1.5 && previousLeader!==leader) {
+        if(previousLeader)leaderChanges++;previousLeader=leader;leadHistory.push({seconds:frame/60,leader});
+      }
+      for(const r of race.racers)if(!r.vehicle.onTrack)offTrackSeconds.set(r.id,(offTrackSeconds.get(r.id)??0)+.5);
+    }
   }
+  appendFileSync("review/quality/race-validation.jsonl",JSON.stringify({circuit,difficulty,
+    simulationSeconds:race.elapsed,physicsHz:60,rendering:false,leaderChanges,leadHistory,
+    drivers:race.racers.map(r=>({id:r.id,car:r.vehicle.vehicleId,finished:r.finished,finishSeconds:r.finishTime,
+      bestLapSeconds:r.bestLap,peakKph:peakSpeeds.get(r.id),offTrackSeconds:offTrackSeconds.get(r.id)??0,recoveries:recoveries.get(r.id)??0}))})+"\n");
   expect(race.racers.every(r => r.finished)).toBe(true);
+  expect([...recoveries.values()].reduce((a,b)=>a+b,0)).toBe(0);
+  expect(leaderChanges).toBeGreaterThan(0);
   race.dispose();
   world.free();
 }, 180000);
@@ -170,3 +211,33 @@ it.each(VEHICLE_DESIGNS)("reaches the requested straight-line speed for $id", (d
   car.dispose(world);
   world.free();
 }, 60000);
+
+it.each(["monzon", "suzaka"])("holds all four cars until the shared green boundary on %s", (id) => {
+ const world = new RAPIER.World({x:0,y:-13.5,z:0});world.timestep=1/60;
+ const track=new Track(getCircuit(id));track.buildVisuals=()=>{
+  const road=new THREE.Mesh(track.ribbonGeometry(-track.halfWidth,track.halfWidth,.02,12));
+  road.name="asphalt";track.group.add(road);
+ };track.build();track.addPhysics(world);
+ const race=new Race(world,new THREE.Scene(),track,"ferrari-california-t","medio");
+ race.state="countdown";
+ const before=race.racers.map(r=>r.vehicle.body.translation());
+ for(let step=0;step<300;step++) {race.update(1/60,{throttle:1,brake:0,steer:0,handbrake:false});world.step();}
+ expect(race.state).toBe("countdown");
+ race.racers.forEach((r,i)=>{const p=r.vehicle.body.translation();expect(Math.hypot(p.x-before[i].x,p.z-before[i].z)).toBeLessThan(.1);});
+ for(let step=0;step<180;step++){race.update(1/60,{throttle:1,brake:0,steer:0,handbrake:false});world.step();}
+ expect(race.state).toBe("racing");expect(race.racers.every(r=>r.vehicle.speedKph>1)).toBe(true);
+ race.dispose();world.free();
+});
+
+it("times each lap independently and retains the fastest lap",()=>{
+ const world=new RAPIER.World({x:0,y:-13.5,z:0});
+ const track={segmentLength:5,startIndex:0,sampleAt:i=>new THREE.Vector3(0,0,i*5),rightAt:()=>new THREE.Vector3(1,0,0),
+  tangentAt:()=>new THREE.Vector3(0,0,1),progress:i=>i/100,nearestIndex:()=>1};
+ const race=new Race(world,new THREE.Scene(),track,"ferrari-california-t","medio");
+ for(const [elapsed,lapTime] of [[100,100],[180,80],[270,90]]) {
+  race.elapsed=elapsed;race.player.lastProgress=.99;race.updateProgress(race.player);
+  expect(race.player.lastLap).toBe(lapTime);expect(race.player.lapStart).toBe(elapsed);
+ }
+ expect(race.player.bestLap).toBe(80);expect(race.player.finishTime).toBe(270);
+ race.dispose();world.free();
+});

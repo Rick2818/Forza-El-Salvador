@@ -2,7 +2,7 @@ export const SETTINGS = {
   race: {
     laps: 3,
     rivals: 3,
-    countdown: 3.2
+    countdown: 5.2
   },
   track: {
     width: 15,

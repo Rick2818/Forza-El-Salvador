@@ -222,6 +222,7 @@ export class Race {
     if (progress < 0.2 && racer.lastProgress > 0.8) {
       const lapTime = this.elapsed - racer.lapStart;
       racer.lastLap = lapTime;
+      racer.lapStart = this.elapsed;
       if (racer.bestLap === 0 || lapTime < racer.bestLap) racer.bestLap = lapTime;
       racer.lap++;
       if (racer.lap > SETTINGS.race.laps) {

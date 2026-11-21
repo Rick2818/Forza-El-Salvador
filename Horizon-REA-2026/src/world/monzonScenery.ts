@@ -26,7 +26,6 @@ export class MonzonScenery {
     const steel = material(0x27343e, 0.35);
     const roof = material(0xe8ebed, 0.2);
     const seating = [material(0x438ab9), material(0xe6e9ee), material(0xc3ae31)];
-    const orange = material(0xe65d2d);
     const asphalt = material(0x292e33);
     const stripe = material(0xf6f7ed);
 
@@ -53,15 +52,8 @@ export class MonzonScenery {
     const pitRoadY = ground.heightAt(290, 25);
     box("monzon-pitlane", 290, pitRoadY - 0.09, 25.5, 510, 0.28, 9, asphalt);
     box("monzon-pitlane-line", 290, pitRoadY + 0.065, 21.5, 510, 0.02, 0.24, stripe);
-    box("monzon-boxes", 288, pitY + 8.1, 47, 484, 16.2, 31, concrete);
-    box("monzon-boxes-glass", 288, pitY + 13, 30.9, 478, 5.7, 0.6, glass);
-    box("monzon-boxes-roof", 288, pitY + 16.3, 47, 497, 0.85, 36, roof);
-    box("monzon-paddock-terrace", 288, pitY + 17.5, 32.5, 497, 0.22, 10, steel);
-    for (let i = 0; i < 19; i++) {
-      const x = 62 + i * 25;
-      box("box-door-" + i, x, pitY + 4.8, 30.55, 19, 8.7, 0.55, i % 4 === 0 ? orange : steel);
-      box("pit-window-" + i, x, pitY + 13.8, 30.45, 19, 3.5, 0.15, glass);
-    }
+    // Four genuinely open service bays are built by MonzonGarages. The old
+    // solid slab occupied their interiors and hid all workshop equipment.
     // Independent control tower with unobstructed glass panoramic band.
     box("monzon-tower", 575, pitY + 15, 57, 23, 30, 22, concrete);
     box("monzon-tower-glass", 575, pitY + 24.8, 57, 28, 8.5, 27, glass);
@@ -152,8 +144,15 @@ export class MonzonScenery {
     const trunkGeometry = mergeGeometries(barkParts);
     barkParts.forEach((part) => part.dispose());
     const trunk = new THREE.InstancedMesh(trunkGeometry, bark, trees);
+    const leafParts = [
+      new THREE.IcosahedronGeometry(1, 1).scale(.84, 1, .84),
+      new THREE.IcosahedronGeometry(1, 1).scale(.70, .77, .67).translate(.5, -.23, .17),
+      new THREE.IcosahedronGeometry(1, 1).scale(.64, .82, .73).translate(-.44, -.12, -.21)
+    ];
+    const canopyGeometry = mergeGeometries(leafParts);
+    leafParts.forEach((part) => part.dispose());
     const crowns = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(1, 1),
+      canopyGeometry,
       new THREE.MeshStandardMaterial({
         color: 0xffffff, roughness: 0.96, emissive: 0x193c25, emissiveIntensity: 0.14
       }), trees

@@ -102,9 +102,15 @@ export class AIDriver {
     // Drivers are quicker in different parts of the lap, so the same car
     // does not automatically set the pace in every sector.
     const sector = this.hint / this.track.samples.length * Math.PI * 4;
-    const pace = multiplier * (1 + Math.sin(sector + this.phase) * (0.018 + tuning.pressure * 0.035));
-    const profileSpeed = this.track.targetSpeeds[this.hint] * pace;
-    const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace;
+    const pace = multiplier * (1 + Math.sin(sector + this.phase + time * .012) * (0.028 + tuning.pressure * 0.065));
+    // A driver within striking distance can use a short push on a straight.
+    // It applies to any opponent, never just the player, and uses the same
+    // engine, top speed and braking envelope as normal driving.
+    const straight=(this.track.curvatures?.[this.hint]??0)<.0012;
+    const chasing=nearby.some(other=>other.gap>6 && other.gap<85);
+    const push=straight && chasing ? 1+tuning.pressure*.06 : 1;
+    const profileSpeed = this.track.targetSpeeds[this.hint] * pace * push;
+    const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace * push;
     let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, 17));
     const front = nearby
       .filter(o => o.gap > 1.5 && o.gap < 24 + tuning.pressure * 22 && Math.abs(o.lane - ownLane) < 3.3)
@@ -177,8 +183,9 @@ export class AIDriver {
 
     const error = targetSpeed - speed;
     // The speed controller must account for the stronger highway engine;
-    // otherwise a small speed error commands several times the old force.
-    let throttle = clamp(error / (5.5 / tuning.reaction), 0, 1) / v.highSpeedPowerMultiplier;
+    // Large gaps allow full acceleration; taper small errors by the square
+    // root of available power rather than cancelling all highway power.
+    let throttle = clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
     let brake = clamp(-error / (7.0 / tuning.reaction), 0, 1);
     if (this.reverseTime > 0) {
       this.reverseTime -= dt;

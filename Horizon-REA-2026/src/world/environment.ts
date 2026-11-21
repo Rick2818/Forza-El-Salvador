@@ -1,3 +1,4 @@
+import { PineForest } from "./pineForest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
@@ -8,6 +9,7 @@ import { createSuzakaMountain, installSuzakaScenery } from "./suzakaScenery";
 import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
+import { MonzonGarages } from "./monzonGarages";
 
 /**
  * Night-time circuit surroundings: starry dome, analytic moon, layered ridge
@@ -24,8 +26,14 @@ export class Environment {
   private readonly sky: NightSky | null;
   private readonly shadowSize = 34;
   private time = 0;
+  private forest: PineForest | null = null;
+  private garages: MonzonGarages | null = null;
+  private readonly trackLights: THREE.PointLight[] = [];
+  private readonly lampPositions: readonly THREE.Vector3[];
+  private lightRefresh = 1;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
+    this.lampPositions = track.lampPositions;
     const isMonzon = track.circuit.id === "monzon";
     const isSuzaka = track.circuit.id === "suzaka";
     const isSparda = track.circuit.id === "sparda";
@@ -56,7 +64,7 @@ export class Environment {
       reflectionSky.material.uniforms["sunPosition"].value.copy(this.moonDirection);
       reflectionScene.add(reflectionSky);
       scene.environment = pmrem.fromScene(reflectionScene, 0, 1, 16000).texture;
-      scene.environmentIntensity = 0.55; // prevent overbright blue sky reflections on car finishes
+      scene.environmentIntensity = isSuzaka ? .008 : .55; // prevent overbright blue sky reflections on car finishes
       pmrem.dispose();
       scene.background = new THREE.Color(0x9cc7e8);
       scene.fog = new THREE.FogExp2(0xb7cddd, 0.00025);
@@ -66,11 +74,11 @@ export class Environment {
       this.sky.addTo(scene);
       scene.background = new THREE.Color(0x03060d);
       scene.environment = this.sky.bakeEnvironment(renderer);
-      scene.environmentIntensity = 1.25;
+      scene.environmentIntensity = isMonzon ? .5 : 1.25;
       scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
     }
 
-    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : 0xa8c2ff, isDaylight ? 2.1 : 3.15);
+    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : isMonzon ? 0xe0e7e9 : 0xa8c2ff, isDaylight ? 1.8 : isMonzon ? 2.2 : 3.15);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
@@ -85,12 +93,12 @@ export class Environment {
     scene.add(this.moon);
     scene.add(this.moon.target);
     if (isDaylight) {
-      scene.add(new THREE.HemisphereLight(0xd8e3f0, 0x55694b, 1.15));
-      scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+      scene.add(new THREE.HemisphereLight(0xd8e3f0, 0x55694b, isSuzaka ? .72 : 1.15));
+      scene.add(new THREE.AmbientLight(0xffffff, isSuzaka ? .1 : .28));
     } else {
-      scene.add(new THREE.HemisphereLight(0x2b4d82, 0x04060a, 1.05));
-      scene.add(new THREE.AmbientLight(0x101d33, 0.45));
-      const fill = new THREE.DirectionalLight(0x8fb6ff, 0.55);
+      scene.add(new THREE.HemisphereLight(isMonzon ? 0x9ba8b4 : 0x2b4d82, isMonzon ? 0x242a20 : 0x04060a, isMonzon ? .65 : 1.05));
+      scene.add(new THREE.AmbientLight(isMonzon ? 0xc0b6a4 : 0x101d33, isMonzon ? .17 : .45));
+      const fill = new THREE.DirectionalLight(isMonzon ? 0xd8e2e8 : 0x8fb6ff, .55);
       fill.position.set(-0.42, 0.55, -0.72);
       scene.add(fill);
     }
@@ -101,9 +109,20 @@ export class Environment {
     scene.add(this.terrainMesh);
 
     if (isMonzon) {
+      // Four unshadowed lights cover the player's vicinity; poles remain instanced.
+      for (let i = 0; i < 4; i++) {
+        const light = new THREE.PointLight(0xffefd6, 850, 70, 2);
+        light.visible = false;
+        this.trackLights.push(light);
+        scene.add(light);
+      }
       scene.add(new MonzonScenery(track, this.terrain).group);
+      this.garages = new MonzonGarages(scene);
+      void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
       scene.add(createSuzakaMountain());
+      this.forest=new PineForest(scene,track,this.terrain);
+      void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
       // Load only editable Blender landmarks. The driveable surface and all
       // physical guardrails are generated in Track so physics always matches.
       void installSuzakaScenery(scene).catch(error => {
@@ -146,6 +165,20 @@ export class Environment {
   /** Follow the player with the sky dome and the shadow frustum. */
   update(center: THREE.Vector3, dt: number): void {
     this.time += dt;
+    this.garages?.update(center);
+    this.forest?.update(center,dt);
+    this.lightRefresh += dt;
+    if (this.trackLights.length && this.lightRefresh >= .25) {
+      this.lightRefresh = 0;
+      const nearest = this.lampPositions.map(position => ({
+        position, distance: position.distanceToSquared(center)
+      })).sort((a, b) => a.distance - b.distance).slice(0, this.trackLights.length);
+      this.trackLights.forEach((light, index) => {
+        const lamp = nearest[index];
+        light.visible = !!lamp;
+        if (lamp) light.position.copy(lamp.position);
+      });
+    }
     this.sky?.update(center, this.time);
     this.moon.position.copy(center).addScaledVector(this.moonDirection, 140);
     this.moon.target.position.copy(center);
