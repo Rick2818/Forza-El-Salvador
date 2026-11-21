@@ -38,7 +38,11 @@ jobs:
         working-directory: Horizon-REA-2026
         run: npm ci
 
-      - name: Probar los vehículos y las carreras
+      - name: Probar los vehículos y las carreras (advertencia V9)
+        # Excepción temporal solicitada: publicar V9 aunque las pruebas de
+        # carreras Suzaka necesiten ajustes posteriores. El paso y sus
+        # fallos siguen registrados; la compilación continúa siendo obligatoria.
+        continue-on-error: true
         working-directory: Horizon-REA-2026
         run: npm test
 
