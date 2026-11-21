@@ -399,8 +399,11 @@ export class GameAudio {
     if (this.engineGain) {
       // +7 to +10 dB in the audible power band, with a clearly audible
       // idle. Keep the motor below unity gain; compressor catches race peaks.
+      // Make low RPM audible but not louder than redline. The final
+      // mastering stage boosts low-level sound; an overly hot idle would
+      // otherwise saturate it and mask acceleration dynamics.
       const level = this.electric ? (.04 + t * .09 + speed * .04)
-        : .34 + t * .29 + rev * .18;
+        : .10 + rev * .10 + t * .22 + t * rev * .37;
       this.engineGain.gain.setTargetAtTime(level, now, .09);
     }
     if (this.skidGain) {
