@@ -1,7 +1,9 @@
 name: Revisar garajes de Monzon sin publicar
 on:
   push:
-    branches: [review/monzon-open-garages]
+    branches: [review/monzon-open-garages, feature/trackside-partners-monzon-suzaka]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +28,7 @@ jobs:
         env:
           SKIP_RACE_BENCHMARK: '1'
       - run: node tools/review-quality.mjs
+      - run: node tools/review-partners.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -33,3 +36,4 @@ jobs:
           path: |
             Horizon-REA-2026/review/garages
             Horizon-REA-2026/review/quality
+            Horizon-REA-2026/review/partners

@@ -10,6 +10,7 @@ import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
+import { createTracksidePartners } from "./tracksidePartners";
 
 /**
  * Night-time circuit surroundings: starry dome, analytic moon, layered ridge
@@ -107,6 +108,9 @@ export class Environment {
     this.terrain = new TerrainField(track);
     this.terrainMesh = this.terrain.buildMesh();
     scene.add(this.terrainMesh);
+
+    // Conceptual brand panels in both active tracks, outside all safety barriers.
+    if (isMonzon || isSuzaka) scene.add(createTracksidePartners(track, this.terrain));
 
     if (isMonzon) {
       // Four unshadowed lights cover the player's vicinity; poles remain instanced.
