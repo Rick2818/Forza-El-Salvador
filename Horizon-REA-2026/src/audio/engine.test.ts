@@ -44,6 +44,7 @@ class Context {
   createOscillator() { const node = new Node(); this.oscillators.push(node); return node; }
   createBiquadFilter() { return new Node(); }
   createDynamicsCompressor() { const node = new Node(); this.compressors.push(node); return node; }
+  createWaveShaper() { return new Node(); }
   createBufferSource() { const node = new Node(); this.bufferSources.push(node); return node; }
   createBuffer() { return {getChannelData: () => new Float32Array(40)}; }
   decodeAudioData(_data: ArrayBuffer) { return Promise.resolve(this.createBuffer()); }
@@ -161,6 +162,7 @@ it("raises V10 idle and acceleration to a medium-strong mix with peak control", 
   const motorGain = ctx.gains[4];
   const musicBus = ctx.gains[3];
   expect(audio.getEngineOutputBoost()).toBe(ENGINE_OUTPUT_BOOST);
+  expect(audio.getEngineSoftLimitEnabled()).toBe(true);
   expect(ENGINE_OUTPUT_BOOST).toBeGreaterThanOrEqual(2);
   expect(ctx.gains[2].gain.value).toBe(ENGINE_OUTPUT_BOOST);
   expect(ctx.compressors[1].ratio.value).toBeGreaterThanOrEqual(12);
