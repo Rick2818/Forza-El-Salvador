@@ -64,6 +64,14 @@ La batería `src/world/tracksidePartners.test.ts` verifica el catálogo, los val
 
 La publicación de V7 solo debe considerarse confirmada tras el workflow en GitHub Pages y una petición HTTP satisfactoria al sitio. Los 60 FPS siguen condicionados a una sesión de prueba en hardware real; render SwiftShader de CI no certifica el rendimiento de la laptop.
 
+## Ajuste de volumen medio-fuerte del V10
+
+Se elevó la ganancia dinámica del motor desde el ralentí hasta altas RPM para corregir el volumen excesivamente débil: el nivel programado pasa de aproximadamente 0.14 a 0.36 en ralentí y de 0.39 a 0.81 a plena carga, antes del control del usuario. Se amplió moderadamente la presencia de combustión, bajos y admisión; un `DynamicsCompressorNode` en el bus de motores/neumáticos protege los picos al juntarse varios vehículos. El master y la música de salida se mantienen al nivel previo.
+
+El ajuste **Motores y neumáticos** continúa siendo independiente y respeta el valor guardado por el jugador, incluido 0 %; el juego no sube por sorpresa un volumen que el usuario haya reducido manualmente. Para escucharlo, activar `V10 deportivo (sintetizado)`, ajustar Motores y neumáticos al 80–100 % y comprobar que el botón M no esté en silencio.
+
+`tools/review-engine-audio.mjs` mide RMS y picos del motor procesado a 950, 3000, 5800, 7800 y 2800 RPM, captura una muestra WebM y comprueba la ausencia de silencio y saturación. Es una prueba de salida digital, no una medición de volumen acústico real de los altavoces.
+
 ## Sonido deportivo V10 (perfil opcional; audio procedural)
 
 El sonido anterior estaba basado en ondas diente de sierra y cuadradas, lo que producía un zumbido tipo rasuradora. El nuevo motor de audio crea un **buffer periódico de impulsos de combustión** según cilindros/RPM, un componente grave de cigüeñal, una capa de admisión filtrada y cambios suaves de volumen/filtro al acelerar o desacelerar. También aplica atenuación espacial y Doppler limitado a los tres rivales.
