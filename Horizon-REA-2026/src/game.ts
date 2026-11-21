@@ -137,6 +137,7 @@ export class Game {
       onQuit: () => this.quitToMenu(),
       onToggleQuality: () => this.toggleQuality(),
       onAudioVolumes: (volumes) => this.audio.setVolumes(volumes),
+      onEngineProfile: (profile) => this.audio.setEngineProfile(profile),
       onPerformanceReport: () => this.downloadPerformance(),
       onSelectCircuit: (id) => {
         if (id === this.track.circuit.id) return;
@@ -167,6 +168,7 @@ export class Game {
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
 
     this.menu.setAudioVolumes(this.audio.getVolumes());
+    this.menu.setEngineProfile(this.audio.getEngineProfile());
     this.menu.setSelectedVehicle(this.selectedVehicleId);
     this.menu.setSelectedCircuit(this.track.circuit.id);
     this.menu.setDifficulty(this.difficulty);
