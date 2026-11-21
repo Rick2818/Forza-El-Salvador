@@ -22,7 +22,7 @@ export const DIFFICULTY_TUNING = {
 } as const;
 
 export function rivalTargetMultiplier(skill: number, difficulty: RaceDifficulty, personality: RivalPersonality): number {
-  const personalityPace = personality === "atacante" ? 1.025 : personality === "estratega" ? 1.01 : 1;
+  const personalityPace = personality === "atacante" ? 1.045 : personality === "estratega" ? 1.01 : 1;
   return skill * DIFFICULTY_TUNING[difficulty].pace * personalityPace;
 }
 
