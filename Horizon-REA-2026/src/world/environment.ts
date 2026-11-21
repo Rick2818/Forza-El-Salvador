@@ -24,8 +24,12 @@ export class Environment {
   private readonly sky: NightSky | null;
   private readonly shadowSize = 34;
   private time = 0;
+  private readonly trackLights: THREE.PointLight[] = [];
+  private readonly lampPositions: readonly THREE.Vector3[];
+  private lightRefresh = 1;
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
+    this.lampPositions = track.lampPositions;
     const isMonzon = track.circuit.id === "monzon";
     const isSuzaka = track.circuit.id === "suzaka";
     const isSparda = track.circuit.id === "sparda";
@@ -101,6 +105,13 @@ export class Environment {
     scene.add(this.terrainMesh);
 
     if (isMonzon) {
+      // Four unshadowed lights cover the player's vicinity; poles remain instanced.
+      for (let i = 0; i < 4; i++) {
+        const light = new THREE.PointLight(0xffefd6, 850, 70, 2);
+        light.visible = false;
+        this.trackLights.push(light);
+        scene.add(light);
+      }
       scene.add(new MonzonScenery(track, this.terrain).group);
     } else if (isSuzaka) {
       scene.add(createSuzakaMountain());
@@ -146,6 +157,18 @@ export class Environment {
   /** Follow the player with the sky dome and the shadow frustum. */
   update(center: THREE.Vector3, dt: number): void {
     this.time += dt;
+    this.lightRefresh += dt;
+    if (this.trackLights.length && this.lightRefresh >= .25) {
+      this.lightRefresh = 0;
+      const nearest = this.lampPositions.map(position => ({
+        position, distance: position.distanceToSquared(center)
+      })).sort((a, b) => a.distance - b.distance).slice(0, this.trackLights.length);
+      this.trackLights.forEach((light, index) => {
+        const lamp = nearest[index];
+        light.visible = !!lamp;
+        if (lamp) light.position.copy(lamp.position);
+      });
+    }
     this.sky?.update(center, this.time);
     this.moon.position.copy(center).addScaledVector(this.moonDirection, 140);
     this.moon.target.position.copy(center);
