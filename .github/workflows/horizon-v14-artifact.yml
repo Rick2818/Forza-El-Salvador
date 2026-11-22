@@ -8,6 +8,7 @@ on:
       - 'Horizon-REA-2026/tools/blender/v14-goodyear-balloon.py'
       - 'Horizon-REA-2026/tools/blender/v14-monzon-fireworks-reference.py'
       - 'Horizon-REA-2026/tools/blender/v14-final-polish.py'
+      - 'Horizon-REA-2026/tools/blender/v14-final-review.py'
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,7 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           persist-credentials: true
       - name: Install Blender and glTF Python dependencies
-        if: hashFiles('Horizon-REA-2026/docs/quality/v14/final-polish-report.json') == ''
+        if: hashFiles('Horizon-REA-2026/docs/quality/v14/final-visual-review.json') == ''
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y blender python3-numpy
@@ -62,6 +63,13 @@ jobs:
             blender -b -t 2 --python tools/blender/v14-final-polish.py
           fi
           test -s docs/quality/v14/final-polish-report.json
+      - name: Independent final Blender visual review and logo legibility corrections
+        working-directory: Horizon-REA-2026
+        run: |
+          if [ ! -s docs/quality/v14/final-visual-review.json ]; then
+            blender -b -t 2 --python tools/blender/v14-final-review.py
+          fi
+          test -s docs/quality/v14/final-visual-review.json
       - name: Validate approved car pivots, driver geometry and asset output
         working-directory: Horizon-REA-2026
         run: |
@@ -78,6 +86,8 @@ jobs:
           polish=json.loads((d/'final-polish-report.json').read_text())
           assert len(polish['pilots'])==7
           assert polish['balloon']['totalLogotypeLetters']>=16
+          review=json.loads((d/'final-visual-review.json').read_text())
+          assert len(review['pilots'])==7 and review['balloon']['removedLogoOcclusionGeometry']
           assert all(x["pass3"]["fitting"]["roofClearanceM"]>=.055 for x in pilots)
           images=list((d/"previews").glob("*.png"))
           assert len(images)>=15, len(images)
