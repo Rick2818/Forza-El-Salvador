@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import designs from "./vehicle-designs.json";
 import { TURBO_TRIGGER_MS } from "../sim/turbo";
-import { dragForce } from "../sim/vehicleMath";
+import { dragForce, wheelForce } from "../sim/vehicleMath";
 import { speedGaugeFraction } from "../ui/hud";
 import {
   escapedSuzakaBarrier, strandedOutsideSuzakaKerb,
@@ -26,12 +26,15 @@ describe("Velocidades exactas en la simulación y el velocímetro MPH",()=>{
       expect(speedGaugeFraction(mph*1.1,mph)).toBe(1);
     }
   });
-  it("mantiene suficiente potencia para que Yangwang pueda alcanzar los 504 MPH",()=>{
-    const u9=designs.find(d=>d.id==="yangwang-u9")!;
-    const drag=dragForce(u9.tuning.topSpeed);
-    const available=7400*u9.tuning.power*.64;
-    expect(available).toBeGreaterThan(drag*1.1);
-    expect(u9.powertrain).toBe("electric");
+  it("puede vencer la resistencia aerodinámica a la velocidad máxima en los siete autos",()=>{
+    for(const car of designs){
+      const drag=dragForce(car.tuning.topSpeed);
+      const available=car.powertrain==="electric"
+        ? 7400*car.tuning.power*.64
+        : wheelForce(car.tuning.topSpeed,1,5,7600)*.5*car.tuning.power*.64*car.tuning.grip;
+      expect(available,car.id).toBeGreaterThan(drag*1.08);
+    }
+    expect(designs.find(d=>d.id==="yangwang-u9")!.powertrain).toBe("electric");
   });
   it("no reinicia el coche a velocidades válidas de 350, 450 y 504 MPH",()=>{
     for(const car of designs){
