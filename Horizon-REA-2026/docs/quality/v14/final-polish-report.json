@@ -1,0 +1,79 @@
+{
+  "status": "V14_FINAL_POLISH_EXPORTS_AND_RENDERS_READY_FOR_VISUAL_REVIEW",
+  "pilots": [
+    {
+      "id": "ferrari-california-t",
+      "previousSha256": "9b3cd47c590a5a6b083b1fe0579a93a37b9de23e260a7990ee8f923b1632020a",
+      "newSha256": "4654598d5598d65111491693416ed79e7b3d325c80088ac81662d38042d3441c",
+      "steeringAdded": false,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/ferrari-california-t-final-polish.png"
+    },
+    {
+      "id": "yangwang-u9",
+      "previousSha256": "0bc2618f34c18cc32958e32ab50f785e90507fb035fd296f7d1b95ac6f6e2491",
+      "newSha256": "580c3916067ebef1aa0200d66c95cac63ec5f23732ce233055652fc3bab62827",
+      "steeringAdded": true,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/yangwang-u9-final-polish.png"
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "previousSha256": "ce008e810af70bd19b20bb17fd927df512ba00ed46d914e40e0491cd13b72f12",
+      "newSha256": "6c74aba5dfa511e489742dc5e4cc453f7b2e7ae5a78bede6ad347f8b885486a1",
+      "steeringAdded": true,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/koenigsegg-jesko-odin-final-polish.png"
+    },
+    {
+      "id": "bugatti-chiron",
+      "previousSha256": "93602dfb15aab2d9bfcd143f844b135dd31f5902dc1570af72dfb10e8d4262c9",
+      "newSha256": "a743a38aeca4004dd96714d15e6b5b4f09ed98c82eb6a6396859a05aecc552c7",
+      "steeringAdded": true,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/bugatti-chiron-final-polish.png"
+    },
+    {
+      "id": "porsche-911",
+      "previousSha256": "a24326d3ca3b87b7342a91ed2c040e49bca8502fa7c10ba74fd810e58154454d",
+      "newSha256": "12deadfcbf417f19ba2381d2f6537ab7d7c9e2867868b2e0131d7af811e4d224",
+      "steeringAdded": true,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/porsche-911-final-polish.png"
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "previousSha256": "50476e1f2d4a37ce85897ed452b72a93ebd158440deab99d2e35dba846bba067",
+      "newSha256": "6cd673927ddde2a8029765f7862a505a763ca863b9cedcca1598c356c03ee665",
+      "steeringAdded": true,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/lamborghini-aventador-roadster-final-polish.png"
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "previousSha256": "fc7b1d4c3a49031120db932c462ac98996d7594c18a6f856b27559927f2e557c",
+      "newSha256": "a43ca0faf37f9003ffcec91b04ff8513bb00c11dea5c07b4f996cbe5b5d8fda8",
+      "steeringAdded": true,
+      "handForearmVerticesAligned": 768,
+      "pilotMeshes": 52,
+      "render": "docs/quality/v14/previews/mercedes-amg-gt-black-series-final-polish.png"
+    }
+  ],
+  "balloon": {
+    "totalLogotypeLetters": 16,
+    "stitchedBanners": 2,
+    "render": "docs/quality/v14/previews/goodyear-final-polish-night.png",
+    "sha256": "cf542529c8b52130ea8cf07cd76377a2354cc8ba884916b34051a762fc541eba"
+  },
+  "fireworksReference": {
+    "curvedTrailsPolished": 464,
+    "referenceOnly": true,
+    "render": "docs/quality/v14/previews/monzon-fireworks-final-polish.png"
+  }
+}
