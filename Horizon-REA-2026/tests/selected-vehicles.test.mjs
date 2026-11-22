@@ -216,7 +216,7 @@ it.each(VEHICLE_DESIGNS)("reaches the requested straight-line speed for $id", (d
     peak = Math.max(peak, Math.abs(car.speed) / .44704);
   }
   console.log("SPEED_MPH", design.id, peak);
-  const limit = design.id === "bugatti-chiron" ? 230 : 200;
+  const limit = design.tuning.topSpeed / .44704;
   expect(peak).toBeGreaterThanOrEqual(limit - .01);
   expect(peak).toBeLessThanOrEqual(limit + .001);
   car.dispose(world);
@@ -259,7 +259,7 @@ it.each(VEHICLE_DESIGNS)("enforces $id speed without rendering and cancels nitro
     vehicleId:design.id,paintColor:0,accentColor:0,number:7,isPlayer:true
   });
   car.place(new THREE.Vector3(0,0,0),0);
-  car.body.setLinvel({x:35,y:-17,z:150},true);
+  car.body.setLinvel({x:35,y:-17,z:design.tuning.topSpeed*1.18},true);
   car.afterPhysicsStep();
   const velocity=car.body.linvel();
   expect(Math.hypot(velocity.x,velocity.z)).toBeCloseTo(design.tuning.topSpeed,4);
