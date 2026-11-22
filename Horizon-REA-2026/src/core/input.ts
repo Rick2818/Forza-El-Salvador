@@ -92,7 +92,7 @@ export class Input {
     const pedals = document.createElement("div");
     pedals.className = "horizon-touch-group";
     pedals.append(
-      makeButton("FRENO", "KeyS", "Frenar"),
+      makeButton("FRENO / R", "KeyS", "Frenar y retroceder al detenerse"),
       makeButton("GAS", "KeyW", "Acelerar")
     );
     root.append(steering, pedals);
