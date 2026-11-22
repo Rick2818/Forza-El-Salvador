@@ -4,6 +4,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {makeRng} from '../core/mathx';
 import type {Track} from './track';
 import {distanceToTrack, type TerrainField} from './terrain';
+import {createSuzakaResilientPines} from './suzakaResilientPines';
 
 export interface PinePlacement {x:number; y:number; z:number; height:number; width:number; yaw:number; shade:number}
 
@@ -12,7 +13,7 @@ export function pinePlacements(track:Track, ground:Pick<TerrainField,'heightAt'>
  const random=makeRng(28182026), trees:PinePlacement[]=[], occupied=new Map<string,PinePlacement[]>();
  for(let anchor=0;anchor<140;anchor++) {
   const index=Math.floor(random()*track.samples.length),p=track.sampleAt(index),right=track.rightAt(index);
-  const side=random()<.5?-1:1, offset=45+random()*140;
+  const side=random()<.5?-1:1, offset=30+random()*125;
   for(let i=0;i<7;i++) {
    const x=p.x+right.x*offset*side+(random()-.5)*58;
    const z=p.z+right.z*offset*side+(random()-.5)*58;
@@ -50,7 +51,20 @@ export class PineForest {
  constructor(scene:THREE.Scene,track:Track,ground:TerrainField) {
   this.group.name='suzaka-pine-forest';scene.add(this.group);
   this.placements=pinePlacements(track,ground);
-  this.ready=this.load().then(()=>{this.group.userData.ready=true;});
+  // Immediately available realistic foliage, independent of network and GLB.
+  this.group.add(createSuzakaResilientPines(this.placements));
+  this.group.userData.treeCount=this.placements.length;
+  this.group.userData.source="procedural-safe";
+  this.ready=this.load().then(()=>{
+    this.group.userData.ready=true;
+    this.group.userData.source="Blender-CC0-and-organic";
+    this.update(new THREE.Vector3(0,0,0),1);
+  }).catch(error=>{
+    this.group.userData.ready=true;
+    this.group.userData.source="procedural-safe";
+    this.group.userData.assetError=String(error);
+    console.warn("[Horizon] Suzaka Blender trees unavailable; organic fallback remains visible:",error);
+  });
  }
  private async load():Promise<void> {
   const [near,medium,atlas]=await Promise.all([loadLOD('near'),loadLOD('medium'),
