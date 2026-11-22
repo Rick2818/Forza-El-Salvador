@@ -476,7 +476,7 @@ export function buildBroadleaf(seed: number): SpeciesAssets {
 /* Conifer                                                             */
 /* ------------------------------------------------------------------ */
 
-function buildConifer(seed: number): SpeciesAssets {
+export function buildConifer(seed: number): SpeciesAssets {
   const rng = makeRng(seed);
   const height = 12.0 + rng() * 4.2;
   const barkParts: THREE.BufferGeometry[] = [];
@@ -761,7 +761,7 @@ function needleSpray(
   ctx.restore();
 }
 
-function createNeedleTexture(): THREE.CanvasTexture {
+export function createNeedleTexture(): THREE.CanvasTexture {
   const S = 1024;
   const half = S / 2;
   const [canvas, ctx] = makeCanvas(S);

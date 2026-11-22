@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
+import { suzakaWallBrandGeometry, planSuzakaWallBrands } from "./suzakaWallBrands";
 
 /**
  * Conceptual trackside advertising. These are text treatments, NOT official
@@ -164,7 +165,7 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
   const group = new THREE.Group();
   group.name = `trackside-partners-${track.circuit.id}`;
   const placements = planTracksidePartners(track, ground);
-  if (!placements.length) return group;
+  if (!placements.length && track.circuit.id !== "suzaka") return group;
 
   const atlas = makeBrandAtlas();
   const vertices: number[] = [];
@@ -257,6 +258,25 @@ export function createTracksidePartners(track: Track, ground: TerrainField): THR
     brand: TRACKSIDE_BRANDS[brandIndex].name, sampleIndex, side
   }));
   group.add(backing, posts, banners);
+  // Roadside banners can be far away or hidden behind trees. Suzaka also
+  // needs panels directly on the existing safety wall, readable while racing,
+  // every sector on BOTH sides. These are visual only (the wall remains Rapier).
+  if (track.circuit.id === "suzaka") {
+    const onBarrier = new THREE.Mesh(
+      suzakaWallBrandGeometry(track, TRACKSIDE_BRANDS.length),
+      new THREE.MeshBasicMaterial({
+        map: atlas, side: THREE.DoubleSide, toneMapped: false,
+        depthTest: true, depthWrite: true
+      })
+    );
+    onBarrier.name="suzaka-guardrail-partner-banners";
+    onBarrier.castShadow=false;
+    onBarrier.receiveShadow=false;
+    onBarrier.frustumCulled=false;
+    onBarrier.userData.brandPanels=planSuzakaWallBrands(track, TRACKSIDE_BRANDS.length).length;
+    group.add(onBarrier);
+    group.userData.barrierPanels=onBarrier.userData.brandPanels;
+  }
 
   /** A UV-sliced panel shares the atlas with the trackside signs. */
   const makePanel = (brandIndex: number, width: number, height: number, name: string): THREE.Mesh => {
