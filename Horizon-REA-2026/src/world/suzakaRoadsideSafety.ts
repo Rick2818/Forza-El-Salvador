@@ -1,5 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { Track } from "./track";
+import { isSuzakaGaragePortal } from "./suzakaGarageZone";
 
 /** Suzaka's old rail was 7.5m outside the kerb and had ZERO collider
  * thickness. These overlapping solid volumes sit directly after the kerb
@@ -30,6 +31,9 @@ export function planSuzakaRoadsideProtection(
     const a=track.samples[i],b=track.samples[next];
     const ar=track.rightAt(i),br=track.rightAt(next);
     for(const side of [-1,1] as const) {
+      // TWO intentional drive-in portals, matched to visible wall openings.
+      if(side===1 && Array.from({length:SUZAKA_BARRIER_STEP_SAMPLES+1},(_,j)=>
+        isSuzakaGaragePortal((i+j)%N,N,side)).some(Boolean)) continue;
       const ax=a.x+ar.x*side*track.barrierLateralOffset;
       const az=a.z+ar.z*side*track.barrierLateralOffset;
       const bx=b.x+br.x*side*track.barrierLateralOffset;
