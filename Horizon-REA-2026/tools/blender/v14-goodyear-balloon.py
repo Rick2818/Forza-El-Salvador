@@ -82,7 +82,7 @@ def envelope():
             verts.append((r*math.cos(a)*seam,r*math.sin(a)*seam,z))
     for row in range(layers):
         for i in range(segments):
-            n=row*segments+i,m=row*segments+(i+1)%segments
+            n=row*segments+i; m=row*segments+(i+1)%segments
             faces.append((n,m,m+segments,n+segments))
             wedge=i//8
             indices.append(2 if wedge%6==0 else 1 if wedge%2 else 0)
