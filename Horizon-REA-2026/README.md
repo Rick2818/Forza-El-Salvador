@@ -46,6 +46,14 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
 - El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
 
+## Competición más intensa, retroceso y garajes en Suzaka
+
+- **Suzaka:** se reutilizan los siete talleres aprobados (Ferrari, Porsche, Bugatti, Mercedes-Benz, Lamborghini, Koenigsegg y Yangwang), con **14 mecánicos 3D**, piezas visibles de respaldo, suelos, paredes, herramientas y colisionadores Rapier alineados. Se ubican a un lado del tramo noroeste de la figura ocho, sobre terreno bajo y despejado. Dos aberturas reales en el muro derecho (entrada y salida) enlazan la carretera con un pit lane asfáltico. Los pinos se apartan del sector de servicios.
+- **IA competitiva:** los rivales reciben la distancia relativa al líder, incrementan el ritmo de persecución y buscan adelantamientos más decididos en recta; siguen usando los mismos coches físicos, límites de velocidad y reglas de frenado antes de curvas, sin teletransporte ni trucos de posición.
+- **Marcha atrás:** mantener pulsado **FRENO** cuando ya se ha detenido el auto permite retroceder con fuerza continua hasta 12,5 m/s (~28 MPH); deja de ser una maniobra casi inmóvil y sigue frenando al avanzar.
+- **Velocidades:** se mantienen los límites de **350 MPH ×5, 450 MPH Bugatti y 504 MPH Yangwang**. Se ajusta la asistencia aerodinámica para rectas reales, con pequeñas correcciones de volante, mientras se desactiva progresivamente al derrapar o girar demasiado.
+- **Validación:** comprobar los dos accesos, colisiones de taller, IA, retroceso y carreras completas. La experiencia a FPS reales requiere prueba directa en el dispositivo.
+
 ## Montañas naturales en Monzón y Suzaka
 
 - Se sustituyeron los antiguos anillos angulares y picos triangulares de Suzaka por **tres cordilleras asimétricas** con elevación multiescala, hombros volcánicos, quebradas erosivas, laderas y variaciones de altura que modifican la silueta real.
