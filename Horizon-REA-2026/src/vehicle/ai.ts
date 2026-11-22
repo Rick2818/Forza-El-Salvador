@@ -15,11 +15,11 @@ export interface TrafficCar {
 }
 
 export const DIFFICULTY_TUNING = {
-  facil:   { pace: 0.79, reaction: 0.78, pressure: 0.05 },
-  medio:   { pace: 0.97, reaction: 1.00, pressure: 0.55 },
+  facil:   { pace: 0.85, reaction: 0.86, pressure: 0.20 },
+  medio:   { pace: 1.045, reaction: 1.07, pressure: 0.78 },
   // Backward compatibility with existing championship saves and reward tables.
-  normal:  { pace: 0.97, reaction: 1.00, pressure: 0.55 },
-  dificil: { pace: 1.08, reaction: 1.14, pressure: 1.00 }
+  normal:  { pace: 1.045, reaction: 1.07, pressure: 0.78 },
+  dificil: { pace: 1.13, reaction: 1.18, pressure: 1.00 }
 } as const;
 
 export function rivalTargetMultiplier(skill: number, difficulty: RaceDifficulty, personality: RivalPersonality): number {
@@ -113,11 +113,12 @@ export class AIDriver {
     // It applies to any opponent, never just the player, and uses the same
     // engine, top speed and braking envelope as normal driving.
     const straight=(this.track.curvatures?.[this.hint]??0)<.0012;
-    const chasing=nearby.some(other=>other.gap>6 && other.gap<85);
+    const chasing=nearby.some(other=>!other.oncoming && other.gap>6 && other.gap<120);
     const push=straight && chasing ? 1+tuning.pressure*.06 : 1;
+    const topSpeed = Number.isFinite(v.speedLimitMph) ? v.speedLimitMph * .44704 : Infinity;
     const profileSpeed = this.track.targetSpeeds[this.hint] * pace * push;
     const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace * push;
-    let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, 17));
+    let targetSpeed = Math.min(topSpeed, profileSpeed, Math.max(cornerAhead, 17));
     const onBridge = this.track.circuit?.layout === "figure-eight" && road.y > 1;
     if (onBridge) targetSpeed = Math.min(targetSpeed, 45);
     // Difficulty changes pace, never the available braking distance or grip.
@@ -158,7 +159,8 @@ export class AIDriver {
         this.pass = null;
       }
     }
-    if (!onBridge && !this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
+    if (!recovering && !onBridge && !this.pass && front &&
+        (targetSpeed > front.speed + .5 || (tuning.pressure > .7 && front.gap < 30))) {
       const firstSide = Math.sin(this.phase) > 0 ? -1 : 1;
       for (const side of [firstSide, -firstSide]) {
         const candidate = clamp(front.lane + side * 3.35, -4.55, 4.55);
@@ -216,7 +218,13 @@ export class AIDriver {
 
     // A nearby slower car forces braking until the pass is physically clear.
     for (const other of nearby) {
-      if (other.gap > 0 && other.gap < 19 && Math.abs(other.lane - ownLane) < 2.75) {
+      // Do not keep braking behind the car being overtaken once the rival
+      // has selected a clear neighbouring lane. Respect the current corridor
+      // during the lateral transition and slow down for genuine overlap.
+      const laneToProtect = this.pass ? this.currentLane : ownLane;
+      if (other.gap > 0 && other.gap < 19 && Math.abs(other.lane - laneToProtect) < 2.7 &&
+          (!this.pass || Math.abs(other.lane - desiredLane) < 2.8 ||
+           (other.gap < 7 && Math.abs(other.lane - ownLane) < 2.7))) {
         const safeSpeed = Math.max(3, other.speed + Math.max(0, other.gap - 6) * (0.40 + 0.14 * tuning.pressure));
         targetSpeed = Math.min(targetSpeed, safeSpeed);
       }
