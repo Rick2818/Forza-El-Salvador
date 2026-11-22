@@ -1,0 +1,54 @@
+name: Blender V12 - Mercedes y Koenigsegg con siete pilotos
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/tools/blender/refine-rear-and-drivers-v12.py'
+      - '.github/workflows/horizon-blender-vehicles-v12.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: blender-v12-vehicle-refinement
+  cancel-in-progress: true
+jobs:
+  export:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          persist-credentials: true
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender
+          blender --version
+      - name: Round Mercedes and Koenigsegg rears and install 7 pilots
+        working-directory: Horizon-REA-2026
+        run: |
+          blender -b -t 2 --python tools/blender/refine-rear-and-drivers-v12.py
+          test -s tools/blender/selected-sources/v12/mercedes-amg-gt-black-series-rear-v12.blend
+          test -s tools/blender/selected-sources/v12/koenigsegg-jesko-odin-rear-v12.blend
+          test -s docs/quality/v12/blender-refinement.json
+          node tools/audit-car-glbs.mjs
+      - name: Save all 7 real GLB models and 2 Blender sources in one commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/public/models/selected/*.glb
+          git add Horizon-REA-2026/tools/blender/selected-sources/v12/*.blend
+          git add Horizon-REA-2026/docs/quality/v12/blender-refinement.json
+          if ! git diff --cached --quiet; then
+            git commit -m "assets: Blender V12 Mercedes/Jesko rounded rears and seven pilots"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: horizon-blender-v12-report
+          path: Horizon-REA-2026/docs/quality/v12
+          if-no-files-found: warn
+          retention-days: 7
