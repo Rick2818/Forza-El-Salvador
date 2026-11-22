@@ -65,7 +65,11 @@ export class MonzonGarages {
   private readonly origin = new THREE.Vector3();
   private readonly upAxis = new THREE.Vector3(0,1,0);
   private scenePosition(localX:number,localY:number,localZ:number):THREE.Vector3 {
-    return new THREE.Vector3(localX,localY,localZ).applyQuaternion(this.yawRotation).add(this.origin);
+    // Legacy physics tests instantiate a lightweight prototype without
+    // calling the browser-only constructor; identity is the Monzón default.
+    const rotation=this.yawRotation ?? new THREE.Quaternion();
+    const origin=this.origin ?? new THREE.Vector3();
+    return new THREE.Vector3(localX,localY,localZ).applyQuaternion(rotation).add(origin);
   }
   private toLocal(position:THREE.Vector3):THREE.Vector3 {
     return position.clone().sub(this.origin).applyQuaternion(this.yawRotation.clone().invert());
@@ -165,9 +169,10 @@ export class MonzonGarages {
     let solidCount = 0;
     const solid = (x:number,y:number,z:number,w:number,h:number,d:number,friction=.5):void => {
       const p=this.scenePosition(x,y,z);
+      const rotation=this.yawRotation ?? new THREE.Quaternion();
       world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2)
         .setTranslation(p.x,p.y,p.z)
-        .setRotation({x:this.yawRotation.x,y:this.yawRotation.y,z:this.yawRotation.z,w:this.yawRotation.w})
+        .setRotation({x:rotation.x,y:rotation.y,z:rotation.z,w:rotation.w})
         .setFriction(friction).setRestitution(.03),structure);
       solidCount++;
     };
