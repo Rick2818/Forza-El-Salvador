@@ -5,6 +5,7 @@ import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
 import { OncomingDriver, ONCOMING_CAR_COUNT, oncomingPose, oncomingSpawnIndex } from "./oncoming";
 import { SUZAKA_BRIDGE_SAFETY_THRESHOLD } from "../world/suzakaSuspensionBridge";
+import { inSuzakaPitArea } from "../world/suzakaPitAccess";
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
@@ -188,9 +189,11 @@ export class Race {
         ? this.track.locate(new THREE.Vector3(p.x,p.y,p.z),racer.hint) : null;
       const anchorIndex = closest?.index ?? racer.hint;
       const anchor = this.track.sampleAt(anchorIndex);
-      const escaped = !!closest && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
-      const nearlyStopped = Math.hypot(v.x,v.z)<1.0;
-      if(isSuzaka && racer.isPlayer && closest &&
+      const inPit = !!closest && isSuzaka && inSuzakaPitArea(
+        closest.index*this.track.segmentLength,closest.lateral,this.track.barrierLateralOffset);
+      const escaped = !!closest && !inPit && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
+      const nearlyStopped = Math.hypot(v.x,v.z)<2.5;
+      if(isSuzaka && racer.isPlayer && closest && !inPit &&
          strandedOutsideSuzakaKerb(closest.lateral,this.track.halfWidth,nearlyStopped?0:Math.hypot(v.x,v.z)) &&
          this.state === "racing") this.playerStrandedSeconds+=dt;
       else if(racer.isPlayer) this.playerStrandedSeconds=0;

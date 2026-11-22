@@ -6,6 +6,7 @@ import { ContactShadows } from "./render/contactShadows";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
+import { inSuzakaPitArea, suzakaGarageAt } from "./world/suzakaPitAccess";
 import { Environment } from "./world/environment";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
@@ -541,6 +542,12 @@ export class Game {
           this.hud.toast(`🏁 Garage ${garage}: área de servicio`, 2400);
         }
         this.lastEnteredPitGarage = garage;
+      } else if (this.track.circuit.id === "suzaka") {
+        const p = player.body.translation();
+        const garage = suzakaGarageAt(this.track,p.x,p.z);
+        if (garage && garage !== this.lastEnteredPitGarage)
+          this.hud.toast("🏁 Garage "+garage+": área de servicio",2400);
+        this.lastEnteredPitGarage = garage;
       }
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
       const listener = player.body.translation();
@@ -619,6 +626,12 @@ export class Game {
       // Once the player crosses the open pit entrance the chase camera must
       // follow inside, rather than being clamped behind the former guardrail.
       if (inMonzonPitArea(player.x, player.z)) return;
+    }
+    if (this.track.circuit.id === "suzaka") {
+      const p=this.race.player.vehicle.body.translation();
+      const nearest=this.track.locate(new THREE.Vector3(p.x,p.y,p.z),this.race.player.hint);
+      if(inSuzakaPitArea(nearest.index*this.track.segmentLength,nearest.lateral,
+        this.track.barrierLateralOffset))return;
     }
     const { index, lateral } = this.track.locate(position, this.race.player.hint);
     const limit = this.track.barrierLateralOffset - .5;
