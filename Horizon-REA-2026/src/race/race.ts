@@ -5,6 +5,7 @@ import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
 import { OncomingDriver, ONCOMING_CAR_COUNT, oncomingPose, oncomingSpawnIndex } from "./oncoming";
 import { SUZAKA_BRIDGE_SAFETY_THRESHOLD } from "../world/suzakaSuspensionBridge";
+import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
 import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, vehicleDesign } from "../vehicle/selectedAsset";
@@ -187,20 +188,19 @@ export class Race {
         ? this.track.locate(new THREE.Vector3(p.x,p.y,p.z),racer.hint) : null;
       const anchorIndex = closest?.index ?? racer.hint;
       const anchor = this.track.sampleAt(anchorIndex);
-      const escaped = !!closest && Math.abs(closest.lateral) >
-        this.track.barrierLateralOffset + .85;
+      const escaped = !!closest && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
       const nearlyStopped = Math.hypot(v.x,v.z)<1.0;
       if(isSuzaka && racer.isPlayer && closest &&
-         Math.abs(closest.lateral)>this.track.halfWidth+1.25 && nearlyStopped &&
+         strandedOutsideSuzakaKerb(closest.lateral,this.track.halfWidth,nearlyStopped?0:Math.hypot(v.x,v.z)) &&
          this.state === "racing") this.playerStrandedSeconds+=dt;
       else if(racer.isPlayer) this.playerStrandedSeconds=0;
-      const stuck = racer.isPlayer && this.playerStrandedSeconds>2.2;
-      const maxSafeSpeed = racer.vehicle.speedLimitMph * .44704 + 55;
+      const stuck = racer.isPlayer && this.playerStrandedSeconds>SUZAKA_STRANDED_DELAY_SEC;
       if (!finite || escaped || stuck ||
           p.y < anchor.y-8 ||
           (isSuzaka && anchor.y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD &&
            p.y < anchor.y-2.5) ||
-          p.y > anchor.y+80 || Math.hypot(v.x,v.y,v.z)>maxSafeSpeed) {
+          p.y > anchor.y+80 ||
+          exceedsArcadeSafetyVelocity(Math.hypot(v.x,v.y,v.z),racer.vehicle.speedLimitMph)) {
         const tangent=this.track.tangentAt(anchorIndex);
         racer.vehicle.place(anchor,Math.atan2(tangent.x,tangent.z));
         racer.hint=anchorIndex;
