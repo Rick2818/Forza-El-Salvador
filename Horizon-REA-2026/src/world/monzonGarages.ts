@@ -10,6 +10,7 @@ import {
   obstacleWorldBox, GARAGE_EQUIPMENT_ANCHOR_Z
 } from "./monzonWorkshopContents";
 import { batchStaticScenery } from "../render/staticBatch";
+import { createMonzonAudience, planMonzonPitAudience, MONZON_PIT_VISIBLE_FANS, MONZON_ROOF_TOP } from "./monzonAudience";
 import { makeRng } from "../core/mathx";
 
 function workshopFloorMap(): THREE.CanvasTexture {
@@ -157,49 +158,36 @@ export class MonzonGarages {
     this.group.userData.solidEquipmentPerGarage = WORKSHOP_OBSTACLES.length;
   }
 
-  /** 80 unique low-poly spectators, instanced to minimize pit-roof draw calls. */
+  /** Open, raised viewing terrace over seven garages. Both elevated rows
+   * can be seen from the racing straight and pit lane without a solid wall. */
   private installPitSpectators(
     box: (name: string, x: number, y: number, z: number,
       w: number, h: number, d: number, material: THREE.Material) => void
   ): void {
-    const rail = new THREE.MeshStandardMaterial({color:0xc7c9c9, metalness:.38, roughness:.55});
-    box("pit-roof-balustrade", 179.5, GARAGE_HEIGHT+.56, GARAGE_FRONT_Z-.10, 146, .13, .13, rail);
-    const count = 80;
-    const rng = makeRng(28182028);
-    const heads = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(.22, 1),
-      new THREE.MeshBasicMaterial({color:0xffffff}),
-      count
-    );
-    const torsos = new THREE.InstancedMesh(
-      new THREE.CylinderGeometry(.22, .28, .75, 6),
-      new THREE.MeshBasicMaterial({color:0xffffff}),
-      count
-    );
-    heads.name = "monzon-pit-spectator-heads";
-    torsos.name = "monzon-pit-spectator-jerseys";
-    heads.castShadow = false; torsos.castShadow = false;
-    const matrix = new THREE.Matrix4();
-    const tops = [0xdf462e, 0xe8cb47, 0x3c72a8, 0xe4ecf2, 0x2a9377, 0xc46b9a];
-    const skin = [0xffddb7, 0xe3ae7d, 0x9b6347, 0x7b5140];
-    for (let i=0; i<count; i++) {
-      const row = Math.floor(i/40), column = i%40;
-      const x = 111.7 + column*3.48 + (rng()-.5)*.3;
-      const z = 33.2 + row*3.7 + (rng()-.5)*.2;
-      const y = GARAGE_HEIGHT+.24;
-      matrix.makeTranslation(x,y+1.42,z);
-      heads.setMatrixAt(i,matrix);
-      heads.setColorAt(i,new THREE.Color(skin[Math.floor(rng()*skin.length)]));
-      matrix.makeTranslation(x,y+.91,z);
-      torsos.setMatrixAt(i,matrix);
-      torsos.setColorAt(i,new THREE.Color(tops[Math.floor(rng()*tops.length)]));
+    const stands = new THREE.MeshStandardMaterial({color:0x53616c,metalness:.25,roughness:.75});
+    const trim = new THREE.MeshBasicMaterial({color:0xd8e9ef,toneMapped:false});
+    const centerX = (MONZON_PIT_GARAGES[0].x +
+      MONZON_PIT_GARAGES[MONZON_PIT_GARAGES.length - 1].x) / 2;
+    // The former roof crowd stood behind the 2.15m garage fascia and looked
+    // like 80 tiny dots. Open the frontage and RAISE both seating platforms
+    // above that fascia, leaving the garage doors/drivable forecourt intact.
+    box("pit-public-open-tier-front", centerX, MONZON_ROOF_TOP+.43,
+      GARAGE_FRONT_Z+1.0, 144,.86,2.5,stands);
+    box("pit-public-open-tier-rear", centerX, MONZON_ROOF_TOP+.76,
+      GARAGE_FRONT_Z+4.4, 144,1.52,2.5,stands);
+    // A slender rail, not a solid barrier hiding the public.
+    box("pit-public-visible-rail",centerX,MONZON_ROOF_TOP+1.22,
+      GARAGE_FRONT_Z-.3,144,.07,.07,trim);
+    for(const x of [109,128.5,149,169.5,190,210.5,231,250]){
+      box("pit-public-visible-rail-post",x,MONZON_ROOF_TOP+.74,
+        GARAGE_FRONT_Z-.3,.08,1.03,.08,trim);
     }
-    heads.instanceMatrix.needsUpdate=true;
-    torsos.instanceMatrix.needsUpdate=true;
-    if(heads.instanceColor) heads.instanceColor.needsUpdate=true;
-    if(torsos.instanceColor) torsos.instanceColor.needsUpdate=true;
-    this.group.add(torsos,heads);
-    this.group.userData.pitSpectators = count;
+    const audience = createMonzonAudience(
+      planMonzonPitAudience(),"monzon-pit-roof-open-terrace"
+    );
+    this.group.add(audience);
+    this.group.userData.pitSpectators = MONZON_PIT_VISIBLE_FANS;
+    this.group.userData.pitViewingDecks = 2;
     this.group.userData.drivableGarages = MONZON_PIT_GARAGES.length;
   }
 
