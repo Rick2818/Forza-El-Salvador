@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
-import * as THREE from "three";
 import { Track } from "./track";
 import { getCircuit } from "./circuits";
 import {
