@@ -131,8 +131,9 @@ export class MonzonGarages {
       this.fallbackEquipment.add(shape);
     }
     this.fallbackEquipment.name="garage-visible-backup-tools-and-parts";
-    this.group.add(this.fallbackEquipment);
+    batchStaticScenery(this.fallbackEquipment);
     batchStaticScenery(this.group);
+    this.group.add(this.fallbackEquipment);
     scene.add(this.group);
     // Four tightly bounded workshop lights use no shadow maps. Their
     // range ends before the racing asphalt, preserving the approved car paint.
