@@ -21,7 +21,7 @@ export interface SuzakaBarrierSegment {
 }
 
 export function planSuzakaRoadsideProtection(
-  track: Pick<Track,"samples"|"rightAt"|"barrierLateralOffset">
+  track: Pick<Track,"samples"|"rightAt"|"tangentAt"|"barrierLateralOffset">
 ): SuzakaBarrierSegment[] {
   const N=track.samples.length;
   if (!N) return [];
