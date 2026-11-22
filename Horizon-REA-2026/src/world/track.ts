@@ -12,6 +12,7 @@ import { clamp } from "../core/mathx";
 import { createAsphaltMaps, createBannerTexture, createCheckerTexture } from "./textures";
 import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuitDefinition } from "./circuits";
 import { suzakaCenterline } from "./suzakaGeometry";
+import { createSuzakaSuspensionBridge, installSuzakaBridgePhysics } from "./suzakaSuspensionBridge";
 import { internationalCenterline, type InternationalCircuitId } from "./internationalGeometry";
 
 /** Near-black racing asphalt independent of daylight tint and exposure.
@@ -310,6 +311,7 @@ export class Track {
     this.group.add(startLine);
     this.buildGantry();
     if (this.circuit.id === "monzon") addMonzonRoadDetails(this);
+    if (this.circuit.id === "suzaka") this.group.add(createSuzakaSuspensionBridge(this));
 
     // ---- Trackside lamps: instanced poles with glowing heads.
     if (this.circuit.id !== "suzaka" && this.circuit.id !== "sparda") this.buildLamps(barrierOffset);
@@ -552,6 +554,7 @@ export class Track {
         body
       );
     }
+    if (this.circuit.id === "suzaka") installSuzakaBridgePhysics(world, this);
   }
 
   altitudeAt(): number {
