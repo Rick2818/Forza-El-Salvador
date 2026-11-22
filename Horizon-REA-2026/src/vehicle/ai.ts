@@ -110,11 +110,15 @@ export class AIDriver {
       };
     });
 
-    const multiplier = rivalTargetMultiplier(this.skill, this.difficulty, this.personality);
+    // In medium races no driver should stop challenging the podium because
+    // their preset skill is a few points lower than the rest of the grid.
+    const skill = this.difficulty === "medio" || this.difficulty === "normal"
+      ? Math.max(.94,this.skill) : this.skill;
+    const multiplier = rivalTargetMultiplier(skill, this.difficulty, this.personality);
     // Drivers are quicker in different parts of the lap, so the same car
     // does not automatically set the pace in every sector.
     const sector = this.hint / this.track.samples.length * Math.PI * 4;
-    const leaderPressure=1+Math.min(.16,this.raceDeficit*1.2)*tuning.pressure;
+    const leaderPressure=1+Math.min(.19,this.raceDeficit*1.45)*tuning.pressure;
     const pace = multiplier * leaderPressure *
       (1 + Math.sin(sector + this.phase + time * .012) * (0.018 + tuning.pressure * 0.04));
     // A driver within striking distance can use a short push on a straight.
