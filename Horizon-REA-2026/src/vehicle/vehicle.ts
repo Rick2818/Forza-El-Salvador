@@ -16,6 +16,8 @@ import {
   gearForSpeed,
   rpmForSpeed,
   steeringAngleAt,
+  straightOnlyDragAssist,
+  highSpeedCornerDriveFactor,
   wheelForce
 } from "../sim/vehicleMath";
 
@@ -235,6 +237,12 @@ export class Vehicle {
       // Absolute speed remains bounded by the post-step governor.
       const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .36;
       engineForce = Math.min(total * limiter * grip, p.maxEngineForce * power);
+      // On a straight, compensate aero drag near 350-504 MPH WITHOUT boosting
+      // launches, continuous steering or a slide. Restore the previous stable
+      // per-brand power levels for corners and AI-driving.
+      engineForce += straightOnlyDragAssist(absSpeed,throttle,this.controls.steer,
+        lateralSpeed,this.body.angvel().y,grip);
+      engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
     let reverseForce = 0;
     if (brake > 0.05 && speed < 0.6) {
