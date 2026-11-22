@@ -541,7 +541,7 @@ export class Game {
       if (steps === 0) this.physicsAccum = Math.min(this.physicsAccum, this.fixedStep);
       if (this.race.rescues > rescuesBefore) {
         this.chase.snap();
-        this.hud.toast("⚠️ Suzaka: vehículo recuperado dentro de la pista", 2600);
+        this.hud.toast("✅ Auto enderezado y recuperado en la pista", 2600);
       }
 
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
@@ -691,10 +691,12 @@ export class Game {
       this.hud.toast(label, 1200);
     }
     if (this.input.consume("KeyR") && this.state === "racing") {
-      this.race.player.vehicle.resetToTrack(this.track);
-      this.race.player.hint = this.track.startIndex;
+      const nearest=this.track.locate(this.race.player.vehicle.position,this.race.player.hint);
+      const point=this.track.sampleAt(nearest.index),direction=this.track.tangentAt(nearest.index);
+      this.race.player.vehicle.place(point,Math.atan2(direction.x,direction.z));
+      this.race.player.hint=nearest.index;
       this.chase.snap();
-      this.hud.toast("Coche devuelto a pista", 1500);
+      this.hud.toast("Coche enderezado junto al lugar del accidente", 1600);
     }
     if (this.state === "menu") {
       const focused=document.activeElement;
