@@ -22,12 +22,15 @@ describe("Suzaka: seguridad contra atasco fuera de pista",()=>{
     const t=track();
     expect(t.barrierLateralOffset).toBeCloseTo(t.halfWidth+1.75);
     const segments=planSuzakaRoadsideProtection(t);
-    expect(segments).toHaveLength(Math.ceil(t.samples.length/SUZAKA_BARRIER_STEP_SAMPLES)*2);
+    // Two marked portals intentionally remove a handful of right-side walls.
+    const total=Math.ceil(t.samples.length/SUZAKA_BARRIER_STEP_SAMPLES)*2;
+    expect(segments.length).toBeGreaterThan(total-30);
+    expect(segments.length).toBeLessThan(total);
     expect(segments.length).toBeLessThan(850);
     expect(segments.every(w=>w.height===SUZAKA_OUTER_BARRIER_HEIGHT &&
       w.thickness===SUZAKA_OUTER_BARRIER_THICKNESS && w.length>7)).toBe(true);
-    expect(segments.filter(w=>w.side===-1)).toHaveLength(segments.length/2);
-    expect(segments.filter(w=>w.side===1)).toHaveLength(segments.length/2);
+    expect(segments.filter(w=>w.side===-1)).toHaveLength(Math.ceil(t.samples.length/SUZAKA_BARRIER_STEP_SAMPLES));
+    expect(segments.filter(w=>w.side===1).length).toBeLessThan(Math.ceil(t.samples.length/SUZAKA_BARRIER_STEP_SAMPLES));
     const first=segments[0],p=t.sampleAt(0),r=t.rightAt(0);
     const lateral=(first.x-p.x)*r.x+(first.z-p.z)*r.z;
     expect(Math.abs(lateral)).toBeCloseTo(t.barrierLateralOffset,0);
