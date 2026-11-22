@@ -249,7 +249,9 @@ export class Vehicle {
     }
     let reverseForce = 0;
     if (brake > 0.05 && speed < 0.6) {
-      reverseForce = brake * 2200;
+      // Full reverse torque after the vehicle has stopped; smoothly limit
+      // reverse to ~14 m/s instead of creeping backwards with 2.2kN.
+      reverseForce = brake * 9200 * clamp((14 + speed) / 4, 0, 1);
     }
 
     if (this.controls.handbrake) {
@@ -364,6 +366,13 @@ export class Vehicle {
     fwd.normalize();
     const forwardSpeed = vel.x * fwd.x + vel.z * fwd.z;
     const planarSpeed = Math.hypot(vel.x, vel.z);
+    // Reverse is a maneuvering gear, not another 350-504 MPH mode.
+    if (forwardSpeed < -14 && planarSpeed > 14) {
+      const scale = 14 / planarSpeed;
+      this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
+      this.speed = forwardSpeed * scale;
+      return;
+    }
     if (planarSpeed > this.tuning.topSpeed) {
       const scale = this.tuning.topSpeed / planarSpeed;
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
