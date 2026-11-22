@@ -22,3 +22,10 @@ LOD is selected by camera distance, independently for each spectator.
 Editable source: `tools/blender/sources/v18/horizon-people.blend.gz` (gzip-compressed Blender file). Decompress before opening in Blender.
 
 Cloth/skin palette boundaries are split before decimation; UV.y retains authored shoulder influence. LOD partitions update before renderer buffer uploads, including camera cuts.
+
+## Dedicated V19 pit mechanics
+
+`mechanic-near/mid/far.glb` use the same CC0 anatomical source, with dedicated
+adult proportions and authored workwear/equipment in `tools/blender/v19-mechanics.py`.
+The editable source is `tools/blender/sources/v18/pit-mechanic-v19.blend.gz`.
+The gameplay keeps these role assets separate from spectator geometry.

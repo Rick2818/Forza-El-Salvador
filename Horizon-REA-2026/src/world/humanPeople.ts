@@ -7,10 +7,11 @@ export interface HumanPlacement {
 }
 const time={value:0};
 export function advancePeopleAnimation(dt:number):void {time.value+=Math.max(0,Math.min(dt,.05));}
-let assets:Promise<THREE.BufferGeometry[]>|undefined;
-function loadPeople():Promise<THREE.BufferGeometry[]> {
-  return assets??=Promise.all(["near","mid","far"].map(async lod=>{
-    const gltf=await new GLTFLoader().loadAsync(import.meta.env.BASE_URL+`models/people/human-${lod}.glb`);
+const assets=new Map<string,Promise<THREE.BufferGeometry[]>>();
+function loadPeople(role:"human"|"mechanic"):Promise<THREE.BufferGeometry[]> {
+  const cached=assets.get(role);if(cached)return cached;
+  const pending=Promise.all(["near","mid","far"].map(async lod=>{
+    const gltf=await new GLTFLoader().loadAsync(import.meta.env.BASE_URL+`models/people/${role}-${lod}.glb`);
     let geometry:THREE.BufferGeometry|undefined;
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse(object=>{
@@ -24,6 +25,7 @@ function loadPeople():Promise<THREE.BufferGeometry[]> {
     if(!geometry)throw new Error("Missing anatomical human mesh: "+lod);
     return geometry;
   }));
+  assets.set(role,pending);return pending;
 }
 
 /** Refresh before WebGLRenderer uploads instance buffers, including the first
@@ -32,7 +34,7 @@ export function updateHumanPeople(scene:THREE.Scene,camera:THREE.Camera):void {
   scene.traverseVisible(object=>{object.userData.updatePeople?.(camera);});
 }
 
-function humanMaterial():THREE.MeshStandardMaterial {
+function humanMaterial(mechanics:boolean):THREE.MeshStandardMaterial {
   const mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.86,metalness:0});
   mat.onBeforeCompile=shader=>{
     shader.uniforms.humanTime=time;
@@ -48,10 +50,12 @@ function humanMaterial():THREE.MeshStandardMaterial {
       float region=floor(uv.x*8.0);
       float worker=iPerson.z;
       float seed=iPerson.w;
-      vec3 pants=worker>.5?iShirt*.44:mix(vec3(.035,.055,.09),vec3(.14,.12,.105),fract(seed*2.7));
+      vec3 pants=worker>.5?iShirt*.83:mix(vec3(.035,.055,.09),vec3(.14,.12,.105),fract(seed*2.7));
       vHumanColor=region<.5?iSkin:region<1.5?iShirt:region<2.5?pants:
         region<3.5?mix(vec3(.016,.009,.005),vec3(.19,.075,.026),fract(seed*3.4)):
-        region<4.5?vec3(.025,.029,.035):region<5.5?vec3(.75,.74,.67):vec3(.025,.015,.009);
+        region<4.5?vec3(.025,.029,.035):region<5.5?vec3(.75,.74,.67):
+        region<6.5?vec3(.025,.015,.009):region<7.5?vec3(.49,.53,.58):
+        region<8.5?vec3(.74,.78,.79):region<9.5?vec3(.025,.033,.045):vec3(.023,.027,.032);
       // Small continuous head morphs preserve the modeled face while avoiding
       // an identical skull/jaw silhouette on every spectator.
       float head=smoothstep(1.49,1.58,position.y);
@@ -69,17 +73,18 @@ function humanMaterial():THREE.MeshStandardMaterial {
       // Joint rotations at the shoulder and elbow. Different fans wave or applaud;
       // workers inspect a tool in front of their chest with quieter wrist movement.
       if(arm>.01) {
-        vec3 p=transformed-vec3(side*.18,1.43,-.015);
-        float angle=worker>.5 ? side*(.08+.08*motion):
+        float shoulder=worker>.5?.205:.18;
+        vec3 p=transformed-vec3(side*shoulder,1.43,-.015);
+        float angle=worker>.5 ? side*(side>0.0?.18+.05*motion:.015+.025*motion):
           side*(pose>.5?2.1+.18*motion:.12+.06*motion);
         p.xy=humanRotation(angle*arm)*p.xy;
         if(worker>.5 || pose<.5) {
-          float elbow=(1.0-smoothstep(1.08,1.25,position.y))*arm;
-          p.z+=elbow*(worker>.5?.20:.15);
+          float elbow=(region>6.5 && region<7.5)?arm:(1.0-smoothstep(1.08,1.25,position.y))*arm;
+          p.z+=elbow*(worker>.5?(side>0.0?.20:.07):.15);
           p.x-=side*elbow*(worker>.5?.03:.07+.045*motion);
           p.y+=elbow*.09;
         }
-        transformed=p+vec3(side*.18,1.43,-.015);
+        transformed=p+vec3(side*shoulder,1.43,-.015);
       }
       // A seated hip, horizontal thigh and vertical lower leg. Lower the
       // torso together with the pelvis instead of collapsing the knees.
@@ -104,14 +109,38 @@ function humanMaterial():THREE.MeshStandardMaterial {
       float normalSide=sign(position.x),normalSeed=iPerson.w;
       float normalPose=fract(normalSeed*5.17);
       float normalMotion=sin(humanTime*(1.7+normalSeed)+normalSeed*18.0);
-      float normalAngle=iPerson.z>.5?normalSide*(.08+.08*normalMotion):
+      float normalAngle=iPerson.z>.5?normalSide*(normalSide>0.0?.18+.05*normalMotion:.015+.025*normalMotion):
         normalSide*(normalPose>.5?2.1+.18*normalMotion:.12+.06*normalMotion);
       objectNormal.xy=humanRotation(normalAngle*normalArm)*objectNormal.xy;
     `);
     shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 vHumanColor;");
     shader.fragmentShader=shader.fragmentShader.replace("#include <color_fragment>","#include <color_fragment>\ndiffuseColor.rgb *= vHumanColor;");
   };
-  mat.customProgramCacheKey=()=>"horizon-anatomical-people-v18";
+  if(mechanics) {
+    const common=mat.onBeforeCompile;
+    mat.onBeforeCompile=(shader,renderer)=>{
+      common(shader,renderer);
+      shader.vertexShader=shader.vertexShader.replace("varying vec3 vHumanColor;",
+        "varying vec3 vHumanColor;\nvarying vec3 vWorkSurface;\nvarying float vWorkRegion;");
+      shader.vertexShader=shader.vertexShader.replace("float region=floor(uv.x*8.0);",
+        "float region=floor(uv.x*8.0);\nvWorkSurface=position;vWorkRegion=region;");
+      shader.fragmentShader=shader.fragmentShader.replace("varying vec3 vHumanColor;",
+        "varying vec3 vHumanColor;\nvarying vec3 vWorkSurface;\nvarying float vWorkRegion;");
+      shader.fragmentShader=shader.fragmentShader.replace("diffuseColor.rgb *= vHumanColor;",`diffuseColor.rgb *= vHumanColor;
+        if(vWorkRegion<.5 && vWorkSurface.y>1.50 && vWorkSurface.y<1.615 && vWorkSurface.z>.07) {
+          float grain=.5+.5*sin(vWorkSurface.x*1700.0)*sin(vWorkSurface.y*2100.0);
+          diffuseColor.rgb*=.82+.10*grain;
+        }
+      `);
+      shader.fragmentShader=shader.fragmentShader.replace("#include <metalnessmap_fragment>",`#include <metalnessmap_fragment>
+        if(vWorkRegion>6.5 && vWorkRegion<7.5) {roughnessFactor=.25;metalnessFactor=.72;}
+        else if(vWorkRegion>.5 && vWorkRegion<2.5) {
+          roughnessFactor=clamp(.84+.035*sin(vWorkSurface.y*1900.0)*sin(vWorkSurface.x*1700.0),.7,.95);
+        }
+      `);
+    };
+  }
+  mat.customProgramCacheKey=()=>mechanics?"horizon-pit-mechanics-v19":"horizon-anatomical-people-v18";
   return mat;
 }
 
@@ -123,9 +152,12 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
   group.userData.people=people.length;
   group.userData.animated=true;group.userData.drawCalls=3;
   group.userData.unobstructed=true;group.userData.ready=false;
+  group.userData.role=people.some(p=>p.worker)?"mechanic":"human";
   if(typeof document==="undefined")return group;
-  group.userData.readyPromise=loadPeople().then(geometries=>{
-    const material=humanMaterial();
+  const mechanics=people.some(p=>p.worker);
+  group.userData.role=mechanics?"mechanic":"human";
+  group.userData.readyPromise=loadPeople(mechanics?"mechanic":"human").then(geometries=>{
+    const material=humanMaterial(mechanics);
     const batches=geometries.map((source,lod)=>{
       const geometry=source.clone();
       geometry.setAttribute("iSkin",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));

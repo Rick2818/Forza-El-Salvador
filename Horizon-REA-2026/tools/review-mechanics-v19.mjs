@@ -1,0 +1,55 @@
+import {createRequire} from 'node:module';
+const {chromium}=createRequire(import.meta.url)('playwright');
+import {mkdir,writeFile} from 'node:fs/promises';
+const out='review/mechanics-v19';await mkdir(out,{recursive:true});
+const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const report={conditions:'Actual game engine, fixed steps, Chromium SwiftShader; not a hardware FPS measurement.',errors:[],captures:[]};
+try {
+ for(const circuit of ['monzon','suzaka']) {
+  const page=await browser.newPage({viewport:{width:1920,height:1080}});
+  page.on('pageerror',e=>report.errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
+  await page.addInitScript(id=>{localStorage.setItem('horizon.circuit',id);localStorage.setItem('horizon.oncoming-traffic','false');},circuit);
+  await page.goto('http://127.0.0.1:4173/');
+  await page.getByRole('button',{name:'Iniciar carrera',exact:true}).waitFor({timeout:120000});
+  await page.evaluate(async()=>{
+   const g=window.__HORIZON_GAME__;g.prepareCapture();
+   const tasks=[];g.scene.traverse(o=>{if(o.userData.readyPromise)tasks.push(o.userData.readyPromise);});await Promise.all(tasks);
+  });
+  const views=circuit==='monzon'?['cuerpo','rostro','herramienta']:['suzaka'];
+  for(const view of views) {
+   const data=await page.evaluate(({circuit,view})=>{
+    const g=window.__HORIZON_GAME__;g.race.state='idle';g.state='results';g.skipRender=true;
+    for(let i=0;i<24;i++)g.advance(1/60);
+    let staff;g.scene.traverse(o=>{if(o.userData.role==='mechanic'&&!staff)staff=o;});
+    if(!staff?.userData.ready)throw Error('Dedicated staff not loaded');
+    if(circuit==='monzon') {
+     if(view==='rostro'){g.camera.position.set(114.0,1.57,34.18);g.camera.lookAt(114.3,1.52,35.65);g.camera.fov=43;}
+     else if(view==='herramienta'){g.camera.position.set(112.65,1.28,34.1);g.camera.lookAt(114.3,1.12,35.65);g.camera.fov=43;}
+     else {g.camera.position.set(112.9,1.45,32.1);g.camera.lookAt(114.3,1.02,35.65);g.camera.fov=40;}
+    } else {
+     // Frame the actual first mechanic in the transformed daylight garage.
+     const world=new staff.position.constructor(-3.7,1.08,1.6);staff.localToWorld(world);
+     const origin=new staff.position.constructor(-5.3,1.58,-2.0);staff.localToWorld(origin);
+     g.camera.position.copy(origin);g.camera.lookAt(world);g.camera.fov=40;
+    }
+    g.camera.updateProjectionMatrix();g.skipRender=false;g.advance(0);
+    if(!staff.userData.lodCounts?.[0])throw Error('Close-up does not use near mechanic geometry');
+    return {image:g.renderer.domElement.toDataURL('image/png'),role:staff.userData.role,lods:staff.userData.lodCounts,
+      triangles:g.renderer.info.render.triangles,drawCalls:g.renderer.info.render.calls};
+   },{circuit,view});
+   const {image,...detail}=data;await writeFile(`${out}/${circuit}-${view}.png`,Buffer.from(image.split(',')[1],'base64'));
+   report.captures.push({circuit,view,...detail});
+  }
+  if(report.errors.length)throw Error([...new Set(report.errors)].join('\n'));
+  if(circuit==='monzon') {
+   await mkdir(`${out}/frames`,{recursive:true});
+   await page.evaluate(()=>{const g=window.__HORIZON_GAME__;g.prepareCapture(1280,720);g.camera.position.set(113.1,1.48,32.5);g.camera.lookAt(114.3,1.05,35.65);g.camera.fov=40;g.camera.updateProjectionMatrix();});
+   for(let frame=0;frame<60;frame++) {
+    const image=await page.evaluate(()=>{const g=window.__HORIZON_GAME__;g.skipRender=true;for(let i=0;i<5;i++)g.advance(1/60);g.skipRender=false;g.advance(0);return g.renderer.domElement.toDataURL('image/jpeg',.9);});
+    await writeFile(`${out}/frames/${String(frame).padStart(4,'0')}.jpg`,Buffer.from(image.split(',')[1],'base64'));
+   }
+  }
+  await page.close();
+ }
+} finally {await writeFile(`${out}/verification.json`,JSON.stringify(report,null,2));await browser.close();}
