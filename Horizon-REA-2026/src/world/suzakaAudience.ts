@@ -92,7 +92,7 @@ export function createSuzakaAudience(track:Track,ground:TerrainField):THREE.Grou
   const edge=new THREE.MeshBasicMaterial({color:0xe9efcf,toneMapped:false});
   const baseGeometry=new THREE.BoxGeometry(1,1,1);
   const fanPositions:THREE.Vector3[]=[];
-  const marker=new THREE.Matrix4(),yaw=new THREE.Quaternion(),unit=new THREE.Vector3();
+  const yaw=new THREE.Quaternion();
   const up=new THREE.Vector3(0,1,0);
   for(const [index,site] of sites.entries()) {
     yaw.setFromAxisAngle(up,Math.atan2(-site.tangentZ,site.tangentX));
@@ -130,6 +130,5 @@ export function createSuzakaAudience(track:Track,ground:TerrainField):THREE.Grou
   root.userData.clearanceVerified=true;
   root.userData.drawCallBudget=6+sites.length*3;
   root.userData.positions=sites.map(z=>({index:z.index,x:z.x,z:z.z}));
-  void marker; void unit;
   return root;
 }
