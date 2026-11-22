@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import RAPIER from "@dimforge/rapier3d-compat";
+import { MONZON_PIT_GARAGES } from "./monzonPitAccess";
 import { batchStaticScenery } from "../render/staticBatch";
 import { makeRng } from "../core/mathx";
 
@@ -37,6 +39,7 @@ export class MonzonGarages {
   readonly group = new THREE.Group();
   readonly ready: Promise<void>;
   private lights: THREE.PointLight[] = [];
+  private physicsInstalled = false;
   private equipment: { mesh: THREE.InstancedMesh; detail: boolean; transform: THREE.Matrix4 }[] = [];
   private lastEquipmentPosition = new THREE.Vector3(Infinity, 0, Infinity);
   private brandSigns: {bay: typeof GARAGE_LAYOUT[number]; canvas: HTMLCanvasElement; map: THREE.CanvasTexture}[] = [];
@@ -77,6 +80,7 @@ export class MonzonGarages {
       this.group.add(sign);
       this.brandSigns.push({bay, canvas, map});
     }
+    this.installPitSpectators(box);
     batchStaticScenery(this.group);
     scene.add(this.group);
     // Four tightly bounded workshop lights use no shadow maps. Their
@@ -88,6 +92,78 @@ export class MonzonGarages {
     }
     this.update(new THREE.Vector3(140, 0, 0));
     this.ready = Promise.all([this.loadKit(), this.loadBrandMarks()]).then(() => { this.group.userData.ready = true; });
+  }
+
+
+  /**
+   * Visual garage slabs alone are not colliders. Install fixed walls, floors,
+   * raised door columns and roofs, leaving each frontage fully open to cars.
+   * Shared fixed body, one-time installation, no extra per-frame simulation.
+   */
+  installPhysics(world: RAPIER.World): void {
+    if (this.physicsInstalled) return;
+    this.physicsInstalled = true;
+    const structure = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    const solid = (x: number, y: number, z: number, w: number, h: number, d: number, friction = .5): void => {
+      world.createCollider(RAPIER.ColliderDesc.cuboid(w/2, h/2, d/2)
+        .setTranslation(x,y,z).setFriction(friction).setRestitution(.03), structure);
+    };
+    for (const bay of GARAGE_LAYOUT) {
+      solid(bay.x, .025, 35, 15.8, .17, 11, 1.05); // drivable garage floor
+      solid(bay.x, 2.35, 40.4, 15.8, 4.7, .3); // closed rear wall
+      for (const side of [-1, 1]) {
+        solid(bay.x + side*7.75, 2.35, 35.4, .18, 4.7, 10.2);
+        solid(bay.x + side*7.65, 2.4, 30.3, .32, 4.8, .38);
+      }
+      solid(bay.x, 4.85, 35.5, 16.1, .22, 11.2); // high roof clearance
+    }
+    this.group.userData.physicsInstalled = true;
+  }
+
+  /** 80 unique low-poly spectators, instanced to minimize pit-roof draw calls. */
+  private installPitSpectators(
+    box: (name: string, x: number, y: number, z: number,
+      w: number, h: number, d: number, material: THREE.Material) => void
+  ): void {
+    const rail = new THREE.MeshStandardMaterial({color:0xc7c9c9, metalness:.38, roughness:.55});
+    box("pit-roof-balustrade", 142.7, 5.43, 29.96, 66, .13, .13, rail);
+    const count = 80;
+    const rng = makeRng(28182028);
+    const heads = new THREE.InstancedMesh(
+      new THREE.IcosahedronGeometry(.22, 1),
+      new THREE.MeshBasicMaterial({color:0xffffff}),
+      count
+    );
+    const torsos = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(.22, .28, .75, 6),
+      new THREE.MeshBasicMaterial({color:0xffffff}),
+      count
+    );
+    heads.name = "monzon-pit-spectator-heads";
+    torsos.name = "monzon-pit-spectator-jerseys";
+    heads.castShadow = false; torsos.castShadow = false;
+    const matrix = new THREE.Matrix4();
+    const tops = [0xdf462e, 0xe8cb47, 0x3c72a8, 0xe4ecf2, 0x2a9377, 0xc46b9a];
+    const skin = [0xffddb7, 0xe3ae7d, 0x9b6347, 0x7b5140];
+    for (let i=0; i<count; i++) {
+      const row = Math.floor(i/40), column = i%40;
+      const x = 113.5 + column*1.51 + (rng()-.5)*.3;
+      const z = 33.2 + row*3.7 + (rng()-.5)*.2;
+      const y = 4.96;
+      matrix.makeTranslation(x,y+1.42,z);
+      heads.setMatrixAt(i,matrix);
+      heads.setColorAt(i,new THREE.Color(skin[Math.floor(rng()*skin.length)]));
+      matrix.makeTranslation(x,y+.91,z);
+      torsos.setMatrixAt(i,matrix);
+      torsos.setColorAt(i,new THREE.Color(tops[Math.floor(rng()*tops.length)]));
+    }
+    heads.instanceMatrix.needsUpdate=true;
+    torsos.instanceMatrix.needsUpdate=true;
+    if(heads.instanceColor) heads.instanceColor.needsUpdate=true;
+    if(torsos.instanceColor) torsos.instanceColor.needsUpdate=true;
+    this.group.add(torsos,heads);
+    this.group.userData.pitSpectators = count;
+    this.group.userData.drivableGarages = MONZON_PIT_GARAGES.length;
   }
 
   private async loadBrandMarks(): Promise<void> {
