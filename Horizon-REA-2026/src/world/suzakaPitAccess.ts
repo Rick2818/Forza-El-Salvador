@@ -11,6 +11,7 @@ export const SUZAKA_PIT_GATE_CENTERS = [-93, 93] as const;
 export const SUZAKA_PIT_GATE_HALF_WIDTH = 12;
 
 type PitTrack = Pick<Track, "samples" | "tangentAt" | "rightAt">;
+const pitFrames = new WeakMap<object, PitFrame>();
 export interface PitFrame {
   index: number;
   x: number;
@@ -25,6 +26,8 @@ export interface PitFrame {
 
 export function suzakaPitFrame(track: PitTrack): PitFrame {
   if (!track.samples.length) throw Error("Suzaka pit lane needs a built track");
+  const cached = pitFrames.get(track);
+  if (cached) return cached;
   // The low, eastern straight, well away from the bridge and its double wall.
   let nearest = -1, dist = Infinity;
   for (let i = 0; i < track.samples.length; i++) {
@@ -40,7 +43,9 @@ export function suzakaPitFrame(track: PitTrack): PitFrame {
   const tx = t.x / norm, tz = t.z / norm;
   // Track.rightAt uses tangent × up, i.e. (-tz,tx).
   const rx = -tz, rz = tx;
-  return {index:nearest,x:p.x,y:p.y,z:p.z,tx,tz,rx,rz,yaw:Math.atan2(rx,rz)};
+  const frame={index:nearest,x:p.x,y:p.y,z:p.z,tx,tz,rx,rz,yaw:Math.atan2(rx,rz)};
+  pitFrames.set(track,frame);
+  return frame;
 }
 
 export function suzakaPitLocal(track: PitTrack, p: {x:number;z:number}): {x:number;z:number} {
