@@ -1,0 +1,98 @@
+name: Horizon V14 - three Blender passes and visual release
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/horizon-v14-artifact.yml'
+      - 'Horizon-REA-2026/tools/blender/v14-racing-pilots.py'
+      - 'Horizon-REA-2026/tools/blender/v14-goodyear-balloon.py'
+      - 'Horizon-REA-2026/tools/blender/v14-monzon-fireworks-reference.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: horizon-v14-visual-artifact
+  cancel-in-progress: true
+
+jobs:
+  sculpt:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          persist-credentials: true
+      - name: Install Blender and glTF Python dependencies
+        if: hashFiles('Horizon-REA-2026/docs/quality/v14/pilot-pass-report.json') == ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender python3-numpy
+          blender --version
+      - name: Three Blender passes over all seven pilots
+        working-directory: Horizon-REA-2026
+        run: |
+          if [ ! -s docs/quality/v14/pilot-pass-report.json ]; then
+            blender -b -t 2 --python tools/blender/v14-racing-pilots.py
+          fi
+          test -s docs/quality/v14/pilot-pass-report.json
+      - name: Three Blender passes Goodyear 40m
+        working-directory: Horizon-REA-2026
+        run: |
+          if [ ! -s docs/quality/v14/balloon-pass-report.json ]; then
+            blender -b -t 2 --python tools/blender/v14-goodyear-balloon.py
+          fi
+          test -s public/models/balloon/goodyear-v14.glb
+          test -s docs/quality/v14/balloon-pass-report.json
+      - name: Three Blender art-direction passes for Monzon pyrotechnics
+        working-directory: Horizon-REA-2026
+        run: |
+          if [ ! -s docs/quality/v14/fireworks-pass-report.json ]; then
+            blender -b -t 2 --python tools/blender/v14-monzon-fireworks-reference.py
+          fi
+          test -s docs/quality/v14/fireworks-pass-report.json
+      - name: Validate approved car pivots, driver geometry and asset output
+        working-directory: Horizon-REA-2026
+        run: |
+          node tools/audit-car-glbs.mjs
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=Path("docs/quality/v14")
+          pilots=json.loads((d/"pilot-pass-report.json").read_text())["vehicles"]
+          balloon=json.loads((d/"balloon-pass-report.json").read_text())["passes"]
+          fireworks=json.loads((d/"fireworks-pass-report.json").read_text())["passes"]
+          assert len(pilots)==7 and all(len([x["pass1"],x["pass2"],x["pass3"]])==3 for x in pilots)
+          assert len(balloon)==len(fireworks)==3
+          assert all(x["pass3"]["fitting"]["roofClearanceM"]>=.055 for x in pilots)
+          images=list((d/"previews").glob("*.png"))
+          assert len(images)>=15, len(images)
+          print("V14_ARTIFACT_AUDIT",len(pilots),"cars",len(images),"real renders")
+          PY
+      - name: Commit authored Blender GLBs, source blends, images and quality reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/public/models/selected/*.glb
+          git add Horizon-REA-2026/public/models/balloon/goodyear-v14.glb
+          git add Horizon-REA-2026/tools/blender/selected-sources/v14/*.blend
+          git add Horizon-REA-2026/docs/quality/v14/
+          if ! git diff --cached --quiet; then
+            git commit -m "assets(v14): three Blender passes, seven improved pilots, Goodyear, pyro references and renders"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi
+      - name: Upload Horizon V14 Visual Quality Release
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Horizon-V14-Visual-Quality-Release
+          path: |
+            Horizon-REA-2026/public/models/selected/*.glb
+            Horizon-REA-2026/public/models/balloon/goodyear-v14.glb
+            Horizon-REA-2026/tools/blender/selected-sources/v14/*.blend
+            Horizon-REA-2026/docs/quality/v14/**
+          if-no-files-found: warn
+          retention-days: 14
