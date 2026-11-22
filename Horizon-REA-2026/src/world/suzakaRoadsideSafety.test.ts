@@ -23,6 +23,8 @@ describe("Suzaka: seguridad contra atasco fuera de pista",()=>{
     expect(t.barrierLateralOffset).toBeCloseTo(t.halfWidth+1.75);
     const segments=planSuzakaRoadsideProtection(t);
     expect(segments).toHaveLength(Math.ceil(t.samples.length/SUZAKA_BARRIER_STEP_SAMPLES)*2);
+    expect(segments.filter(w=>w.pitGate).length).toBeGreaterThan(0);
+    expect(segments.filter(w=>w.pitGate).every(w=>w.side===1)).toBe(true);
     expect(segments.length).toBeLessThan(850);
     expect(segments.every(w=>w.height===SUZAKA_OUTER_BARRIER_HEIGHT &&
       w.thickness===SUZAKA_OUTER_BARRIER_THICKNESS && w.length>7)).toBe(true);

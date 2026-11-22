@@ -12,6 +12,8 @@ import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
+import { SuzakaGarages } from "./suzakaGarages";
+import { GoodyearBalloon } from "./goodyearBalloon";
 import { createTracksidePartners } from "./tracksidePartners";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
@@ -32,6 +34,8 @@ export class Environment {
   private time = 0;
   private forest: PineForest | null = null;
   private garages: MonzonGarages | null = null;
+  private suzakaGarages: SuzakaGarages | null = null;
+  private balloon: GoodyearBalloon | null = null;
   private readonly trackLights: THREE.PointLight[] = [];
   private readonly lampPositions: readonly THREE.Vector3[];
   private lightRefresh = 1;
@@ -136,6 +140,8 @@ export class Environment {
       this.garages = new MonzonGarages(scene);
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
+      this.suzakaGarages = new SuzakaGarages(scene, track);
+      this.balloon = new GoodyearBalloon(scene, track);
       scene.add(createSuzakaMountain(track));
       scene.add(createSuzakaPublicStands(track, this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
@@ -167,6 +173,7 @@ export class Environment {
   installTerrainPhysics(world: RAPIER.World): void {
     // Monzon service bays have their own Rapier solids, even on the flat circuit.
     this.garages?.installPhysics(world);
+    this.suzakaGarages?.installPhysics(world);
     if (!this.elevatedTerrain) return;
     const geometry = this.terrainMesh.geometry;
     if (!geometry.index) throw new Error("Sparda terrain collider missing triangles");
@@ -185,6 +192,7 @@ export class Environment {
   update(center: THREE.Vector3, dt: number): void {
     this.time += dt;
     this.garages?.update(center);
+    this.balloon?.update(dt);
     this.forest?.update(center,dt);
     this.lightRefresh += dt;
     if (this.trackLights.length && this.lightRefresh >= .25) {
