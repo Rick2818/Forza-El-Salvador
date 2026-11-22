@@ -99,3 +99,13 @@ export function highSpeedCornerDriveFactor(speedMs:number,steering:number):numbe
   const safeTurnSpeed=82-22*turn;
   return 1-reserve*smoothRange(Math.abs(speedMs),safeTurnSpeed-20,safeTurnSpeed+2);
 }
+
+/** S / brake becomes reverse only after the car has nearly stopped.
+ * Limit reverse to 14 m/s (31 mph) while keeping enough torque to get
+ * out of the Suzaka/Monzón garages without a slow crawl. */
+export function reverseDriveForce(forwardMs: number, brake: number): number {
+  if (!Number.isFinite(forwardMs) || !Number.isFinite(brake) ||
+      brake <= .05 || forwardMs >= .6) return 0;
+  return Math.min(1,Math.max(0,brake)) * 9200 *
+    Math.min(1,Math.max(0,(14 + forwardMs) / 4));
+}
