@@ -14,6 +14,7 @@ import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuitD
 import { suzakaCenterline } from "./suzakaGeometry";
 import { createSuzakaSuspensionBridge, installSuzakaBridgePhysics } from "./suzakaSuspensionBridge";
 import { installSuzakaRoadsideProtection, SUZAKA_OUTER_BARRIER_HEIGHT } from "./suzakaRoadsideSafety";
+import { isSuzakaGaragePortal } from "./suzakaGarageZone";
 import { internationalCenterline, type InternationalCircuitId } from "./internationalGeometry";
 
 /** Near-black racing asphalt independent of daylight tint and exposure.
@@ -374,6 +375,8 @@ export class Track {
       // The same physical gap is used in the rendered guardrail.
       if (this.circuit.id === "monzon" &&
           monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) continue;
+      if (this.circuit.id === "suzaka" &&
+          isSuzakaGaragePortal(i, N, offset)) continue;
       const a = i * 2;
       const b = ((i + 1) % N) * 2;
       indices.push(a, a + 1, b, b, a + 1, b + 1);
@@ -682,6 +685,8 @@ export class Track {
       // The same physical gap is used in the rendered guardrail.
       if (this.circuit.id === "monzon" &&
           monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) continue;
+      if (this.circuit.id === "suzaka" &&
+          isSuzakaGaragePortal(i, N, offset)) continue;
       const a = i * 2;
       const b = ((i + 1) % N) * 2;
       indices.push(a, a + 1, b, b, a + 1, b + 1);
