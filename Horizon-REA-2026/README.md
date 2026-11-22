@@ -46,6 +46,14 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
 - El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
 
+## Pits transitables y público en boxes — Monzón
+
+- La **recta principal de Monzón** dispone de entrada al pit lane alrededor de **x=104 m** y salida alrededor de **x=197 m**, ambas en el lado **+Z** de la pista. Las aberturas corresponden tanto a la pared visual como al colisionador Rapier; no se atraviesan guardarraíles invisibles.
+- Se puede **conducir directamente**, sin teletransporte, por el carril de boxes hasta las cuatro entradas abiertas de Ferrari, Porsche, Bugatti y Mercedes-Benz (garajes dispuestos entre x=118–167, z=30–41). Los talleres ahora tienen suelo, paredes laterales, pared trasera y techo con **colisión física**; el acceso frontal permanece abierto.
+- Dos señales de **PIT IN** y **PIT OUT** orientan desde la recta. Al entrar a un garaje, el HUD identifica la marca. La cámara sigue al vehículo al cruzar la abertura. Para entrar, reduce la velocidad antes de desviarte hacia el lado derecho (+Z) y avanza lentamente hasta el garaje.
+- **80 espectadores 3D instanciados sobre los boxes** dan ambiente de público sin ocupar ni el pit lane ni los interiores. La tribuna opuesta sigue conservando su público.
+- Se mantienen los siete modelos 3D aprobados, carreras, turbo, tráfico contrario opcional y circuitos previos. El objetivo de 60 FPS debe comprobarse en el equipo de juego.
+
 ## Turbo automático, llamas y ruedas animadas — actualización V9
 
 Configuración arcade aprobada (no son especificaciones de fábrica). La velocidad en el HUD se expresa en **MPH**:
