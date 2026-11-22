@@ -24,7 +24,7 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender python3-numpy
           blender --version
       - name: Round Mercedes and Koenigsegg rears and install 7 pilots
         working-directory: Horizon-REA-2026
