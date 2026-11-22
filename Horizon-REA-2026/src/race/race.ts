@@ -256,7 +256,9 @@ export class Race {
                 }
               : { throttle: 0, brake: 0.6, steer: 0, handbrake: false };
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
-          const grip = this.track.gripAt(locate.index, locate.lateral);
+          const grip = this.track.circuit.id === "suzaka" &&
+            inSuzakaPitArea(this.track,racer.vehicle.body.translation()) ? 1 :
+            this.track.gripAt(locate.index, locate.lateral);
           racer.vehicle.update(dt, driving, grip);
           racer.vehicle.setBrakeLights(driving.brake > 0.05 || this.state === "finished");
         } else if (racer.ai) {
