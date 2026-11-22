@@ -48,7 +48,7 @@ export function planSuzakaPublicStands(track: Track): SuzakaPublicStand[] {
       if (anchor.y > 1.4) continue;
       const tangent = track.tangentAt(index);
       const right = track.rightAt(index);
-      for (const side of [preferredSide, -preferredSide] as const) {
+      for (const side of [preferredSide, preferredSide === 1 ? -1 : 1] as const) {
         for (const extra of [12, 18, 25, 33]) {
           const offset = track.barrierLateralOffset + extra;
           let min = Infinity;
