@@ -604,21 +604,56 @@ export class GameAudio {
     }
   }
 
-  /** Short low-frequency impact, distinct from the removed abrasive tyre noise. */
-  /** Soft-distance synthetically generated nighttime firework bursts. */
-  playFireworkBurst(): void {
-    if(!this.ctx || !this.musicBus || this.muted)return;
-    const ctx=this.ctx,now=ctx.currentTime;
-    const boom=ctx.createOscillator(),gain=ctx.createGain();
-    boom.type="sine";
-    boom.frequency.setValueAtTime(115,now);
-    boom.frequency.exponentialRampToValueAtTime(43,now+.32);
-    gain.gain.setValueAtTime(.0001,now);
-    gain.gain.exponentialRampToValueAtTime(.18,now+.016);
-    gain.gain.exponentialRampToValueAtTime(.0001,now+.34);
-    boom.connect(gain);gain.connect(this.musicBus);
-    boom.start(now);boom.stop(now+.36);
-    boom.onended=()=>{boom.disconnect();gain.disconnect();};
+  /** Spatially delayed synthetic rocket whistle. Respect shared mute/music gain.
+   * No external audio asset, no background playback or extra permanent sources. */
+  playFireworkLaunch(distance = 120): void {
+    if (!this.ctx || !this.musicBus || this.muted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime + Math.min(1.5,Math.max(0,distance)/343);
+    const whistle = ctx.createOscillator(), level = ctx.createGain();
+    whistle.type = "sine";
+    whistle.frequency.setValueAtTime(450,now);
+    whistle.frequency.exponentialRampToValueAtTime(1180,now+.52);
+    level.gain.setValueAtTime(.0001,now);
+    level.gain.exponentialRampToValueAtTime(.018,now+.09);
+    level.gain.exponentialRampToValueAtTime(.0001,now+.60);
+    whistle.connect(level);level.connect(this.musicBus);
+    whistle.start(now);whistle.stop(now+.61);
+    whistle.onended = () => {whistle.disconnect();level.disconnect();};
+  }
+
+  /** Two-layer firework hit: low pressure boom and short crepitating crackle.
+   * Explicit distance delay prevents far-away explosions sounding instantaneous.
+   * The small voices stay below the engine mix and the pre-existing master limiter. */
+  playFireworkBurst(distance = 120, pattern = "peony"): void {
+    if (!this.ctx || !this.musicBus || this.muted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime + Math.min(1.5,Math.max(0,distance)/343);
+    const main = ctx.createOscillator(), boom = ctx.createGain();
+    main.type = "sine";
+    main.frequency.setValueAtTime(pattern==="golden-willow"?92:124,now);
+    main.frequency.exponentialRampToValueAtTime(40,now+.42);
+    boom.gain.setValueAtTime(.0001,now);
+    boom.gain.exponentialRampToValueAtTime(pattern==="multistage"?.145:.115,now+.02);
+    boom.gain.exponentialRampToValueAtTime(.0001,now+.53);
+    main.connect(boom);boom.connect(this.musicBus);
+    main.start(now);main.stop(now+.55);
+    main.onended = () => {main.disconnect();boom.disconnect();};
+
+    const snap=ctx.createOscillator(), crackle=ctx.createGain();
+    snap.type="triangle";
+    snap.frequency.setValueAtTime(pattern==="ring"?950:1450,now);
+    snap.frequency.exponentialRampToValueAtTime(215,now+.31);
+    crackle.gain.setValueAtTime(.0001,now);
+    for(let i=0;i<4;i++){
+      const t=now+.022+i*.079;
+      crackle.gain.setValueAtTime(.0001,t);
+      crackle.gain.exponentialRampToValueAtTime(.020/(1+i*.31),t+.006);
+      crackle.gain.exponentialRampToValueAtTime(.0001,t+.058);
+    }
+    snap.connect(crackle);crackle.connect(this.musicBus);
+    snap.start(now);snap.stop(now+.39);
+    snap.onended=()=>{snap.disconnect();crackle.disconnect();};
   }
 
   playCollision(severity: number): void {
