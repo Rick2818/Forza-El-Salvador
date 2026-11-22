@@ -1,0 +1,68 @@
+{
+  "status": "EXPORTED_REVIEW_REQUIRED",
+  "vehicles": [
+    {
+      "id": "ferrari-california-t",
+      "inputSha256": "c8d2b02735c9280f7a9e6938b811a605fd219cc60676639acdd29d7d89d3f40d",
+      "outputSha256": "ac1ae89bd86d5d335a609c159fce857ea353e71b17d016bcf3090c71df0656dc",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "ferrari-california-t-pilot-v13.blend"
+    },
+    {
+      "id": "yangwang-u9",
+      "inputSha256": "e6651a1fc2eef81d165cdea0ef56a9bd26fb468361288a52b7879239c94a0522",
+      "outputSha256": "05afda516248b926785643b5b0945f05380d70dae3c031f5b29fa3a98437b82f",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "yangwang-u9-pilot-v13.blend"
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "inputSha256": "478c899e56e91a33a96912eb96f854605934e587b294644333b108ef908d9e92",
+      "outputSha256": "6696c047a74a5b888223688c726d83a745d51ebbb307460afbfd9f3a6f9e8c53",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "koenigsegg-jesko-odin-pilot-v13.blend"
+    },
+    {
+      "id": "bugatti-chiron",
+      "inputSha256": "8119f904209724af311fcf395ae55849e4c8c60115d75127acaf454d50bb3792",
+      "outputSha256": "ca53029388bd1bb506a3905544ee815bd13972408652787ea2b3d35afa1747b0",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "bugatti-chiron-pilot-v13.blend"
+    },
+    {
+      "id": "porsche-911",
+      "inputSha256": "61f509da1bea6f3c42d3da88591dd370ff1c91febfb0c23f16059559399e29c1",
+      "outputSha256": "a5b77967915dc8a87e2768ef329d7325dc2b68588a8b015bde41d3fe894366c2",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "porsche-911-pilot-v13.blend"
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "inputSha256": "c3cfa920c28d6a9434fe1c2e5f72e15175ef8c53d1aafdad98fb8edc9dedd6b7",
+      "outputSha256": "be5beb88a16f86ae13dc813a13d7745f34e7ecfeb802df257c5e755b6962704c",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "lamborghini-aventador-roadster-pilot-v13.blend"
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "inputSha256": "692b8740bb1e9e06c8f68e4b41236436fda0530948e9c70ee428692428fb57a1",
+      "outputSha256": "431b3a7df064ae081aa9d06fb678a35a1262a496d61868e4935e15e56be8a30e",
+      "oldPilotRemoved": 13,
+      "newPilotMeshes": 17,
+      "wheelsPreserved": true,
+      "blenderSource": "mercedes-amg-gt-black-series-pilot-v13.blend"
+    }
+  ]
+}
