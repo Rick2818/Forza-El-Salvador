@@ -15,11 +15,11 @@ export interface TrafficCar {
 }
 
 export const DIFFICULTY_TUNING = {
-  facil:   { pace: 0.79, reaction: 0.78, pressure: 0.05 },
-  medio:   { pace: 0.97, reaction: 1.00, pressure: 0.55 },
+  facil:   { pace: 0.86, reaction: 0.82, pressure: 0.18 },
+  medio:   { pace: 1.08, reaction: 1.06, pressure: 0.82 },
   // Backward compatibility with existing championship saves and reward tables.
-  normal:  { pace: 0.97, reaction: 1.00, pressure: 0.55 },
-  dificil: { pace: 1.08, reaction: 1.14, pressure: 1.00 }
+  normal:  { pace: 1.08, reaction: 1.06, pressure: 0.82 },
+  dificil: { pace: 1.18, reaction: 1.16, pressure: 1.00 }
 } as const;
 
 export function rivalTargetMultiplier(skill: number, difficulty: RaceDifficulty, personality: RivalPersonality): number {
@@ -44,6 +44,12 @@ export class AIDriver {
   private hint = -1;
   private stuckTime = 0;
   private reverseTime = 0;
+  private raceDeficit = 0;
+
+  /** Physical opponents may attack the leader rather than cruise in formation. */
+  setRaceDeficit(lapsBehindLeader:number):void {
+    this.raceDeficit=Math.max(0,Math.min(1,Number.isFinite(lapsBehindLeader)?lapsBehindLeader:0));
+  }
   private currentLane: number;
   private pass: { lane: number; racerId?: number; remaining: number } | null = null;
   private readonly baseLane: number;
@@ -108,16 +114,24 @@ export class AIDriver {
     // Drivers are quicker in different parts of the lap, so the same car
     // does not automatically set the pace in every sector.
     const sector = this.hint / this.track.samples.length * Math.PI * 4;
-    const pace = multiplier * (1 + Math.sin(sector + this.phase + time * .012) * (0.028 + tuning.pressure * 0.065));
+    const leaderPressure=1+Math.min(.16,this.raceDeficit*1.2)*tuning.pressure;
+    const pace = multiplier * leaderPressure *
+      (1 + Math.sin(sector + this.phase + time * .012) * (0.018 + tuning.pressure * 0.04));
     // A driver within striking distance can use a short push on a straight.
     // It applies to any opponent, never just the player, and uses the same
     // engine, top speed and braking envelope as normal driving.
-    const straight=(this.track.curvatures?.[this.hint]??0)<.0012;
-    const chasing=nearby.some(other=>other.gap>6 && other.gap<85);
-    const push=straight && chasing ? 1+tuning.pressure*.06 : 1;
+    const straight=(this.track.curvatures?.[this.hint]??0)<.0013;
+    const chasing=nearby.some(other=>!other.oncoming&&other.gap>3&&other.gap<135);
+    const push=straight && chasing ? 1+tuning.pressure*.22 : 1;
     const profileSpeed = this.track.targetSpeeds[this.hint] * pace * push;
     const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace * push;
     let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, 17));
+    if(straight && !recovering) {
+      // Use available speed on a straight to fight for first place. The
+      // predictive braking envelope below still limits upcoming corners.
+      targetSpeed=Math.min(v.speedLimitMph*.44704,
+        Math.max(targetSpeed,profileSpeed*(1+.15*tuning.pressure)));
+    }
     const onBridge = this.track.circuit?.layout === "figure-eight" && road.y > 1;
     if (onBridge) targetSpeed = Math.min(targetSpeed, 45);
     // Difficulty changes pace, never the available braking distance or grip.
@@ -158,7 +172,7 @@ export class AIDriver {
         this.pass = null;
       }
     }
-    if (!onBridge && !this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
+    if (!onBridge && !this.pass && front && targetSpeed > front.speed + (1-tuning.pressure)*1.1 + .3) {
       const firstSide = Math.sin(this.phase) > 0 ? -1 : 1;
       for (const side of [firstSide, -firstSide]) {
         const candidate = clamp(front.lane + side * 3.35, -4.55, 4.55);
@@ -166,7 +180,7 @@ export class AIDriver {
         const occupied = nearby.some(o => o.gap > -11 && o.gap < Math.min(22, front.gap + 6) &&
           Math.abs(o.lane - candidate) < 2.8);
         if (!occupied) {
-          this.pass = { lane: candidate, racerId: front.racerId, remaining: 4.5 + tuning.pressure * 2 };
+          this.pass = { lane: candidate, racerId: front.racerId, remaining: 6.0 + tuning.pressure * 3 };
           break;
         }
       }
@@ -194,7 +208,7 @@ export class AIDriver {
 
     // Opponents drive within the asphalt; gradual lateral transitions avoid swerves.
     desiredLane = clamp(desiredLane, -4.55, 4.55);
-    const maxLaneStep = (1.4 + tuning.pressure * 0.8) * dt;
+    const maxLaneStep = (1.9 + tuning.pressure * 1.1) * dt;
     this.currentLane += clamp(desiredLane - this.currentLane, -maxLaneStep, maxLaneStep);
 
     const lookAhead = recovering
@@ -232,7 +246,7 @@ export class AIDriver {
     // The speed controller must account for the stronger highway engine;
     // Large gaps allow full acceleration; taper small errors by the square
     // root of available power rather than cancelling all highway power.
-    let throttle = clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
+    let throttle = clamp(error / (7.2 / tuning.reaction), 0, 1);
     let brake = clamp(-error / (7.0 / tuning.reaction), 0, 1);
     if (this.reverseTime > 0) {
       this.reverseTime -= dt;
