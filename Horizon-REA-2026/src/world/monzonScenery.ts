@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { makeRng } from "../core/mathx";
 import { createBannerTexture } from "./textures";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
 import { batchStaticScenery } from "../render/staticBatch";
+import { createMonzonOrganicTrees } from "./monzonTrees";
 
 /**
  * Circuito Monzon: original, light-weight 3D scenery built with instancing.
@@ -156,71 +156,9 @@ export class MonzonScenery {
     bridge.rotation.y = -Math.PI / 2;
     this.group.add(bridge);
 
-    // Batch the branches with the trunks so the park still uses two draw calls.
-    const trees = 460;
-    const bark = new THREE.MeshStandardMaterial({
-      color: 0x65452e, roughness: 0.96, emissive: 0x65452e, emissiveIntensity: 0.12
-    });
-    const barkParts = [new THREE.CylinderGeometry(0.18, 0.27, 1, 5)];
-    for (const direction of [-1, 1]) {
-      barkParts.push(new THREE.CylinderGeometry(0.055, 0.12, 0.46, 5)
-        .rotateZ(direction * 1.10).translate(-direction * 0.19, 0.41, 0)
-        .scale(4, 1, 1));
-    }
-    const trunkGeometry = mergeGeometries(barkParts);
-    barkParts.forEach((part) => part.dispose());
-    const trunk = new THREE.InstancedMesh(trunkGeometry, bark, trees);
-    const leafParts = [
-      new THREE.IcosahedronGeometry(1, 1).scale(.84, 1, .84),
-      new THREE.IcosahedronGeometry(1, 1).scale(.70, .77, .67).translate(.5, -.23, .17),
-      new THREE.IcosahedronGeometry(1, 1).scale(.64, .82, .73).translate(-.44, -.12, -.21)
-    ];
-    const canopyGeometry = mergeGeometries(leafParts);
-    leafParts.forEach((part) => part.dispose());
-    const crowns = new THREE.InstancedMesh(
-      canopyGeometry,
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff, roughness: 0.96, emissive: 0x193c25, emissiveIntensity: 0.14
-      }), trees
-    );
-    trunk.name = "monzon-tree-trunks";
-    crowns.name = "monzon-tree-canopies";
-    const color = new THREE.Color();
-    const scale = new THREE.Vector3();
-    const position = new THREE.Vector3();
-    const rotation = new THREE.Quaternion();
-    let count = 0;
-    const points = track.samples.length;
-    for (let i = 0; i < trees; i++) {
-      const idx = Math.floor(rng() * points);
-      const road = track.sampleAt(idx);
-      const side = track.rightAt(idx);
-      const lateral = 34 + rng() * 120;
-      const direction = i % 2 === 0 ? -1 : 1;
-      const x = road.x + side.x * lateral * direction;
-      const z = road.z + side.z * lateral * direction;
-      // Keep sightlines open around the start, pit buildings and grandstands.
-      if (x > -60 && x < 700 && z > -155 && z < 102) continue;
-      const y = ground.heightAt(x, z);
-      const height = 11 + rng() * 10;
-      position.set(x, y + height * 0.34, z);
-      scale.set(0.7 + rng() * 0.42, height * 0.68, 0.7);
-      matrix.compose(position, rotation, scale);
-      trunk.setMatrixAt(count, matrix);
-      position.set(x, y + height * 0.82, z);
-      scale.set(4.2 + rng() * 2.9, height * 0.42, 4.0 + rng() * 2.6);
-      matrix.compose(position, rotation, scale);
-      crowns.setMatrixAt(count, matrix);
-      color.setHSL(0.34 + rng() * 0.045, 0.42 + rng() * 0.12, 0.20 + rng() * 0.08, THREE.SRGBColorSpace);
-      crowns.setColorAt(count, color);
-      count++;
-    }
-    trunk.count = count;
-    crowns.count = count;
-    trunk.instanceMatrix.needsUpdate = true;
-    crowns.instanceMatrix.needsUpdate = true;
-    if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true;
-    this.group.add(trunk, crowns);
+    // Preserve the Monzón forest positions while upgrading crowns from faceted
+    // icosahedra to detailed organic leaves and photographic-style bark.
+    this.group.add(createMonzonOrganicTrees(track, ground));
     batchStaticScenery(this.group);
   }
 }
