@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { buildBroadleaf } from "./vegetation";
 import { MONZON_TREE_BUDGET, monzonTreePlacementAllowed } from "./monzonTrees";
