@@ -6,6 +6,7 @@ import { NightSky } from "./nightSky";
 import { Sky } from "three/addons/objects/Sky.js";
 import { MonzonScenery } from "./monzonScenery";
 import { createSuzakaMountain, installSuzakaScenery } from "./suzakaScenery";
+import { createSuzakaPublicStands } from "./suzakaPublicStands";
 import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
@@ -132,6 +133,7 @@ export class Environment {
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
       scene.add(createSuzakaMountain());
+      scene.add(createSuzakaPublicStands(track, this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
       void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
       // Load only editable Blender landmarks. The driveable surface and all

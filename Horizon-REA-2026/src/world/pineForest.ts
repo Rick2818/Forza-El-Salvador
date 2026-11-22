@@ -5,12 +5,14 @@ import {makeRng} from '../core/mathx';
 import type {Track} from './track';
 import {distanceToTrack, type TerrainField} from './terrain';
 import {createSuzakaResilientPines} from './suzakaResilientPines';
+import {inSuzakaPublicStand, planSuzakaPublicStands} from './suzakaPublicStands';
 
 export interface PinePlacement {x:number; y:number; z:number; height:number; width:number; yaw:number; shade:number}
 
 /** Clustered spacing, with a clear safety corridor around EVERY road segment. */
 export function pinePlacements(track:Track, ground:Pick<TerrainField,'heightAt'>):PinePlacement[] {
  const random=makeRng(28182026), trees:PinePlacement[]=[], occupied=new Map<string,PinePlacement[]>();
+ const stands=planSuzakaPublicStands(track);
  for(let anchor=0;anchor<140;anchor++) {
   const index=Math.floor(random()*track.samples.length),p=track.sampleAt(index),right=track.rightAt(index);
   const side=random()<.5?-1:1, offset=30+random()*125;
@@ -18,6 +20,7 @@ export function pinePlacements(track:Track, ground:Pick<TerrainField,'heightAt'>
    const x=p.x+right.x*offset*side+(random()-.5)*58;
    const z=p.z+right.z*offset*side+(random()-.5)*58;
    if(distanceToTrack(x,z,track,3)<track.barrierLateralOffset+12)continue;
+   if(inSuzakaPublicStand(x,z,stands))continue; // do not hide spectator terraces behind pines
    const cx=Math.floor(x/7),cz=Math.floor(z/7);
    let close=false;
    for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++) {

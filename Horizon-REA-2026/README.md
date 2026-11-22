@@ -62,6 +62,13 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - No se añaden servicios de descarga ni texturas de terceros en tiempo de ejecución. Se preservan los circuitos, los siete coches aprobados, el tráfico contrario opcional y la física existente.
 - **Validación:** la compilación y la batería de regresión son obligatorias antes de producción. La calidad visual final y los 60 FPS dependen todavía de una inspección en el navegador y de una medición sobre el equipo del jugador.
 
+## Público claramente visible en Monzón y Suzaka
+
+- **Monzón:** las gradas opacas anteriores se transforman en terrazas escalonadas abiertas a la pista; el techo se retrasa para dejar descubiertas las primeras filas. Se muestran **832 espectadores 3D completos** en tribuna, más **138 espectadores** sobre un balcón abierto **delante** de los siete garajes. El balcón se coloca sobre el techo de los talleres para no estrechar el pit lane ni bloquear su entrada. Se reemplazan las pequeñas esferas que antes representaban al público.
+- **Suzaka:** se incorporan **cuatro tribunas abiertas** en sectores distintos del trazado. Cada una tiene cinco filas de 32 espectadores; **640 espectadores 3D** en total. Las ubicaciones se seleccionan automáticamente sobre tramos no elevados, verificando distancia respecto de **toda** la figura de ocho y manteniendo a las personas fuera de los guardarraíles. Se dejan zonas sin pinos en torno a esas gradas para que el público se pueda ver desde el auto.
+- Los espectadores tienen cabeza, cuerpo, brazos, pantalones y gorras en colores variados. Se emplean instancias 3D sin animaciones por fotograma para limitar el coste de dibujo; las tribunas de Suzaka se descartan por cámara al quedar fuera de vista.
+- No se desplazan las barreras físicas, el puente, los autos, los talleres ni el eje de los circuitos. La velocidad objetivo de 60 FPS requiere medición sobre el dispositivo real.
+
 ## Siete garajes de marcas con mecánicos y equipamiento físico — Monzón
 
 - Los cuatro boxes anteriores se amplían a **siete** (Ferrari, Porsche, Bugatti, Mercedes-Benz, Lamborghini, Koenigsegg y Yangwang), uno por cada automóvil aprobado. Cada garaje mide ahora **18,96 m de ancho × 13,2 m de profundidad × 5,64 m de alto**, un 20% más en cada dimensión.
