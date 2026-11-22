@@ -115,7 +115,6 @@ export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField
   const tshirts=[0xe36d3c,0xf3d14a,0x2c81ce,0x41b49c,0xf2efdd,0xb45db5,0xdd394a];
   const skin=[0xf1c99d,0xc79160,0x9a5c42,0x72482f];
   const transform=new THREE.Quaternion();
-  const matrix=new THREE.Matrix4();
   const rowBox=new THREE.BoxGeometry(LENGTH, 1, STEP - .12);
   const tierSeat=new THREE.BoxGeometry(LENGTH, .18, STEP - .08);
 
@@ -136,8 +135,10 @@ export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField
       const rise = .72 + row * .84;
       const foundation = new THREE.Mesh(rowBox,riser);
       foundation.name = `suzaka-stand-riser-${sector}-${row}`;
-      matrix.compose(new THREE.Vector3(x,base+rise/2,z),transform,new THREE.Vector3(1,rise,1));
-      foundation.applyMatrix4(matrix);
+      // Do not mutate shared BoxGeometry: each of the 20 stands has an independent transform.
+      foundation.position.set(x,base+rise/2,z);
+      foundation.quaternion.copy(transform);
+      foundation.scale.y = rise;
       group.add(foundation);
       const chair = new THREE.Mesh(tierSeat,seat[(sector+row)%seat.length]);
       chair.name=`suzaka-stand-seat-${sector}-${row}`;
