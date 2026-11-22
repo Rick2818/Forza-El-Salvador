@@ -77,6 +77,8 @@ export class SuzakaGarages {
     scene.add(this.group);
   }
 
+  update(_center: THREE.Vector3): void { /* Fixed daylight workshops need no per-frame updates. */ }
+
   installPhysics(world:RAPIER.World): void {
     if(this.installed)return;
     this.installed=true;
