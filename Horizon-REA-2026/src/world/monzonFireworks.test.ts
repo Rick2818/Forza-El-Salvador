@@ -5,21 +5,20 @@ import {getCircuit} from "./circuits";
 import {
   MONZON_BURST_COUNT,MONZON_FIREWORK_DURATION,MONZON_SPARK_TRAILS,
   MONZON_FIREWORK_PATTERNS,MONZON_SPARKS_PER_BURST,
-  fireworkVisibility,fireworkSoundDelay,monzonCinematicCameraActive,
+  fireworkVisibility,fireworkSoundDelay,MONZON_OPENING_DURATION,
   monzonFireworkBurstTime,MonzonLaunchFireworks
 } from "./monzonFireworks";
 
 describe("V16 GPU fireworks choreography",()=>{
-  it("hands control back to the driver before the green light",()=>{
-    expect(monzonCinematicCameraActive("monzon",2)).toBe(true);
-    expect(monzonCinematicCameraActive("monzon",.3)).toBe(false);
-    expect(monzonCinematicCameraActive("suzaka",2)).toBe(false);
-    expect(monzonCinematicCameraActive("monzon",2,false)).toBe(false);
+  it("finishes all fireworks before the separate event opening ends",()=>{
+    expect(MONZON_OPENING_DURATION).toBeGreaterThan(MONZON_FIREWORK_DURATION);
+    expect(MONZON_OPENING_DURATION).toBeLessThanOrEqual(20);
+    expect(MONZON_FIREWORK_PATTERNS).toContain("star");
   });
   it("has 42 shows, all seven patterns, and a synchronized grand finale",()=>{
     expect(MONZON_BURST_COUNT).toBe(42);
     expect(MONZON_FIREWORK_PATTERNS).toHaveLength(7);
-    expect(MONZON_SPARK_TRAILS).toBe(3);
+    expect(MONZON_SPARK_TRAILS).toBe(2);
     expect(monzonFireworkBurstTime(0)).toBeGreaterThan(.85);
     expect(monzonFireworkBurstTime(25)).toBeGreaterThan(8);
     expect(monzonFireworkBurstTime(41)).toBeLessThan(MONZON_FIREWORK_DURATION-3);

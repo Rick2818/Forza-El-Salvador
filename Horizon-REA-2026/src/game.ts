@@ -9,7 +9,7 @@ import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
 import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
 import { Environment } from "./world/environment";
-import { MonzonLaunchFireworks, monzonCinematicCameraActive, MONZON_CINEMATIC_START_SEC } from "./world/monzonFireworks";
+import { MonzonLaunchFireworks, MONZON_OPENING_DURATION } from "./world/monzonFireworks";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
 import { Menu } from "./ui/menu";
@@ -22,7 +22,7 @@ import { clamp } from "./core/mathx";
 import type { DriveInput } from "./vehicle/vehicle";
 import { DEFAULT_SELECTED_ID, loadSelectedVehicle, vehicleDesign } from "./vehicle/selectedAsset";
 
-export type GameState = "menu" | "racing" | "paused" | "results";
+export type GameState = "menu" | "opening" | "racing" | "paused" | "results";
 type Quality = "alta" | "equilibrada";
 
 export class Game {
@@ -58,9 +58,9 @@ export class Game {
   private goFlash = 0;
   private goShown = false;
   private fireworks: MonzonLaunchFireworks | null = null;
-  private fireworksStarted = false;
-  private cinematicDisabled = false;
-  private cinematicPrevious = false;
+  private openingTime = 0;
+  private pausedOpening = false;
+  private readonly openingOverlay: HTMLDivElement;
   private finishDelay = 0;
   private lowFpsTime = 0;
   private degraded = false;
@@ -152,6 +152,12 @@ export class Game {
     this.smoke = new SmokeSystem(this.scene);
 
     this.hud = new HUD(uiRoot, this.track);
+    this.openingOverlay = document.createElement("div");
+    this.openingOverlay.id = "event-opening";
+    this.openingOverlay.hidden = true;
+    this.openingOverlay.innerHTML = `<div class="event-caption"><span>HORIZON EL SALVADOR</span><strong>La noche nos reúne</strong><small>MONZÓN · APERTURA DEL EVENTO</small></div><button type="button" class="btn" id="skip-opening">Omitir presentación <small>Enter</small></button>`;
+    uiRoot.append(this.openingOverlay);
+    this.openingOverlay.querySelector("button")!.addEventListener("click", () => this.skipOpening());
     this.menu = new Menu(uiRoot, {
       onStart: () => this.startRace(),
       onResume: () => this.resume(),
@@ -227,6 +233,7 @@ export class Game {
         circuit: this.track.circuit.id,
         difficulty: this.difficulty,
         raceState: this.race.state,
+        openingTime: this.openingTime,
         fps: Number(this.fps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
         gear: this.race.player.vehicle.gear + 1,
@@ -252,6 +259,7 @@ export class Game {
       pause: () => this.pause(),
       resume: () => this.resume(),
       restart: () => this.startRace(),
+      skipOpening: () => this.skipOpening(),
       setQuality: (q: Quality) => {
         this.quality = q;
         this.applyQuality();
@@ -276,9 +284,9 @@ export class Game {
     this.audio.silence();
     this.audio.ensure();
     this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
-        this.race.state = "countdown";
+    this.race.state = this.fireworks ? "idle" : "countdown";
     this.race.countdown = SETTINGS.race.countdown;
-    this.state = "racing";
+    this.state = this.fireworks ? "opening" : "racing";
     this.goFlash = 0;
     this.goShown = false;
     this.finishDelay = 0;
@@ -286,16 +294,35 @@ export class Game {
     this.physicsAccum = 0;
     this.chase.snap();
     this.fireworks?.stop();
-    this.fireworksStarted = false;
-    this.cinematicDisabled = false;
-    this.cinematicPrevious = false;
+    this.openingTime = 0;
+    this.pausedOpening = false;
+    this.openingOverlay.hidden = !this.fireworks;
+    if (this.fireworks) this.fireworks.start();
     this.menu.hide();
-    this.input.setTouchControlsVisible(true);
-    this.hud.show(true);
-    this.hud.setStartSignal("red");
+    this.input.setTouchControlsVisible(!this.fireworks);
+    this.hud.show(!this.fireworks);
+    this.hud.setStartSignal(this.fireworks ? null : "red");
     this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
+    this.input.focusGame();
+  }
+
+  /** Only transition out of an active opening, so repeated clicks cannot reset a race. */
+  skipOpening(): void {
+    if (this.state !== "opening") return;
+    this.fireworks?.stop();
+    this.audio.stopPyrotechnics();
+    this.openingOverlay.hidden = true;
+    this.race.state = "countdown";
+    this.race.countdown = SETTINGS.race.countdown;
+    this.state = "racing";
+    this.physicsAccum = 0;
+    this.chase.snap();
+    this.chase.update(1 / 60, this.race.player.vehicle, this.time);
+    this.input.setTouchControlsVisible(true);
+    this.hud.show(true);
+    this.hud.setStartSignal("red");
     this.input.focusGame();
   }
 
@@ -308,7 +335,9 @@ export class Game {
   }
 
   pause(): void {
-    if (this.state !== "racing") return;
+    if (this.state !== "racing" && this.state !== "opening") return;
+    this.pausedOpening = this.state === "opening";
+    this.openingOverlay.hidden = true;
     this.state = "paused";
     this.performanceLog.interrupt("Carrera en pausa; reinicia para medir una sesión continua.");
     this.physicsAccum = 0;
@@ -320,10 +349,11 @@ export class Game {
 
   resume(): void {
     if (this.state !== "paused") return;
-    this.state = "racing";
+    this.state = this.pausedOpening ? "opening" : "racing";
+    this.openingOverlay.hidden = !this.pausedOpening;
     this.physicsAccum = 0;
     this.menu.hide();
-    this.input.setTouchControlsVisible(true);
+    this.input.setTouchControlsVisible(!this.pausedOpening);
     this.audio.ensure();
     this.input.focusGame();
   }
@@ -339,8 +369,9 @@ export class Game {
     this.hud.show(false);
     this.audio.silence();
     this.fireworks?.stop();
-    this.fireworksStarted = false;
-    this.cinematicPrevious = false;
+    this.openingTime = 0;
+    this.pausedOpening = false;
+    this.openingOverlay.hidden = true;
     this.chase.snap();
   }
 
@@ -409,7 +440,6 @@ export class Game {
   /** Same camera switch for keyboard, HUD button, and both playable circuits. */
   private switchCamera(mode?: CameraMode): void {
     if (this.state !== "racing") return;
-    this.cinematicDisabled = true;
     if (mode) this.chase.setMode(mode);
     else this.chase.toggle();
     this.hud.setCameraMode(this.chase.mode);
@@ -439,12 +469,12 @@ export class Game {
    */
   private onWindowBlur = (): void => {
     if (this.captureMode) return;
-    if (this.state === "racing") this.pause();
+    if (this.state === "racing" || this.state === "opening") this.pause();
   };
 
   private onVisibilityChange = (): void => {
     if (this.captureMode) return;
-    if (document.hidden && this.state === "racing") this.pause();
+    if (document.hidden && (this.state === "racing" || this.state === "opening")) this.pause();
   };
 
   /**
@@ -539,6 +569,14 @@ export class Game {
       const center = this.race.player.vehicle.position.clone();
       center.y += 0.55;
       this.chase.menuOrbit(dt, center, this.time);
+    } else if (this.state === "opening") {
+      // No Race.update or physics steps here: all vehicles and race clocks are frozen.
+      this.openingTime += dt;
+      this.environment.update(this.race.player.vehicle.position, dt);
+      this.fireworks?.update(dt);
+      this.fireworks?.cinematicCamera(this.camera, this.openingTime,
+        this.scene, this.race.player.vehicle.position);
+      if (this.openingTime >= MONZON_OPENING_DURATION) this.skipOpening();
     } else if (this.state === "racing") {
       // Fixed 60 Hz physics with up to three catch-up sub-steps. The vehicle
       // controller integrates wheel forces for exactly the step it is given,
@@ -581,20 +619,9 @@ export class Game {
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.environment.update(this.race.player.vehicle.position, dt);
-      if (this.fireworks && this.race.state === "countdown" &&
-          this.race.countdown <= MONZON_CINEMATIC_START_SEC && !this.fireworksStarted) {
-        this.fireworksStarted = true;
-        this.fireworks.start();
-      }
-      this.fireworks?.update(dt);
-      const cinematic = !!this.fireworks && !this.captureMode && this.race.state === "countdown" &&
-        monzonCinematicCameraActive(this.track.circuit.id,this.race.countdown,!this.cinematicDisabled);
-      if (this.cinematicPrevious && !cinematic) this.chase.snap();
-      this.cinematicPrevious = cinematic;
       if (!this.captureMode) {
         this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
           this.track.sampleAt(this.race.player.hint+Math.round((12+Math.abs(this.race.player.vehicle.speed)*.35)/this.track.segmentLength)));
-        if (cinematic) this.fireworks?.cinematicCamera(this.camera);
       }
 
       const player = this.race.player.vehicle;
@@ -721,12 +748,16 @@ export class Game {
   }
 
   private handleHotkeys(): void {
+    if (this.state === "opening" && (this.input.consume("Enter") || this.input.consume("Space"))) {
+      this.skipOpening();
+      return;
+    }
     if (this.input.consume("Escape")) {
-      if (this.state === "racing") this.pause();
+      if (this.state === "racing" || this.state === "opening") this.pause();
       else if (this.state === "paused") this.resume();
     }
     if (this.input.consume("KeyP")) {
-      if (this.state === "racing") this.pause();
+      if (this.state === "racing" || this.state === "opening") this.pause();
       else if (this.state === "paused") this.resume();
     }
     if (this.input.consume("KeyM")) this.toggleMute();

@@ -56,7 +56,8 @@ describe("Monzón: pits abiertos y talleres transitables", () => {
     const workers=createPitMechanics(GARAGE_LAYOUT);
     expect(workers.userData.mechanics).toBe(14);
     expect(workers.userData.mechanicsPerGarage).toBe(2);
-    expect(workers.children).toHaveLength(12);
+    expect(workers.userData.drawCalls).toBe(3);
+    expect(workers.userData.animated).toBe(true);
     for(const bay of GARAGE_LAYOUT){
       expect(mechanicStations(bay.x)).toHaveLength(2);
       for(const worker of mechanicStations(bay.x)){

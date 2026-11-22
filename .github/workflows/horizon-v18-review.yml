@@ -1,0 +1,39 @@
+name: V18 apertura y personajes - revisión sin publicar
+on:
+  push:
+    branches: [quality/v18-event-opening]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: node tools/audit-car-glbs.mjs && npm run build && node tools/verify-circuit-assets.mjs
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: npm run preview > /tmp/horizon-v18-preview.log 2>&1 &
+      - run: node tools/review-v18.mjs
+      - name: Crear video de capturas reales del motor
+        run: ffmpeg -y -framerate 15 -i review/v18/frames/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart review/v18/apertura-v18.mp4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: horizon-v18-review
+          path: |
+            Horizon-REA-2026/review/v18/*.png
+            Horizon-REA-2026/review/v18/*.json
+            Horizon-REA-2026/review/v18/*.mp4
+          if-no-files-found: error

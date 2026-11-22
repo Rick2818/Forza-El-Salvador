@@ -1,15 +1,14 @@
 import * as THREE from "three";
 import type { Track } from "./track";
 
-export const MONZON_CINEMATIC_START_SEC = 2.8;
-export const MONZON_CINEMATIC_END_SEC = .7;
+export const MONZON_OPENING_DURATION = 19;
 export const MONZON_BURST_COUNT = 42;
 export const MONZON_FIREWORK_DURATION = 17.6;
-export const MONZON_SPARKS_PER_BURST = 96;
-export const MONZON_SPARK_TRAILS = 3;
+export const MONZON_SPARKS_PER_BURST = 384;
+export const MONZON_SPARK_TRAILS = 2;
 export const MONZON_FIREWORK_PATTERNS = [
   "peony", "chrysanthemum", "golden-willow", "palm",
-  "ring", "comet", "multistage"
+  "ring", "star", "multistage"
 ] as const;
 export type FireworkPattern = typeof MONZON_FIREWORK_PATTERNS[number];
 export interface FireworkSoundCue {
@@ -20,11 +19,6 @@ export interface FireworkSoundCue {
 const GOLDEN_ANGLE = 2.399963229728653;
 const PALETTE = [0xffc96b,0xff6ca3,0x86deff,0xa5ffbc,0xc7a9ff,0xfff0bb,0xffb86a];
 
-/** The start camera returns to the driver before the green light. */
-export function monzonCinematicCameraActive(circuit: string, countdown: number, enabled = true): boolean {
-  return enabled && circuit === "monzon" &&
-    countdown < MONZON_CINEMATIC_START_SEC && countdown > MONZON_CINEMATIC_END_SEC;
-}
 export function monzonFireworkBurstTime(i: number): number {
   if (i < 0 || i >= MONZON_BURST_COUNT) throw new RangeError("Firework index outside show");
   const wave = Math.floor(i / 7), column = i % 7;
@@ -63,9 +57,9 @@ const SPARK_VERTEX = /* glsl */ `
   varying float vAlpha;
   varying float vCore;
   void main() {
-    float age = uTime - aInfo.x - aTrail * 0.085;
+    float age = uTime - aInfo.x - aTrail * 0.032;
     float mode = aInfo.z;
-    float life = mode > 1.5 && mode < 3.5 ? 3.75 : 2.8;
+    float life = mode > 1.5 && mode < 3.5 ? 3.75 : 3.15;
     if (mode > 5.5) life = 2.25;
     if (age <= 0.0 || age >= life || aGate > uDensity) {
       gl_Position = vec4(2.0,2.0,2.0,1.0);
@@ -76,10 +70,10 @@ const SPARK_VERTEX = /* glsl */ `
       return;
     }
     vec3 d = aDirection;
-    float drag = mode > 1.5 && mode < 4.5 ? 0.82 : 0.42;
+    float drag = mode > 1.5 && mode < 3.5 ? 0.72 : 0.38;
     float travel = aInfo.y * (1.0 - exp(-drag * age)) / drag;
     if (mode > 4.5 && mode < 5.5) travel *= 0.83;
-    float gravity = mode > 1.5 && mode < 4.5 ? 6.0 : 4.45;
+    float gravity = mode > 1.5 && mode < 3.5 ? 4.2 : 2.1;
     if (mode > 5.5) gravity = 5.0;
     vec3 flight = d * travel;
     flight.y -= gravity * age * age;
@@ -89,7 +83,7 @@ const SPARK_VERTEX = /* glsl */ `
     vec4 mvPosition = modelViewMatrix * vec4(transformed,1.0);
     gl_Position = projectionMatrix * mvPosition;
     float pulse = 0.87 + .13 * sin(27.0 * age + aInfo.w * 47.0);
-    vAlpha = min(1.0, age * 8.0) * pow(1.0 - age / life,1.12)
+    vAlpha = min(1.0, age * 32.0) * pow(1.0 - age / life,1.12)
       * (1.0 - aTrail * .25) * pulse;
     vCore = 1.0 - aTrail * .25;
     vTint = aTint;
@@ -183,7 +177,7 @@ const SMOKE_FRAGMENT = /* glsl */ `
 function pointMaterial(vertexShader: string, density = 1): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader,fragmentShader:SPARK_FRAGMENT,
-    uniforms: {uTime:{value:0},uSize:{value:17},uDensity:{value:density}},
+    uniforms: {uTime:{value:0},uSize:{value:5.5},uDensity:{value:density}},
     transparent:true,depthWrite:false,
     blending:THREE.AdditiveBlending,toneMapped:false,fog:false
   });
@@ -210,14 +204,14 @@ export class MonzonLaunchFireworks {
   private active = false;
 
   constructor(scene:THREE.Scene, track:Track, private readonly onCue:(cue:FireworkSoundCue)=>void = ()=>{}) {
-    this.group.name = "monzon-v16-gpu-grand-prix-pyrotechnics";
+    this.group.name = "monzon-v18-opening-aerial-shells";
     const p=track.sampleAt(track.startIndex);
     const tangent=track.tangentAt(track.startIndex);
     const right=track.rightAt(track.startIndex);
     this.group.position.copy(p).addScaledVector(tangent,130);
     this.cameraOrigin.copy(p).addScaledVector(tangent,-18).addScaledVector(right,23);
-    this.cameraOrigin.y += 8;
-    this.cameraTarget.copy(this.group.position).add(new THREE.Vector3(0,112,0));
+    this.cameraOrigin.y += 6;
+    this.cameraTarget.copy(this.group.position).add(new THREE.Vector3(0,105,0));
 
     const center:number[]=[],direction:number[]=[],info:number[]=[],tint:number[]=[],trail:number[]=[],gate:number[]=[];
     const corePosition:number[]=[],coreStart:number[]=[],coreTint:number[]=[];
@@ -225,10 +219,10 @@ export class MonzonLaunchFireworks {
     const smokePosition:number[]=[],smokeStart:number[]=[],smokeSeed:number[]=[];
     for(let i=0;i<MONZON_BURST_COUNT;i++) {
       const wave=Math.floor(i/7),column=i%7;
-      const along=(wave-2.4)*30+(i%2)*12;
+      const along=(wave-2.4)*15+(i%2)*10;
       // Far beyond both safety barriers; their particles never collide.
-      const lateral=(column-3)*38+(wave%2)*14;
-      const height=94+(i%5)*15+(wave===5?18:0);
+      const lateral=(column-3)*31+(wave%2)*12;
+      const height=82+(i%5)*11+(wave===5?18:0);
       const burst: Burst = {
         start:monzonFireworkBurstTime(i),
         center:new THREE.Vector3(right.x*lateral+tangent.x*along,height,
@@ -261,10 +255,24 @@ export class MonzonLaunchFireworks {
         let dy=Math.cos(polar);
         let dz=Math.sin(polar)*Math.sin(theta);
         if(burst.mode===2 || burst.mode===3)dy=Math.abs(dy)*.87+.18;
-        if(burst.mode===4){dx=Math.cos(theta);dy=Math.sin(theta);dz=.15*Math.sin(3*theta);}
-        if(burst.mode===5){dy=Math.abs(dy)*1.55+.3;dx*=.46;dz*=.46;}
+        let radius=1;
+        if(burst.mode===4 || burst.mode===5) {
+          const angle=spark/MONZON_SPARKS_PER_BURST*Math.PI*2;
+          if(burst.mode===5) {
+            // Sample the perimeter of a five-point star, preserving straight edges.
+            const edge=spark/MONZON_SPARKS_PER_BURST*10;
+            const k=Math.floor(edge),f=edge-k;
+            const a=k*Math.PI/5+Math.PI/2,b=(k+1)*Math.PI/5+Math.PI/2;
+            const r0=k%2?.43:1,r1=k%2?1:.43;
+            const x=Math.cos(a)*r0*(1-f)+Math.cos(b)*r1*f;
+            const y=Math.sin(a)*r0*(1-f)+Math.sin(b)*r1*f;
+            radius=Math.hypot(x,y);
+            dx=right.x*x/radius;dy=y/radius;dz=right.z*x/radius;
+          } else {dx=right.x*Math.cos(angle);dy=Math.sin(angle);dz=right.z*Math.cos(angle);}
+        }
         const sparkLag=burst.mode===6 && spark%2===0?.56:0;
-        const speed=(burst.mode===2?23:burst.mode===5?36:31)+((spark*11)%13)*1.3;
+        // Coherent shells, rather than widely scattered velocities that erase the figure.
+        const speed=(burst.mode===2?25:burst.mode===3?35:35)*radius*(1+(spark%7)*.008);
         for(let layer=0;layer<MONZON_SPARK_TRAILS;layer++) {
           center.push(burst.center.x,burst.center.y,burst.center.z);
           direction.push(dx,dy,dz);
@@ -341,7 +349,7 @@ export class MonzonLaunchFireworks {
     // Constant vertex buffers in both modes; balanced mode shades ~60%
     // of fragments with no change to the finale choreography.
     this.materials[0].uniforms.uDensity.value=quality==="alta"?1:.62;
-    this.materials[0].uniforms.uSize.value=quality==="alta"?17:14;
+    this.materials[0].uniforms.uSize.value=quality==="alta"?5.5:4.6;
   }
   start():void {
     this.elapsed=0;this.burstCursor=0;this.launchCursor=0;
@@ -386,10 +394,52 @@ export class MonzonLaunchFireworks {
       light.intensity=age>=0&&age<.42?850*Math.exp(-age*9):0;
     }
   }
-  cinematicCamera(camera:THREE.PerspectiveCamera):void {
-    camera.position.copy(this.cameraOrigin);
-    camera.lookAt(this.cameraTarget);
-    camera.fov=68;
+  cinematicCamera(camera:THREE.PerspectiveCamera, time = this.elapsed,
+    scene?:THREE.Scene, player?:THREE.Vector3):void {
+    const ease=(t:number)=>{const x=THREE.MathUtils.clamp(t,0,1);return x*x*(3-2*x);};
+    const position=this.cameraOrigin.clone();
+    const target=this.cameraTarget.clone();
+    let fov=62;
+    if(time<2.2 && scene) {
+      const blimp=scene.getObjectByName("monzon-goodyear-v18-lateral-airship");
+      if(blimp) {
+        target.copy(blimp.position).add(new THREE.Vector3(0,43,0));
+        position.copy(target).add(new THREE.Vector3(15,-15,105));
+        fov=48;
+      }
+    } else if(time>=6.3 && time<8.3) {
+      // Close enough to inspect actual anatomy and the crowd's applause.
+      position.set(159+ease((time-6.3)/2)*2,8.2,-42);
+      target.set(160,7.1,-49);
+      fov=49;
+    } else if(time>=8.3 && time<10.3) {
+      position.set(111.8+ease((time-8.3)/2)*.5,1.6,32.1);
+      target.set(114.3,1.35,35.65);
+      fov=48;
+    } else {
+      position.x+=Math.sin(time*.15)*5;
+      position.y+=2;
+      fov=64;
+    }
+    // After the final sparks fade, blend from the show back to the player's grid.
+    if(time>17.6 && player) {
+      const blend=ease((time-17.6)/(MONZON_OPENING_DURATION-17.6));
+      position.lerp(player.clone().add(new THREE.Vector3(-7,3.2,0)),blend);
+      target.lerp(player.clone().add(new THREE.Vector3(7,1,0)),blend);
+      fov=THREE.MathUtils.lerp(fov,62,blend);
+    }
+    camera.position.copy(position);
+    camera.lookAt(target);
+    camera.fov=fov;
     camera.updateProjectionMatrix();
+  }
+
+  dispose():void {
+    this.stop();
+    this.group.traverse(object=>{
+      if(object instanceof THREE.Points) object.geometry.dispose();
+    });
+    for(const material of this.materials) material.dispose();
+    this.group.removeFromParent();
   }
 }

@@ -338,3 +338,23 @@ El audio conserva los controles y volumen del jugador, recupera el crecimiento c
 El turbo automático conserva el umbral de 100 mph y los límites de 200/230 mph. La potencia extra entra progresivamente, disminuye según la carga del giro y se corta cuando la dirección, rotación o deslizamiento exigen demasiado agarre. Una curva exigente cancela la ráfaga activa y respeta la recarga; si todavía no se activó, espera a que el auto esté estable. La aceleración normal y la dirección siguen bajo control del jugador. No es un piloto automático ni elimina la necesidad de frenar antes de curvas cerradas.
 
 La regresión `tests/turbo-corner.test.mjs` usa Rapier y los pivotes de los siete GLB reales en 28 giros de ambos sentidos. `docs/quality/turbo-control/comparison.json` conserva condiciones y resultados antes/después: Ferrari, giro moderado, máximo del indicador de deslizamiento 35.64→0.59 m/s; Bugatti 30.89→0.54 m/s. Son maniobras controladas sobre plano, no certificación de todas las curvas ni de FPS. Las carreras completas y los controles WebGL complementan esta prueba.
+
+## V18 — revisión de apertura y personajes (sin publicar)
+
+La rama `quality/v18-event-opening` separa una apertura de 19 segundos en Monzón
+del cronómetro, físicas y cuenta regresiva de carrera. Incluye omisión por botón,
+Enter o Espacio, pausa y cancelación de sonidos pendientes. Los fuegos usan
+42 detonaciones aéreas y siete patrones, incluida una estrella de cinco puntas.
+El dirigible negro recorre una ruta lateral acotada, lleva rótulos independientes
+legibles en ambos lados y luces rojas/amarillas sobre cada marca.
+
+El público y los mecánicos de ambas pistas usan una base anatómica MakeHuman CC0
+retocada y vestida en Blender, con tres LODs, variación por instancia y animación
+GPU. Procedencia: `public/models/people/SOURCE.md`. El rig del archivo Blender es
+una referencia editable; la animación masiva del juego deforma articulaciones
+en shader y no exporta un esqueleto por espectador.
+
+`horizon-v18-review.yml` prueba y compila la rama y produce capturas reales del
+motor, verificaciones de estado y video a 15 FPS de reproducción. Ese video se
+construye con pasos fijos y **no mide FPS de la laptop**. La revisión visual y
+la aprobación del usuario siguen siendo necesarias antes de incorporar a `main`.

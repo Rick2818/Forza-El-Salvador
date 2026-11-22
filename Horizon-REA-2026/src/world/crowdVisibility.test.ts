@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import * as THREE from "three";
 import { Track } from "./track";
 import { getCircuit } from "./circuits";
 import { monzonPitSpectatorPositions, monzonGrandstandSpectatorPositions,
@@ -28,8 +27,8 @@ describe("Visible spectators in Monzón and Suzaka", () => {
     expect(grandstand).toHaveLength(2600);
     const group = createVisibleSpectators(roof,"test-pit-crowd");
     expect(group.userData.people).toBe(138);
-    expect(group.children).toHaveLength(6);
-    for(const child of group.children) expect(child).toBeInstanceOf(THREE.InstancedMesh);
+    expect(group.userData.drawCalls).toBe(3);
+    expect(group.userData.animated).toBe(true);
   });
 
   it("places four open spectator sections on safe portions of Suzaka", () => {
@@ -63,13 +62,9 @@ describe("Visible spectators in Monzón and Suzaka", () => {
     for(const stand of group.children){
       expect(stand.userData.people).toBe(640);
       expect(stand.children.some(obj=>obj.name.includes("public-sector-"))).toBe(true);
-      const audience=stand.children.find(obj=>obj.name.includes("public-sector-")) as THREE.Group;
-      expect(audience.children).toHaveLength(6);
-      for(const child of audience.children) {
-        const inst=child as THREE.InstancedMesh;
-        expect(inst.count).toBe(640);
-        expect(inst.frustumCulled).toBe(true);
-      }
+      const audience=stand.children.find(obj=>obj.name.includes("public-sector-")) as {userData:Record<string, unknown>};
+      expect(audience.userData.drawCalls).toBe(3);
+      expect(audience.userData.people).toBe(640);
     }
   });
 });

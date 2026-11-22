@@ -279,3 +279,19 @@ it("delays distant cinematic pyro launch and burst sounds without altering engin
   audio.playFireworkBurst(120,"ring");
   expect(ctx.oscillators.length).toBe(before+3);
 });
+
+
+it("cancels all scheduled firework voices when skipping or pausing the opening",()=>{
+  vi.stubGlobal("window",{AudioContext:Context});
+  const audio=new GameAudio();audio.ensure();
+  const ctx=Context.current,before=ctx.oscillators.length;
+  audio.playFireworkLaunch(343);audio.playFireworkBurst(686,"star");
+  const voices=ctx.oscillators.slice(before);
+  audio.stopPyrotechnics();
+  for(const voice of voices) {
+    expect(voice.stop).toHaveBeenCalledTimes(2); // scheduled endpoint and immediate cancellation
+    expect(voice.disconnect).toHaveBeenCalled();
+  }
+  audio.stopPyrotechnics();
+  for(const voice of voices)expect(voice.stop).toHaveBeenCalledTimes(2);
+});

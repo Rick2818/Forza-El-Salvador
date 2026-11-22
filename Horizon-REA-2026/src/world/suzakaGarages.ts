@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
+import { createHumanPeople } from "./humanPeople";
 import type { Track } from "./track";
 import {
   SUZAKA_GARAGE_NAMES, SUZAKA_GARAGE_METRES, SUZAKA_GARAGE_WIDTH,
@@ -85,6 +86,12 @@ export class SuzakaGarages {
         new THREE.MeshBasicMaterial({map,side:THREE.DoubleSide,toneMapped:false}));
       sign.name="bay-brand";sign.position.set(0,h-.15,-d/2-.48);
       sign.rotation.y=Math.PI;bay.add(sign);
+      const staff=createHumanPeople([-1,1].map((side,j)=>({
+        x:side*3.7,y:.12,z:1.6,yaw:Math.PI+side*.2,
+        shirt:[0xc32930,0x999281,0x277f99,0xb2b9bc,0xd3ac30,0x566879,0x26343f][i],
+        skin:j?0xc99770:0x9a6349,worker:true
+      })),"suzaka-pit-mechanics-"+i,true);
+      bay.add(staff);
       this.group.add(bay);
     });
     this.group.userData.drivableGarages=SUZAKA_GARAGE_NAMES.length;

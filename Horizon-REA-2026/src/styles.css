@@ -657,3 +657,13 @@ button.difficulty-btn.is-active {
 .traffic-switch { display: flex; gap: 12px; align-items: center; cursor: pointer; min-height: 45px; line-height: 1.45; }
 .traffic-switch input { flex: none; width: 22px; height: 22px; accent-color: #ff824f; }
 .traffic-switch strong { color: #fff; }
+
+#event-opening { position: absolute; inset: 0; pointer-events: none; z-index: 25; border-top: 30px solid #03060b; border-bottom: 30px solid #03060b; }
+#event-opening[hidden] { display: none; }
+.event-caption { position: absolute; bottom: 6%; left: 5%; color: #fff; text-shadow: 0 2px 12px #000; display: grid; gap: 8px; }
+.event-caption span { letter-spacing: .3em; color: #f3ca77; font-size: 12px; }
+.event-caption strong { font-size: clamp(23px, 3vw, 40px); font-weight: 500; }
+.event-caption small { letter-spacing: .18em; font-size: 10px; }
+#skip-opening { position: absolute; right: 4%; bottom: 6%; pointer-events: auto; background: #0b1222d9; border: 1px solid #ffffff60; }
+#skip-opening small { opacity: .6; margin-left: 10px; }
+@media (max-width: 600px) { .event-caption strong { font-size: 19px; } #skip-opening { bottom: 23%; } }

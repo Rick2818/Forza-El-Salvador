@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createHumanPeople } from "./humanPeople";
 import { GARAGE_SCALE } from "./monzonPitAccess";
 
 /** Physical proxies for the EXISTING Blender workshop kit.  Blender authored
@@ -49,96 +50,13 @@ export function mechanicStations(bayX: number): readonly {x:number; z:number; ya
   ];
 }
 
-/** 14 recognisable 3D pit mechanics: safety helmets, faces, workwear, pants,
- * arms, gloves and boots. Instancing keeps this to a fixed low draw-call cost. */
+/** Anatomical clothed mechanics, retaining the approved physical station positions. */
 export function createPitMechanics(bays: readonly {x:number; color:number}[]): THREE.Group {
-  const group = new THREE.Group();
-  group.name = "monzon-fourteen-pit-mechanics";
-  type Component = "torso" | "head" | "cap" | "left-leg" | "right-leg" |
-    "left-arm" | "right-arm" | "left-glove" | "right-glove" |
-    "left-boot" | "right-boot" | "safety-vest";
-
-  const geometries: Record<Component,THREE.BufferGeometry> = {
-    torso: new THREE.CylinderGeometry(.30, .26, .78, 10),
-    head: new THREE.SphereGeometry(.215, 10, 8),
-    cap: new THREE.CylinderGeometry(.235, .28, .18, 12),
-    "left-leg": new THREE.CylinderGeometry(.12, .135, .75, 8),
-    "right-leg": new THREE.CylinderGeometry(.12, .135, .75, 8),
-    "left-arm": new THREE.CylinderGeometry(.105, .11, .73, 8),
-    "right-arm": new THREE.CylinderGeometry(.105, .11, .73, 8),
-    "left-glove": new THREE.SphereGeometry(.12, 8, 6),
-    "right-glove": new THREE.SphereGeometry(.12, 8, 6),
-    "left-boot": new THREE.BoxGeometry(.27,.19,.42),
-    "right-boot": new THREE.BoxGeometry(.27,.19,.42),
-    "safety-vest": new THREE.BoxGeometry(.34,.20,.04)
-  };
-  const materials: Record<Component,THREE.MeshStandardMaterial> = {
-    torso: new THREE.MeshStandardMaterial({color:0xffffff,roughness:.81}),
-    head: new THREE.MeshStandardMaterial({color:0xffffff,roughness:.95}),
-    cap: new THREE.MeshStandardMaterial({color:0xe1e7ed,roughness:.57}),
-    "left-leg": new THREE.MeshStandardMaterial({color:0x25313b,roughness:.91}),
-    "right-leg": new THREE.MeshStandardMaterial({color:0x25313b,roughness:.91}),
-    "left-arm": new THREE.MeshStandardMaterial({color:0xffffff,roughness:.81}),
-    "right-arm": new THREE.MeshStandardMaterial({color:0xffffff,roughness:.81}),
-    "left-glove": new THREE.MeshStandardMaterial({color:0x252a2c,roughness:.75}),
-    "right-glove": new THREE.MeshStandardMaterial({color:0x252a2c,roughness:.75}),
-    "left-boot": new THREE.MeshStandardMaterial({color:0x171a1d,roughness:.98}),
-    "right-boot": new THREE.MeshStandardMaterial({color:0x171a1d,roughness:.98}),
-    "safety-vest": new THREE.MeshStandardMaterial({color:0xffd86b,roughness:.64})
-  };
-  const people = bays.flatMap(bay => mechanicStations(bay.x).map(station => ({...station, color:bay.color})));
-  const meshes = {} as Record<Component, THREE.InstancedMesh>;
-  for (const name of Object.keys(geometries) as Component[]) {
-    const mesh = new THREE.InstancedMesh(geometries[name], materials[name], people.length);
-    mesh.name = "pit-mechanic-" + name;
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    meshes[name] = mesh;
-    group.add(mesh);
-  }
-  const transform = new THREE.Matrix4();
-  const rotated = new THREE.Quaternion();
-  const rotatePart = new THREE.Quaternion();
-  const pos = new THREE.Vector3();
-  const scale = new THREE.Vector3(1,1,1);
-  const axis = new THREE.Vector3(0,1,0);
-  const skin = [0xf2cda4,0xc99770,0x9a6349,0xe2b596];
-  people.forEach((worker,index) => {
-    rotated.setFromAxisAngle(axis,worker.yaw);
-    const parts: Record<Component,[number,number,number]> = {
-      torso:[0,1.21,0],
-      head:[0,1.79,0],
-      cap:[0,2.00,0],
-      "left-leg":[-.155,.52,0],
-      "right-leg":[.155,.52,0],
-      "left-arm":[-.36,1.17,-.03],
-      "right-arm":[.36,1.17,-.03],
-      "left-glove":[-.39,.78,-.1],
-      "right-glove":[.39,.78,-.1],
-      "left-boot":[-.16,.11,.09],
-      "right-boot":[.16,.11,.09],
-      "safety-vest":[0,1.34,-.29]
-    };
-    for (const name of Object.keys(parts) as Component[]) {
-      const [x,y,z] = parts[name];
-      pos.set(x,y,z).applyQuaternion(rotated).add(new THREE.Vector3(worker.x,.12,worker.z));
-      rotatePart.copy(rotated);
-      if(name==="left-arm" || name==="right-arm") {
-        rotatePart.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),name==="left-arm"?-.17:.17));
-      }
-      transform.compose(pos,rotatePart,scale);
-      meshes[name].setMatrixAt(index,transform);
-      if(name==="torso" || name==="left-arm" || name==="right-arm")
-        meshes[name].setColorAt(index,new THREE.Color(worker.color));
-      if(name==="head") meshes[name].setColorAt(index,new THREE.Color(skin[index%skin.length]));
-    }
-  });
-  Object.values(meshes).forEach(mesh=>{
-    mesh.instanceMatrix.needsUpdate=true;
-    if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
-    mesh.computeBoundingSphere();
-  });
-  group.userData.mechanics = people.length;
-  group.userData.mechanicsPerGarage = 2;
+  const skin=[0xf2cda4,0xc99770,0x9a6349,0xe2b596];
+  const people=bays.flatMap((bay,i)=>mechanicStations(bay.x).map((p,j)=>({
+    ...p,y:.12,shirt:bay.color,skin:skin[(i+j)%skin.length],worker:true
+  })));
+  const group=createHumanPeople(people,"monzon-fourteen-pit-mechanics");
+  group.userData.mechanics=people.length;group.userData.mechanicsPerGarage=2;
   return group;
 }

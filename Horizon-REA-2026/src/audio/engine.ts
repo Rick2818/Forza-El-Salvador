@@ -110,6 +110,15 @@ const ENGINE_CYLINDERS: Record<string, number> = {
  * Everything is generated locally and functions offline after a user gesture.
  */
 export class GameAudio {
+  private readonly pyrotechnicSources = new Set<AudioScheduledSourceNode>();
+
+  stopPyrotechnics(): void {
+    for (const source of this.pyrotechnicSources) {
+      try { source.stop(); } catch { /* already ended */ }
+      source.disconnect();
+    }
+    this.pyrotechnicSources.clear();
+  }
   private volumes: AudioVolumes = {engines:1,music:1};
   private enginesBus: GainNode | null = null;
   private engineLimiter: DynamicsCompressorNode | null = null;
@@ -619,7 +628,8 @@ export class GameAudio {
     level.gain.exponentialRampToValueAtTime(.0001,now+.60);
     whistle.connect(level);level.connect(this.musicBus);
     whistle.start(now);whistle.stop(now+.61);
-    whistle.onended = () => {whistle.disconnect();level.disconnect();};
+    this.pyrotechnicSources.add(whistle);
+    whistle.onended = () => {this.pyrotechnicSources.delete(whistle);whistle.disconnect();level.disconnect();};
   }
 
   /** Two-layer firework hit: low pressure boom and short crepitating crackle.
@@ -638,7 +648,8 @@ export class GameAudio {
     boom.gain.exponentialRampToValueAtTime(.0001,now+.53);
     main.connect(boom);boom.connect(this.musicBus);
     main.start(now);main.stop(now+.55);
-    main.onended = () => {main.disconnect();boom.disconnect();};
+    this.pyrotechnicSources.add(main);
+    main.onended = () => {this.pyrotechnicSources.delete(main);main.disconnect();boom.disconnect();};
 
     const snap=ctx.createOscillator(), crackle=ctx.createGain();
     snap.type="triangle";
@@ -653,7 +664,8 @@ export class GameAudio {
     }
     snap.connect(crackle);crackle.connect(this.musicBus);
     snap.start(now);snap.stop(now+.39);
-    snap.onended=()=>{snap.disconnect();crackle.disconnect();};
+    this.pyrotechnicSources.add(snap);
+    snap.onended=()=>{this.pyrotechnicSources.delete(snap);snap.disconnect();crackle.disconnect();};
   }
 
   playCollision(severity: number): void {
@@ -678,6 +690,7 @@ export class GameAudio {
 
   /** Fade everything out (pause, menu, results) without closing the context. */
   silence(): void {
+    this.stopPyrotechnics();
     this.stopVictory();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;

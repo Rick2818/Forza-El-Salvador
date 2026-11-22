@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createHumanPeople, advancePeopleAnimation } from "./humanPeople";
 import { makeRng } from "../core/mathx";
 import {
   GARAGE_FRONT_Z, GARAGE_HEIGHT, MONZON_PIT_GARAGES
@@ -61,127 +62,11 @@ export function monzonGrandstandSpectatorPositions(groundY: number): SpectatorPo
   return crowd;
 }
 
-/** Shared GPU crowd clock. Each arm animates in the vertex shader, so thousands
- * of fans can cheer without uploading instance matrices every frame. */
-const audienceTime = {value: 0};
-export function advanceAudienceAnimation(dt: number): void {
-  audienceTime.value = (audienceTime.value + Math.max(0, Math.min(dt, .05))) % 1000;
-}
+/** Shared GPU clock for anatomical crowd and workshop staff. */
+export function advanceAudienceAnimation(dt:number):void {advancePeopleAnimation(dt);}
 
-/** Body parts are instanced separately for stable colors, silhouettes and
- * near-constant draw calls on mobile. No per-frame animation allocations. */
 export function createVisibleSpectators(
-  positions: readonly SpectatorPosition[], name: string, frustumCulled = false, night = false
+  positions: readonly SpectatorPosition[], name:string, frustumCulled=false, _night=false
 ): THREE.Group {
-  const group = new THREE.Group();
-  group.name = name;
-  const meshes = [
-    {
-      name: "shirts",
-      geometry: new THREE.CylinderGeometry(.29, .33, .89, 7),
-      material: new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x141414,roughness:.92}),
-      offset: new THREE.Vector3(0, 1.16, 0),
-      color: (p: SpectatorPosition) => p.shirt
-    },
-    {
-      name: "heads",
-      geometry: new THREE.SphereGeometry(.27, 8, 6),
-      material: new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x111111,roughness:.94}),
-      offset: new THREE.Vector3(0, 1.89, 0),
-      color: (p: SpectatorPosition) => p.skin
-    },
-    {
-      name: "trousers",
-      geometry: new THREE.CylinderGeometry(.255,.25,.72,7),
-      material: new THREE.MeshStandardMaterial({color:0x303d51,emissive:0x070707,roughness:.98}),
-      offset: new THREE.Vector3(0,.39,0),
-      color: () => 0xffffff
-    },
-    {
-      name: "left-arms",
-      geometry: new THREE.CylinderGeometry(.11, .115, .82, 6),
-      material: new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x101010,roughness:.91}),
-      offset: new THREE.Vector3(-.36, 1.21, -.035),
-      color: (p: SpectatorPosition) => p.shirt
-    },
-    {
-      name: "right-arms",
-      geometry: new THREE.CylinderGeometry(.11, .115, .82, 6),
-      material: new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x101010,roughness:.91}),
-      offset: new THREE.Vector3(.36, 1.21, -.035),
-      color: (p: SpectatorPosition) => p.shirt
-    },
-    {
-      name: "caps",
-      geometry: new THREE.CylinderGeometry(.26,.27,.15,8),
-      material: new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x181818,roughness:.95}),
-      offset: new THREE.Vector3(0,2.13,0),
-      color: (p: SpectatorPosition) => p.shirt
-    }
-  ] as const;
-  const q = new THREE.Quaternion(), offset = new THREE.Vector3(), world = new THREE.Vector3();
-  const mat = new THREE.Matrix4(), size = new THREE.Vector3(1,1,1);
-  const axis = new THREE.Vector3(0,1,0), tint = new THREE.Color();
-  for (const part of meshes) {
-    if (part.name === "left-arms" || part.name === "right-arms") {
-      const sign = part.name === "left-arms" ? -1 : 1;
-      part.material.onBeforeCompile = shader => {
-        shader.uniforms.horizonAudienceTime = audienceTime;
-        shader.vertexShader = shader.vertexShader.replace(
-          "#include <common>", "#include <common>\nuniform float horizonAudienceTime;");
-        shader.vertexShader = shader.vertexShader.replace(
-          "#include <begin_vertex>",
-          `#include <begin_vertex>
-          float fan = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
-          float excitement = step(0.25, fan);
-          float wave = sin(horizonAudienceTime * (2.0 + fan) + fan * 6.28318);
-          transformed.x += ${sign.toFixed(1)} * (0.41 - position.y) * excitement * (0.42 + wave * 0.22);
-          transformed.y += (0.41 - position.y) * excitement * (0.14 + 0.12 * wave);`);
-      };
-      part.material.customProgramCacheKey = () => `horizon-v15-audience-${sign}`;
-    }
-    const inst = new THREE.InstancedMesh(part.geometry, part.material, positions.length);
-    inst.name = `${name}-${part.name}`;
-    inst.castShadow = false;
-    inst.receiveShadow = false;
-    inst.frustumCulled = frustumCulled; // Suzaka uses short per-sector groups to cull distant stands
-    positions.forEach((person, i) => {
-      q.setFromAxisAngle(axis, person.yaw);
-      offset.copy(part.offset).applyQuaternion(q);
-      world.set(person.x + offset.x, person.y + offset.y, person.z + offset.z);
-      size.set(1, 1, 1);
-      if (part.name === "caps" && i % 4 !== 0) size.setScalar(.001);
-      mat.compose(world, q, size);
-      inst.setMatrixAt(i, mat);
-      inst.setColorAt(i, tint.setHex(part.color(person)));
-    });
-    inst.instanceMatrix.needsUpdate = true;
-    if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
-    inst.computeBoundingSphere();
-    group.add(inst);
-  }
-  if (night && positions.length) {
-    // One draw call for all phone screens, not one light source per phone.
-    const count = Math.ceil(positions.length / 13);
-    const phones = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(.11, .18, .03),
-      new THREE.MeshBasicMaterial({color:0xb7dbff,toneMapped:false}),count);
-    phones.name = name + "-phone-screens";
-    phones.frustumCulled = frustumCulled;
-    for (let i = 0; i < count; i++) {
-      const person = positions[(i * 13) % positions.length];
-      q.setFromAxisAngle(axis, person.yaw);
-      mat.compose(new THREE.Vector3(person.x + .38,person.y + 1.8,
-        person.z - .20),q,size.set(1,1,1));
-      phones.setMatrixAt(i,mat);
-    }
-    phones.instanceMatrix.needsUpdate = true;
-    phones.computeBoundingSphere();
-    group.add(phones);
-  }
-  group.userData.people = positions.length;
-  group.userData.animated = true;
-  group.userData.drawCalls = meshes.length + (night ? 1 : 0);
-  group.userData.unobstructed = true;
-  return group;
+  return createHumanPeople(positions,name,frustumCulled);
 }
