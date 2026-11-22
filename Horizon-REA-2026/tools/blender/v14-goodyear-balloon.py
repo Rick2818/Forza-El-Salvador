@@ -187,6 +187,7 @@ def render(passnum,night=False):
     scene.render.engine='CYCLES';scene.cycles.samples=12
     scene.render.resolution_x=760;scene.render.resolution_y=510
     scene.render.resolution_percentage=100;scene.render.image_settings.file_format='PNG'
+    if scene.world is None:scene.world=bpy.data.worlds.new("V14 Balloon Studio World")
     scene.world.color=(.008,.018,.05) if night else (.27,.37,.51)
     path=PREVIEW/('goodyear-pass'+str(passnum)+('-night' if night else '')+'.png')
     scene.render.filepath=str(path);bpy.ops.render.render(write_still=True)

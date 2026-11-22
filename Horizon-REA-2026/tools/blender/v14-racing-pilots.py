@@ -180,6 +180,7 @@ def preview(d,pass_number):
     scene.render.engine='CYCLES';scene.cycles.samples=8
     scene.render.resolution_x=640;scene.render.resolution_y=400;scene.render.resolution_percentage=100
     scene.render.image_settings.file_format='PNG'
+    if scene.world is None:scene.world=bpy.data.worlds.new("V14 Pilot Studio World")
     scene.world.color=(.06,.075,.10)
     out=PREVIEW/(d['id']+'-pass'+str(pass_number)+'.png')
     scene.render.filepath=str(out)

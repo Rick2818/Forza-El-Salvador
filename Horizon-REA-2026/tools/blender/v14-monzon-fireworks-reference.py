@@ -68,6 +68,7 @@ def show(i):
     scene.render.engine='CYCLES';scene.cycles.samples=10
     scene.render.resolution_x=880;scene.render.resolution_y=520
     scene.render.resolution_percentage=100;scene.render.image_settings.file_format='PNG'
+    if scene.world is None:scene.world=bpy.data.worlds.new("V14 Night Pyrotechnics World")
     scene.world.color=(.002,.004,.013)
     outfile=PREVIEW/('monzon-fireworks-pass'+str(i)+'.png')
     scene.render.filepath=str(outfile);bpy.ops.render.render(write_still=True)
