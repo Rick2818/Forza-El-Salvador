@@ -23,7 +23,7 @@ export function pinePlacements(track:Track, ground:Pick<TerrainField,'heightAt'>
     if((occupied.get(`${cx+dx}/${cz+dz}`)??[]).some(t=>Math.hypot(t.x-x,t.z-z)<6))close=true;
    }
    if(close)continue;
-   const tree={x,y:ground.heightAt(x,z),z,height:20+random()*10,width:.8+random()*.4,yaw:random()*Math.PI*2,shade:.9+random()*.16};
+   const tree={x,y:ground.heightAt(x,z),z,height:20+random()*10,width:.8+random()*.4,yaw:random()*Math.PI*2,shade:.82+random()*.21};
    trees.push(tree);const key=`${cx}/${cz}`,cell=occupied.get(key)??[];cell.push(tree);occupied.set(key,cell);
   }
  }
@@ -55,17 +55,35 @@ export class PineForest {
  private async load():Promise<void> {
   const [near,medium,atlas]=await Promise.all([loadLOD('near'),loadLOD('medium'),
    new THREE.TextureLoader().loadAsync(`${import.meta.env.BASE_URL}scenery/pine-far.png`)]);
-  atlas.colorSpace=THREE.SRGBColorSpace;atlas.anisotropy=4;
+  atlas.colorSpace=THREE.SRGBColorSpace;
+  atlas.anisotropy=8;
+  atlas.minFilter=THREE.LinearMipmapLinearFilter;
+  atlas.magFilter=THREE.LinearFilter;
   for(const source of [near,medium]) {
    source.updateMatrixWorld(true);
    const tier:THREE.InstancedMesh[]=[];
    source.traverse(obj=>{
     if(!(obj instanceof THREE.Mesh) || Array.isArray(obj.material))return;
     const authored=obj.material as THREE.MeshStandardMaterial;
-    const material=new THREE.MeshLambertMaterial({name:authored.name,map:authored.map,
-     color:authored.color,vertexColors:!!obj.geometry.getAttribute('color'),
-     alphaTest: /needle/i.test(authored.name) ? .4 : 0,side:THREE.DoubleSide});
-    // Lambert foliage has no specular sheen and needs no environment sampling.
+    const isNeedle=/needle/i.test(authored.name);
+    if(authored.map) {
+      // Preserve the original CC0 photographic needles and bark. Better mip
+      // and grazing-angle filtering avoids the chunky/pixelated Roblox look.
+      authored.map.anisotropy=8;
+      authored.map.minFilter=THREE.LinearMipmapLinearFilter;
+      authored.map.magFilter=THREE.LinearFilter;
+    }
+    const material=new THREE.MeshLambertMaterial({
+      name:authored.name,map:authored.map,color:authored.color,
+      vertexColors:!!obj.geometry.getAttribute('color'),
+      alphaTest:isNeedle?.34:0,
+      alphaToCoverage:isNeedle, // MSAA-softened fine twig silhouettes, no alpha sorting
+      side:isNeedle?THREE.DoubleSide:THREE.FrontSide,
+      depthWrite:true,
+      transparent:false
+    });
+    // Preserve the source bark and twig patterns; use inexpensive diffuse
+    // shading so branches have dimension without expensive PBR passes.
     const geometry=obj.geometry.clone().applyMatrix4(obj.matrixWorld);
     const mesh=new THREE.InstancedMesh(geometry,material,this.placements.length);
     mesh.name=`suzaka-${source===near?'near':'medium'}-${authored.name}`;
@@ -83,8 +101,12 @@ export class PineForest {
    planes.push(geometry);
   }
   const geometry=mergeGeometries(planes,false);planes.forEach(g=>g.dispose());
-  const far=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial({map:atlas,color:new THREE.Color(1.7,1.7,1.7),alphaTest:.4,
-   side:THREE.DoubleSide,toneMapped:false}),this.placements.length);
+  // The old 1.7x unlit texture made distant pines look like flat luminous
+  // cardboard. Use diffuse illumination and antialiased cutout silhouettes.
+  const far=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({
+    map:atlas,color:0xe8eae5,alphaTest:.34,alphaToCoverage:true,
+    side:THREE.DoubleSide,transparent:false,depthWrite:true
+  }),this.placements.length);
   far.name='suzaka-pine-impostors';far.count=0;far.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   this.group.add(far);this.tiers.push([far]);
  }
@@ -98,7 +120,8 @@ export class PineForest {
   for(const tree of this.placements) {
    const distance=Math.hypot(tree.x-center.x,tree.z-center.z);
    if(distance>1100)continue;
-   const tier=distance<75?0:distance<180?1:2,index=counts[tier]++;
+   // More trees retain their actual Blender branches before becoming impostors.
+   const tier=distance<85?0:distance<205?1:2,index=counts[tier]++;
    position.set(tree.x,tree.y,tree.z);scale.set(tree.width*tree.height/15.8,tree.height/15.8,tree.width*tree.height/15.8);
    rotation.setFromAxisAngle(axis,tree.yaw);matrix.compose(position,rotation,scale);
    tint.setRGB(tree.shade,tree.shade,tree.shade);
