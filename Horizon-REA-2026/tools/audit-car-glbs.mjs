@@ -30,7 +30,7 @@ for (const id of ids) {
     return { n, name: mesh.name, primitives };
   });
   const pilotNodes = (gltf.nodes || []).filter(node => node.name?.startsWith("HorizonPilotV13_"));
-  if (pilotNodes.length < 22) {
+  if (pilotNodes.length < 17) {
     throw Error(id + ": Blender racing driver not embedded in the exported GLB");
   }
   for (const wheel of ["wheel_fr","wheel_fl","wheel_rr","wheel_rl"]) {

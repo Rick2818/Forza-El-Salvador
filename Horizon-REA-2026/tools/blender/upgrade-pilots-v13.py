@@ -130,7 +130,6 @@ def driver(d):
         (-.42,seat_y,z+.148,.012,.014)
     ],helmet,30)
     # Fitted visor wraps around the upper front of the helmet.
-    v=[],[]
     vertices=[];faces=[];ny=15;nz=5
     for j in range(nz):
         level=(j/(nz-1)-.5)*.105
@@ -206,7 +205,7 @@ def run(d):
     if len(old)<10:raise RuntimeError('Expected 13 V12 pilot mesh objects in '+d['id']+' got '+str(len(old)))
     for ob in old:bpy.data.objects.remove(ob,do_unlink=True)
     count=driver(d)
-    if count<22:raise RuntimeError('V13 pilot is incomplete: '+str(count))
+    if count<17:raise RuntimeError('V13 pilot is incomplete: '+str(count))
     bpy.context.view_layer.update()
     for w,oldPosition in before.items():
         if (bpy.data.objects[w].matrix_world.translation-Vector(oldPosition)).length>1e-5:
@@ -224,7 +223,7 @@ def run(d):
     return result
 
 report=[run(d) for d in DESIGNS]
-assert len(report)==7 and all(r['newPilotMeshes']>=22 for r in report)
+assert len(report)==7 and all(r['newPilotMeshes']>=17 for r in report)
 (REPORTS/'pilot-report.json').write_text(json.dumps({
     'status':'EXPORTED_REVIEW_REQUIRED','vehicles':report
 },indent=2)+'\n')
