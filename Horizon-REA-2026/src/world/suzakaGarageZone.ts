@@ -79,6 +79,28 @@ export function createSuzakaGaragePitLane(frame:GarageWorldFrame):THREE.Group {
     line.position.set(localX,.103,11.2);
     root.add(line);
   }
+  // Race-speed readable wayfinding at BOTH physical openings. Signs are
+  // visual only, high above the car; no new invisible collision obstacles.
+  if(typeof document!=="undefined") {
+    for(const [label,localX] of [["PIT IN   •   7 GARAGES",82],["PIT OUT",277]] as const) {
+      const canvas=document.createElement("canvas");
+      canvas.width=1024;canvas.height=192;
+      const ctx=canvas.getContext("2d");
+      if(ctx) {
+        ctx.fillStyle="#18252b";ctx.fillRect(0,0,1024,192);
+        ctx.fillStyle="#f0d55f";ctx.fillRect(0,0,1024,15);
+        ctx.fillStyle="#ffffff";ctx.textAlign="center";ctx.textBaseline="middle";
+        ctx.font="bold 76px Arial, sans-serif";ctx.fillText(label,512,104,980);
+        const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
+        const sign=new THREE.Mesh(new THREE.PlaneGeometry(11,2.1),
+          new THREE.MeshBasicMaterial({map,side:THREE.DoubleSide,toneMapped:false}));
+        sign.name="suzaka-garage-pit-direction-"+label.split(" ")[0];
+        sign.position.set(localX,6.0,13.1);
+        sign.rotation.y=Math.PI;
+        root.add(sign);
+      }
+    }
+  }
   root.userData.serviceGarages=7;
   root.userData.raceTrackConnected=true;
   return root;
