@@ -291,7 +291,10 @@ export class Vehicle {
       const d = dragForce(planar);
       this.body.addForce({ x: (-vel.x / planar) * d, y: 0, z: (-vel.z / planar) * d }, true);
     }
-    const df = downforceN(planar);
+    // At 350–504 MPH the raw v² downforce exceeds suspension capacity
+    // (four wheels × 15kN), crushing cars into the asphalt/kerbs.
+    // Saturate the arcade aero load to retain physical wheel clearance.
+    const df = Math.min(downforceN(planar), 24000);
     // Downforce must be a pure force at the centre of mass. addForceAtPoint
     // takes a WORLD-space point: passing {0, 0.1, 0} here applied the load at
     // the world origin and produced a huge pitch torque (the car took off).
@@ -361,7 +364,7 @@ export class Vehicle {
 
   syncVisual(dt = 0): void {
     // Governor acts AFTER each world step; an engine or nitro burst cannot
-    // overshoot the configured 200 mph / Bugatti 230 mph speed ceiling.
+    // overshoot the selected 350 / 450 / 504 MPH ceiling.
     this.afterPhysicsStep();
     const t = this.body.translation();
     const r = this.body.rotation();
