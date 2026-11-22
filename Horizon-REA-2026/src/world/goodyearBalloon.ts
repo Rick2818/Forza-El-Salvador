@@ -1,13 +1,18 @@
 import * as THREE from "three";
 import type { Track } from "./track";
 
-/** Smooth deterministic movement: no additional physics bodies or obstacles. */
+/** World convention: +X = east, -X = west. 3 m/s, one fixed Z lane.
+ * The long off-camera wrap prevents mid-race teleporting over the circuit.
+ * At t=0 the airship starts +180m east of its viewing anchor. */
+export const GOODYEAR_WESTBOUND_SPEED = 3;
+export const GOODYEAR_ROUTE_LENGTH = 1820;
 export function balloonMotion(time: number): {x:number;y:number;z:number;yaw:number} {
+  const progress = ((Math.max(0,time) * GOODYEAR_WESTBOUND_SPEED + 640) % GOODYEAR_ROUTE_LENGTH);
   return {
-    x: 22 * Math.sin(time * .18) + 7 * Math.sin(time * .061),
-    y: 3.7 * Math.sin(time * .32),
-    z: 16 * Math.cos(time * .16),
-    yaw: .2 * Math.sin(time * .095)
+    x: 820 - progress,
+    y: .65 * Math.sin(time * .22), // subtle atmospheric buoyancy, < 1m
+    z: 0,
+    yaw: .015 * Math.sin(time * .075)
   };
 }
 
@@ -52,18 +57,19 @@ function makeGoodyearWrap(): THREE.CanvasTexture {
     ctx.beginPath(); ctx.moveTo(i * canvas.width / 48, 0);
     ctx.lineTo(i * canvas.width / 48, canvas.height); ctx.stroke();
   }
-  // Three complete circumferential rows. The complete phrase is visible on
-  // either broad side, not merely as an isolated label on one face.
+  // Circumferential wording on BOTH broad sides. Top and bottom maintain
+  // repeat visibility even when the pilot flies past the airship.
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineJoin = "round";
-  for (const y of [144, 512, 880]) {
-    ctx.fillStyle = "#dfae48"; ctx.fillRect(120, y - 105, 1808, 6);
-    ctx.fillRect(120, y + 105, 1808, 6);
-    ctx.font = "900 176px Arial, sans-serif";
-    ctx.lineWidth = 12; ctx.strokeStyle = "#11141b";
-    ctx.strokeText("GOODYEAR 2026", 1024, y, 1900);
-    ctx.fillStyle = "#ffe3a1";
-    ctx.fillText("GOODYEAR 2026", 1024, y, 1900);
+  for (const y of [50, 512, 973]) {
+    ctx.fillStyle = "#bd984b";
+    ctx.fillRect(180, y - 55, 1688, 3);
+    ctx.fillRect(180, y + 55, 1688, 3);
+    ctx.font = "900 126px Arial, sans-serif";
+    ctx.lineWidth = 9; ctx.strokeStyle = "#060a10";
+    ctx.strokeText("GOODYEAR 2026", 1024, y, 1720);
+    ctx.fillStyle = "#ffde8b";
+    ctx.fillText("GOODYEAR 2026", 1024, y, 1720);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -77,32 +83,42 @@ export function createGoodyearFootballAirship(night: boolean): THREE.Group {
   root.name = "goodyear-2026-black-football-dirigible";
   const hull = new THREE.Mesh(footballHullGeometry(), new THREE.MeshStandardMaterial({
     color: 0xffffff, map: makeGoodyearWrap(),
-    emissive: 0xe9bf65, emissiveMap: undefined,
-    roughness: .76, metalness: .13, side: THREE.DoubleSide
+    emissive: 0xffcb73, roughness: .72, metalness: .08,
+    side: THREE.DoubleSide
   }));
   // Link the same wrapped artwork to the emissive channel so only the light
   // lettering and perimeter bands glow, while the envelope remains BLACK.
   const material = hull.material as THREE.MeshStandardMaterial;
   material.emissiveMap = material.map;
-  material.emissiveIntensity = night ? 1.85 : .18;
+  material.emissiveIntensity = night ? 1.32 : .11;
   hull.name = "tapered-panelled-48m-envelope";
   hull.position.y = 44;
   hull.castShadow = false;
   hull.receiveShadow = false;
   root.add(hull);
 
-  const rim = new THREE.MeshBasicMaterial({color:night?0xffd48a:0xd5b078,toneMapped:false});
-  for (const axial of [-13, 0, 13]) {
-    const t = (axial / 48) + .5;
-    const r = 9.5 * Math.pow(Math.sin(Math.PI * t), .82);
-    const hoop = new THREE.Mesh(new THREE.TorusGeometry(r, .055, 5, 80), rim);
-    hoop.rotation.y = Math.PI / 2;
-    // Cylindrical section is slightly compressed on Z, preserving the football profile.
-    hoop.scale.z = .83;
-    hoop.position.set(axial, 44, 0);
-    hoop.name = "illuminated-perimeter-band";
+  const rim = new THREE.LineBasicMaterial({color:night?0xffc77a:0xc7a371,toneMapped:false});
+  // Four oval section bands follow the actual hull contour, rather than
+  // placing circular toruses through the tapered fabric.
+  for (const axial of [-16, -8, 8, 16]) {
+    const t = axial / 48 + .5;
+    const radius = 9.5 * Math.pow(Math.sin(Math.PI * t), .82) * 1.009;
+    const vertices: THREE.Vector3[] = [];
+    for (let step = 0; step < 80; step++) {
+      const a = step / 80 * Math.PI * 2;
+      vertices.push(new THREE.Vector3(axial,44 + Math.sin(a)*radius,
+        Math.cos(a)*radius*.83));
+    }
+    const hoop = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(vertices),rim);
+    hoop.name = "goodyear-fitted-hull-seam-led";
     root.add(hoop);
   }
+  // Structural keel beneath the envelope improves readability from chase view.
+  const keel = new THREE.Mesh(new THREE.BoxGeometry(15,.22,.42),
+    new THREE.MeshStandardMaterial({color:0x77808a,metalness:.68,roughness:.4}));
+  keel.name = "gondola-support-keel";
+  keel.position.set(0,35.5,0);
+  root.add(keel);
 
   const nacelle = new THREE.Mesh(new THREE.BoxGeometry(7.8, 2.6, 3.4),
     new THREE.MeshStandardMaterial({color:0x151e2b, metalness:.65, roughness:.38}));
@@ -143,7 +159,7 @@ export function createGoodyearFootballAirship(night: boolean): THREE.Group {
   }
   root.userData.readableText = "GOODYEAR 2026";
   root.userData.blackEnvelope = true;
-  root.userData.source = "procedural-3d-v15";
+  root.userData.source = "procedural-3d-v16";
   return root;
 }
 
@@ -154,20 +170,25 @@ export class GoodyearBalloon {
   private elapsed = 0;
   constructor(scene: THREE.Scene, track: Track) {
     const night = track.circuit.id === "monzon";
-    this.group.name = track.circuit.id + "-goodyear-v15-football";
+    this.group.name = track.circuit.id + "-goodyear-v16-westbound-football";
     const index = Math.round((night ? 185 : 220) / track.segmentLength);
     const p = track.sampleAt(index), r = track.rightAt(index);
-    this.origin.set(p.x + r.x * (night ? 45 : 50),p.y + 13,
-      p.z + r.z * (night ? 45 : 50));
+    // 82m up to clear rooflines. Lateral separation is fixed; westbound
+    // travel uses world X only, independent of each circuit's road tangent.
+    this.origin.set(p.x,p.y + 38,p.z + r.z * 70);
+    const initial = balloonMotion(0);
+    this.group.position.set(this.origin.x+initial.x,this.origin.y+initial.y,
+      this.origin.z);
     this.group.add(createGoodyearFootballAirship(night));
-    this.group.position.copy(this.origin);
+    this.group.userData.direction = "east-to-west";
+    this.group.userData.movementAxis = "-X";
     scene.add(this.group);
   }
   update(dt: number): void {
     this.elapsed += dt;
     const p = balloonMotion(this.elapsed);
     this.group.position.set(this.origin.x + p.x,this.origin.y + p.y,this.origin.z + p.z);
-    this.group.rotation.set(.014*Math.sin(this.elapsed*.35),p.yaw,.023*Math.sin(this.elapsed*.27));
+    this.group.rotation.set(.005*Math.sin(this.elapsed*.2),p.yaw,.006*Math.sin(this.elapsed*.17));
   }
   get center(): THREE.Vector3 {
     return this.group.position.clone().add(new THREE.Vector3(0,44,0));
