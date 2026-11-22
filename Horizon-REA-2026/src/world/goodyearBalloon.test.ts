@@ -1,5 +1,9 @@
 import {describe,it,expect} from "vitest";
-import {balloonMotion,footballHullGeometry,GOODYEAR_WESTBOUND_SPEED,GOdescribe("V16 strict east-to-west flight",()=>{
+import {
+  balloonMotion,footballHullGeometry,GOODYEAR_WESTBOUND_SPEED,GOODYEAR_ROUTE_LENGTH
+} from "./goodyearBalloon";
+
+describe("V16 strict east-to-west flight",()=>{
   it("travels only towards world -X on a level fixed-Z corridor",()=>{
     expect(GOODYEAR_WESTBOUND_SPEED).toBeGreaterThan(0);
     expect(GOODYEAR_ROUTE_LENGTH).toBeGreaterThan(1600);
@@ -19,13 +23,8 @@ import {balloonMotion,footballHullGeometry,GOODYEAR_WESTBOUND_SPEED,GOdescribe("
     expect(after.x).toBeGreaterThan(810);
   });
 });
-;
-    expect(b.yaw).not.toBe(a.yaw);
-  });
-});
-
-describe("Goodyear V15 football silhouette", () => {
-  it("has sharp tips, a wider middle section, normals and UVs for 2026 wrap", () => {
+describe("Goodyear football geometry", () => {
+  it("has pointed ends, a wider middle section, normals and UVs for branding", () => {
     const hull = footballHullGeometry(48,9.5);
     const pos = hull.getAttribute("position");
     const uv = hull.getAttribute("uv");
