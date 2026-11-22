@@ -11,6 +11,7 @@ import {
 } from "./monzonWorkshopContents";
 import { batchStaticScenery } from "../render/staticBatch";
 import { makeRng } from "../core/mathx";
+import { createVisibleSpectators, monzonPitSpectatorPositions } from "./monzonSpectatorTerraces";
 
 function workshopFloorMap(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas"); canvas.width = canvas.height = 512;
@@ -157,49 +158,42 @@ export class MonzonGarages {
     this.group.userData.solidEquipmentPerGarage = WORKSHOP_OBSTACLES.length;
   }
 
-  /** 80 unique low-poly spectators, instanced to minimize pit-roof draw calls. */
+  /** A cantilevered, roof-height balcony OPEN TOWARD THE ROAD. Previously
+   * the tiny spectator heads were 3-7 metres behind the tall garage fascia,
+   * making them nearly invisible from the chase camera. The new public
+   * terrace stands ahead of that facade, safely above all vehicle roofs. */
   private installPitSpectators(
     box: (name: string, x: number, y: number, z: number,
       w: number, h: number, d: number, material: THREE.Material) => void
   ): void {
-    const rail = new THREE.MeshStandardMaterial({color:0xc7c9c9, metalness:.38, roughness:.55});
-    box("pit-roof-balustrade", 179.5, GARAGE_HEIGHT+.56, GARAGE_FRONT_Z-.10, 146, .13, .13, rail);
-    const count = 80;
-    const rng = makeRng(28182028);
-    const heads = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(.22, 1),
-      new THREE.MeshBasicMaterial({color:0xffffff}),
-      count
-    );
-    const torsos = new THREE.InstancedMesh(
-      new THREE.CylinderGeometry(.22, .28, .75, 6),
-      new THREE.MeshBasicMaterial({color:0xffffff}),
-      count
-    );
-    heads.name = "monzon-pit-spectator-heads";
-    torsos.name = "monzon-pit-spectator-jerseys";
-    heads.castShadow = false; torsos.castShadow = false;
-    const matrix = new THREE.Matrix4();
-    const tops = [0xdf462e, 0xe8cb47, 0x3c72a8, 0xe4ecf2, 0x2a9377, 0xc46b9a];
-    const skin = [0xffddb7, 0xe3ae7d, 0x9b6347, 0x7b5140];
-    for (let i=0; i<count; i++) {
-      const row = Math.floor(i/40), column = i%40;
-      const x = 111.7 + column*3.48 + (rng()-.5)*.3;
-      const z = 33.2 + row*3.7 + (rng()-.5)*.2;
-      const y = GARAGE_HEIGHT+.24;
-      matrix.makeTranslation(x,y+1.42,z);
-      heads.setMatrixAt(i,matrix);
-      heads.setColorAt(i,new THREE.Color(skin[Math.floor(rng()*skin.length)]));
-      matrix.makeTranslation(x,y+.91,z);
-      torsos.setMatrixAt(i,matrix);
-      torsos.setColorAt(i,new THREE.Color(tops[Math.floor(rng()*tops.length)]));
+    const metal = new THREE.MeshStandardMaterial({color:0x66717a,metalness:.52,roughness:.50});
+    const floor = new THREE.MeshStandardMaterial({color:0xb1c0c7,roughness:.82});
+    const edge = new THREE.MeshBasicMaterial({color:0xffdc63,toneMapped:false});
+    const startX = MONZON_PIT_GARAGES[0].x - 8.9;
+    const endX = MONZON_PIT_GARAGES[MONZON_PIT_GARAGES.length-1].x + 8.9;
+    const fullWidth = endX - startX;
+    const center = (startX + endX) / 2;
+    // Overhang 3.5m in front of the workshops (pit traffic remains below).
+    const terraceY = GARAGE_HEIGHT + .62;
+    box("open-pit-public-viewing-deck",center,terraceY-.2,GARAGE_FRONT_Z-1.8,
+      fullWidth,.42,3.65,floor);
+    box("open-pit-front-yellow-edge",center,terraceY+.045,GARAGE_FRONT_Z-3.58,
+      fullWidth,.075,.10,edge);
+    box("open-pit-front-guardrail",center,terraceY+.42,GARAGE_FRONT_Z-3.55,
+      fullWidth,.17,.14,metal);
+    for(let i=0;i<=19;i++){
+      const x=startX+(fullWidth*i/19);
+      box("open-pit-balcony-post",x,terraceY+.30,GARAGE_FRONT_Z-3.54,
+        .10,.56,.13,metal);
     }
-    heads.instanceMatrix.needsUpdate=true;
-    torsos.instanceMatrix.needsUpdate=true;
-    if(heads.instanceColor) heads.instanceColor.needsUpdate=true;
-    if(torsos.instanceColor) torsos.instanceColor.needsUpdate=true;
-    this.group.add(torsos,heads);
-    this.group.userData.pitSpectators = count;
+    for(const bay of MONZON_PIT_GARAGES){
+      box("open-pit-balcony-bracket",bay.x,GARAGE_HEIGHT-.08,GARAGE_FRONT_Z-1.55,
+        .48,.43,3.0,metal);
+    }
+    const people = createVisibleSpectators(monzonPitSpectatorPositions(),"monzon-pit-visible-public");
+    this.group.add(people);
+    this.group.userData.pitSpectators = people.userData.people;
+    this.group.userData.pitSpectatorDrawCalls = people.userData.drawCalls;
     this.group.userData.drivableGarages = MONZON_PIT_GARAGES.length;
   }
 
