@@ -25,7 +25,7 @@ describe("Visible spectators in Monzón and Suzaka", () => {
     expect(roof.every(p => p.z < GARAGE_FRONT_Z - 1.0 && p.z > GARAGE_FRONT_Z - 4)).toBe(true);
     expect(roof.every(p => p.y > GARAGE_HEIGHT + .50)).toBe(true);
     const grandstand = monzonGrandstandSpectatorPositions(-.14);
-    expect(grandstand).toHaveLength(832);
+    expect(grandstand).toHaveLength(2600);
     const group = createVisibleSpectators(roof,"test-pit-crowd");
     expect(group.userData.people).toBe(138);
     expect(group.children).toHaveLength(6);
@@ -52,22 +52,22 @@ describe("Visible spectators in Monzón and Suzaka", () => {
     }
   });
 
-  it("renders 640 human-shaped Suzaka fans in five visible rows per stand", () => {
+  it("renders 2560 GPU-animated human-shaped Suzaka fans in eight visible rows per stand", () => {
     const track = suzaka();
     const group = createSuzakaPublicStands(track,{heightAt:()=>-.14});
-    expect(SUZAKA_PUBLIC_TOTAL).toBe(640);
-    expect(SUZAKA_PUBLIC_STAND_ROWS).toBe(5);
-    expect(SUZAKA_PUBLIC_STAND_COLUMNS).toBe(32);
-    expect(group.userData.people).toBe(640);
+    expect(SUZAKA_PUBLIC_TOTAL).toBe(2560);
+    expect(SUZAKA_PUBLIC_STAND_ROWS).toBe(8);
+    expect(SUZAKA_PUBLIC_STAND_COLUMNS).toBe(80);
+    expect(group.userData.people).toBe(2560);
     expect(group.userData.stands).toBe(4);
     for(const stand of group.children){
-      expect(stand.userData.people).toBe(160);
+      expect(stand.userData.people).toBe(640);
       expect(stand.children.some(obj=>obj.name.includes("public-sector-"))).toBe(true);
       const audience=stand.children.find(obj=>obj.name.includes("public-sector-")) as THREE.Group;
       expect(audience.children).toHaveLength(6);
       for(const child of audience.children) {
         const inst=child as THREE.InstancedMesh;
-        expect(inst.count).toBe(160);
+        expect(inst.count).toBe(640);
         expect(inst.frustumCulled).toBe(true);
       }
     }
