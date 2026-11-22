@@ -173,7 +173,7 @@ export class Track {
     this.startIndex = Math.round((this.circuit.layout ? 100 : 48) / this.segmentLength) % N;
 
     const rawSpeed = this.curvatures.map((k) =>
-      clamp(Math.sqrt(13.5 / Math.max(k, 1e-4)), 20, SETTINGS.physics.topSpeed)
+      clamp(Math.sqrt(13.5 / Math.max(k, 1e-4)), 20, 225.30816)
     );
     for (let pass = 0; pass < 2; pass++) {
       for (let i = N - 1; i >= 0; i--) {
