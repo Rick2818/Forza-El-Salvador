@@ -21,7 +21,7 @@ bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=Fal
 # Keep detailed skin above the collar and hands. Surface below it becomes clothing.
 usedfaces=[]; codes=[]
 for f,g in zip(faces,groups):
-    if g not in ['body','helper-l-eye','helper-r-eye']: continue
+    if g not in ['body']: continue
     c=sum((points[i] for i in f),Vector())/len(f)
     if g.startswith('helper-'):
         code=5
@@ -64,8 +64,11 @@ for v in mesh.vertices:
     x,y,z=v.co;sgn=1 if x>=0 else -1
     if .96<z<1.49:
         if abs(x)<.19:
-            v.co.x*=1.20
-            v.co.y=min(y,-.148) if y<-.025 else max(y,.082) if y>.025 else y
+            blend=max(0,min(1,(1.48-z)/.10))
+            v.co.x*=1+.20*blend
+            front=-.155+.025*(abs(x)/.19)**2
+            target=front if y<-.025 else max(y,.082) if y>.025 else y
+            v.co.y=y*(1-blend)+target*blend
         elif abs(x)<.36:v.co.x+=sgn*.025
     if .16<z<.96:
         v.co.x+=sgn*.012
@@ -76,9 +79,9 @@ for v in mesh.vertices:
         if y<-.07:v.co.y*=1.055
 # One UV palette: the integer region drives per-instance skin / clothing variation.
 uv=mesh.uv_layers.new(name='region-and-fabric')
-colors=[(.68,.39,.25,1),(.55,.13,.10,1),(.40,.10,.08,1),(.035,.018,.01,1),(.025,.028,.035,1),(.8,.8,.76,1),(.02,.01,.005,1),(.45,.48,.51,1),(.8,.82,.75,1),(.02,.03,.04,1),(.03,.035,.04,1)]
+colors=[(.68,.39,.25,1),(.55,.13,.10,1),(.40,.10,.08,1),(.035,.018,.01,1),(.025,.028,.035,1),(.8,.8,.76,1),(.02,.01,.005,1),(.45,.48,.51,1),(.8,.82,.75,1),(.02,.03,.04,1),(.03,.035,.04,1),(.16,.24,.19,1),(.005,.005,.005,1),(.55,.13,.10,1)]
 for i,c in enumerate(colors):
-    m=bpy.data.materials.new(['skin','overalls','overalls-lower','hair','boots','eyes','iris','steel','reflective-thread','reinforcement','gloves'][i]);m.diffuse_color=c;obj.data.materials.append(m)
+    m=bpy.data.materials.new(['skin','overalls','overalls-lower','hair','boots','eyes','iris','steel','reflective-thread','reinforcement','gloves','iris-color','pupil','rolled-collar'][i]);m.diffuse_color=c;obj.data.materials.append(m)
 for face,code in zip(mesh.polygons,codes):
     face.material_index=code;face.use_smooth=True
     for li in face.loop_indices:
@@ -133,6 +136,37 @@ for side in [-1,1]:
         p.material_index=4;p.use_smooth=True
         for li in p.loop_indices:layer.data[li].uv=(4/8+.025,0)
     parts.append(shoe)
+# Real eyeballs and separate irises replace the MakeHuman fitting helpers.
+for side in [-1,1]:
+    for name,loc,scale,code in [
+      ('sclera',(side*.0322,-.137,1.636),(.013,.012,.011),5),
+      ('iris',(side*.0322,-.1485,1.636),(.0055,.0017,.0055),11),
+      ('pupil',(side*.0322,-.1501,1.636),(.0024,.0008,.0026),12)]:
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24,ring_count=12,location=loc)
+        eye=bpy.context.object;eye.name=name;eye.scale=scale
+        bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+        for m in obj.data.materials:eye.data.materials.append(m)
+        eye.data.uv_layers.active.name='region-and-fabric'
+        for poly in eye.data.polygons:poly.material_index=code;poly.use_smooth=True
+        for d in eye.data.uv_layers.active.data:d.uv=(code/8+.025,0)
+        parts.append(eye)
+# A continuous rolled collar covers the shirt/neck palette boundary.
+cv=[];cf=[]
+for z,rx,ry in [(1.465,.077,.068),(1.482,.078,.070),(1.505,.073,.064),(1.511,.067,.058)]:
+    for j in range(48):
+        a=j/48*math.tau;cv.append((rx*math.cos(a),-.005+ry*math.sin(a),z))
+for ring in range(3):
+    for j in range(48):
+        a=ring*48+j;b=ring*48+(j+1)%48;cf.append((a,b,b+48,a+48))
+cm=bpy.data.meshes.new('rolled-overall-collar');cm.from_pydata(cv,[],cf);cm.update()
+collar=bpy.data.objects.new('continuous-rolled-collar',cm);bpy.context.collection.objects.link(collar)
+for m in obj.data.materials:cm.materials.append(m)
+layer=cm.uv_layers.new(name='region-and-fabric')
+for poly in cm.polygons:
+    poly.material_index=13;poly.use_smooth=True
+    for li in poly.loop_indices:layer.data[li].uv=(13/8+.025,0)
+parts.append(collar)
+
 # Closed collar, reinforced seams, pockets and metallic zipper teeth.
 parts.append(patch('zipper-placket',(0,-.166,1.235),(.028,.014,.37),9))
 parts.append(patch('front-zipper',(0,-.176,1.235),(.006,.008,.36),7))
@@ -146,14 +180,14 @@ for side in [-1,1]:
     parts.append(patch('reflective-chest-stitch',(side*.099,-.200,1.35),(.09,.005,.006),8))
     parts.append(patch('hip-tool-pocket',(side*.14,-.147,.91),(.094,.025,.13),2))
     parts.append(patch('hip-pocket-flap',(side*.14,-.166,.97),(.10,.012,.023),9))
-    parts.append(patch('reinforced-knee-pad',(side*.12,-.093,.525),(.12,.024,.155),9))
+    parts.append(patch('reinforced-knee-pad',(side*.12,-.145,.525),(.12,.024,.155),9))
     # A closed ankle shaft and lugged sole distinguish a safety boot from a slipper.
     parts.append(patch('boot-ankle-shaft',(side*.117,.047,.16),(.125,.13,.19),4))
     parts.append(patch('boot-outsole',(side*.117,-.055,.025),(.154,.285,.039),4))
     for j in range(5):
         parts.append(patch('boot-laces',(side*.117,-.105+j*.022,.139+j*.006),(.088,.006,.006),9))
     # Eyebrows preserve a mature face at close camera distances.
-    brow=patch('modeled-eyebrow',(side*.036,-.129,1.656),(.038,.007,.005),3)
+    brow=patch('modeled-eyebrow',(side*.036,-.158,1.656),(.038,.007,.005),3)
     brow.rotation_euler.y=side*.08;parts.append(brow)
 parts.append(patch('waist-work-belt',(0,-.154,1.008),(.355,.015,.024),9))
 parts.append(patch('belt-buckle',(0,-.166,1.009),(.035,.010,.028),7))

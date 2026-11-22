@@ -1,14 +1,14 @@
 {
   "near": {
-    "vertices": 8560,
-    "triangles": 16436
+    "vertices": 9366,
+    "triangles": 17960
   },
   "mid": {
-    "vertices": 2508,
-    "triangles": 4450
+    "vertices": 2739,
+    "triangles": 4863
   },
   "far": {
-    "vertices": 832,
-    "triangles": 1125
+    "vertices": 903,
+    "triangles": 1235
   }
 }

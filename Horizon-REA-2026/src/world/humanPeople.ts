@@ -55,7 +55,7 @@ function humanMaterial(mechanics:boolean):THREE.MeshStandardMaterial {
         region<3.5?mix(vec3(.016,.009,.005),vec3(.19,.075,.026),fract(seed*3.4)):
         region<4.5?vec3(.025,.029,.035):region<5.5?vec3(.75,.74,.67):
         region<6.5?vec3(.025,.015,.009):region<7.5?vec3(.49,.53,.58):
-        region<8.5?vec3(.74,.78,.79):region<9.5?vec3(.025,.033,.045):vec3(.023,.027,.032);
+        region<8.5?vec3(.74,.78,.79):region<9.5?vec3(.025,.033,.045):region<10.5?vec3(.023,.027,.032):region<11.5?vec3(.12,.20,.15):region<12.5?vec3(.004):iShirt;
       // Small continuous head morphs preserve the modeled face while avoiding
       // an identical skull/jaw silhouette on every spectator.
       float head=smoothstep(1.49,1.58,position.y);
@@ -121,16 +121,26 @@ function humanMaterial(mechanics:boolean):THREE.MeshStandardMaterial {
     mat.onBeforeCompile=(shader,renderer)=>{
       common(shader,renderer);
       shader.vertexShader=shader.vertexShader.replace("varying vec3 vHumanColor;",
-        "varying vec3 vHumanColor;\nvarying vec3 vWorkSurface;\nvarying float vWorkRegion;");
+        "varying vec3 vHumanColor;\nvarying vec3 vWorkSurface;\nvarying float vWorkRegion;\nvarying vec3 vWorkTeam;\nvarying vec3 vWorkSkin;\nvarying vec3 vWorkHair;");
       shader.vertexShader=shader.vertexShader.replace("float region=floor(uv.x*8.0);",
-        "float region=floor(uv.x*8.0);\nvWorkSurface=position;vWorkRegion=region;");
+        "float region=floor(uv.x*8.0);\nvWorkSurface=position;vWorkRegion=region;vWorkTeam=iShirt;vWorkSkin=iSkin;vWorkHair=mix(vec3(.016,.009,.005),vec3(.19,.075,.026),fract(iPerson.w*3.4));");
       shader.fragmentShader=shader.fragmentShader.replace("varying vec3 vHumanColor;",
-        "varying vec3 vHumanColor;\nvarying vec3 vWorkSurface;\nvarying float vWorkRegion;");
+        "varying vec3 vHumanColor;\nvarying vec3 vWorkSurface;\nvarying float vWorkRegion;\nvarying vec3 vWorkTeam;\nvarying vec3 vWorkSkin;\nvarying vec3 vWorkHair;");
       shader.fragmentShader=shader.fragmentShader.replace("diffuseColor.rgb *= vHumanColor;",`diffuseColor.rgb *= vHumanColor;
-        if(vWorkRegion<.5 && vWorkSurface.y>1.50 && vWorkSurface.y<1.615 && vWorkSurface.z>.07) {
-          float grain=.5+.5*sin(vWorkSurface.x*1700.0)*sin(vWorkSurface.y*2100.0);
-          diffuseColor.rgb*=.82+.10*grain;
+        if(vWorkRegion<1.5 && abs(vWorkSurface.x)<.11 && vWorkSurface.y>1.455) {
+          diffuseColor.rgb=mix(vWorkTeam,vWorkSkin,smoothstep(1.487,1.493,vWorkSurface.y));
         }
+        if((vWorkRegion<.5 || vWorkRegion>2.5 && vWorkRegion<3.5) && vWorkSurface.y>1.66) {
+          float hairline=1.690+.013*pow(vWorkSurface.x/.10,2.0);
+          float fibre=.83+.17*sin(vWorkSurface.x*1400.0+vWorkSurface.y*600.0);
+          diffuseColor.rgb=mix(vWorkSkin,vWorkHair*fibre,smoothstep(hairline,hairline+.002,vWorkSurface.y));
+        }
+        if((vWorkRegion<2.5 || vWorkRegion>9.5 && vWorkRegion<10.5) &&
+           abs(vWorkSurface.x)>.22 && vWorkSurface.y>.95 && vWorkSurface.y<1.30) {
+          float cuff=1.0-smoothstep(1.165,1.175,vWorkSurface.y);
+          diffuseColor.rgb=mix(vWorkTeam,vec3(.023,.027,.032),cuff);
+        }
+
       `);
       shader.fragmentShader=shader.fragmentShader.replace("#include <metalnessmap_fragment>",`#include <metalnessmap_fragment>
         if(vWorkRegion>6.5 && vWorkRegion<7.5) {roughnessFactor=.25;metalnessFactor=.72;}

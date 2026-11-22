@@ -27,3 +27,9 @@ geometry budgets, gloves/metal/workwear palette and rigid tool influence;
 TypeScript/Vite compilation passed. The dedicated Actions review captures
 full-body, face, tool and daylight garage views plus a short actual-engine clip.
 These controlled captures do not measure hardware FPS or certify photorealism.
+
+Close-up pass: replaced fitting-helper eyes with modeled sclera/iris/pupil,
+smoothed the hairline and glove cuffs in the role material, added a continuous
+rolled collar, removed the hard-edged stubble tint, flattened the coverall front
+and moved knee padding outside the trouser surface. Targeted 14 tests and build
+pass again; the new actual-engine review supersedes the initial close-up pass.
