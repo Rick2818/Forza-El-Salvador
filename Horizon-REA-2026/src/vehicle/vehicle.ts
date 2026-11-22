@@ -6,6 +6,7 @@ import { damp, clamp } from "../core/mathx";
 import { TurboFlames } from "../render/turboFlames";
 import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
 import { turboTractionFactor } from "../sim/turboTraction";
+import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
@@ -247,10 +248,9 @@ export class Vehicle {
       engineForce += straightAssist * (this.electric ? 1.65 : 1);
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
-    let reverseForce = 0;
-    if (brake > 0.05 && speed < 0.6) {
-      reverseForce = brake * 2200;
-    }
+    // S / FRENO becomes a powerful reverse gear after stopping.
+    // Propulsion continues throughout reverse instead of creeping at 2.2 kN.
+    let reverseForce = reverseDriveForce(brake, speed, p.maxEngineForce);
 
     if (this.controls.handbrake) {
       engineForce *= 0.2;
@@ -364,6 +364,14 @@ export class Vehicle {
     fwd.normalize();
     const forwardSpeed = vel.x * fwd.x + vel.z * fwd.z;
     const planarSpeed = Math.hypot(vel.x, vel.z);
+    // The high forward-speed governor must not make reverse unrestricted.
+    // Retain lateral velocity direction while capping backward travel.
+    if (forwardSpeed < -REVERSE_LIMIT_MS) {
+      const scale = REVERSE_LIMIT_MS / Math.abs(forwardSpeed);
+      this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
+      this.speed = -REVERSE_LIMIT_MS;
+      return;
+    }
     if (planarSpeed > this.tuning.topSpeed) {
       const scale = this.tuning.topSpeed / planarSpeed;
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
