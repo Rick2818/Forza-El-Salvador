@@ -24,7 +24,7 @@ interface Bucket {
   color: THREE.Color;
 }
 
-interface SpeciesAssets {
+export interface SpeciesAssets {
   bark: THREE.BufferGeometry;
   leaves: THREE.BufferGeometry;
   crown: THREE.BufferGeometry;
@@ -332,7 +332,7 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 /* Broadleaf tree                                                      */
 /* ------------------------------------------------------------------ */
 
-function buildBroadleaf(seed: number): SpeciesAssets {
+export function buildBroadleaf(seed: number): SpeciesAssets {
   const rng = makeRng(seed);
   const height = 9.6 + rng() * 3.2;
   const barkParts: THREE.BufferGeometry[] = [];
@@ -678,7 +678,31 @@ function broadleafSpray(
   ctx.restore();
 }
 
-function createBroadleafTexture(): THREE.CanvasTexture {
+/** Fine vertical bark ridges with muted albedo variations; shared by instanced trunks.
+ * Purely procedural and small: no additional runtime downloads. */
+export function createBarkTexture(): THREE.CanvasTexture {
+  const [canvas, ctx] = makeCanvas(512);
+  const rng = makeRng(221127);
+  ctx.fillStyle = "#77716a";
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 12500; i++) {
+    const x = rng() * 512, y = rng() * 512;
+    ctx.strokeStyle = rng() > .48 ? "rgba(38,31,27,.15)" : "rgba(218,204,180,.11)";
+    ctx.lineWidth = .4 + rng() * 2.8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x + (rng()-.5) * 4, y + 9,
+      x + (rng()-.5) * 6, y + 20,
+      x + (rng()-.5) * 5, y + 29 + rng() * 35);
+    ctx.stroke();
+  }
+  const map = makeTexture(canvas);
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  return map;
+}
+
+export function createBroadleafTexture(): THREE.CanvasTexture {
   const S = 1024;
   const half = S / 2;
   const [canvas, ctx] = makeCanvas(S);
