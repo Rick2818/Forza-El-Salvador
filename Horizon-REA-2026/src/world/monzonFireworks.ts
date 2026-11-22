@@ -118,7 +118,9 @@ const CORE_VERTEX = /* glsl */ `
   uniform float uSize;
   varying vec3 vTint;
   varying float vAlpha;
+  varying float vCore;
   void main() {
+    vCore = 1.0;
     float age = uTime - aStart;
     vAlpha = age >= 0.0 && age < .44 ? pow(1.0 - age / .44,2.0) : 0.0;
     vTint = aTint;
@@ -136,7 +138,9 @@ const ROCKET_VERTEX = /* glsl */ `
   uniform float uSize;
   varying vec3 vTint;
   varying float vAlpha;
+  varying float vCore;
   void main() {
+    vCore = 1.0;
     float flight = uTime - (aStart - .86) - aTrail * .046;
     float f = clamp(flight / .86, 0.0, 1.0);
     vAlpha = flight >= 0.0 && flight <= .86 ? .8 * (1.0 - aTrail * .064) : 0.0;
