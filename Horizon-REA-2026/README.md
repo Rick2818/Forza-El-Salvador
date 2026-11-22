@@ -46,6 +46,15 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
 - El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
 
+## Puente colgante de Suzaka
+
+- El cruce de Suzaka conserva sus **12 metros de separación vertical** respecto a la pista inferior y su misma trayectoria de carrera. El puente se construye sobre los puntos elevados reales del trazado.
+- Se muestra un **tablero inferior visible**, dos pórticos altos, dos cables principales curvos, tensores verticales y riostras bajo el pavimento. Las torres y cables están por fuera de la calzada, evitando barreras nuevas en la línea de carrera.
+- A ambos lados se añadieron **parapetos sólidos y protecciones transparentes** de 3,05 m de altura junto al asfalto para permitir ver el desnivel. Las mismas superficies geométricas crean **colisionadores Rapier**: los vehículos chocan contra la barrera antes de salir de la plataforma.
+- Solo se trabaja sobre el tramo elevado. Se conserva el paso inferior del ocho, la física del tablero y el resto de los circuitos sin alteraciones.
+- Las nuevas pruebas automáticas verifican altura, longitud del tramo, estructuras visuales y colisiones de un chasis contra **ambos lados** del puente.
+- Los 60 FPS deben comprobarse en el equipo final; las geometrías se comparten e instancian y no se añaden luces dinámicas ni mapas de sombras.
+
 ## Mejoras de vegetación (Monzón y Suzaka)
 
 - **Monzón:** las antiguas copas hechas con figuras geométricas planas se sustituyen por dos variantes orgánicas con troncos y ramas modelados, hojas con máscara alfa y texturas de hojas/corteza generadas localmente. Se conservan el número objetivo de 460 árboles y el área despejada alrededor de pits, boxes, tribunas y pista. Las copas y los troncos se renderizan en grupos instanciados, con un máximo de cuatro llamadas de dibujo.
