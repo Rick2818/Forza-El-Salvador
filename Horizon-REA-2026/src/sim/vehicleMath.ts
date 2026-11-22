@@ -97,5 +97,11 @@ export function highSpeedCornerDriveFactor(speedMs:number,steering:number):numbe
   const turn=Math.min(1,Math.abs(steering));
   const reserve=smoothRange(turn,.05,.20);
   const safeTurnSpeed=82-22*turn;
-  return 1-reserve*smoothRange(Math.abs(speedMs),safeTurnSpeed-20,safeTurnSpeed+2);
+  // Never cut combustion/electric drive to zero during a sustained turn.
+  // The former 100% cut above ~80 m/s could strand a car at one speed
+  // even with the accelerator held down. Keep 30% of normal propulsion;
+  // nitro/straight-line drag assist remain separately disabled in bends.
+  const cornerPowerFloor=0.30;
+  return 1-(1-cornerPowerFloor)*reserve*
+    smoothRange(Math.abs(speedMs),safeTurnSpeed-20,safeTurnSpeed+2);
 }

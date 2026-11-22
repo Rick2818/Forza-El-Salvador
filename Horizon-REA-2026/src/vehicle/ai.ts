@@ -223,10 +223,16 @@ export class AIDriver {
     }
 
     if (headOn) targetSpeed = Math.min(targetSpeed, Math.max(7, (headOn.gap - 8) * 0.55));
+    const moderateInstability = Math.abs(headingError) > .3 || v.slip > 3;
+    const severeInstability = Math.abs(headingError) > .6 || v.slip > 6;
     if (recovering) targetSpeed = Math.min(targetSpeed, 12);
-    else if (Math.abs(headingError) > .3 || v.slip > 3) {
-      // Regain alignment before asking the highway engine to accelerate.
+    else if (severeInstability) {
+      // Real slides still demand firm deceleration until safely aligned.
       targetSpeed = Math.min(targetSpeed, 25);
+    } else if (moderateInstability) {
+      // Mild steering corrections must not lock a rival near 80 mph forever.
+      // Re-evaluate on every tick; preserve lower corner/traffic speed caps.
+      targetSpeed = Math.min(targetSpeed, Math.max(32, speed + 4));
     }
     const error = targetSpeed - speed;
     // The speed controller must account for the stronger highway engine;
@@ -234,6 +240,10 @@ export class AIDriver {
     // root of available power rather than cancelling all highway power.
     let throttle = clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
     let brake = clamp(-error / (7.0 / tuning.reaction), 0, 1);
+    if (moderateInstability && !recovering) {
+      // Controlled recovery, never full throttle while still slipping.
+      throttle = Math.min(throttle, 0.4);
+    }
     if (this.reverseTime > 0) {
       this.reverseTime -= dt;
       throttle = 0;

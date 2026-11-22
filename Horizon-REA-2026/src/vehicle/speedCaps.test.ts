@@ -42,7 +42,8 @@ describe("Velocidades exactas en la simulación y el velocímetro MPH",()=>{
       const s=car.tuning.topSpeed;
       expect(straightOnlyDragAssist(s,1,.35,0,0,1)).toBe(0);
       expect(straightOnlyDragAssist(s,1,0,4,0,1)).toBe(0);
-      expect(highSpeedCornerDriveFactor(90,.35)).toBeLessThan(.12);
+      expect(highSpeedCornerDriveFactor(90,.35)).toBeGreaterThanOrEqual(.3);
+      expect(highSpeedCornerDriveFactor(90,.35)).toBeLessThan(.4);
       expect(highSpeedCornerDriveFactor(90,0)).toBe(1);
       expect(highSpeedCornerDriveFactor(45,.35)).toBe(1);
     }
