@@ -12,6 +12,7 @@ import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
+import { SuzakaGarages } from "./suzakaGarages";
 import { createTracksidePartners } from "./tracksidePartners";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
@@ -31,7 +32,7 @@ export class Environment {
   private readonly shadowSize = 34;
   private time = 0;
   private forest: PineForest | null = null;
-  private garages: MonzonGarages | null = null;
+  private garages: MonzonGarages | SuzakaGarages | null = null;
   private readonly trackLights: THREE.PointLight[] = [];
   private readonly lampPositions: readonly THREE.Vector3[];
   private lightRefresh = 1;
@@ -136,6 +137,7 @@ export class Environment {
       this.garages = new MonzonGarages(scene);
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
+      this.garages = new SuzakaGarages(scene, track);
       scene.add(createSuzakaMountain(track));
       scene.add(createSuzakaPublicStands(track, this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
