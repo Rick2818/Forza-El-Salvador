@@ -12,6 +12,7 @@ import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
+import { createSuzakaGaragePitLane, suzakaGarageFrame } from "./suzakaGarageZone";
 import { createTracksidePartners } from "./tracksidePartners";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
@@ -137,6 +138,11 @@ export class Environment {
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
       scene.add(createSuzakaMountain(track));
+      // Previously Suzaka never constructed a single service workshop.
+      const garageFrame=suzakaGarageFrame(track);
+      scene.add(createSuzakaGaragePitLane(garageFrame));
+      this.garages=new MonzonGarages(scene,garageFrame);
+      void this.garages.ready.catch(error=>console.warn("[Horizon] Suzaka workshop:",error));
       scene.add(createSuzakaPublicStands(track, this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
       void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
