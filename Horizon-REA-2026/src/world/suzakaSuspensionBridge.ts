@@ -4,19 +4,21 @@ import type { Track } from "./track";
 
 export const SUZAKA_BRIDGE_GUARD_HEIGHT = 3.05;
 export const SUZAKA_BRIDGE_DECK_THRESHOLD = 4.0;
+export const SUZAKA_BRIDGE_SAFETY_THRESHOLD = 0.75;
+export const SUZAKA_BRIDGE_CRASHWALL_THICKNESS = 0.9;
 
 /** Continuous elevated stretch, based on the actual live racing surface.
  * The lower crossing is never selected. */
-export function suzakaBridgeSpan(track: Pick<Track, "samples">): number[] {
+export function suzakaBridgeSpan(track: Pick<Track, "samples">, threshold = SUZAKA_BRIDGE_DECK_THRESHOLD): number[] {
   const points = track.samples, n = points.length;
   if (n < 64) throw new Error("Suzaka bridge: insufficient track samples");
   let peak = 0;
   for (let i = 1; i < n; i++) if (points[i].y > points[peak].y) peak = i;
   if (points[peak].y < 9) throw new Error("Suzaka bridge: expected elevated crossing");
   let left = peak, right = peak;
-  while (points[(left - 1 + n) % n].y >= SUZAKA_BRIDGE_DECK_THRESHOLD &&
+  while (points[(left - 1 + n) % n].y >= threshold &&
          (peak - left + n) % n < n / 3) left = (left - 1 + n) % n;
-  while (points[(right + 1) % n].y >= SUZAKA_BRIDGE_DECK_THRESHOLD &&
+  while (points[(right + 1) % n].y >= threshold &&
          (right - peak + n) % n < n / 3) right = (right + 1) % n;
   const indices: number[] = [];
   for (let index = left; ; index = (index + 1) % n) {
@@ -30,7 +32,7 @@ export function suzakaBridgeSpan(track: Pick<Track, "samples">): number[] {
 function guardOffset(track: Pick<Track, "halfWidth">): number {
   // Just outside the actual asphalt edge: no unprotected drop-off between
   // the old outer barrier and the narrow, elevated road deck.
-  return track.halfWidth + .75;
+  return track.halfWidth + .26;
 }
 
 /** A single continuous safety surface used for BOTH rendering and physics.
@@ -62,25 +64,45 @@ export function suzakaBridgeGuardGeometry(
   return geo;
 }
 
+/**
+ * Safety hotfix: old infinitely thin triangular walls can be traversed under
+ * high-speed side impact, and they ended while the ramps were still elevated.
+ * Use THICK fixed cuboids overlapping along the whole elevated safety ramp.
+ * Rapier handles dynamic chassis CCD against these actual volumes.
+ */
 export function installSuzakaBridgePhysics(world: RAPIER.World, track: Track): number {
   if (track.circuit.id !== "suzaka") return 0;
-  const indices = suzakaBridgeSpan(track);
+  const indices = suzakaBridgeSpan(track, SUZAKA_BRIDGE_SAFETY_THRESHOLD);
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const width = SUZAKA_BRIDGE_CRASHWALL_THICKNESS;
+  let count = 0;
   for (const side of [-1, 1] as const) {
-    const geo = suzakaBridgeGuardGeometry(track, indices, side);
-    const positions = geo.getAttribute("position") as THREE.BufferAttribute;
-    const index = geo.index;
-    if (!index) throw new Error("Suzaka bridge: missing guardrail triangle indices");
-    world.createCollider(
-      RAPIER.ColliderDesc.trimesh(
-        new Float32Array(positions.array as ArrayLike<number>),
-        new Uint32Array(index.array as ArrayLike<number>)
-      ).setFriction(.48).setRestitution(.08),
-      body
-    );
-    geo.dispose();
+    for (let i = 1; i < indices.length; i++) {
+      const p = track.sampleAt(indices[i - 1]);
+      const q = track.sampleAt(indices[i]);
+      const rp = track.rightAt(indices[i - 1]);
+      const rq = track.rightAt(indices[i]);
+      const outward = (side * (guardOffset(track) + width / 2));
+      const px = p.x + rp.x * outward, pz = p.z + rp.z * outward;
+      const qx = q.x + rq.x * outward, qz = q.z + rq.z * outward;
+      const dx = qx - px, dz = qz - pz;
+      const length = Math.hypot(dx, dz);
+      if (length < .01) continue;
+      const yaw = Math.atan2(dx, dz);
+      const height = SUZAKA_BRIDGE_GUARD_HEIGHT + .55;
+      const centerY = (p.y + q.y) / 2 + (height / 2 - .35);
+      world.createCollider(
+        RAPIER.ColliderDesc.cuboid(width / 2, height / 2, (length + 1.25) / 2)
+          .setTranslation((px + qx) / 2, centerY, (pz + qz) / 2)
+          .setRotation({ x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) })
+          .setFriction(.62)
+          .setRestitution(.035),
+        body
+      );
+      count++;
+    }
   }
-  return 2;
+  return count;
 }
 
 function underDeckGeometry(track: Track, indices: readonly number[]): THREE.BufferGeometry {
@@ -135,11 +157,12 @@ export function createSuzakaSuspensionBridge(track: Track): THREE.Group {
   const deck = new THREE.Mesh(underDeckGeometry(track, indices), dark);
   deck.name="suzaka-bridge-elevated-underdeck";deck.receiveShadow=false;root.add(deck);
 
-  // Shape-following crash walls and high transparent screens let the player
-  // SEE the elevation, while a solid Rapier collider blocks the same corridor.
+  // Guard rails extend over BOTH elevated approaches, not just the central
+  // cable span. Their thick physical twins block head-on side impacts.
+  const guardIndices = suzakaBridgeSpan(track, SUZAKA_BRIDGE_SAFETY_THRESHOLD);
   for (const side of [-1, 1] as const) {
-    const lower = new THREE.Mesh(suzakaBridgeGuardGeometry(track, indices, side, .04, 1.12), concrete);
-    const screen = new THREE.Mesh(suzakaBridgeGuardGeometry(track, indices, side, 1.12, SUZAKA_BRIDGE_GUARD_HEIGHT), glass);
+    const lower = new THREE.Mesh(suzakaBridgeGuardGeometry(track, guardIndices, side, -.30, 1.12), concrete);
+    const screen = new THREE.Mesh(suzakaBridgeGuardGeometry(track, guardIndices, side, 1.12, SUZAKA_BRIDGE_GUARD_HEIGHT), glass);
     lower.name=`suzaka-bridge-crashwall-${side}`;
     screen.name=`suzaka-bridge-clear-safety-${side}`;
     root.add(lower,screen);

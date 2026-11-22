@@ -4,6 +4,7 @@ import { Track } from "./track";
 import { getCircuit } from "./circuits";
 import {
   SUZAKA_BRIDGE_DECK_THRESHOLD, SUZAKA_BRIDGE_GUARD_HEIGHT,
+  SUZAKA_BRIDGE_SAFETY_THRESHOLD, SUZAKA_BRIDGE_CRASHWALL_THICKNESS,
   suzakaBridgeSpan, suzakaBridgeGuardGeometry,
   createSuzakaSuspensionBridge, installSuzakaBridgePhysics
 } from "./suzakaSuspensionBridge";
@@ -22,6 +23,9 @@ describe("Puente colgante de Suzaka", () => {
   it("protege sólo el tramo realmente elevado del cruce (no la vía inferior)", () => {
     const track = circuit();
     const indices = suzakaBridgeSpan(track);
+    const safety = suzakaBridgeSpan(track, SUZAKA_BRIDGE_SAFETY_THRESHOLD);
+    expect(safety.length).toBeGreaterThan(indices.length);
+    expect(safety.every(i => track.sampleAt(i).y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD)).toBe(true);
     expect(indices.length).toBeGreaterThan(30);
     expect(indices.length).toBeLessThan(track.samples.length / 2);
     expect(indices.every(i => track.sampleAt(i).y >= SUZAKA_BRIDGE_DECK_THRESHOLD)).toBe(true);
@@ -44,25 +48,44 @@ describe("Puente colgante de Suzaka", () => {
     expect(bridge.userData.roadElevationMetres).toBeGreaterThan(11);
   });
 
-  it.each([-1, 1] as const)("detiene un chasis que choca contra la baranda del lado %i", (side) => {
+  it.each([
+    [-1, 0, 14], [1, 0, 14],
+    [-1, 0, 45], [1, 0, 45],
+    [-1, .22, 45], [1, .22, 45],
+    [-1, -.22, 45], [1, -.22, 45],
+    [-1, 0, 88], [1, 0, 88]
+  ] as const)("detiene un choque lateral real (lado %i, tramo %f, velocidad %i m/s)", (side, shift, speed) => {
     const track = circuit();
-    const indices = suzakaBridgeSpan(track);
-    const idx = indices[Math.floor(indices.length / 2)];
+    const elevated = suzakaBridgeSpan(track, SUZAKA_BRIDGE_SAFETY_THRESHOLD);
+    const at = Math.max(3,Math.min(elevated.length-4,
+      Math.floor(elevated.length * (.5 + shift))));
+    const idx = elevated[at];
     const p = track.sampleAt(idx), right = track.rightAt(idx);
     const world = new RAPIER.World({ x: 0, y: 0, z: 0 });
-    expect(installSuzakaBridgePhysics(world, track)).toBe(2);
-    const startOffset = side * 5.3;
+    const solids = installSuzakaBridgePhysics(world, track);
+    expect(solids).toBeGreaterThan(elevated.length);
+    expect(SUZAKA_BRIDGE_CRASHWALL_THICKNESS).toBeGreaterThan(.5);
+    const startOffset = side * 5.5;
     const chassis = world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(p.x + right.x * startOffset, p.y + 1, p.z + right.z * startOffset)
+        .setTranslation(p.x + right.x * startOffset, p.y + 1.0, p.z + right.z * startOffset)
         .setCcdEnabled(true).setLinearDamping(0)
+        .lockRotations()
     );
-    world.createCollider(RAPIER.ColliderDesc.cuboid(.7, .45, .7).setRestitution(0), chassis);
-    chassis.setLinvel({ x: right.x * side * 14, y: 0, z: right.z * side * 14 }, true);
-    for (let step = 0; step < 120; step++) world.step();
+    world.createCollider(RAPIER.ColliderDesc.cuboid(.7, .45, .7), chassis);
+    chassis.setLinvel({ x: right.x * side * speed, y: 0, z: right.z * side * speed }, true);
+    let maxLateral = 0;
+    for (let step = 0; step < 45; step++) {
+      world.step();
+      const p2 = chassis.translation();
+      maxLateral=Math.max(maxLateral,Math.abs(
+        (p2.x-p.x)*right.x+(p2.z-p.z)*right.z
+      ));
+    }
     const target = chassis.translation();
     const lateral = (target.x - p.x) * right.x + (target.z - p.z) * right.z;
-    expect(Math.abs(lateral)).toBeLessThan(track.halfWidth + 2.5);
+    expect(maxLateral).toBeLessThan(track.halfWidth + 1.15);
+    expect(Math.abs(lateral)).toBeLessThan(track.halfWidth + 1.15);
     expect(Number.isFinite(target.y)).toBe(true);
     world.free();
   });
