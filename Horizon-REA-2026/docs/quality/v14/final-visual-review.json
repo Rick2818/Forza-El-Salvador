@@ -1,0 +1,61 @@
+{
+  "status": "V14_REVIEWED_3D_ARTIFACTS_FINAL",
+  "pilots": [
+    {
+      "id": "ferrari-california-t",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "4654598d5598d65111491693416ed79e7b3d325c80088ac81662d38042d3441c",
+      "outputSha256": "18d534d568fb1ddf201e4f3281bf179b06ebbb2e1aec80e528348b4a4f67ed42",
+      "preview": "docs/quality/v14/previews/ferrari-california-t-v14-final.png"
+    },
+    {
+      "id": "yangwang-u9",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "580c3916067ebef1aa0200d66c95cac63ec5f23732ce233055652fc3bab62827",
+      "outputSha256": "41f4c5220f9e7c76e297ee117bf4a92edd16193499f7a985d1f57c59244e035a",
+      "preview": null
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "6c74aba5dfa511e489742dc5e4cc453f7b2e7ae5a78bede6ad347f8b885486a1",
+      "outputSha256": "97a75b7fa0d806eab10e896a54e9bceb8b14acdf2d2186e1e1fa7c5f6b604773",
+      "preview": "docs/quality/v14/previews/koenigsegg-jesko-odin-v14-final.png"
+    },
+    {
+      "id": "bugatti-chiron",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "a743a38aeca4004dd96714d15e6b5b4f09ed98c82eb6a6396859a05aecc552c7",
+      "outputSha256": "3a491cf9789eb97f733633600fd64d24c64cee84442e9a696cf0cb1f33748e29",
+      "preview": null
+    },
+    {
+      "id": "porsche-911",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "12deadfcbf417f19ba2381d2f6537ab7d7c9e2867868b2e0131d7af811e4d224",
+      "outputSha256": "b1faef6ac9ba149909a5c46de565e7fbc602122b129a5d0ac75912af0ba427a3",
+      "preview": "docs/quality/v14/previews/porsche-911-v14-final.png"
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "6cd673927ddde2a8029765f7862a505a763ca863b9cedcca1598c356c03ee665",
+      "outputSha256": "882f3068caa508d0b5e361ba4ae8f15a2dc1366595c88f6a1239c0766c9b8892",
+      "preview": null
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "helmetVerticesRefined": 787,
+      "inputSha256": "a43ca0faf37f9003ffcec91b04ff8513bb00c11dea5c07b4f996cbe5b5d8fda8",
+      "outputSha256": "6ca2bf346d75fdc21b443c0e64a5f2e4afa0a66b8bd89608373187ae6cb3e00a",
+      "preview": null
+    }
+  ],
+  "balloon": {
+    "removedLogoOcclusionGeometry": [
+      "HorizonBalloonV14_gold_piping_at_40"
+    ],
+    "render": "docs/quality/v14/previews/goodyear-v14-final-night.png",
+    "sha256": "04ca8dcdcc8a0d8e7a4a803696ddf12b0ccc77468f69a5182709ada9d180dff4"
+  }
+}
