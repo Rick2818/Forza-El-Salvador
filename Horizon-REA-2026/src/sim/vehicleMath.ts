@@ -84,7 +84,7 @@ export function straightOnlyDragAssist(
   if(![speedMs,throttle,steering,lateralSpeedMs,yawRate,grip].every(Number.isFinite))return 0;
   if(throttle<=0||grip<=.85||Math.abs(steering)>.025||
     Math.abs(lateralSpeedMs)>.8||Math.abs(yawRate)>.12)return 0;
-  return dragForce(Math.abs(speedMs))*.70*
+  return dragForce(Math.abs(speedMs))*1.15*
     smoothRange(Math.abs(speedMs),78,115)*Math.min(1,Math.max(0,throttle))*grip;
 }
 
