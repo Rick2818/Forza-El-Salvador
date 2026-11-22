@@ -88,8 +88,8 @@ export class SuzakaGarages {
       this.group.add(bay);
     });
     this.group.userData.drivableGarages=SUZAKA_GARAGE_NAMES.length;
-    this.group.userData.pitEntryMetres=290;
-    this.group.userData.pitExitMetres=595;
+    this.group.userData.pitEntryMetres=302;
+    this.group.userData.pitExitMetres=588;
     scene.add(this.group);
   }
 

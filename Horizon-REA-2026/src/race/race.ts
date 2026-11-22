@@ -192,7 +192,7 @@ export class Race {
       const inPit = !!closest && isSuzaka && inSuzakaPitArea(
         closest.index*this.track.segmentLength,closest.lateral,this.track.barrierLateralOffset);
       const escaped = !!closest && !inPit && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
-      const nearlyStopped = Math.hypot(v.x,v.z)<2.5;
+      const nearlyStopped = Math.hypot(v.x,v.z)<1.0;
       if(isSuzaka && racer.isPlayer && closest && !inPit &&
          strandedOutsideSuzakaKerb(closest.lateral,this.track.halfWidth,nearlyStopped?0:Math.hypot(v.x,v.z)) &&
          this.state === "racing") this.playerStrandedSeconds+=dt;

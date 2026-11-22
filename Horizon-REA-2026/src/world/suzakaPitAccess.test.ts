@@ -18,9 +18,9 @@ describe("Suzaka seven-garage pit access",()=>{
   });
   it("opens the wall and physics at entry/exit ONLY, on the pit side",()=>{
     const t=track(),walls=planSuzakaRoadsideProtection(t);
-    expect(suzakaPitBarrierGap(305,1)).toBe(true);
-    expect(suzakaPitBarrierGap(580,1)).toBe(true);
-    expect(suzakaPitBarrierGap(305,-1)).toBe(false);
+    expect(suzakaPitBarrierGap(308,1)).toBe(true);
+    expect(suzakaPitBarrierGap(582,1)).toBe(true);
+    expect(suzakaPitBarrierGap(308,-1)).toBe(false);
     expect(suzakaPitBarrierGap(350,1)).toBe(false);
     expect(walls.filter(w=>w.side===-1).length).toBeGreaterThan(walls.filter(w=>w.side===1).length);
   });

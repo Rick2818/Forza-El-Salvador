@@ -3,8 +3,8 @@ import type { Track } from "./track";
 export const SUZAKA_PIT_SIDE = 1;
 export const SUZAKA_PIT_START_M = 275;
 export const SUZAKA_PIT_END_M = 610;
-export const SUZAKA_PIT_ENTRY = [290, 320] as const;
-export const SUZAKA_PIT_EXIT = [565, 595] as const;
+export const SUZAKA_PIT_ENTRY = [302, 315] as const;
+export const SUZAKA_PIT_EXIT = [575, 588] as const;
 export const SUZAKA_GARAGE_NAMES = [
   "FERRARI", "PORSCHE", "BUGATTI", "MERCEDES-BENZ",
   "LAMBORGHINI", "KOENIGSEGG", "YANGWANG"
