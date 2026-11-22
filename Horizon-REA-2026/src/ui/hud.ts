@@ -1,4 +1,5 @@
 import type { StartSignalPhase } from "../race/startSignal";
+import type { CameraMode } from "../render/camera";
 import { RELEASE_LABEL } from "../core/version";
 import type { RaceSnapshot, Racer } from "../race/race";
 import type { Track } from "../world/track";
@@ -83,6 +84,7 @@ export class HUD {
   private toastTimer = 0;
   private lastSpeed = -1;
   private gaugeMaxMph = 350;
+  readonly cameraButton: HTMLButtonElement;
   private startPhase: StartSignalPhase | null = null;
   private uiElapsed = .1;
 
@@ -118,12 +120,15 @@ export class HUD {
         <div id="countdown"></div>
         <div id="toast"></div>
         <button class="mute-btn" id="mute-btn" title="Silenciar (M)">🔊</button>
+        <button class="camera-btn" id="camera-btn" type="button" title="Cambiar cámara (C)"
+          aria-label="Cambiar cámara: primera o tercera persona">📷 3ª PERSONA</button>
       </div>
     `;
     root.appendChild(wrap);
 
     this.el = wrap.querySelector("#hud")!;
     this.countdownEl = wrap.querySelector("#countdown")!;
+    this.cameraButton = wrap.querySelector<HTMLButtonElement>("#camera-btn")!;
     this.toastEl = wrap.querySelector("#toast")!;
     this.posEl = wrap.querySelector("#hud-pos")!;
     this.lapEl = wrap.querySelector("#hud-lap")!;
@@ -171,6 +176,13 @@ export class HUD {
     this.toastEl.textContent = message;
     this.toastEl.classList.add("show");
     this.toastTimer = duration / 1000;
+  }
+
+  setCameraMode(mode: CameraMode): void {
+    const label = mode === "hood" ? "1ª PERSONA" : mode === "wide" ? "PANORÁMICA" : "3ª PERSONA";
+    this.cameraButton.textContent = "📷 " + label;
+    this.cameraButton.dataset.mode = mode;
+    this.cameraButton.setAttribute("aria-label", "Cambiar cámara. Actual: " + label);
   }
 
   setStartSignal(phase: StartSignalPhase | null): void {

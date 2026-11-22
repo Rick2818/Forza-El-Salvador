@@ -13,7 +13,7 @@ import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
 import { Menu } from "./ui/menu";
 import { Input } from "./core/input";
-import { ChaseCamera } from "./render/camera";
+import { ChaseCamera, CAMERA_LABELS, type CameraMode } from "./render/camera";
 import { SmokeSystem } from "./render/effects";
 import { GameAudio } from "./audio/engine";
 import { SETTINGS } from "./core/settings";
@@ -183,6 +183,10 @@ export class Game {
     canvas.addEventListener("webglcontextrestored", this.onContextRestored, false);
     canvas.addEventListener("pointerdown", () => this.input.focusGame());
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
+    this.hud.setCameraMode(this.chase.mode);
+    this.hud.cameraButton.addEventListener("click", () => {
+      if (this.state === "racing") this.switchCamera();
+    });
 
     this.menu.setAudioVolumes(this.audio.getVolumes());
     this.menu.setEngineProfile(this.audio.getEngineProfile());
@@ -381,6 +385,15 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.needsUpdate = true;
     this.applyResolution();
+  }
+
+  /** Same camera switch for keyboard, HUD button, and both playable circuits. */
+  private switchCamera(mode?: CameraMode): void {
+    if (this.state !== "racing") return;
+    if (mode) this.chase.setMode(mode);
+    else this.chase.toggle();
+    this.hud.setCameraMode(this.chase.mode);
+    this.hud.toast("Cámara: " + CAMERA_LABELS[this.chase.mode], 1450);
   }
 
   private toggleMute(): void {
@@ -684,12 +697,9 @@ export class Game {
       else if (this.state === "paused") this.resume();
     }
     if (this.input.consume("KeyM")) this.toggleMute();
-    if (this.input.consume("KeyC") && this.state === "racing") {
-      const mode = this.chase.toggle();
-      const label =
-        mode === "hood" ? "Cámara capó" : mode === "wide" ? "Cámara panorámica" : "Cámara persecución";
-      this.hud.toast(label, 1200);
-    }
+    if (this.input.consume("KeyC") || this.input.consume("KeyV")) this.switchCamera();
+    if (this.input.consume("Digit1")) this.switchCamera("hood");
+    if (this.input.consume("Digit3")) this.switchCamera("chase");
     if (this.input.consume("KeyR") && this.state === "racing") {
       const nearest=this.track.locate(this.race.player.vehicle.position,this.race.player.hint);
       const point=this.track.sampleAt(nearest.index),direction=this.track.tangentAt(nearest.index);
