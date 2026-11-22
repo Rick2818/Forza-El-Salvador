@@ -22,7 +22,8 @@ describe("Suzaka seven-garage pit access",()=>{
     expect(suzakaPitBarrierGap(582,1)).toBe(true);
     expect(suzakaPitBarrierGap(308,-1)).toBe(false);
     expect(suzakaPitBarrierGap(350,1)).toBe(false);
-    expect(walls.filter(w=>w.side===-1).length).toBeGreaterThan(walls.filter(w=>w.side===1).length);
+    expect(walls.filter(w=>w.pitGate).length).toBeGreaterThan(0);
+    expect(walls.filter(w=>w.pitGate).every(w=>w.side===1)).toBe(true);
   });
   it("allows parking inside all bays without being falsely rescued",()=>{
     const t=track(),off=t.barrierLateralOffset;

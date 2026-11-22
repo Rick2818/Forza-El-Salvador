@@ -6,7 +6,8 @@ import { ContactShadows } from "./render/contactShadows";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
-import { inSuzakaPitArea, suzakaGarageAt } from "./world/suzakaPitAccess";
+import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
+import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
 import { Environment } from "./world/environment";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
@@ -513,6 +514,21 @@ export class Game {
       let steps = 0;
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
         this.race.update(this.fixedStep, drive as Input);
+        if(this.track.circuit.id==="suzaka"){
+          const p=this.race.player.vehicle.body.translation();
+          const located=this.track.locate(new THREE.Vector3(p.x,p.y,p.z),this.race.player.hint);
+          const metres=located.index*this.track.segmentLength;
+          const nearOpening=(
+            (metres>=SUZAKA_PIT_ENTRY[0]-12 && metres<=SUZAKA_PIT_ENTRY[1]+12) ||
+            (metres>=SUZAKA_PIT_EXIT[0]-12 && metres<=SUZAKA_PIT_EXIT[1]+12)
+          );
+          const closeToBarrier=located.lateral>this.track.halfWidth-1 &&
+            located.lateral<this.track.barrierLateralOffset+3;
+          const parkedInPits=inSuzakaPitArea(metres,located.lateral,this.track.barrierLateralOffset) &&
+            located.lateral>=this.track.barrierLateralOffset-.5;
+          const allowEntry=nearOpening && closeToBarrier && this.race.player.vehicle.speedKph<55;
+          setSuzakaPitGatesOpen(this.world,allowEntry||parkedInPits);
+        }
         this.world.step();
         for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep();
         for (const car of this.race.oncoming) car.vehicle.afterPhysicsStep();

@@ -18,6 +18,7 @@ export interface SuzakaBarrierSegment {
   length: number;
   thickness: number;
   height: number;
+  pitGate: boolean;
 }
 
 export function planSuzakaRoadsideProtection(
@@ -31,7 +32,7 @@ export function planSuzakaRoadsideProtection(
     const a=track.samples[i],b=track.samples[next];
     const ar=track.rightAt(i),br=track.rightAt(next);
     for(const side of [-1,1] as const) {
-      if(suzakaPitBarrierGap((i+SUZAKA_BARRIER_STEP_SAMPLES/2)*track.segmentLength,side))continue;
+      const pitGate=suzakaPitBarrierGap((i+SUZAKA_BARRIER_STEP_SAMPLES/2)*track.segmentLength,side);
       const ax=a.x+ar.x*side*track.barrierLateralOffset;
       const az=a.z+ar.z*side*track.barrierLateralOffset;
       const bx=b.x+br.x*side*track.barrierLateralOffset;
@@ -47,11 +48,24 @@ export function planSuzakaRoadsideProtection(
         yaw:Math.atan2(dx,dz),
         length:length+1.75, // overlap adjacent segments even in curves
         thickness:SUZAKA_OUTER_BARRIER_THICKNESS,
-        height:SUZAKA_OUTER_BARRIER_HEIGHT
+        height:SUZAKA_OUTER_BARRIER_HEIGHT,
+        pitGate
       });
     }
   }
   return walls;
+}
+
+const pitGateState=new WeakMap<RAPIER.World,{colliders:RAPIER.Collider[];open:boolean}>();
+
+/** Gates remain physically closed during racing; only the human driver may
+ * open them by slowing down at the entry or exit. Never expose AI racers
+ * to permanent gaps in the high-speed roadside safety barrier. */
+export function setSuzakaPitGatesOpen(world:RAPIER.World,open:boolean):void {
+  const state=pitGateState.get(world);
+  if(!state || state.open===open)return;
+  state.open=open;
+  for(const collider of state.colliders)collider.setEnabled(!open);
 }
 
 /** Only the two full-lap perimeter walls are installed here; the flyover
@@ -60,8 +74,9 @@ export function installSuzakaRoadsideProtection(world:RAPIER.World,track:Track):
   if(track.circuit.id!=="suzaka") return 0;
   const segments=planSuzakaRoadsideProtection(track);
   const body=world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const gates:RAPIER.Collider[]=[];
   for(const wall of segments) {
-    world.createCollider(
+    const collider=world.createCollider(
       RAPIER.ColliderDesc.cuboid(wall.thickness/2,wall.height/2,wall.length/2)
         .setTranslation(wall.x,wall.y,wall.z)
         .setRotation({x:0,y:Math.sin(wall.yaw/2),z:0,w:Math.cos(wall.yaw/2)})
@@ -69,6 +84,8 @@ export function installSuzakaRoadsideProtection(world:RAPIER.World,track:Track):
         .setRestitution(.04),
       body
     );
+    if(wall.pitGate)gates.push(collider);
   }
+  pitGateState.set(world,{colliders:gates,open:false});
   return segments.length;
 }

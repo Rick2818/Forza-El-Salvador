@@ -1,7 +1,7 @@
 /** Suzaka recovery guards. Shared by racing and regression tests so 350-504
  * MPH driving never triggers the previous hard-coded 200m/s reset. */
 export const SUZAKA_RESCUE_EXTRA_METRES = .85;
-export const SUZAKA_STRANDED_KERB_MARGIN = 0.55;
+export const SUZAKA_STRANDED_KERB_MARGIN = 0.95;
 export const SUZAKA_STRANDED_DELAY_SEC = 2.2;
 
 export function escapedSuzakaBarrier(lateral:number,barrierOffset:number):boolean {
