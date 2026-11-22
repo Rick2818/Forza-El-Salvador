@@ -239,7 +239,7 @@ export class Race {
           speed: car.vehicle.speed, isPlayer: false, oncoming: true });
       }
       const leadingProgress=Math.max(...this.racers.map(entry=>
-        entry.finished ? this.track.circuit.laps ?? 3 : (entry.lap-1)+entry.progress));
+        entry.finished ? SETTINGS.race.laps : (entry.lap-1)+entry.progress));
       for (const racer of this.racers) {
         if (!racer.isPlayer && racer.ai) {
           racer.ai.setRaceDeficit(leadingProgress-((racer.lap-1)+racer.progress));
