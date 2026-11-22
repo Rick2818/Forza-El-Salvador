@@ -5,6 +5,7 @@ import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
 import { batchStaticScenery } from "../render/staticBatch";
 import { createMonzonOrganicTrees } from "./monzonTrees";
+import {createMonzonAudience, planMonzonGrandstandAudience} from "./monzonAudience";
 
 /**
  * Circuito Monzon: original, light-weight 3D scenery built with instancing.
@@ -87,7 +88,9 @@ export class MonzonScenery {
 
     // Grandstand opposite the pit buildings with tiered seating and canopy.
     const standY = ground.heightAt(300, -62);
-    box("monzon-grandstand-base", 309, standY + 4, -65, 430, 8, 39, concrete);
+    // Previous 8m-high solid front wall blocked the first rows from the road.
+    // Cut the height almost in half and keep the seating tiers unobstructed.
+    box("monzon-grandstand-base", 309, standY + 2.3, -65, 430, 4.6, 39, concrete);
     for (let row = 0; row < 9; row++) {
       box("monzon-tier-" + row, 309, standY + 5.2 + row * 1.06,
         -48 - row * 3.1, 415, 0.53, 3.1, seating[row % seating.length]);
@@ -97,30 +100,11 @@ export class MonzonScenery {
       box("monzon-canopy-column", x, standY + 10, -85, 0.75, 18.2, 0.75, steel);
     }
 
-    // A low-poly instanced crowd gives the stand life while using one draw call.
-    const rng = makeRng(28182027);
-    const crowdCount = 420;
-    const heads = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(0.46, 0),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
-      crowdCount
-    );
-    heads.name = "monzon-spectators";
-    heads.castShadow = false;
-    const matrix = new THREE.Matrix4();
-    const uniforms = [new THREE.Color(0xfff0cb), new THREE.Color(0xe8ad67),
-      new THREE.Color(0x548fc8), new THREE.Color(0xe9e9e9), new THREE.Color(0xed6b46)];
-    for (let i = 0; i < crowdCount; i++) {
-      const row = Math.floor(rng() * 8);
-      const x = 105 + rng() * 405;
-      const z = -49 - row * 3.1;
-      matrix.makeTranslation(x, standY + 6.1 + row * 1.06, z);
-      heads.setMatrixAt(i, matrix);
-      heads.setColorAt(i, uniforms[Math.floor(rng() * uniforms.length)]);
-    }
-    heads.instanceMatrix.needsUpdate = true;
-    if (heads.instanceColor) heads.instanceColor.needsUpdate = true;
-    this.group.add(heads);
+    // Full 3D silhouettes stand ABOVE the newly opened lower grandstand wall.
+    // Instanced shirts, heads, arms and legs stay readable in night lighting.
+    this.group.add(createMonzonAudience(
+      planMonzonGrandstandAudience(standY),"monzon-spectators"
+    ));
 
     // Braking-distance boards before the first chicane: approach on +X.
     const markerMat = material(0xffffff);
