@@ -67,3 +67,35 @@ export function dragForce(speedMs: number, area = 1.92, cd = 0.31): number {
 export function downforceN(speedMs: number, coefficient = 3.15): number {
   return coefficient * speedMs * speedMs;
 }
+
+/** Extra arcade drive on genuine high-speed STRAIGHTS only. Retains the
+ * previously proven low-speed throttle/AI tuning for all seven cars.
+ * Compensating a portion of quadratic aero drag lets 350-504 MPH ceilings
+ * actually be reached without sending full launch power into a corner. */
+function smoothRange(value: number, a: number, b: number): number {
+  const t=Math.max(0,Math.min(1,(value-a)/(b-a)));
+  return t*t*(3-2*t);
+}
+
+export function straightOnlyDragAssist(
+  speedMs:number, throttle:number, steering:number, lateralSpeedMs:number,
+  yawRate:number, grip:number
+):number {
+  if(![speedMs,throttle,steering,lateralSpeedMs,yawRate,grip].every(Number.isFinite))return 0;
+  if(throttle<=0||grip<=.85||Math.abs(steering)>.025||
+    Math.abs(lateralSpeedMs)>.8||Math.abs(yawRate)>.12)return 0;
+  return dragForce(Math.abs(speedMs))*.70*
+    smoothRange(Math.abs(speedMs),78,115)*Math.min(1,Math.max(0,throttle))*grip;
+}
+
+/** Cut engine torque progressively when a player attempts a fast turn.
+ * Avoid forced braking; turbo traction code already drops boost instantly.
+ * Crucially restores control of the 504 MPH-class electric car during
+ * continuous steering without compromising its acceleration on a straight. */
+export function highSpeedCornerDriveFactor(speedMs:number,steering:number):number {
+  if(!Number.isFinite(speedMs)||!Number.isFinite(steering))return 0;
+  const turn=Math.min(1,Math.abs(steering));
+  const reserve=smoothRange(turn,.05,.20);
+  const safeTurnSpeed=82-22*turn;
+  return 1-reserve*smoothRange(Math.abs(speedMs),safeTurnSpeed-20,safeTurnSpeed+2);
+}
