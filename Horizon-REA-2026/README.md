@@ -46,6 +46,14 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
 - El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
 
+## Montañas naturales en Monzón y Suzaka
+
+- Se sustituyeron los antiguos anillos angulares y picos triangulares de Suzaka por **tres cordilleras asimétricas** con elevación multiescala, hombros volcánicos, quebradas erosivas, laderas y variaciones de altura que modifican la silueta real.
+- Monzón también incorpora un horizonte de montañas naturales, separado del asfalto, los pits y el público.
+- La malla comparte una **textura procedimental de roca** de 256 × 256 píxeles y coloreado según elevación, vegetación y pedregal. Sin referencias externas, descarga de arte ni marcas de agua.
+- Las montañas se generan una sola vez con unas **21 000 posiciones en tres capas**, sin luces dinámicas adicionales, sombras ni colisionadores. No se modifica la geometría de los circuitos, el puente, los autos ni el acceso a talleres.
+- Las pruebas comprueban distancias de seguridad respecto a toda la carretera, topología y variedad de alturas. El aspecto final y FPS siguen sujetos a una prueba visual en teléfono.
+
 ## Suzaka sin atascos y nuevas velocidades de competición (MPH)
 
 - **Cinco autos (Ferrari California T, Porsche 911, Koenigsegg Jesko, Lamborghini Aventador y Mercedes-AMG GT): 350 MPH** por unidad.
