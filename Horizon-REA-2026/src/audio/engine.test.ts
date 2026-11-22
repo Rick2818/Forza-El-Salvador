@@ -263,3 +263,19 @@ it("does not generate continuous tyre noise and plays a short low-frequency impa
   expect(ctx.oscillators).toHaveLength(before + 1);
   expect(ctx.oscillators.at(-1)!.stop).toHaveBeenCalledOnce();
 });
+
+it("delays distant cinematic pyro launch and burst sounds without altering engine bus",()=>{
+  vi.stubGlobal("window",{AudioContext:Context});
+  const audio=new GameAudio();audio.ensure();
+  const ctx=Context.current;
+  const before=ctx.oscillators.length;
+  audio.playFireworkLaunch(343);
+  audio.playFireworkBurst(343,"multistage");
+  expect(ctx.oscillators.length).toBe(before+3);
+  expect(ctx.oscillators[before].start.mock.calls[0][0]).toBeCloseTo(1);
+  expect(ctx.oscillators[before+1].start.mock.calls[0][0]).toBeCloseTo(1);
+  expect(ctx.oscillators[before+2].start.mock.calls[0][0]).toBeCloseTo(1);
+  audio.setMuted(true);
+  audio.playFireworkBurst(120,"ring");
+  expect(ctx.oscillators.length).toBe(before+3);
+});
