@@ -30,7 +30,7 @@ export function monzonPitSpectatorPositions(): SpectatorPosition[] {
       const x = first + ((last - first) * (column + 0.5) / 69);
       result.push({
         x: x + (rng() - 0.5) * 0.24,
-        y: GARAGE_HEIGHT + 0.82,
+        y: GARAGE_HEIGHT + 0.64, // feet directly on the forward deck, not floating above it
         z: GARAGE_FRONT_Z - 2.9 + row * 1.38,
         yaw: Math.PI + (rng() - .5) * .36,
         shirt: shirts[Math.floor(rng() * shirts.length)],
@@ -64,7 +64,7 @@ export function monzonGrandstandSpectatorPositions(groundY: number): SpectatorPo
 /** Body parts are instanced separately for stable colors, silhouettes and
  * near-constant draw calls on mobile. No per-frame animation allocations. */
 export function createVisibleSpectators(
-  positions: readonly SpectatorPosition[], name: string
+  positions: readonly SpectatorPosition[], name: string, frustumCulled = false
 ): THREE.Group {
   const group = new THREE.Group();
   group.name = name;
@@ -120,7 +120,7 @@ export function createVisibleSpectators(
     inst.name = `${name}-${part.name}`;
     inst.castShadow = false;
     inst.receiveShadow = false;
-    inst.frustumCulled = false; // full line of seats is wider than one cell
+    inst.frustumCulled = frustumCulled; // Suzaka uses short per-sector groups to cull distant stands
     positions.forEach((person, i) => {
       q.setFromAxisAngle(axis, person.yaw);
       offset.copy(part.offset).applyQuaternion(q);
@@ -131,6 +131,7 @@ export function createVisibleSpectators(
     });
     inst.instanceMatrix.needsUpdate = true;
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+    inst.computeBoundingSphere();
     group.add(inst);
   }
   group.userData.people = positions.length;
