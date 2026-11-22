@@ -11,8 +11,8 @@ import {
  * pasted crowd at the start line. They are open to the racing straight and
  * well outside the physical guardrails. */
 export const SUZAKA_PUBLIC_STAND_SECTORS = [0.10, 0.30, 0.68, 0.88] as const;
-export const SUZAKA_PUBLIC_STAND_ROWS = 5;
-export const SUZAKA_PUBLIC_STAND_COLUMNS = 32;
+export const SUZAKA_PUBLIC_STAND_ROWS = 8;
+export const SUZAKA_PUBLIC_STAND_COLUMNS = 80;
 export const SUZAKA_PUBLIC_TOTAL = SUZAKA_PUBLIC_STAND_SECTORS.length *
   SUZAKA_PUBLIC_STAND_ROWS * SUZAKA_PUBLIC_STAND_COLUMNS;
 const LENGTH = 85;
@@ -96,7 +96,7 @@ export function inSuzakaPublicStand(x: number, z: number, stands: readonly Suzak
   return false;
 }
 
-/** Five stepped uncovered tiers per sector: not silhouettes baked into the
+/** Eight stepped 3D crowd tiers per sector: not silhouettes baked into the
  * mountains. Spectators have 3D heads, shirts, arms, legs and caps and are
  * naturally visible from the chase-camera side of the existing barriers. */
 export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField, "heightAt">): THREE.Group {
@@ -110,7 +110,12 @@ export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField
     new THREE.MeshLambertMaterial({color:0xdfe4e7}),
     new THREE.MeshLambertMaterial({color:0xd9b840})
   ];
-  const railMat = new THREE.MeshLambertMaterial({color:0xc9d5da});
+  const railMat = new THREE.MeshStandardMaterial({color:0xb4c7d2, metalness:.46,roughness:.38});
+  const canopyMat = new THREE.MeshStandardMaterial({color:0x303e4e,metalness:.44,roughness:.6});
+  const vipMat = new THREE.MeshStandardMaterial({
+    color:0x244960,metalness:.35,roughness:.28,emissive:0x0f2434
+  });
+  const lampMat = new THREE.MeshBasicMaterial({color:0xffe7bd,toneMapped:false});
   const rng = makeRng(28182029);
   const tshirts=[0xe36d3c,0xf3d14a,0x2c81ce,0x41b49c,0xf2efdd,0xb45db5,0xdd394a];
   const skin=[0xf1c99d,0xc79160,0x9a5c42,0x72482f];
@@ -166,6 +171,33 @@ export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField
     rail.name=`suzaka-public-front-rail-${sector+1}`;
     rail.position.set(gx,base+1.15,gz);rail.quaternion.copy(transform);
     group.add(rail);
+    // Covered premium section rises above the last tiers. No physics collider
+    // is created, and the audience remains visible from the track-facing side.
+    const back = stand.offset + (SUZAKA_PUBLIC_STAND_ROWS - 1) * STEP - 1.3;
+    const bx = stand.anchor.x + stand.right.x * stand.side * back;
+    const bz = stand.anchor.z + stand.right.z * stand.side * back;
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(LENGTH + 4,.42,8),canopyMat);
+    canopy.name = `suzaka-grandstand-roof-${sector+1}`;
+    canopy.position.set(bx,base+11.4,bz);
+    canopy.quaternion.copy(transform);
+    group.add(canopy);
+    const panoramic = new THREE.Mesh(new THREE.BoxGeometry(LENGTH - 3,2,.19),vipMat);
+    panoramic.name = `suzaka-vip-glazed-level-${sector+1}`;
+    panoramic.position.set(bx,base+9.7,bz);
+    panoramic.quaternion.copy(transform);
+    group.add(panoramic);
+    for (let i = -3; i <= 3; i++) {
+      const along = i * (LENGTH / 8);
+      const column = new THREE.Mesh(new THREE.BoxGeometry(.3,5.8,.3),railMat);
+      column.position.set(bx + stand.tangent.x * along,base+8.2,
+        bz + stand.tangent.z * along);
+      group.add(column);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(2.4,.15,.4),lampMat);
+      lamp.position.set(bx + stand.tangent.x * along,base+11.10,
+        bz + stand.tangent.z * along);
+      lamp.quaternion.copy(transform);
+      group.add(lamp);
+    }
     group.userData.people=people.length;
     group.userData.minimumDistanceToTrack=stand.clearance;
     group.userData.worldPosition=[sx,base,sz];

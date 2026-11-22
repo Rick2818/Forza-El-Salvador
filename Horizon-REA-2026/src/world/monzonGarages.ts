@@ -190,7 +190,7 @@ export class MonzonGarages {
       box("open-pit-balcony-bracket",bay.x,GARAGE_HEIGHT-.08,GARAGE_FRONT_Z-1.55,
         .48,.43,3.0,metal);
     }
-    const people = createVisibleSpectators(monzonPitSpectatorPositions(),"monzon-pit-visible-public");
+    const people = createVisibleSpectators(monzonPitSpectatorPositions(),"monzon-pit-visible-public",true,true);
     this.group.add(people);
     this.group.userData.pitSpectators = people.userData.people;
     this.group.userData.pitSpectatorDrawCalls = people.userData.drawCalls;
