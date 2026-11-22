@@ -128,7 +128,9 @@ export class Game {
     this.environment.installTerrainPhysics(this.world);
     if (this.track.circuit.id === "monzon") {
       this.fireworks = new MonzonLaunchFireworks(this.scene, this.track,
-        () => this.audio.playFireworkBurst());
+        cue => cue.kind === "launch"
+          ? this.audio.playFireworkLaunch(cue.distance)
+          : this.audio.playFireworkBurst(cue.distance,cue.pattern));
     }
     this.applyResolution();
     try {
@@ -390,6 +392,7 @@ export class Game {
   }
 
   private applyQuality(): void {
+    this.fireworks?.setQuality(this.quality);
     const high = this.quality === "alta";
     const moon = this.environment.moon;
     moon.shadow.mapSize.set(SETTINGS.render.shadowMapSize, SETTINGS.render.shadowMapSize);
