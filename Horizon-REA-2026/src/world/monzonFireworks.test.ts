@@ -47,7 +47,7 @@ describe("V16 GPU fireworks choreography",()=>{
     expect(points[0].material).toBeInstanceOf(THREE.ShaderMaterial);
     expect(points[0].geometry.getAttribute("aDirection")).toBeDefined();
     show.setQuality("equilibrada");
-    expect((points[0].material as THREE.ShaderMaterial).uniforms.uDensity.value).toBe(.62);
+    expect((points[0].material as THREE.ShaderMaterial).uniforms.uDensity.value).toBe(.8);
     show.start();
     for(let i=0;i<40;i++)show.update(.05);
     expect(cues).toContain("launch");

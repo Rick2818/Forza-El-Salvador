@@ -16,7 +16,9 @@ clothing, body width, height, hair, animation phase and posture per person.
 The shader uses shoulder and elbow deformation rather than per-person skeletons;
 this is an optimization for thousands of spectators. The editable Blender source
 also contains a reference rig, not a fully weighted exported animation rig.
-Near LOD preserves 5,309 triangles; mid 1,079; far 282 (see build-report.json).
+Near LOD preserves 5,308 triangles; mid 1,079; far 284 (see build-report.json).
 LOD is selected by camera distance, independently for each spectator.
 
 Editable source: `tools/blender/sources/v18/horizon-people.blend.gz` (gzip-compressed Blender file). Decompress before opening in Blender.
+
+Cloth/skin palette boundaries are split before decimation; UV.y retains authored shoulder influence. LOD partitions update before renderer buffer uploads, including camera cuts.

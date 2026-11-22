@@ -102,7 +102,7 @@ const SPARK_FRAGMENT = /* glsl */ `
     float nucleus = pow(max(0.0,1.0 - d),6.0);
     float alpha = vAlpha * (halo * .72 + nucleus * .54);
     if (alpha < .005) discard;
-    gl_FragColor = vec4(vTint * (1.08 + .4 * nucleus * vCore),alpha);
+    gl_FragColor = vec4(pow(vTint,vec3(.4545)) * (1.35 + .65 * nucleus * vCore),alpha);
   }
 `;
 const CORE_VERTEX = /* glsl */ `
@@ -348,8 +348,8 @@ export class MonzonLaunchFireworks {
   setQuality(quality:"alta"|"equilibrada"):void {
     // Constant vertex buffers in both modes; balanced mode shades ~60%
     // of fragments with no change to the finale choreography.
-    this.materials[0].uniforms.uDensity.value=quality==="alta"?1:.62;
-    this.materials[0].uniforms.uSize.value=quality==="alta"?5.5:4.6;
+    this.materials[0].uniforms.uDensity.value=quality==="alta"?1:.8;
+    this.materials[0].uniforms.uSize.value=quality==="alta"?8.5:7.2;
   }
   start():void {
     this.elapsed=0;this.burstCursor=0;this.launchCursor=0;

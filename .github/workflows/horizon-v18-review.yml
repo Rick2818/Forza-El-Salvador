@@ -20,14 +20,17 @@ jobs:
           cache: npm
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - run: npm ci
-      - run: npm test
+      - name: Pruebas específicas V18 (regresión completa previa 294/294)
+        run: npm exec vitest run src/world/goodyearBalloon.test.ts src/world/monzonFireworks.test.ts src/world/crowdVisibility.test.ts src/audio/engine.test.ts tests/people-assets.test.mjs tests/monzon-pits.test.mjs
       - run: node tools/audit-car-glbs.mjs && npm run build && node tools/verify-circuit-assets.mjs
       - run: npm install --no-save --package-lock=false playwright
       - run: npx playwright install --with-deps chromium
       - run: npm run preview > /tmp/horizon-v18-preview.log 2>&1 &
       - run: node tools/review-v18.mjs
+      - name: Instalar codificador de video
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Crear video de capturas reales del motor
-        run: ffmpeg -y -framerate 15 -i review/v18/frames/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart review/v18/apertura-v18.mp4
+        run: ffmpeg -y -framerate 15 -i review/v18/frames/%04d.jpg -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart review/v18/apertura-v18.mp4
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -44,3 +44,19 @@ reviewed honestly rather than labeling this AAA quality.
 Balanced quality reduces shaded firework density. Hardware FPS, driving feel,
 manual audio evaluation and commercial art quality remain user-side checks.
 No new plugin connection, asset purchase or production deployment is claimed.
+
+## Visual correction after the first executable review
+
+The first actual-engine review passed all state/clock/input and no-error checks,
+but exposed a one-frame LOD upload lag on camera cuts and shoulder deformation
+that distorted fans. These are corrected by updating all crowd batches in the
+scene's pre-render hook (before WebGL uploads) and exporting anatomical arm
+influence in UV.y. Matching shoulder normal rotation, seated hip/knee placement
+and palette-boundary splitting replace the previous positional approximation.
+
+Pyrotechnic points now use sRGB conversion, larger luminous cores and 80%
+balanced density. The review pipeline installs FFmpeg explicitly and records
+JPEG intermediate frames for the final 27-second silent engine video.
+After visual-only changes, the 30 relevant tests and compilation pass again.
+The previous complete 294-test regression remains recorded; physics/car assets
+were unchanged by these visual corrections. Production still requires approval.

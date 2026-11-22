@@ -26,6 +26,12 @@ function loadPeople():Promise<THREE.BufferGeometry[]> {
   }));
 }
 
+/** Refresh before WebGLRenderer uploads instance buffers, including the first
+ * frame of a cinematic camera cut. Mesh.onBeforeRender is too late for this. */
+export function updateHumanPeople(scene:THREE.Scene,camera:THREE.Camera):void {
+  scene.traverseVisible(object=>{object.userData.updatePeople?.(camera);});
+}
+
 function humanMaterial():THREE.MeshStandardMaterial {
   const mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.86,metalness:0});
   mat.onBeforeCompile=shader=>{
@@ -42,7 +48,7 @@ function humanMaterial():THREE.MeshStandardMaterial {
       float region=floor(uv.x*8.0);
       float worker=iPerson.z;
       float seed=iPerson.w;
-      vec3 pants=mix(vec3(.035,.055,.09),vec3(.14,.12,.105),fract(seed*2.7));
+      vec3 pants=worker>.5?iShirt*.44:mix(vec3(.035,.055,.09),vec3(.14,.12,.105),fract(seed*2.7));
       vHumanColor=region<.5?iSkin:region<1.5?iShirt:region<2.5?pants:
         region<3.5?mix(vec3(.016,.009,.005),vec3(.19,.075,.026),fract(seed*3.4)):
         region<4.5?vec3(.025,.029,.035):region<5.5?vec3(.75,.74,.67):vec3(.025,.015,.009);
@@ -57,8 +63,7 @@ function humanMaterial():THREE.MeshStandardMaterial {
         vHumanColor*=.92+.08*sin(position.y*155.0+position.x*75.0);
       }
       float side=sign(position.x);
-      float arm=smoothstep(.16,.225,abs(position.x))*smoothstep(.94,1.04,position.y)*
-        (1.0-smoothstep(1.43,1.49,position.y));
+      float arm=clamp(1.0-uv.y,0.0,1.0);
       float pose=fract(seed*5.17);
       float motion=sin(humanTime*(1.7+seed)+seed*18.0);
       // Joint rotations at the shoulder and elbow. Different fans wave or applaud;
@@ -66,7 +71,7 @@ function humanMaterial():THREE.MeshStandardMaterial {
       if(arm>.01) {
         vec3 p=transformed-vec3(side*.18,1.43,-.015);
         float angle=worker>.5 ? side*(.08+.08*motion):
-          side*(pose>.5?1.6+.28*motion:.12+.06*motion);
+          side*(pose>.5?2.1+.18*motion:.12+.06*motion);
         p.xy=humanRotation(angle*arm)*p.xy;
         if(worker>.5 || pose<.5) {
           float elbow=(1.0-smoothstep(1.08,1.25,position.y))*arm;
@@ -76,16 +81,32 @@ function humanMaterial():THREE.MeshStandardMaterial {
         }
         transformed=p+vec3(side*.18,1.43,-.015);
       }
-      // Seated fans use a continuous hip/knee deformation; feet remain separate.
+      // A seated hip, horizontal thigh and vertical lower leg. Lower the
+      // torso together with the pelvis instead of collapsing the knees.
       if(worker<.5 && pose<.21) {
-        float thigh=1.0-smoothstep(.81,.97,position.y);
-        transformed.y-=.43*thigh;
-        transformed.z+=sin(clamp((.95-position.y)/.48,0.0,1.0)*3.14159)*.39;
-        transformed.y=max(.06,transformed.y);
+        vec3 standing=transformed;
+        vec3 sitting=standing;
+        sitting.y-=.45;
+        if(position.y<1.02) {
+          vec3 thigh=vec3(standing.x,.50+standing.z*.35,.95-position.y);
+          vec3 shin=vec3(standing.x,standing.y,.45+standing.z);
+          vec3 legs=mix(shin,thigh,smoothstep(.46,.55,position.y));
+          sitting=mix(legs,sitting,smoothstep(.88,1.02,position.y));
+        }
+        transformed=sitting;
       }
       transformed.y+=.004*sin(humanTime*1.2+seed*9.0)*smoothstep(.9,1.5,position.y);
       transformed.x*=iPerson.x;
       transformed.y*=iPerson.y;
+    `);
+    shader.vertexShader=shader.vertexShader.replace("#include <beginnormal_vertex>",`#include <beginnormal_vertex>
+      float normalArm=clamp(1.0-uv.y,0.0,1.0);
+      float normalSide=sign(position.x),normalSeed=iPerson.w;
+      float normalPose=fract(normalSeed*5.17);
+      float normalMotion=sin(humanTime*(1.7+normalSeed)+normalSeed*18.0);
+      float normalAngle=iPerson.z>.5?normalSide*(.08+.08*normalMotion):
+        normalSide*(normalPose>.5?2.1+.18*normalMotion:.12+.06*normalMotion);
+      objectNormal.xy=humanRotation(normalAngle*normalArm)*objectNormal.xy;
     `);
     shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 vHumanColor;");
     shader.fragmentShader=shader.fragmentShader.replace("#include <color_fragment>","#include <color_fragment>\ndiffuseColor.rgb *= vHumanColor;");
@@ -124,7 +145,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
     const position=new THREE.Vector3(),scale=new THREE.Vector3(1,1,1),rotation=new THREE.Quaternion();
     const matrix=new THREE.Matrix4(),tint=new THREE.Color(),axis=new THREE.Vector3(0,1,0);
     let refreshed=-1;
-    const refresh=(_renderer:THREE.WebGLRenderer,_scene:THREE.Scene,camera:THREE.Camera)=>{
+    const refresh=(camera:THREE.Camera)=>{
       camera.getWorldPosition(worldCamera);cameraLocal.copy(worldCamera);group.worldToLocal(cameraLocal);
       if(last.distanceToSquared(cameraLocal)<.16 && time.value-refreshed<.5)return;
       last.copy(cameraLocal);refreshed=time.value;
@@ -148,7 +169,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
       }
       group.userData.lodCounts=counts;
     };
-    for(const mesh of batches)mesh.onBeforeRender=refresh;
+    group.userData.updatePeople=refresh;
     group.userData.ready=true;
   }).catch(error=>{group.userData.error=String(error);console.error("Human models failed",error);throw error;});
   return group;

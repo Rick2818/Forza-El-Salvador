@@ -8,6 +8,7 @@ import { Track } from "./world/track";
 import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
 import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
+import { updateHumanPeople } from "./world/humanPeople";
 import { Environment } from "./world/environment";
 import { MonzonLaunchFireworks, MONZON_OPENING_DURATION } from "./world/monzonFireworks";
 import { Race, type Difficulty } from "./race/race";
@@ -147,7 +148,10 @@ export class Game {
     } catch { /* Storage can be disabled; the default still works. */ }
     this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty, this.oncomingEnabled);
     const contacts = new ContactShadows(this.scene);
-    this.scene.onBeforeRender = () => contacts.update(this.race.racers, this.track, this.environment.terrain);
+    this.scene.onBeforeRender = () => {
+      updateHumanPeople(this.scene,this.camera);
+      contacts.update(this.race.racers, this.track, this.environment.terrain);
+    };
     this.chase = new ChaseCamera(this.camera);
     this.smoke = new SmokeSystem(this.scene);
 

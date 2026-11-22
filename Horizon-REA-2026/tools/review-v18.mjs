@@ -30,7 +30,8 @@ try {
     g.skipRender=false;g.advance(0);
     return {image:g.renderer.domElement.toDataURL('image/png'),state:g.state,raceElapsed:g.race.elapsed,countdown:g.race.countdown,
       positions:g.race.racers.map(r=>r.vehicle.position.toArray()),triangles:g.renderer.info.render.triangles,
-      drawCalls:g.renderer.info.render.calls,openingTime:g.openingTime,camera:g.camera.position.toArray()};
+      drawCalls:g.renderer.info.render.calls,openingTime:g.openingTime,camera:g.camera.position.toArray(),
+      people:(()=>{const result=[];g.scene.traverse(o=>{if(o.userData.lodCounts)result.push({name:o.name,lods:o.userData.lodCounts});});return result;})()};
   },{time,elapsed});
   elapsed=time;
   const {image,...details}=data;
@@ -38,6 +39,7 @@ try {
   report.captures.push({name,...details});
   if(data.raceElapsed!==0 || data.countdown!==initial.countdown)throw Error('Opening advances race clock');
   if(JSON.stringify(data.positions)!==JSON.stringify(initial.positions))throw Error('Opening moves cars');
+  if(name==='publico' && !data.people.some(p=>p.name.includes('grandstand') && p.lods[0]>0))throw Error('Close-up crowd does not use near geometry');
   console.log('CAPTURE',name,details);
  }
  await page.evaluate(()=>{const g=window.__HORIZON_GAME__;g.advance(.5);g.advance(.01);});
@@ -64,6 +66,7 @@ try {
  await page.evaluate(()=>{const g=window.__HORIZON_GAME__;g.startRace();g.quitToMenu();});
  if(await page.evaluate(()=>window.__HORIZON_GAME__.fireworks.running))throw Error('Menu leaked show');
  report.checks.push('Quit and restart cancel opening');
+ if(errors.length)throw Error([...new Set(errors)].join('\n'));
  // Export actual game frames at a fixed timestep. Playback rate is editorial,
  // not a claim about measured rendering performance.
  await mkdir(`${out}/frames`,{recursive:true});
@@ -77,9 +80,9 @@ try {
      for(let i=0;i<4;i++)g.advance(1/60);
      if(g.state==='racing')g.chase.update(1/15,g.race.player.vehicle,0);
      g.skipRender=false;g.advance(0);
-     return g.renderer.domElement.toDataURL('image/png');
+     return g.renderer.domElement.toDataURL('image/jpeg',.88);
    });
-   await writeFile(`${out}/frames/${String(frame).padStart(4,'0')}.png`,Buffer.from(image.split(',')[1],'base64'));
+   await writeFile(`${out}/frames/${String(frame).padStart(4,'0')}.jpg`,Buffer.from(image.split(',')[1],'base64'));
  }
  report.checks.push('405 actual engine frames exported at 15 fps for event review (not a benchmark)');
  await page.close();

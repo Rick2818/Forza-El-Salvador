@@ -2,7 +2,7 @@
 Blender 4+: blender -b --python tools/blender/v18-people.py
 No MakeHuman program code is imported. Source mesh and its license are retained.
 """
-import bpy, math, os, json, gzip, shutil
+import bpy, bmesh, math, os, json, gzip, shutil
 from mathutils import Vector, Matrix
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))
 SRC=os.path.join(ROOT,'tools/blender/sources/v18/makehuman-base.obj.gz')
@@ -65,7 +65,10 @@ for i,c in enumerate(colors):
     m=bpy.data.materials.new(['skin','shirt','trousers','hair','shoes','eyes'][i]);m.diffuse_color=c;obj.data.materials.append(m)
 for face,code in zip(mesh.polygons,codes):
     face.material_index=code;face.use_smooth=True
-    for li in face.loop_indices: uv.data[li].uv=(code/8+.025,0)
+    for li in face.loop_indices:
+        raw=points[used[mesh.loops[li].vertex_index]]
+        arm=max(0,min(1,(abs(raw.x)-.16)/.085)) if .98<raw.z<1.495 else 0
+        uv.data[li].uv=(code/8+.025,arm)
 # Cloth thickness and subtle folds, using the existing continuous anatomical topology.
 clothed=set()
 for poly in mesh.polygons:
@@ -125,6 +128,16 @@ bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT');bp
 neutral=bpy.data.materials.new('runtime-region-palette');neutral.diffuse_color=(.7,.7,.7,1)
 obj.data.materials.clear();obj.data.materials.append(neutral)
 for poly in obj.data.polygons:poly.material_index=0
+# Separate palette boundaries before decimation. This prevents the reducer from
+# interpolating skin/shirt/pants IDs into jagged triangles at collars and cuffs.
+bm=bmesh.new();bm.from_mesh(obj.data);uv_layer=bm.loops.layers.uv.active
+boundaries=[]
+for edge in bm.edges:
+    ids=set()
+    for f in edge.link_faces:
+        ids.add(int(f.loops[0][uv_layer].uv.x*8))
+    if len(ids)>1:boundaries.append(edge)
+bmesh.ops.split_edges(bm,edges=boundaries);bm.to_mesh(obj.data);bm.free()
 obj.data.validate(clean_customdata=False);obj.data.update()
 # Store a human-proportioned rig in the editable source for subsequent authored animation.
 rigdata=bpy.data.armatures.new('human-working-rig');rig=bpy.data.objects.new('human-working-rig',rigdata);bpy.context.collection.objects.link(rig)
