@@ -27,16 +27,16 @@ export function suzakaBridgeSpan(track: Pick<Track, "samples">): number[] {
   return indices;
 }
 
-function guardOffset(track: Pick<Track, "barrierLateralOffset">): number {
-  // 0.4m inside the existing low guardrail: new bumper/upper shield are hit
-  // first by the car's chassis. Both walls run beyond the actual tarmac edge.
-  return track.barrierLateralOffset - .40;
+function guardOffset(track: Pick<Track, "halfWidth">): number {
+  // Just outside the actual asphalt edge: no unprotected drop-off between
+  // the old outer barrier and the narrow, elevated road deck.
+  return track.halfWidth + .75;
 }
 
 /** A single continuous safety surface used for BOTH rendering and physics.
  * Exact same vertices on the visible guard and the Rapier trimesh. */
 export function suzakaBridgeGuardGeometry(
-  track: Pick<Track, "sampleAt" | "rightAt" | "barrierLateralOffset">,
+  track: Pick<Track, "sampleAt" | "rightAt" | "halfWidth">,
   indices: readonly number[],
   side: -1 | 1,
   bottom = .04,
