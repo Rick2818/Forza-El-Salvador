@@ -89,7 +89,7 @@ export class MonzonScenery {
     // viewers, while a 50m-deep canopy made the upper rows hard to see.
     const standY = ground.heightAt(300, -62);
     box("monzon-grandstand-foundation", 309, standY + .65, -65, 430, 1.3, 39, concrete);
-    for (let row = 0; row < 9; row++) {
+    for (let row = 0; row < 11; row++) {
       const z = -48 - row * 3.1;
       const riserHeight = 5.05 + row * 1.06;
       box("monzon-stand-open-riser-" + row, 309, standY + riserHeight / 2,
@@ -98,15 +98,28 @@ export class MonzonScenery {
         z, 415, .53, 3.1, seating[row % seating.length]);
     }
     // Rear-only canopy leaves all track-facing spectators in the open.
-    box("monzon-grandstand-rear-canopy", 309, standY + 22.5, -83, 445, 1.05, 25, roof);
+    // Stadium architecture: high canopy, glazed VIP deck and bright roof trims
+    // remain behind / above the audience rather than hiding the seats.
+    box("monzon-grandstand-rear-canopy", 309, standY + 23.5, -85, 445, 1.05, 21, roof);
+    const vipGlass = new THREE.MeshStandardMaterial({
+      color: 0x22455e, emissive: 0x142b42, emissiveIntensity: 0.8,
+      metalness: .34, roughness: .22
+    });
+    const warmLamps = new THREE.MeshBasicMaterial({color:0xffe0a0,toneMapped:false});
+    box("monzon-vip-panorama", 309, standY + 19.8, -90.5, 416, 3.5, .26, vipGlass);
+    for (const x of [115,169,223,277,331,385,439,493]) {
+      box("monzon-vip-window-divider",x,standY + 19.8,-90.22,.15,3.6,.36,steel);
+      box("monzon-roof-floodlight",x,standY + 23.0,-74.6,3.1,.22,.16,warmLamps);
+    }
+    box("monzon-grandstand-front-safety-rail",309,standY+6.5,-46.2,415,.12,.15,steel);
     for (const x of [90,160,230,300,370,440,520]) {
-      box("monzon-canopy-column", x, standY + 11.25, -92, .75, 22.5, .75, steel);
+      box("monzon-canopy-column", x, standY + 11.75, -92, .75, 23.5, .75, steel);
     }
 
-    // Human-shaped instanced crowd, in eight UNOBSTRUCTED rows above the
-    // tier surface. 832 people but a fixed six rendering draw calls.
+    // Human-shaped instanced PBR crowd, ten exposed rows, animated on the GPU.
+    // Phones add one batched draw call instead of hundreds of dynamic lights.
     const standCrowd = createVisibleSpectators(
-      monzonGrandstandSpectatorPositions(standY),"monzon-open-grandstand-public"
+      monzonGrandstandSpectatorPositions(standY),"monzon-open-grandstand-public",true,true
     );
     this.group.add(standCrowd);
     this.group.userData.grandstandSpectators = standCrowd.userData.people;
