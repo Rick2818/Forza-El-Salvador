@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
 import { suzakaWallBrandGeometry, planSuzakaWallBrands } from "./suzakaWallBrands";
+import { planSuzakaAudienceZones, pointIntersectsSuzakaAudience } from "./suzakaAudience";
 
 /**
  * Conceptual trackside advertising. These are text treatments, NOT official
@@ -69,6 +70,7 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
   const lateral = track.barrierLateralOffset + 9.5;
   const minRoadDistance = track.barrierLateralOffset + CLEARANCE_PADDING;
   const planned: PartnerBoardPlacement[] = [];
+  const suzakaAudience = track.circuit.id === "suzaka" ? planSuzakaAudienceZones(track,ground) : [];
   const separation = Math.max(42, Math.min(70, (track.length / total) * .72));
   // Never displace a sign more than ~110 m from its assigned lap slot.
   const step = Math.max(1, Math.round(13 / track.segmentLength));
@@ -88,6 +90,9 @@ export function planTracksidePartners(track: Track, ground: TerrainField): Partn
       for (const side of (k % 2 ? [-1, 1] : [1, -1]) as (-1 | 1)[]) {
         const x = p.x + right.x * lateral * side;
         const z = p.z + right.z * lateral * side;
+        // Keep standalone billboards away from Suzaka's new open grandstands;
+        // the 160 close-to-road wall banners remain fully distributed.
+        if(pointIntersectsSuzakaAudience(x,z,suzakaAudience)) continue;
         // Keep the Monzon garages/tribune/pits unobstructed.
         if (track.circuit.id === "monzon" && x > 55 && x < 730 && z > -112 && z < 110) continue;
         const groundY = ground.heightAt(x, z);
