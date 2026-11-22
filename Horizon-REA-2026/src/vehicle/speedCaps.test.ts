@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import designs from "./vehicle-designs.json";
 import { TURBO_TRIGGER_MS } from "../sim/turbo";
-import { dragForce, wheelForce } from "../sim/vehicleMath";
+import { dragForce, wheelForce, straightOnlyDragAssist, highSpeedCornerDriveFactor } from "../sim/vehicleMath";
 import { speedGaugeFraction } from "../ui/hud";
 import {
   escapedSuzakaBarrier, strandedOutsideSuzakaKerb,
@@ -29,12 +29,23 @@ describe("Velocidades exactas en la simulación y el velocímetro MPH",()=>{
   it("puede vencer la resistencia aerodinámica a la velocidad máxima en los siete autos",()=>{
     for(const car of designs){
       const drag=dragForce(car.tuning.topSpeed);
-      const available=car.powertrain==="electric"
+      const stock=car.powertrain==="electric"
         ? 7400*car.tuning.power*.64
         : wheelForce(car.tuning.topSpeed,1,5,7600)*.5*car.tuning.power*.64*car.tuning.grip;
+      const available=stock+straightOnlyDragAssist(car.tuning.topSpeed,1,0,0,0,1);
       expect(available,car.id).toBeGreaterThan(drag*1.08);
     }
     expect(designs.find(d=>d.id==="yangwang-u9")!.powertrain).toBe("electric");
+  });
+  it("reserva potencia para las curvas y no activa asistencia de recta al derrapar",()=>{
+    for(const car of designs) {
+      const s=car.tuning.topSpeed;
+      expect(straightOnlyDragAssist(s,1,.35,0,0,1)).toBe(0);
+      expect(straightOnlyDragAssist(s,1,0,4,0,1)).toBe(0);
+      expect(highSpeedCornerDriveFactor(90,.35)).toBeLessThan(.12);
+      expect(highSpeedCornerDriveFactor(90,0)).toBe(1);
+      expect(highSpeedCornerDriveFactor(45,.35)).toBe(1);
+    }
   });
   it("no reinicia el coche a velocidades válidas de 350, 450 y 504 MPH",()=>{
     for(const car of designs){
