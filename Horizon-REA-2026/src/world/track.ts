@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import { monzonPitBarrierGap } from "./monzonPitAccess";
+import { suzakaPitBarrierGap } from "./suzakaPitAccess";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
@@ -372,8 +373,10 @@ export class Track {
       const from = this.samples[i];
       const to = this.samples[(i + 1) % N];
       // The same physical gap is used in the rendered guardrail.
-      if (this.circuit.id === "monzon" &&
-          monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) continue;
+      if ((this.circuit.id === "monzon" &&
+          monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) ||
+          (this.circuit.id === "suzaka" && suzakaPitBarrierGap(this, Math.sign(offset),
+            {x:(from.x+to.x)/2,y:(from.y+to.y)/2,z:(from.z+to.z)/2}))) continue;
       const a = i * 2;
       const b = ((i + 1) % N) * 2;
       indices.push(a, a + 1, b, b, a + 1, b + 1);
@@ -680,8 +683,10 @@ export class Track {
       const from = this.samples[i];
       const to = this.samples[(i + 1) % N];
       // The same physical gap is used in the rendered guardrail.
-      if (this.circuit.id === "monzon" &&
-          monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) continue;
+      if ((this.circuit.id === "monzon" &&
+          monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) ||
+          (this.circuit.id === "suzaka" && suzakaPitBarrierGap(this, Math.sign(offset),
+            {x:(from.x+to.x)/2,y:(from.y+to.y)/2,z:(from.z+to.z)/2}))) continue;
       const a = i * 2;
       const b = ((i + 1) % N) * 2;
       indices.push(a, a + 1, b, b, a + 1, b + 1);
