@@ -14,6 +14,7 @@ import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
 import { SuzakaGarages } from "./suzakaGarages";
 import { GoodyearBalloon } from "./goodyearBalloon";
+import { advanceAudienceAnimation } from "./monzonSpectatorTerraces";
 import { createTracksidePartners } from "./tracksidePartners";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
@@ -194,6 +195,7 @@ export class Environment {
     this.time += dt;
     this.garages?.update(center);
     this.balloon?.update(dt);
+    advanceAudienceAnimation(dt);
     this.forest?.update(center,dt);
     this.lightRefresh += dt;
     if (this.trackLights.length && this.lightRefresh >= .25) {
