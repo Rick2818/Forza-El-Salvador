@@ -1,0 +1,28 @@
+{
+  "model": "GOODYEAR 40m GORES 3-pass Blender authored",
+  "passes": [
+    {
+      "pass": 1,
+      "blend": "tools/blender/selected-sources/v14/goodyear-balloon-v14-pass1.blend",
+      "preview": "docs/quality/v14/previews/goodyear-pass1.png",
+      "meshes": 18
+    },
+    {
+      "pass": 2,
+      "blend": "tools/blender/selected-sources/v14/goodyear-balloon-v14-pass2.blend",
+      "preview": "docs/quality/v14/previews/goodyear-pass2.png",
+      "meshes": 49
+    },
+    {
+      "pass": 3,
+      "blend": "tools/blender/selected-sources/v14/goodyear-balloon-v14-pass3.blend",
+      "preview": "docs/quality/v14/previews/goodyear-pass3.png",
+      "meshes": 51
+    }
+  ],
+  "nightPreview": "docs/quality/v14/previews/goodyear-pass3-night.png",
+  "asset": "public/models/balloon/goodyear-v14.glb",
+  "glbBytes": 1030220,
+  "sha256": "1f8d2c83e29af33364bb8adc5cd0b0385cf85113e10706a4c1165d171b5b1b58",
+  "status": "EXPORTED_VISUAL_APPROVAL_PENDING"
+}

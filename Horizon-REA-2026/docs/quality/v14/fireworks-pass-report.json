@@ -1,0 +1,22 @@
+{
+  "status": "THREE_STAGED_BLENDER_REFERENCE_IMAGES_RENDERED",
+  "scope": "reference composition, not direct gameplay screenshot",
+  "runtime": "src/world/monzonFireworks.ts",
+  "passes": [
+    {
+      "pass": 1,
+      "blend": "tools/blender/selected-sources/v14/monzon-fireworks-v14-pass1.blend",
+      "referenceRender": "docs/quality/v14/previews/monzon-fireworks-pass1.png"
+    },
+    {
+      "pass": 2,
+      "blend": "tools/blender/selected-sources/v14/monzon-fireworks-v14-pass2.blend",
+      "referenceRender": "docs/quality/v14/previews/monzon-fireworks-pass2.png"
+    },
+    {
+      "pass": 3,
+      "blend": "tools/blender/selected-sources/v14/monzon-fireworks-v14-pass3.blend",
+      "referenceRender": "docs/quality/v14/previews/monzon-fireworks-pass3.png"
+    }
+  ]
+}
