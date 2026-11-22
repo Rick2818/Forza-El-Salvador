@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - 'Horizon-REA-2026/**'
-      - '.github/workflows/compile-horizon.yml'
   pull_request:
+    types: [opened, reopened, ready_for_review]
     branches: [main]
   workflow_dispatch:
 
