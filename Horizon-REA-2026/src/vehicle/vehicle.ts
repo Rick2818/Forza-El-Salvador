@@ -6,6 +6,7 @@ import { damp, clamp } from "../core/mathx";
 import { TurboFlames } from "../render/turboFlames";
 import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
 import { turboTractionFactor } from "../sim/turboTraction";
+import { reverseDriveForce } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
@@ -247,10 +248,9 @@ export class Vehicle {
       engineForce += straightAssist * (this.electric ? 1.65 : 1);
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
-    let reverseForce = 0;
-    if (brake > 0.05 && speed < 0.6) {
-      reverseForce = brake * 2200;
-    }
+    // Strong, continuous reverse: the old 2200 N cut out as soon as speed
+    // became negative enough, leaving cars immobile inside garages.
+    let reverseForce = reverseDriveForce(brake, speed, p.maxEngineForce);
 
     if (this.controls.handbrake) {
       engineForce *= 0.2;

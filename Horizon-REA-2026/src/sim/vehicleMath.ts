@@ -82,10 +82,15 @@ export function straightOnlyDragAssist(
   yawRate:number, grip:number
 ):number {
   if(![speedMs,throttle,steering,lateralSpeedMs,yawRate,grip].every(Number.isFinite))return 0;
-  if(throttle<=0||grip<=.85||Math.abs(steering)>.025||
-    Math.abs(lateralSpeedMs)>.8||Math.abs(yawRate)>.12)return 0;
+  if(throttle<=0||grip<=.83)return 0;
+  // A human driver continually makes small steering corrections even on a
+  // straight. The old strict 0.025 threshold cancelled all aero assistance
+  // and made the 350/450/504 MPH settings unreachable in actual play.
+  const alignment=(1-smoothRange(Math.abs(steering),.04,.16))*
+    (1-smoothRange(Math.abs(lateralSpeedMs),.9,3.1))*
+    (1-smoothRange(Math.abs(yawRate),.09,.28));
   return dragForce(Math.abs(speedMs))*1.15*
-    smoothRange(Math.abs(speedMs),78,115)*Math.min(1,Math.max(0,throttle))*grip;
+    smoothRange(Math.abs(speedMs),78,115)*Math.min(1,Math.max(0,throttle))*grip*alignment;
 }
 
 /** Cut engine torque progressively when a player attempts a fast turn.

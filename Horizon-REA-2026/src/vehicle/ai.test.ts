@@ -68,3 +68,22 @@ it("brakes early for a tight corner even when hard highway pace asks for acceler
   expect(input.throttle).toBe(0);
   expect(input.brake).toBeGreaterThan(.8);
 });
+
+it("persigue al líder y acelera antes de quedarse detrás del grupo", () => {
+  const t = {
+    nearestIndex: () => 0, sampleAt:(i:number)=>new Vector3(0,0,i*3),
+    tangentAt:()=>new Vector3(0,0,1),rightAt:()=>new Vector3(1,0,0),
+    halfWidth:7,segmentLength:3,samples:Array(70),
+    targetSpeeds:Array(70).fill(47),curvatures:Array(70).fill(0)
+  } as unknown as Track;
+  const v={
+    position:new Vector3(),speed:55,onTrack:true,speedLimitMph:350,
+    slip:0,body:{rotation:()=>({x:0,y:0,z:0,w:1})}
+  } as unknown as Vehicle;
+  const ai=new AIDriver(v,t,0,1,0,"atacante","medio");
+  const solo=ai.plan(1/60,3);
+  ai.setRaceDeficit(.24);
+  const chase=ai.plan(1/60,3);
+  expect(chase.throttle).toBeGreaterThan(solo.throttle);
+  expect(chase.brake).toBe(0);
+});

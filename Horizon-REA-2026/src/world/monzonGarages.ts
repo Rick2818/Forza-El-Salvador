@@ -12,6 +12,7 @@ import {
 import { batchStaticScenery } from "../render/staticBatch";
 import { makeRng } from "../core/mathx";
 import { createVisibleSpectators, monzonPitSpectatorPositions } from "./monzonSpectatorTerraces";
+import type { GarageWorldFrame } from "./suzakaGarageZone";
 
 function workshopFloorMap(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas"); canvas.width = canvas.height = 512;
@@ -59,9 +60,29 @@ export class MonzonGarages {
   private equipment: { mesh: THREE.InstancedMesh; detail: boolean; transform: THREE.Matrix4 }[] = [];
   private lastEquipmentPosition = new THREE.Vector3(Infinity, 0, Infinity);
   private brandSigns: {bay: typeof GARAGE_LAYOUT[number]; canvas: HTMLCanvasElement; map: THREE.CanvasTexture}[] = [];
+  private readonly fallbackEquipment = new THREE.Group();
+  private readonly yawRotation = new THREE.Quaternion();
+  private readonly origin = new THREE.Vector3();
+  private readonly upAxis = new THREE.Vector3(0,1,0);
+  private scenePosition(localX:number,localY:number,localZ:number):THREE.Vector3 {
+    // Legacy physics tests instantiate a lightweight prototype without
+    // calling the browser-only constructor; identity is the Monzón default.
+    const rotation=this.yawRotation ?? new THREE.Quaternion();
+    const origin=this.origin ?? new THREE.Vector3();
+    return new THREE.Vector3(localX,localY,localZ).applyQuaternion(rotation).add(origin);
+  }
+  private toLocal(position:THREE.Vector3):THREE.Vector3 {
+    return position.clone().sub(this.origin).applyQuaternion(this.yawRotation.clone().invert());
+  }
 
-  constructor(scene: THREE.Scene) {
-    this.group.name = "monzon-open-garages";
+  constructor(scene: THREE.Scene, frame?: GarageWorldFrame) {
+    if(frame) {
+      this.origin.copy(frame.position);
+      this.yawRotation.setFromAxisAngle(this.upAxis,frame.yaw);
+    }
+    this.group.name = frame ? "suzaka-seven-open-garages" : "monzon-open-garages";
+    this.group.position.copy(this.origin);
+    this.group.quaternion.copy(this.yawRotation);
     const concrete = new THREE.MeshStandardMaterial({color: 0x8e9899, roughness: .88});
     const floor = new THREE.MeshStandardMaterial({color: 0x87928b, map: workshopFloorMap(), roughness: .84});
     const metal = new THREE.MeshStandardMaterial({color: 0x313d43, metalness: .5, roughness: .45});
@@ -103,17 +124,36 @@ export class MonzonGarages {
     }
     this.installPitSpectators(box);
     this.group.add(createPitMechanics(GARAGE_LAYOUT));
+    // Always display real service equipment, even on browsers where the
+    // compressed Blender kit cannot be decompressed or downloaded.
+    const fallbackMat = new THREE.MeshStandardMaterial({color:0x536470,metalness:.35,roughness:.7});
+    for(const bay of GARAGE_LAYOUT)for(const prop of WORKSHOP_OBSTACLES){
+      const b=obstacleWorldBox(bay.x,prop);
+      const shape=new THREE.Mesh(new THREE.BoxGeometry(b.width,b.height,b.depth),fallbackMat);
+      shape.name=`emergency-service-${bay.name}-${prop.key}`;
+      shape.position.set(b.x,b.y,b.z);
+      this.fallbackEquipment.add(shape);
+    }
+    this.fallbackEquipment.name="garage-visible-backup-tools-and-parts";
+    batchStaticScenery(this.fallbackEquipment);
     batchStaticScenery(this.group);
+    this.group.add(this.fallbackEquipment);
     scene.add(this.group);
     // Four tightly bounded workshop lights use no shadow maps. Their
     // range ends before the racing asphalt, preserving the approved car paint.
     for (const bay of GARAGE_LAYOUT) {
       const light = new THREE.PointLight(0xfff1df, 140, 18, 2);
-      light.position.set(bay.x, 4.65, 36.6);
+      light.position.copy(this.scenePosition(bay.x, 4.65, 36.6));
       light.castShadow = false; this.lights.push(light); scene.add(light);
     }
-    this.update(new THREE.Vector3(140, 0, 0));
-    this.ready = Promise.all([this.loadKit(), this.loadBrandMarks()]).then(() => { this.group.userData.ready = true; });
+    this.update(this.scenePosition(140,0,36));
+    // The workshop kit is optional; the modelled garages, mechanics and
+    // backup parts remain visible even if gzip loading fails on mobile.
+    this.ready = Promise.all([
+      this.loadKit().then(()=>{ this.fallbackEquipment.visible=false; })
+        .catch(error=>console.warn("[Horizon] Using garage backup equipment:",error)),
+      this.loadBrandMarks()
+    ]).then(() => { this.group.userData.ready = true; });
   }
 
 
@@ -128,8 +168,12 @@ export class MonzonGarages {
     const structure = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
     let solidCount = 0;
     const solid = (x:number,y:number,z:number,w:number,h:number,d:number,friction=.5):void => {
+      const p=this.scenePosition(x,y,z);
+      const rotation=this.yawRotation ?? new THREE.Quaternion();
       world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2)
-        .setTranslation(x,y,z).setFriction(friction).setRestitution(.03),structure);
+        .setTranslation(p.x,p.y,p.z)
+        .setRotation({x:rotation.x,y:rotation.y,z:rotation.z,w:rotation.w})
+        .setFriction(friction).setRestitution(.03),structure);
       solidCount++;
     };
     for (const bay of GARAGE_LAYOUT) {
@@ -254,10 +298,11 @@ export class MonzonGarages {
       this.equipment.push({mesh, detail: object.name.startsWith("Detail_"), transform: object.matrixWorld.clone()});
       this.group.add(mesh);
     });
-    this.update(new THREE.Vector3(140, 0, 0));
+    this.update(this.scenePosition(140,0,36));
   }
 
-  update(position: THREE.Vector3): void {
+  update(worldPosition: THREE.Vector3): void {
+    const position=this.toLocal(worldPosition);
     this.lights.forEach((light, i) => {
       light.intensity = Math.abs(GARAGE_LAYOUT[i].x-position.x) < 48 ? 140 : 0;
     });
