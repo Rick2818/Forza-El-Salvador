@@ -29,8 +29,20 @@ for (const id of ids) {
     }));
     return { n, name: mesh.name, primitives };
   });
+  const pilotNodes = (gltf.nodes || []).filter(node => node.name?.startsWith("HorizonPilot_"));
+  if (pilotNodes.length < 13) {
+    throw Error(id + ": Blender racing driver not embedded in the exported GLB");
+  }
+  for (const wheel of ["wheel_fr","wheel_fl","wheel_rr","wheel_rl"]) {
+    if (!(gltf.nodes || []).some(node => node.name === wheel))
+      throw Error(id + ": approved wheel pivot missing after Blender export: " + wheel);
+  }
+  if (["mercedes-amg-gt-black-series","koenigsegg-jesko-odin"].includes(id) &&
+      !(gltf.nodes || []).some(node => node.name?.startsWith("V12_sculpted_curved_rear_taillight"))) {
+    throw Error(id + ": V12 rounded rear light signature absent");
+  }
   const summary = {
-    id, bytes: buf.length,
+    id, bytes: buf.length, pilotMeshes: pilotNodes.length,
     materials: names, meshes: shapes.sort((a,b) =>
       b.primitives.reduce((s,p)=>s+p.triangles,0) -
       a.primitives.reduce((s,p)=>s+p.triangles,0)).slice(0, 10),

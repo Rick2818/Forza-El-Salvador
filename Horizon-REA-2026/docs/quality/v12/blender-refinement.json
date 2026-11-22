@@ -1,0 +1,109 @@
+{
+  "status": "EXPORTED_NOT_YET_VISUALLY_APPROVED",
+  "vehicles": [
+    {
+      "id": "ferrari-california-t",
+      "originalSha256": "7ac003e758bfe827bb7d0dc34152fef9325bdb193796d22f46e0cff4cc068ee4",
+      "outputSha256": "c8d2b02735c9280f7a9e6938b811a605fd219cc60676639acdd29d7d89d3f40d",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": null
+    },
+    {
+      "id": "yangwang-u9",
+      "originalSha256": "beb934818a9101e8b61aae9a5c6ab8bdc6871d47d053e728e88bfeab06af31b2",
+      "outputSha256": "e6651a1fc2eef81d165cdea0ef56a9bd26fb468361288a52b7879239c94a0522",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": null
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "originalSha256": "98825d881b4627206eb2c7ae136a8fb263865f97904587533d608fdd89dcc268",
+      "outputSha256": "478c899e56e91a33a96912eb96f854605934e587b294644333b108ef908d9e92",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": {
+        "vertexCount": 858,
+        "objects": [
+          [
+            "Sculpted bonnet and wheel shoulders",
+            558
+          ],
+          [
+            "Wheel arch and door skin",
+            150
+          ],
+          [
+            "Wheel arch and door skin.001",
+            150
+          ]
+        ],
+        "rearCornerRoundoverMetres": 0.19,
+        "rearEndAffectedMetres": 0.67
+      }
+    },
+    {
+      "id": "bugatti-chiron",
+      "originalSha256": "7d21fc0cb65da18fe19a37a039a10b499dcd9f7d798b472be7befa35544a21e2",
+      "outputSha256": "8119f904209724af311fcf395ae55849e4c8c60115d75127acaf454d50bb3792",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": null
+    },
+    {
+      "id": "porsche-911",
+      "originalSha256": "6335b5d4beb7c29b7bf012e8208e0d65a1b06264a56f407c85f8d3ba7104928d",
+      "outputSha256": "61f509da1bea6f3c42d3da88591dd370ff1c91febfb0c23f16059559399e29c1",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": null
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "originalSha256": "6651d9b6878c4c3ae462cfee05265c6d565f00115e7f405034ff535dc4910499",
+      "outputSha256": "c3cfa920c28d6a9434fe1c2e5f72e15175ef8c53d1aafdad98fb8edc9dedd6b7",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": null
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "originalSha256": "2c60d8d4cc6fb3ea0b8f4a4b1f11d0a5640d63f7ece63175c99c2f66345d9fd1",
+      "outputSha256": "692b8740bb1e9e06c8f68e4b41236436fda0530948e9c70ee428692428fb57a1",
+      "pilotMeshes": 13,
+      "wheelsUnchanged": true,
+      "rearRefinement": {
+        "vertexCount": 1187,
+        "objects": [
+          [
+            "Diffuseur",
+            89
+          ],
+          [
+            "Sculpted bonnet and wheel shoulders",
+            524
+          ],
+          [
+            "Wheel arch and door skin",
+            136
+          ],
+          [
+            "Wheel arch and door skin.001",
+            136
+          ],
+          [
+            "Wing mount",
+            151
+          ],
+          [
+            "Wing mount.001",
+            151
+          ]
+        ],
+        "rearCornerRoundoverMetres": 0.15,
+        "rearEndAffectedMetres": 0.6
+      }
+    }
+  ]
+}

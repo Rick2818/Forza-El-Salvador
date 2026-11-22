@@ -183,7 +183,7 @@ export function createSelectedVisual(id: string): CarVisual {
     .find((material): material is THREE.MeshPhysicalMaterial =>
       material instanceof THREE.MeshPhysicalMaterial && isVehicleBodyPaint(material.name)) : undefined;
   const paint = isFerrari && ferrariPaint ? ferrariPaint.clone() : isPorsche ? new THREE.MeshPhysicalMaterial({
-    name: "paint", color: 0x15171c,
+    name: "paint", color: d.paint,
     metalness: .12, roughness: .28,
     clearcoat: .55, clearcoatRoughness: .23, specularIntensity: .36
   }) : new THREE.MeshPhysicalMaterial({

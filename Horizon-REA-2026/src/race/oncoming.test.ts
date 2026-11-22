@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { ONCOMING_CAR_COUNT, OncomingDriver, oncomingPose, oncomingSpawnIndex } from "./oncoming";
+import { ONCOMING_CAR_COUNT, ONCOMING_SPAWN_INTERVAL_SEC, expectedOncomingCount, OncomingDriver, oncomingPose, oncomingSpawnIndex } from "./oncoming";
 import type { Track } from "../world/track";
 import type { Vehicle } from "../vehicle/vehicle";
 
@@ -12,11 +12,14 @@ describe("tráfico opcional en sentido contrario", () => {
   } as Pick<Track, "sampleAt" | "rightAt" | "tangentAt">;
 
   it("separa los coches opuestos de la línea de salida", () => {
-    expect(ONCOMING_CAR_COUNT).toBe(2);
+    expect(ONCOMING_CAR_COUNT).toBe(5);
+    expect(ONCOMING_SPAWN_INTERVAL_SEC).toBe(30);
     const a = oncomingSpawnIndex(10, 0, 1500);
     const b = oncomingSpawnIndex(10, 1, 1500);
-    expect(a).toBeGreaterThan(400);
-    expect(b - a).toBe(500);
+    expect(a).toBeGreaterThan(200);
+    expect(b - a).toBe(250);
+    expect([0, 29.9, 30, 59.9, 60, 90, 120, 180].map(expectedOncomingCount))
+      .toEqual([1, 1, 2, 2, 3, 4, 5, 5]);
   });
 
   it("aparece con una carrocería física apuntando contra la marcha", () => {

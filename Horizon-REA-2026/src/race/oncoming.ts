@@ -4,8 +4,14 @@ import { Track } from "../world/track";
 import { Vehicle, type DriveInput } from "../vehicle/vehicle";
 import type { TrafficCar } from "../vehicle/ai";
 
-/** Two independent physical cars share the existing approved GLBs and Rapier world. */
-export const ONCOMING_CAR_COUNT = 2;
+/** Up to five physical cars use approved GLBs and the same Rapier world. */
+export const ONCOMING_CAR_COUNT = 5;
+export const ONCOMING_SPAWN_INTERVAL_SEC = 30;
+
+/** Deterministic spawn schedule: one immediate, another every 30 seconds up to five. */
+export function expectedOncomingCount(elapsedSeconds: number): number {
+  return Math.min(ONCOMING_CAR_COUNT, 1 + Math.floor(Math.max(0, elapsedSeconds) / ONCOMING_SPAWN_INTERVAL_SEC));
+}
 export const ONCOMING_LANE = 2.9;
 
 /** Keep new cars well away from the grid during the red-light countdown. */
