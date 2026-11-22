@@ -11,6 +11,7 @@ import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
 import { MonzonGarages } from "./monzonGarages";
 import { createTracksidePartners } from "./tracksidePartners";
+import { createSuzakaAudience } from "./suzakaAudience";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /**
@@ -132,6 +133,8 @@ export class Environment {
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
       scene.add(createSuzakaMountain());
+      // Open viewing terraces are available immediately, even before GLB assets.
+      scene.add(createSuzakaAudience(track,this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
       void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
       // Load only editable Blender landmarks. The driveable surface and all
