@@ -605,6 +605,22 @@ export class GameAudio {
   }
 
   /** Short low-frequency impact, distinct from the removed abrasive tyre noise. */
+  /** Soft-distance synthetically generated nighttime firework bursts. */
+  playFireworkBurst(): void {
+    if(!this.ctx || !this.musicBus || this.muted)return;
+    const ctx=this.ctx,now=ctx.currentTime;
+    const boom=ctx.createOscillator(),gain=ctx.createGain();
+    boom.type="sine";
+    boom.frequency.setValueAtTime(115,now);
+    boom.frequency.exponentialRampToValueAtTime(43,now+.32);
+    gain.gain.setValueAtTime(.0001,now);
+    gain.gain.exponentialRampToValueAtTime(.18,now+.016);
+    gain.gain.exponentialRampToValueAtTime(.0001,now+.34);
+    boom.connect(gain);gain.connect(this.musicBus);
+    boom.start(now);boom.stop(now+.36);
+    boom.onended=()=>{boom.disconnect();gain.disconnect();};
+  }
+
   playCollision(severity: number): void {
     if (!this.ctx || !this.enginesBus || this.muted || severity <= 0) return;
     const ctx = this.ctx;

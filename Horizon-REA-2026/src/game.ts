@@ -9,11 +9,12 @@ import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
 import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
 import { Environment } from "./world/environment";
+import { MonzonLaunchFireworks, monzonCinematicCameraActive, MONZON_CINEMATIC_START_SEC } from "./world/monzonFireworks";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
 import { Menu } from "./ui/menu";
 import { Input } from "./core/input";
-import { ChaseCamera } from "./render/camera";
+import { ChaseCamera, CAMERA_LABELS, type CameraMode } from "./render/camera";
 import { SmokeSystem } from "./render/effects";
 import { GameAudio } from "./audio/engine";
 import { SETTINGS } from "./core/settings";
@@ -56,6 +57,10 @@ export class Game {
   private fpsTimer = 0;
   private goFlash = 0;
   private goShown = false;
+  private fireworks: MonzonLaunchFireworks | null = null;
+  private fireworksStarted = false;
+  private cinematicDisabled = false;
+  private cinematicPrevious = false;
   private finishDelay = 0;
   private lowFpsTime = 0;
   private degraded = false;
@@ -121,6 +126,10 @@ export class Game {
     // Never add debug helpers or a second directional light in production.
     this.environment = new Environment(this.scene, this.renderer, this.track);
     this.environment.installTerrainPhysics(this.world);
+    if (this.track.circuit.id === "monzon") {
+      this.fireworks = new MonzonLaunchFireworks(this.scene, this.track,
+        () => this.audio.playFireworkBurst());
+    }
     this.applyResolution();
     try {
       const saved = localStorage.getItem("horizon.selected-vehicle");
@@ -183,6 +192,10 @@ export class Game {
     canvas.addEventListener("webglcontextrestored", this.onContextRestored, false);
     canvas.addEventListener("pointerdown", () => this.input.focusGame());
     this.muteButton()?.addEventListener("click", () => this.toggleMute());
+    this.hud.setCameraMode(this.chase.mode);
+    this.hud.cameraButton.addEventListener("click", () => {
+      if (this.state === "racing") this.switchCamera();
+    });
 
     this.menu.setAudioVolumes(this.audio.getVolumes());
     this.menu.setEngineProfile(this.audio.getEngineProfile());
@@ -270,6 +283,10 @@ export class Game {
     this.lowFpsTime = 0;
     this.physicsAccum = 0;
     this.chase.snap();
+    this.fireworks?.stop();
+    this.fireworksStarted = false;
+    this.cinematicDisabled = false;
+    this.cinematicPrevious = false;
     this.menu.hide();
     this.input.setTouchControlsVisible(true);
     this.hud.show(true);
@@ -319,6 +336,9 @@ export class Game {
     this.hud.setCountdown(null);
     this.hud.show(false);
     this.audio.silence();
+    this.fireworks?.stop();
+    this.fireworksStarted = false;
+    this.cinematicPrevious = false;
     this.chase.snap();
   }
 
@@ -381,6 +401,16 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.needsUpdate = true;
     this.applyResolution();
+  }
+
+  /** Same camera switch for keyboard, HUD button, and both playable circuits. */
+  private switchCamera(mode?: CameraMode): void {
+    if (this.state !== "racing") return;
+    this.cinematicDisabled = true;
+    if (mode) this.chase.setMode(mode);
+    else this.chase.toggle();
+    this.hud.setCameraMode(this.chase.mode);
+    this.hud.toast("Cámara: " + CAMERA_LABELS[this.chase.mode], 1450);
   }
 
   private toggleMute(): void {
@@ -548,8 +578,21 @@ export class Game {
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.environment.update(this.race.player.vehicle.position, dt);
-      if (!this.captureMode) this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
-        this.track.sampleAt(this.race.player.hint+Math.round((12+Math.abs(this.race.player.vehicle.speed)*.35)/this.track.segmentLength)));
+      if (this.fireworks && this.race.state === "countdown" &&
+          this.race.countdown <= MONZON_CINEMATIC_START_SEC && !this.fireworksStarted) {
+        this.fireworksStarted = true;
+        this.fireworks.start();
+      }
+      this.fireworks?.update(dt);
+      const cinematic = !!this.fireworks && !this.captureMode && this.race.state === "countdown" &&
+        monzonCinematicCameraActive(this.track.circuit.id,this.race.countdown,!this.cinematicDisabled);
+      if (this.cinematicPrevious && !cinematic) this.chase.snap();
+      this.cinematicPrevious = cinematic;
+      if (!this.captureMode) {
+        this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
+          this.track.sampleAt(this.race.player.hint+Math.round((12+Math.abs(this.race.player.vehicle.speed)*.35)/this.track.segmentLength)));
+        if (cinematic) this.fireworks?.cinematicCamera(this.camera);
+      }
 
       const player = this.race.player.vehicle;
       if (this.track.circuit.id === "monzon") {
@@ -684,12 +727,9 @@ export class Game {
       else if (this.state === "paused") this.resume();
     }
     if (this.input.consume("KeyM")) this.toggleMute();
-    if (this.input.consume("KeyC") && this.state === "racing") {
-      const mode = this.chase.toggle();
-      const label =
-        mode === "hood" ? "Cámara capó" : mode === "wide" ? "Cámara panorámica" : "Cámara persecución";
-      this.hud.toast(label, 1200);
-    }
+    if (this.input.consume("KeyC") || this.input.consume("KeyV")) this.switchCamera();
+    if (this.input.consume("Digit1")) this.switchCamera("hood");
+    if (this.input.consume("Digit3")) this.switchCamera("chase");
     if (this.input.consume("KeyR") && this.state === "racing") {
       const nearest=this.track.locate(this.race.player.vehicle.position,this.race.player.hint);
       const point=this.track.sampleAt(nearest.index),direction=this.track.tangentAt(nearest.index);

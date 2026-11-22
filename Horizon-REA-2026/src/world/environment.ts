@@ -138,6 +138,7 @@ export class Environment {
       monzonMountains.name="monzon-natural-mountain-background";
       scene.add(monzonMountains);
       this.garages = new MonzonGarages(scene);
+      this.balloon = new GoodyearBalloon(scene, track);
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
       this.suzakaGarages = new SuzakaGarages(scene, track);

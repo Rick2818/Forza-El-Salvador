@@ -58,6 +58,42 @@ describe("close-up chase camera for driver and vehicle details", () => {
     expect(chase.toggle()).toBe("wide");
     expect(chase.toggle()).toBe("chase");
   });
+
+  it("snaps first and third person to the same vehicle without old-camera lag", () => {
+    const camera=new THREE.PerspectiveCamera();
+    const chase=new ChaseCamera(camera);
+    const car=fakeCar(0);
+    chase.update(1/60,car,0);
+    const third=camera.position.clone();
+    expect(chase.toggle()).toBe("hood");
+    chase.update(1/60,car,0);
+    const driverEye=camera.position.clone();
+    expect(driverEye.z).toBeGreaterThan(200);
+    expect(driverEye.z).toBeLessThan(201);
+    expect(driverEye.y).toBeCloseTo(1.86);
+    expect(driverEye.distanceTo(third)).toBeGreaterThan(4);
+    chase.setMode("chase");
+    chase.update(1/60,car,0);
+    expect(camera.position.distanceTo(third)).toBeLessThan(.001);
+  });
+
+  it("connects cockpit heading to vehicle yaw changes immediately", () => {
+    const camera=new THREE.PerspectiveCamera();
+    const chase=new ChaseCamera(camera);
+    chase.setMode("hood");
+    const turningCar={
+      speed:0,
+      body:{
+        translation:()=>({x:0,y:1,z:0}),
+        rotation:()=>({x:0,y:Math.SQRT1_2,z:0,w:Math.SQRT1_2})
+      }
+    } as unknown as Vehicle;
+    chase.update(1/60,turningCar,0);
+    const direction=new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    expect(direction.x).toBeGreaterThan(.98);
+    expect(camera.position.x).toBeGreaterThan(0);
+  });
 });
 
 it("anticipates a forward bend while retaining the close camera position",()=>{

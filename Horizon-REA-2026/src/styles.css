@@ -449,6 +449,23 @@ kbd {
   .hud-speed { transform: scale(0.86); transform-origin: bottom right; }
 }
 
+/* Camera control works on desktop and touch without relying only on C. */
+.camera-btn {
+  position: absolute; right: 22px; top: 177px;
+  pointer-events: auto;
+  min-width: 134px; min-height: 38px; padding: 8px 11px;
+  border-radius: 10px; border: 1px solid rgba(194,222,255,.55);
+  background: rgba(5,21,39,.82);
+  color: #f1f7ff; font: 800 11px/1.2 system-ui, sans-serif;
+  letter-spacing: .04em; cursor: pointer;
+  backdrop-filter: blur(10px); touch-action: manipulation;
+}
+.camera-btn:focus-visible { outline: 3px solid #ffd037; outline-offset: 2px; }
+.camera-btn:active { background: rgba(16,114,174,.95); }
+@media (max-width: 720px) {
+  .camera-btn {right: 14px; top: 113px; min-height: 42px; min-width: 122px;}
+}
+
 /* Phone driving controls: multitouch steering and pedals. */
 .horizon-touch-controls {
   position: fixed;

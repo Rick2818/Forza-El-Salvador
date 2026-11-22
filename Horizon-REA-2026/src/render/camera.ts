@@ -13,6 +13,15 @@ const _look = new THREE.Vector3();
 const _position = new THREE.Vector3();
 const _curve = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+
+/** Three modes share the same physics vehicle and world camera. */
+export const CAMERA_LABELS: Record<CameraMode, string> = {
+  chase: "3ª persona · persecución",
+  hood: "1ª persona · piloto",
+  wide: "3ª persona · panorámica"
+};
 
 export class ChaseCamera {
   mode: CameraMode = "chase";
@@ -25,8 +34,15 @@ export class ChaseCamera {
 
   toggle(): CameraMode {
     const next = (MODE_ORDER.indexOf(this.mode) + 1) % MODE_ORDER.length;
-    this.mode = MODE_ORDER[next];
+    this.setMode(MODE_ORDER[next]);
     return this.mode;
+  }
+
+  setMode(mode: CameraMode): void {
+    if (mode === this.mode) return;
+    this.mode = mode;
+    // Never blend from the old side of the car: the old camera lag looked detached.
+    this.snap();
   }
 
   snap(): void {
@@ -46,9 +62,13 @@ export class ChaseCamera {
     const cameraSettings = SETTINGS.camera;
 
     if (this.mode === "hood") {
-      _desired.copy(pos).addScaledVector(_forward, 0.55);
-      _desired.y+=.95;
-      _look.copy(pos).addScaledVector(_forward, 26);_look.y+=.75;
+      // Driver-eye view follows the SAME Rapier chassis in both tracks.
+      // The eye sits forward of the embedded pilot's visor, avoiding an opaque helmet.
+      _right.set(_forward.z, 0, -_forward.x);
+      _desired.copy(pos).addScaledVector(_forward, .21)
+        .addScaledVector(_right, -.24).addScaledVector(_up, .46);
+      _look.copy(_desired).addScaledVector(_forward, 25);
+      _look.y += .05;
     } else if (this.mode === "wide") {
       // Panoramic: further back, lower, and aimed above the roof so the sky
       // and the star field stay in frame.

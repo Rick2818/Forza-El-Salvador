@@ -1,0 +1,61 @@
+name: Blender V13 - anatomia pilotos 7 autos
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/horizon-blender-pilots-v13.yml'
+      - 'Horizon-REA-2026/tools/blender/upgrade-pilots-v13.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: horizon-blender-pilots-v13
+  cancel-in-progress: true
+
+jobs:
+  export:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          persist-credentials: true
+      - name: Install Blender 5 and Python numpy for glTF
+        if: hashFiles('Horizon-REA-2026/docs/quality/v13/pilot-report.json') == ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender python3-numpy
+          blender --version
+      - name: Sculpt approved seven pilots without rebuilding the cars
+        working-directory: Horizon-REA-2026
+        run: |
+          if [ ! -s docs/quality/v13/pilot-report.json ]; then
+            blender -b -t 2 --python tools/blender/upgrade-pilots-v13.py
+          else
+            echo 'Seven V13 pilots already exported; verifying existing files'
+          fi
+          test -s docs/quality/v13/pilot-report.json
+          for file in tools/blender/selected-sources/v13/*.blend; do test -s "$file"; done
+          node tools/audit-car-glbs.mjs
+      - name: Save all seven Blender sources and all seven game GLBs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/public/models/selected/*.glb
+          git add Horizon-REA-2026/tools/blender/selected-sources/v13/*.blend
+          git add Horizon-REA-2026/docs/quality/v13/pilot-report.json
+          if ! git diff --cached --quiet; then
+            git commit -m "assets(v13): seven fully seated anatomical racing pilots"
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: horizon-pilots-v13
+          path: Horizon-REA-2026/docs/quality/v13/
+          if-no-files-found: warn
+          retention-days: 7
