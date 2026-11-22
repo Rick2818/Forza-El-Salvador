@@ -13,6 +13,7 @@ import { createAsphaltMaps, createBannerTexture, createCheckerTexture } from "./
 import { DEFAULT_CIRCUIT_ID, getCircuit, type CircuitDefinition, analyzeCircuitDefinition } from "./circuits";
 import { suzakaCenterline } from "./suzakaGeometry";
 import { createSuzakaSuspensionBridge, installSuzakaBridgePhysics } from "./suzakaSuspensionBridge";
+import { installSuzakaRoadsideProtection, SUZAKA_OUTER_BARRIER_HEIGHT } from "./suzakaRoadsideSafety";
 import { internationalCenterline, type InternationalCircuitId } from "./internationalGeometry";
 
 /** Near-black racing asphalt independent of daylight tint and exposure.
@@ -65,6 +66,9 @@ export class Track {
   halfWidth: number;
 
   get barrierLateralOffset(): number {
+    // Suzaka's old wall left 7.5m of unprotected grass after the red/white
+    // kerb. Keep its visual AND physical wall just outside the 1.2m kerb.
+    if (this.circuit.id === "suzaka") return this.halfWidth + 1.75;
     return this.halfWidth + (SETTINGS.track.barrierOffset ?? 2) - 2;
   }
 
@@ -280,7 +284,9 @@ export class Track {
     });
     for (const side of [-1, 1]) {
       const wall = new THREE.Mesh(
-        this.wallGeometry(side * barrierOffset, SETTINGS.track.barrierHeight ?? 1.05, surfaceY),
+        this.wallGeometry(side * barrierOffset,
+          this.circuit.id === "suzaka" ? SUZAKA_OUTER_BARRIER_HEIGHT : SETTINGS.track.barrierHeight ?? 1.05,
+          surfaceY),
         barrierMat
       );
       wall.name = `barrier-${side}`;
@@ -288,7 +294,9 @@ export class Track {
       this.group.add(wall);
 
       const rail = new THREE.Mesh(
-        this.railGeometry(side * barrierOffset, SETTINGS.track.barrierHeight ?? 1.05, surfaceY),
+        this.railGeometry(side * barrierOffset,
+          this.circuit.id === "suzaka" ? SUZAKA_OUTER_BARRIER_HEIGHT : SETTINGS.track.barrierHeight ?? 1.05,
+          surfaceY),
         railMat
       );
       rail.name = `barrier-rail-${side}`;
@@ -540,19 +548,25 @@ export class Track {
       );
     }
 
-    const offset = this.barrierLateralOffset;
-    for (const side of [-1, 1]) {
-      const geo = this.wallGeometry(side * offset, 1.35);
-      const pos = geo.attributes.position as THREE.BufferAttribute;
-      const idx = geo.index!;
-      const vertices = new Float32Array(pos.array as Float32Array);
-      const indices = new Uint32Array(idx.array as ArrayLike<number>);
-
-      const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-      world.createCollider(
-        RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.25).setRestitution(0.1),
-        body
-      );
+    if (this.circuit.id === "suzaka") {
+      // Thick, overlapping CCD-compatible walls on the ENTIRE circuit.
+      // The earlier zero-thickness trimesh could be crossed at high velocity,
+      // leaving the player stuck in the grass behind the red-white kerb.
+      installSuzakaRoadsideProtection(world, this);
+    } else {
+      const offset = this.barrierLateralOffset;
+      for (const side of [-1, 1]) {
+        const geo = this.wallGeometry(side * offset, 1.35);
+        const pos = geo.attributes.position as THREE.BufferAttribute;
+        const idx = geo.index!;
+        const vertices = new Float32Array(pos.array as Float32Array);
+        const indices = new Uint32Array(idx.array as ArrayLike<number>);
+        const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+        world.createCollider(
+          RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.25).setRestitution(0.1),
+          body
+        );
+      }
     }
     if (this.circuit.id === "suzaka") installSuzakaBridgePhysics(world, this);
   }
