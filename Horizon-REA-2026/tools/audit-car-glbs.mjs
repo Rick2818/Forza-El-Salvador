@@ -29,8 +29,8 @@ for (const id of ids) {
     }));
     return { n, name: mesh.name, primitives };
   });
-  const pilotNodes = (gltf.nodes || []).filter(node => node.name?.startsWith("HorizonPilotV13_"));
-  if (pilotNodes.length < 17) {
+  const pilotNodes = (gltf.nodes || []).filter(node => node.name?.startsWith("HorizonPilotV14_"));
+  if (pilotNodes.length < 35) {
     throw Error(id + ": Blender racing driver not embedded in the exported GLB");
   }
   for (const wheel of ["wheel_fr","wheel_fl","wheel_rr","wheel_rl"]) {
