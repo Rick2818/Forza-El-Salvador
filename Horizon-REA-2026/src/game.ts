@@ -5,6 +5,7 @@ import { RELEASE_LABEL } from "./core/version";
 import { ContactShadows } from "./render/contactShadows";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
+import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { Environment } from "./world/environment";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
@@ -32,6 +33,7 @@ export class Game {
   private selectedVehicleId = DEFAULT_SELECTED_ID;
   private difficulty: Difficulty = "medio";
   private oncomingEnabled = false;
+  private lastEnteredPitGarage: string | null = null;
   readonly input = new Input();
   readonly chase: ChaseCamera;
   readonly audio = new GameAudio();
@@ -252,6 +254,7 @@ export class Game {
   startRace(): void {
     this.replaceRace();
     this.performanceLog.reset();
+    this.lastEnteredPitGarage = null;
     this.audio.silence();
     this.audio.ensure();
     this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
@@ -278,6 +281,7 @@ export class Game {
     this.race.dispose();
     this.race = new Race(this.world, this.scene, this.track, this.selectedVehicleId, this.difficulty, this.oncomingEnabled);
     this.physicsAccum = 0;
+    this.lastEnteredPitGarage = null;
     this.chase?.snap();
   }
 
@@ -525,6 +529,14 @@ export class Game {
         this.track.sampleAt(this.race.player.hint+Math.round((12+Math.abs(this.race.player.vehicle.speed)*.35)/this.track.segmentLength)));
 
       const player = this.race.player.vehicle;
+      if (this.track.circuit.id === "monzon") {
+        const p = player.body.translation();
+        const garage = monzonGarageAt(p.x,p.z);
+        if (garage && garage !== this.lastEnteredPitGarage) {
+          this.hud.toast(`🏁 Garage ${garage}: área de servicio`, 2400);
+        }
+        this.lastEnteredPitGarage = garage;
+      }
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
       const listener = player.body.translation();
       const velocity = player.body.linvel();
@@ -597,6 +609,12 @@ export class Game {
   };
 
   private keepCameraInsideWall = (position: THREE.Vector3): void => {
+    if (this.track.circuit.id === "monzon") {
+      const player = this.race.player.vehicle.body.translation();
+      // Once the player crosses the open pit entrance the chase camera must
+      // follow inside, rather than being clamped behind the former guardrail.
+      if (inMonzonPitArea(player.x, player.z)) return;
+    }
     const { index, lateral } = this.track.locate(position, this.race.player.hint);
     const limit = this.track.barrierLateralOffset - .5;
     position.addScaledVector(this.track.rightAt(index), clamp(lateral, -limit, limit) - lateral);
