@@ -3,7 +3,8 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "../world/track";
 import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
-import { OncomingDriver, ONCOMING_CAR_COUNT, oncomingPose, oncomingSpawnIndex } from "./oncoming";
+import { OncomingDriver, ONCOMING_CAR_COUNT, expectedOncomingCount, oncomingPose, oncomingSpawnIndex } from "./oncoming";
+import { isStationaryUpsideDown, ROLLOVER_RECOVERY_SECONDS } from "./rolloverRecovery";
 import { SUZAKA_BRIDGE_SAFETY_THRESHOLD } from "../world/suzakaSuspensionBridge";
 import { inSuzakaPitArea } from "../world/suzakaPitAccess";
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
@@ -75,12 +76,13 @@ export class Race {
   private lastCollisionSoundAt = -Infinity;
   private playerStrandedSeconds = 0;
   private playerRescueCount = 0;
+  private playerInvertedSeconds = 0;
 
   get rescues(): number { return this.playerRescueCount; }
 
   constructor(
     private readonly world: RAPIER.World,
-    scene: THREE.Scene,
+    private readonly scene: THREE.Scene,
     readonly track: Track,
     readonly vehicleId: string = DEFAULT_SELECTED_ID,
     readonly difficulty: Difficulty = "medio",
@@ -132,21 +134,25 @@ export class Race {
       racer.lastProgress = racer.progress;
     });
 
-    if (oncomingEnabled) {
-      const designs = VEHICLE_DESIGNS.filter(design => design.id !== vehicleId).slice(0, ONCOMING_CAR_COUNT);
-      designs.forEach((design, i) => {
-        const vehicle = new Vehicle(this.world, scene, {
-          paintColor: Number.parseInt(design.paint.slice(1), 16),
-          accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
-          number: 80 + i,
-          vehicleId: design.id
-        });
-        const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
-        const pose = oncomingPose(this.track, index);
-        vehicle.place(pose.position, pose.heading);
-        this.oncoming.push({ id: 100 + i, vehicle, ai: new OncomingDriver(vehicle, this.track) });
-      });
-    }
+    if (oncomingEnabled) this.spawnOncomingCar();
+  }
+
+  /** Add one new wrong-way car per interval; existing cars keep circulating. */
+  private spawnOncomingCar(): void {
+    if (!this.oncomingEnabled || this.oncoming.length >= ONCOMING_CAR_COUNT) return;
+    const i = this.oncoming.length;
+    const available = VEHICLE_DESIGNS.filter(design => design.id !== this.vehicleId);
+    const design = available[i % available.length];
+    const vehicle = new Vehicle(this.world, this.scene, {
+      paintColor: Number.parseInt(design.paint.slice(1), 16),
+      accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
+      number: 80 + i,
+      vehicleId: design.id
+    });
+    const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
+    const pose = oncomingPose(this.track, index);
+    vehicle.place(pose.position, pose.heading);
+    this.oncoming.push({ id: 100 + i, vehicle, ai: new OncomingDriver(vehicle, this.track) });
   }
 
   dispose(): void {
@@ -198,7 +204,14 @@ export class Race {
          this.state === "racing") this.playerStrandedSeconds+=dt;
       else if(racer.isPlayer) this.playerStrandedSeconds=0;
       const stuck = racer.isPlayer && this.playerStrandedSeconds>SUZAKA_STRANDED_DELAY_SEC;
-      if (!finite || escaped || stuck ||
+      if (racer.isPlayer && this.state === "racing" && finite &&
+          isStationaryUpsideDown(racer.vehicle.body.rotation(), Math.hypot(v.x, v.z))) {
+        this.playerInvertedSeconds += dt;
+      } else if (racer.isPlayer) {
+        this.playerInvertedSeconds = 0;
+      }
+      const overturned = racer.isPlayer && this.playerInvertedSeconds >= ROLLOVER_RECOVERY_SECONDS;
+      if (!finite || escaped || stuck || overturned ||
           p.y < anchor.y-8 ||
           (isSuzaka && anchor.y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD &&
            p.y < anchor.y-2.5) ||
@@ -207,7 +220,7 @@ export class Race {
         const tangent=this.track.tangentAt(anchorIndex);
         racer.vehicle.place(anchor,Math.atan2(tangent.x,tangent.z));
         racer.hint=anchorIndex;
-        if(racer.isPlayer) { this.playerStrandedSeconds=0; this.playerRescueCount++; }
+        if(racer.isPlayer) { this.playerStrandedSeconds=0; this.playerInvertedSeconds=0; this.playerRescueCount++; }
       }
     }
     if (this.state === "countdown") {
@@ -224,6 +237,8 @@ export class Race {
 
     if (this.state === "racing" || this.state === "finished") {
       this.elapsed += dt;
+      if (this.oncomingEnabled && this.state === "racing" &&
+          this.oncoming.length < expectedOncomingCount(this.elapsed)) this.spawnOncomingCar();
       // Snapshot fixed positions before any rival moves; everyone sees the same pack.
       const traffic: Array<TrafficCar & { racerId: number }> = this.racers
         .filter(r => !r.finished)

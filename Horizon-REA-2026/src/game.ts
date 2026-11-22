@@ -34,7 +34,7 @@ export class Game {
   race: Race;
   private selectedVehicleId = DEFAULT_SELECTED_ID;
   private difficulty: Difficulty = "medio";
-  private oncomingEnabled = false;
+  private oncomingEnabled = true;
   private lastEnteredPitGarage: string | null = null;
   readonly input = new Input();
   readonly chase: ChaseCamera;
@@ -127,7 +127,8 @@ export class Game {
       if (saved) { vehicleDesign(saved); this.selectedVehicleId = saved; }
       const savedQuality = localStorage.getItem("horizon.quality");
       if (savedQuality === "alta" || savedQuality === "equilibrada") this.quality=savedQuality;
-      this.oncomingEnabled = localStorage.getItem("horizon.oncoming-traffic") === "true";
+      const savedTraffic = localStorage.getItem("horizon.oncoming-traffic");
+      if (savedTraffic !== null) this.oncomingEnabled = savedTraffic === "true";
       const savedDifficulty = localStorage.getItem("horizon.difficulty");
       if (savedDifficulty === "facil" || savedDifficulty === "medio" || savedDifficulty === "dificil") {
         this.difficulty = savedDifficulty;
