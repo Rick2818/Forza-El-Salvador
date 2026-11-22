@@ -54,7 +54,7 @@ export function mechanicStations(bayX: number): readonly {x:number; z:number; ya
 export function createPitMechanics(bays: readonly {x:number; color:number}[]): THREE.Group {
   const skin=[0xf2cda4,0xc99770,0x9a6349,0xe2b596];
   const people=bays.flatMap((bay,i)=>mechanicStations(bay.x).map((p,j)=>({
-    ...p,y:.12,shirt:bay.color,skin:skin[(i+j)%skin.length],worker:true
+    ...p,yaw:p.yaw+Math.PI,y:.12,shirt:bay.color,skin:skin[(i+j)%skin.length],worker:true
   })));
   const group=createHumanPeople(people,"monzon-fourteen-pit-mechanics");
   group.userData.mechanics=people.length;group.userData.mechanicsPerGarage=2;

@@ -2,13 +2,13 @@
 Blender 4+: blender -b --python tools/blender/v18-people.py
 No MakeHuman program code is imported. Source mesh and its license are retained.
 """
-import bpy, math, os, json
+import bpy, math, os, json, gzip, shutil
 from mathutils import Vector, Matrix
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))
-SRC=os.path.join(ROOT,'tools/blender/sources/v18/makehuman-base.obj')
+SRC=os.path.join(ROOT,'tools/blender/sources/v18/makehuman-base.obj.gz')
 OUT=os.path.join(ROOT,'public/models/people'); os.makedirs(OUT,exist_ok=True)
 verts=[]; faces=[]; groups=[]; group=''
-for line in open(SRC):
+for line in gzip.open(SRC,'rt'):
     p=line.split()
     if not p: continue
     if p[0]=='v': verts.append(tuple(map(float,p[1:4])))
@@ -132,7 +132,10 @@ bpy.context.view_layer.objects.active=rig;obj.select_set(False);rig.select_set(T
 for name,head,tail in [('pelvis',(0,0,.9),(0,0,1.05)),('spine',(0,0,1.05),(0,0,1.43)),('head',(0,0,1.43),(0,0,1.73)),('arm.L',(.18,0,1.43),(.24,0,1.02)),('arm.R',(-.18,0,1.43),(-.24,0,1.02)),('leg.L',(.09,0,.9),(.1,0,.07)),('leg.R',(-.09,0,.9),(-.1,0,.07))]:
     b=rigdata.edit_bones.new(name);b.head=head;b.tail=tail
 bpy.ops.object.mode_set(mode='OBJECT');rig.hide_render=True
-bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT,'tools/blender/sources/v18/horizon-people.blend'))
+blend_path=os.path.join(ROOT,'tools/blender/sources/v18/horizon-people.blend')
+bpy.ops.wm.save_as_mainfile(filepath=blend_path)
+with open(blend_path,'rb') as source,gzip.open(blend_path+'.gz','wb',compresslevel=9) as destination:
+    shutil.copyfileobj(source,destination)
 report={}
 for name,ratio in [('near',.22),('mid',.045),('far',.012)]:
     o=obj.copy();o.data=obj.data.copy();bpy.context.collection.objects.link(o);o.name='human-'+name

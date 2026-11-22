@@ -25,11 +25,11 @@ Branch: `quality/v18-event-opening`. Production remains unchanged pending visual
 `tools/review-v18.mjs` runs the actual executable in Chromium/WebGL, rejects
 JavaScript/shader/load errors, checks frozen vehicle positions and race clocks,
 full/omitted/paused/restarted openings, no race fireworks and daylight startup.
-It exports actual engine PNGs and 300 frames for a 20-second silent video at
+It exports actual engine PNGs and 405 frames for a 27-second silent video at
 15 FPS. The encoding rate and fixed simulation steps are not measured performance.
 
-Local targeted tests: 30/30 passed before the full final regression run.
-Full final regression, browser screenshots and artistic evaluation are recorded
+Local targeted tests: 30/30 passed. Full local regression: 294/294 passed.
+The browser regression, screenshots and artistic evaluation are recorded
 in the Actions artifact and must be checked before final approval.
 
 ## Limits

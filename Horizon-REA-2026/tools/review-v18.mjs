@@ -69,17 +69,19 @@ try {
  await mkdir(`${out}/frames`,{recursive:true});
  await page.evaluate(()=>{
   const g=window.__HORIZON_GAME__;g.prepareCapture(1280,720);g.startRace();
+  g.overrideInput={throttle:.6,brake:0,steer:0,handbrake:false};
  });
- for(let frame=0;frame<300;frame++) {
+ for(let frame=0;frame<405;frame++) {
    const image=await page.evaluate(()=>{
      const g=window.__HORIZON_GAME__;g.skipRender=true;
      for(let i=0;i<4;i++)g.advance(1/60);
+     if(g.state==='racing')g.chase.update(1/15,g.race.player.vehicle,0);
      g.skipRender=false;g.advance(0);
      return g.renderer.domElement.toDataURL('image/png');
    });
    await writeFile(`${out}/frames/${String(frame).padStart(4,'0')}.png`,Buffer.from(image.split(',')[1],'base64'));
  }
- report.checks.push('300 actual engine frames exported at 15 fps for event review (not a benchmark)');
+ report.checks.push('405 actual engine frames exported at 15 fps for event review (not a benchmark)');
  await page.close();
  const day=await browser.newPage({viewport:{width:1920,height:1080}});
  day.on('pageerror',e=>errors.push('Suzaka: '+e.message));

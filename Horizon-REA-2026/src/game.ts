@@ -302,7 +302,7 @@ export class Game {
     this.input.setTouchControlsVisible(!this.fireworks);
     this.hud.show(!this.fireworks);
     this.hud.setStartSignal(this.fireworks ? null : "red");
-    this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
+    if (!this.fireworks) this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
     this.input.focusGame();

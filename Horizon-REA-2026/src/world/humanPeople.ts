@@ -46,6 +46,12 @@ function humanMaterial():THREE.MeshStandardMaterial {
       vHumanColor=region<.5?iSkin:region<1.5?iShirt:region<2.5?pants:
         region<3.5?mix(vec3(.016,.009,.005),vec3(.19,.075,.026),fract(seed*3.4)):
         region<4.5?vec3(.025,.029,.035):region<5.5?vec3(.75,.74,.67):vec3(.025,.015,.009);
+      // Small continuous head morphs preserve the modeled face while avoiding
+      // an identical skull/jaw silhouette on every spectator.
+      float head=smoothstep(1.49,1.58,position.y);
+      transformed.x*=1.0+head*(seed-.5)*.18;
+      transformed.z+=head*(seed-.5)*.018;
+      if(region>2.5 && region<3.5)transformed.y+=(seed-.5)*.018;
       // Tailored cloth folds, subtle enough to leave facial topology legible.
       if(region>.5 && region<2.5) {
         vHumanColor*=.92+.08*sin(position.y*155.0+position.x*75.0);
