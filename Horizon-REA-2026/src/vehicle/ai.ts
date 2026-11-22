@@ -129,7 +129,7 @@ export class AIDriver {
     if(straight && !recovering) {
       // Use available speed on a straight to fight for first place. The
       // predictive braking envelope below still limits upcoming corners.
-      targetSpeed=Math.min(v.speedLimitMph*.44704,
+      targetSpeed=Math.min((v.speedLimitMph ?? 350)*.44704,
         Math.max(targetSpeed,profileSpeed*(1+.15*tuning.pressure)));
     }
     const onBridge = this.track.circuit?.layout === "figure-eight" && road.y > 1;
