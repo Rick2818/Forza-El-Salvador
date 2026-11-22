@@ -21,7 +21,8 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           persist-credentials: true
-      - name: Install Blender
+      - name: Install Blender (only on the first export)
+        if: hashFiles('Horizon-REA-2026/docs/quality/v12/blender-refinement.json') == ''
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y blender python3-numpy
@@ -29,7 +30,11 @@ jobs:
       - name: Round Mercedes and Koenigsegg rears and install 7 pilots
         working-directory: Horizon-REA-2026
         run: |
-          blender -b -t 2 --python tools/blender/refine-rear-and-drivers-v12.py
+          if [ ! -s docs/quality/v12/blender-refinement.json ]; then
+            blender -b -t 2 --python tools/blender/refine-rear-and-drivers-v12.py
+          else
+            echo "V12 GLBs already generated; reusing approved source artifacts"
+          fi
           test -s tools/blender/selected-sources/v12/mercedes-amg-gt-black-series-rear-v12.blend
           test -s tools/blender/selected-sources/v12/koenigsegg-jesko-odin-rear-v12.blend
           test -s docs/quality/v12/blender-refinement.json
