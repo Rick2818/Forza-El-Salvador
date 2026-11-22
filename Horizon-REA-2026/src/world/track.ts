@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import { monzonPitBarrierGap } from "./monzonPitAccess";
-import { suzakaPitBarrierGap } from "./suzakaPitAccess";
+import { suzakaPitBarrierGap, suzakaPitViewingWall, SUZAKA_PIT_LOW_BARRIER_HEIGHT } from "./suzakaPitAccess";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
@@ -365,7 +365,10 @@ export class Track {
     for (let i = 0; i < N; i++) {
       const s = this.samples[i];
       const r = this.rights[i];
-      const y = s.y + baseY + height;
+      const actualHeight = this.circuit.id === "suzaka" &&
+        suzakaPitViewingWall(i*this.segmentLength,Math.sign(offset))
+        ? SUZAKA_PIT_LOW_BARRIER_HEIGHT : height;
+      const y = s.y + baseY + actualHeight;
       positions.push(s.x + r.x * (offset - half), y, s.z + r.z * (offset - half));
       positions.push(s.x + r.x * (offset + half), y, s.z + r.z * (offset + half));
     }
@@ -676,7 +679,10 @@ export class Track {
       const r = this.rights[i];
       const px = s.x + r.x * offset;
       const pz = s.z + r.z * offset;
-      positions.push(px, s.y + baseY, pz, px, s.y + baseY + height, pz);
+      const actualHeight = this.circuit.id === "suzaka" &&
+        suzakaPitViewingWall(i*this.segmentLength,Math.sign(offset))
+        ? SUZAKA_PIT_LOW_BARRIER_HEIGHT : height;
+      positions.push(px, s.y + baseY, pz, px, s.y + baseY + actualHeight, pz);
     }
 
     for (let i = 0; i < N; i++) {

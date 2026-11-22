@@ -1,6 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { Track } from "./track";
-import { suzakaPitBarrierGap } from "./suzakaPitAccess";
+import { suzakaPitBarrierGap, suzakaPitViewingWall, SUZAKA_PIT_LOW_BARRIER_HEIGHT } from "./suzakaPitAccess";
 
 /** Suzaka's old rail was 7.5m outside the kerb and had ZERO collider
  * thickness. These overlapping solid volumes sit directly after the kerb
@@ -32,7 +32,10 @@ export function planSuzakaRoadsideProtection(
     const a=track.samples[i],b=track.samples[next];
     const ar=track.rightAt(i),br=track.rightAt(next);
     for(const side of [-1,1] as const) {
-      const pitGate=suzakaPitBarrierGap((i+SUZAKA_BARRIER_STEP_SAMPLES/2)*track.segmentLength,side);
+      const metres=(i+SUZAKA_BARRIER_STEP_SAMPLES/2)*track.segmentLength;
+      const pitGate=suzakaPitBarrierGap(metres,side);
+      const actualHeight=suzakaPitViewingWall(metres,side)
+        ? SUZAKA_PIT_LOW_BARRIER_HEIGHT : SUZAKA_OUTER_BARRIER_HEIGHT;
       const ax=a.x+ar.x*side*track.barrierLateralOffset;
       const az=a.z+ar.z*side*track.barrierLateralOffset;
       const bx=b.x+br.x*side*track.barrierLateralOffset;
@@ -43,12 +46,12 @@ export function planSuzakaRoadsideProtection(
       walls.push({
         side,
         x:(ax+bx)/2,
-        y:(a.y+b.y)/2+SUZAKA_OUTER_BARRIER_HEIGHT/2-.18,
+        y:(a.y+b.y)/2+actualHeight/2-.18,
         z:(az+bz)/2,
         yaw:Math.atan2(dx,dz),
         length:length+1.75, // overlap adjacent segments even in curves
         thickness:SUZAKA_OUTER_BARRIER_THICKNESS,
-        height:SUZAKA_OUTER_BARRIER_HEIGHT,
+        height:actualHeight,
         pitGate
       });
     }

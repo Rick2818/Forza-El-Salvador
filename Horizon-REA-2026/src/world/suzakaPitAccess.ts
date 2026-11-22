@@ -1,6 +1,14 @@
 import type { Track } from "./track";
 
 export const SUZAKA_PIT_SIDE = 1;
+/** The tall wall is replaced by a low painted splitter along the garages. */
+export const SUZAKA_PIT_VIEW_START_M = 316;
+export const SUZAKA_PIT_VIEW_END_M = 575;
+export const SUZAKA_PIT_LOW_BARRIER_HEIGHT = 0.58;
+export function suzakaPitViewingWall(metres: number, side: number): boolean {
+  return side === SUZAKA_PIT_SIDE &&
+    metres >= SUZAKA_PIT_VIEW_START_M && metres <= SUZAKA_PIT_VIEW_END_M;
+}
 export const SUZAKA_PIT_START_M = 275;
 export const SUZAKA_PIT_END_M = 610;
 export const SUZAKA_PIT_ENTRY = [302, 315] as const;

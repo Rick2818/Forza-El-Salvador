@@ -7,6 +7,7 @@ import {
   SUZAKA_OUTER_BARRIER_THICKNESS, planSuzakaRoadsideProtection,
   installSuzakaRoadsideProtection
 } from "./suzakaRoadsideSafety";
+import {suzakaPitViewingWall,SUZAKA_PIT_LOW_BARRIER_HEIGHT} from "./suzakaPitAccess";
 
 beforeAll(async()=>{await RAPIER.init();});
 
@@ -26,8 +27,11 @@ describe("Suzaka: seguridad contra atasco fuera de pista",()=>{
     expect(segments.filter(w=>w.pitGate).length).toBeGreaterThan(0);
     expect(segments.filter(w=>w.pitGate).every(w=>w.side===1)).toBe(true);
     expect(segments.length).toBeLessThan(850);
-    expect(segments.every(w=>w.height===SUZAKA_OUTER_BARRIER_HEIGHT &&
+    expect(segments.every(w=>[SUZAKA_OUTER_BARRIER_HEIGHT,SUZAKA_PIT_LOW_BARRIER_HEIGHT].includes(w.height) &&
       w.thickness===SUZAKA_OUTER_BARRIER_THICKNESS && w.length>7)).toBe(true);
+    expect(segments.some(w=>w.side===1 && w.height===SUZAKA_PIT_LOW_BARRIER_HEIGHT)).toBe(true);
+    expect(suzakaPitViewingWall(450,1)).toBe(true);
+    expect(suzakaPitViewingWall(450,-1)).toBe(false);
     expect(segments.filter(w=>w.side===-1)).toHaveLength(segments.length/2);
     expect(segments.filter(w=>w.side===1)).toHaveLength(segments.length/2);
     const first=segments[0],p=t.sampleAt(0),r=t.rightAt(0);
