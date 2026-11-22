@@ -1,0 +1,178 @@
+{
+  "status": "THREE_REAL_BLENDER_PASSES_EXPORTED_VISUAL_APPROVAL_PENDING",
+  "passes": [
+    1,
+    2,
+    3
+  ],
+  "vehicles": [
+    {
+      "id": "ferrari-california-t",
+      "inputSha256": "ac1ae89bd86d5d335a609c159fce857ea353e71b17d016bcf3090c71df0656dc",
+      "outputSha256": "9b3cd47c590a5a6b083b1fe0579a93a37b9de23e260a7990ee8f923b1632020a",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": "tools/blender/selected-sources/v14/ferrari-california-t-pilot-v14-p1.blend"
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": "tools/blender/selected-sources/v14/ferrari-california-t-pilot-v14-p2.blend"
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.0568
+        },
+        "blend": "tools/blender/selected-sources/v14/ferrari-california-t-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/ferrari-california-t-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    },
+    {
+      "id": "yangwang-u9",
+      "inputSha256": "05afda516248b926785643b5b0945f05380d70dae3c031f5b29fa3a98437b82f",
+      "outputSha256": "0bc2618f34c18cc32958e32ab50f785e90507fb035fd296f7d1b95ac6f6e2491",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": null
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": null
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.0678
+        },
+        "blend": "tools/blender/selected-sources/v14/yangwang-u9-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/yangwang-u9-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "inputSha256": "6696c047a74a5b888223688c726d83a745d51ebbb307460afbfd9f3a6f9e8c53",
+      "outputSha256": "ce008e810af70bd19b20bb17fd927df512ba00ed46d914e40e0491cd13b72f12",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": "tools/blender/selected-sources/v14/koenigsegg-jesko-odin-pilot-v14-p1.blend"
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": "tools/blender/selected-sources/v14/koenigsegg-jesko-odin-pilot-v14-p2.blend"
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.1318
+        },
+        "blend": "tools/blender/selected-sources/v14/koenigsegg-jesko-odin-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/koenigsegg-jesko-odin-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    },
+    {
+      "id": "bugatti-chiron",
+      "inputSha256": "ca53029388bd1bb506a3905544ee815bd13972408652787ea2b3d35afa1747b0",
+      "outputSha256": "93602dfb15aab2d9bfcd143f844b135dd31f5902dc1570af72dfb10e8d4262c9",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": null
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": null
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.1318
+        },
+        "blend": "tools/blender/selected-sources/v14/bugatti-chiron-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/bugatti-chiron-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    },
+    {
+      "id": "porsche-911",
+      "inputSha256": "a5b77967915dc8a87e2768ef329d7325dc2b68588a8b015bde41d3fe894366c2",
+      "outputSha256": "a24326d3ca3b87b7342a91ed2c040e49bca8502fa7c10ba74fd810e58154454d",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": "tools/blender/selected-sources/v14/porsche-911-pilot-v14-p1.blend"
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": "tools/blender/selected-sources/v14/porsche-911-pilot-v14-p2.blend"
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.0738
+        },
+        "blend": "tools/blender/selected-sources/v14/porsche-911-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/porsche-911-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "inputSha256": "be5beb88a16f86ae13dc813a13d7745f34e7ecfeb802df257c5e755b6962704c",
+      "outputSha256": "50476e1f2d4a37ce85897ed452b72a93ebd158440deab99d2e35dba846bba067",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": null
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": null
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.1318
+        },
+        "blend": "tools/blender/selected-sources/v14/lamborghini-aventador-roadster-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/lamborghini-aventador-roadster-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "inputSha256": "431b3a7df064ae081aa9d06fb678a35a1262a496d61868e4935e15e56be8a30e",
+      "outputSha256": "fc7b1d4c3a49031120db932c462ac98996d7594c18a6f856b27559927f2e557c",
+      "pass1": {
+        "geometryMeshes": 30,
+        "replacedV13": 17,
+        "blend": null
+      },
+      "pass2": {
+        "materialDetailMeshes": 52,
+        "blend": null
+      },
+      "pass3": {
+        "fitting": {
+          "meshes": 52,
+          "roofClearanceM": 0.072,
+          "verticalFittingShiftM": 0.0988
+        },
+        "blend": "tools/blender/selected-sources/v14/mercedes-amg-gt-black-series-pilot-v14-p3.blend",
+        "render": "docs/quality/v14/previews/mercedes-amg-gt-black-series-pass3.png"
+      },
+      "wheelPivotsPreserved": true
+    }
+  ]
+}
