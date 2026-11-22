@@ -18,6 +18,7 @@ import {
   steeringAngleAt,
   straightOnlyDragAssist,
   highSpeedCornerDriveFactor,
+  reverseDriveForce,
   wheelForce
 } from "../sim/vehicleMath";
 
@@ -247,12 +248,7 @@ export class Vehicle {
       engineForce += straightAssist * (this.electric ? 1.65 : 1);
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
-    let reverseForce = 0;
-    if (brake > 0.05 && speed < 0.6) {
-      // Full reverse torque after the vehicle has stopped; smoothly limit
-      // reverse to ~14 m/s instead of creeping backwards with 2.2kN.
-      reverseForce = brake * 9200 * clamp((14 + speed) / 4, 0, 1);
-    }
+    let reverseForce = reverseDriveForce(speed, brake);
 
     if (this.controls.handbrake) {
       engineForce *= 0.2;
