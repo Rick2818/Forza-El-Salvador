@@ -6,6 +6,7 @@ import { ContactShadows } from "./render/contactShadows";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./world/track";
 import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
+import { suzakaGarageAt } from "./world/suzakaGarageZone";
 import { Environment } from "./world/environment";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
@@ -534,11 +535,13 @@ export class Game {
         this.track.sampleAt(this.race.player.hint+Math.round((12+Math.abs(this.race.player.vehicle.speed)*.35)/this.track.segmentLength)));
 
       const player = this.race.player.vehicle;
-      if (this.track.circuit.id === "monzon") {
+      if (this.track.circuit.id === "monzon" || this.track.circuit.id === "suzaka") {
         const p = player.body.translation();
-        const garage = monzonGarageAt(p.x,p.z);
+        const garage = this.track.circuit.id === "suzaka"
+          ? suzakaGarageAt(this.track,p.x,p.z)
+          : monzonGarageAt(p.x,p.z);
         if (garage && garage !== this.lastEnteredPitGarage) {
-          this.hud.toast(`🏁 Garage ${garage}: área de servicio`, 2400);
+          this.hud.toast(`🔧 Garage ${garage}: 2 mecánicos y servicio`, 2700);
         }
         this.lastEnteredPitGarage = garage;
       }
