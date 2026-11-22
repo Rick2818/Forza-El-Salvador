@@ -41,21 +41,21 @@ export const SELECTED_VEHICLES: readonly SelectedVehicle[] = [
   {
     id: "lamborghini-aventador-roadster", name: "Lamborghini Aventador Roadster",
     finish: "Azul metálico",
-    variantNote: "Modelo Blender aprobado; balance arcade de 200 mph.",
+    variantNote: "Modelo Blender aprobado; velocidad máxima arcade de 350 MPH.",
     features: ["Perfil bajo", "Cabina abierta Roadster", "Diseño Aventador"],
     modelStatus: "approved", modelUrl: "models/selected/lamborghini-aventador-roadster.glb"
   },
   {
     id: "yangwang-u9", name: "Yangwang U9",
     finish: "Negro",
-    variantNote: "Modelo Blender aprobado; propulsión eléctrica y balance arcade de 200 mph.",
+    variantNote: "Modelo Blender aprobado; propulsión eléctrica y velocidad máxima arcade de 504 MPH.",
     features: ["Propulsión eléctrica", "Pintura negra", "Alerón trasero"],
     modelStatus: "approved", modelUrl: "models/selected/yangwang-u9.glb"
   },
   {
     id: "koenigsegg-jesko-odin", name: "Koenigsegg Jesko Odin",
     finish: "Grafito y dorado",
-    variantNote: "Modelo Blender aprobado; balance arcade de 200 mph.",
+    variantNote: "Modelo Blender aprobado; velocidad máxima arcade de 350 MPH.",
     features: ["Carrocería baja", "Detalles dorados", "Alerón trasero"],
     modelStatus: "approved", modelUrl: "models/selected/koenigsegg-jesko-odin.glb"
   }

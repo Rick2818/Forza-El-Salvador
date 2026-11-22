@@ -16,6 +16,8 @@ import {
   gearForSpeed,
   rpmForSpeed,
   steeringAngleAt,
+  straightOnlyDragAssist,
+  highSpeedCornerDriveFactor,
   wheelForce
 } from "../sim/vehicleMath";
 
@@ -235,6 +237,15 @@ export class Vehicle {
       // Absolute speed remains bounded by the post-step governor.
       const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .36;
       engineForce = Math.min(total * limiter * grip, p.maxEngineForce * power);
+      // On a straight, compensate aero drag near 350-504 MPH WITHOUT boosting
+      // launches, continuous steering or a slide. Restore the previous stable
+      // per-brand power levels for corners and AI-driving.
+      // Electric U9 needs slightly stronger straight-only compensation at
+      // 504 MPH; six combustion vehicles already met their tested ceilings.
+      const straightAssist = straightOnlyDragAssist(absSpeed,throttle,this.controls.steer,
+        lateralSpeed,this.body.angvel().y,grip);
+      engineForce += straightAssist * (this.electric ? 1.65 : 1);
+      engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
     let reverseForce = 0;
     if (brake > 0.05 && speed < 0.6) {
@@ -291,7 +302,10 @@ export class Vehicle {
       const d = dragForce(planar);
       this.body.addForce({ x: (-vel.x / planar) * d, y: 0, z: (-vel.z / planar) * d }, true);
     }
-    const df = downforceN(planar);
+    // At 350–504 MPH the raw v² downforce exceeds suspension capacity
+    // (four wheels × 15kN), crushing cars into the asphalt/kerbs.
+    // Saturate the arcade aero load to retain physical wheel clearance.
+    const df = Math.min(downforceN(planar), 24000);
     // Downforce must be a pure force at the centre of mass. addForceAtPoint
     // takes a WORLD-space point: passing {0, 0.1, 0} here applied the load at
     // the world origin and produced a huge pitch torque (the car took off).
@@ -361,7 +375,7 @@ export class Vehicle {
 
   syncVisual(dt = 0): void {
     // Governor acts AFTER each world step; an engine or nitro burst cannot
-    // overshoot the configured 200 mph / Bugatti 230 mph speed ceiling.
+    // overshoot the selected 350 / 450 / 504 MPH ceiling.
     this.afterPhysicsStep();
     const t = this.body.translation();
     const r = this.body.rotation();

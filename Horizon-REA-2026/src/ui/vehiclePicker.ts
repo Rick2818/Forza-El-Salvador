@@ -1,4 +1,5 @@
 import { SELECTED_VEHICLES } from "../vehicle/roster";
+import { vehicleDesign } from "../vehicle/selectedAsset";
 
 /** Lightweight in-menu picker, visible before a race on desktop and Samsung. */
 export function vehiclePickerMarkup(selectedId: string): string {
@@ -10,7 +11,7 @@ export function vehiclePickerMarkup(selectedId: string): string {
         return `<button type="button" class="vehicle-pick vehicle-select ${chosen ? "is-selected" : ""}"
           data-action="select-vehicle" data-vehicle-id="${car.id}" aria-pressed="${chosen}">
           <img class="vehicle-pick-photo" src="${import.meta.env.BASE_URL}vehicles/previews/${car.id}.png" alt="${car.name}, modelo del juego" loading="lazy" />
-          <span class="vehicle-pick-info"><strong>${car.name}</strong><small>${car.finish}</small></span>
+          <span class="vehicle-pick-info"><strong>${car.name}</strong><small>${car.finish} · ${Math.round(vehicleDesign(car.id).tuning.topSpeed/.44704)} MPH</small></span>
           <span class="vehicle-pick-mark" aria-hidden="true">${chosen ? "✓" : "+"}</span>
         </button>`;
       }).join("")}

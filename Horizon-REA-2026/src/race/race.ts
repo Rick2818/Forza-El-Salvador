@@ -5,6 +5,7 @@ import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
 import { OncomingDriver, ONCOMING_CAR_COUNT, oncomingPose, oncomingSpawnIndex } from "./oncoming";
 import { SUZAKA_BRIDGE_SAFETY_THRESHOLD } from "../world/suzakaSuspensionBridge";
+import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
 import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, vehicleDesign } from "../vehicle/selectedAsset";
@@ -71,6 +72,10 @@ export class Race {
   private finishOrder: Standing[] = [];
   private playerResult: Standing[] = [];
   private lastCollisionSoundAt = -Infinity;
+  private playerStrandedSeconds = 0;
+  private playerRescueCount = 0;
+
+  get rescues(): number { return this.playerRescueCount; }
 
   constructor(
     private readonly world: RAPIER.World,
@@ -170,20 +175,36 @@ export class Race {
   }
 
   update(dt: number, input: Input): void {
-    // Recover at the last known track position before invalid physics spreads
-    // into AI, lap tracking or the camera. Preserve lap and race progress.
+    // Safety on the Suzaka figure-eight: the old trackside guard stood metres
+    // away from the kerb. Even a stationary player stranded OUTSIDE its wall
+    // was never recovered because the previous checks only watched altitude.
+    // Recover near the current track sample, not the start of the whole race.
     for (const racer of this.racers) {
       const p = racer.vehicle.body.translation();
       const v = racer.vehicle.body.linvel();
-      const anchor = this.track.sampleAt(racer.hint);
-      if (![p.x, p.y, p.z, v.x, v.y, v.z].every(Number.isFinite) ||
-          p.y < anchor.y - 8 ||
-          (this.track.circuit.id === "suzaka" &&
-           anchor.y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD &&
-           p.y < anchor.y - 2.5) ||
-          p.y > anchor.y + 80 || Math.hypot(v.x, v.y, v.z) > 200) {
-        const tangent = this.track.tangentAt(racer.hint);
-        racer.vehicle.place(anchor, Math.atan2(tangent.x, tangent.z));
+      const finite = [p.x,p.y,p.z,v.x,v.y,v.z].every(Number.isFinite);
+      const isSuzaka = this.track.circuit.id === "suzaka";
+      const closest = finite && isSuzaka
+        ? this.track.locate(new THREE.Vector3(p.x,p.y,p.z),racer.hint) : null;
+      const anchorIndex = closest?.index ?? racer.hint;
+      const anchor = this.track.sampleAt(anchorIndex);
+      const escaped = !!closest && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
+      const nearlyStopped = Math.hypot(v.x,v.z)<1.0;
+      if(isSuzaka && racer.isPlayer && closest &&
+         strandedOutsideSuzakaKerb(closest.lateral,this.track.halfWidth,nearlyStopped?0:Math.hypot(v.x,v.z)) &&
+         this.state === "racing") this.playerStrandedSeconds+=dt;
+      else if(racer.isPlayer) this.playerStrandedSeconds=0;
+      const stuck = racer.isPlayer && this.playerStrandedSeconds>SUZAKA_STRANDED_DELAY_SEC;
+      if (!finite || escaped || stuck ||
+          p.y < anchor.y-8 ||
+          (isSuzaka && anchor.y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD &&
+           p.y < anchor.y-2.5) ||
+          p.y > anchor.y+80 ||
+          exceedsArcadeSafetyVelocity(Math.hypot(v.x,v.y,v.z),racer.vehicle.speedLimitMph)) {
+        const tangent=this.track.tangentAt(anchorIndex);
+        racer.vehicle.place(anchor,Math.atan2(tangent.x,tangent.z));
+        racer.hint=anchorIndex;
+        if(racer.isPlayer) { this.playerStrandedSeconds=0; this.playerRescueCount++; }
       }
     }
     if (this.state === "countdown") {

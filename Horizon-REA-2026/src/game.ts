@@ -507,6 +507,7 @@ export class Game {
       // Fixed 60 Hz physics with up to three catch-up sub-steps. The vehicle
       // controller integrates wheel forces for exactly the step it is given,
       // so world.step() and updateVehicle() must always share the same dt.
+      const rescuesBefore = this.race.rescues;
       this.physicsAccum = Math.min(this.physicsAccum + dt, this.fixedStep * 4);
       let steps = 0;
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
@@ -520,6 +521,10 @@ export class Game {
         steps++;
       }
       if (steps === 0) this.physicsAccum = Math.min(this.physicsAccum, this.fixedStep);
+      if (this.race.rescues > rescuesBefore) {
+        this.chase.snap();
+        this.hud.toast("⚠️ Suzaka: vehículo recuperado dentro de la pista", 2600);
+      }
 
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);

@@ -46,6 +46,17 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
 - El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
 
+## Suzaka sin atascos y nuevas velocidades de competición (MPH)
+
+- **Cinco autos (Ferrari California T, Porsche 911, Koenigsegg Jesko, Lamborghini Aventador y Mercedes-AMG GT): 350 MPH** por unidad.
+- **Bugatti Chiron: 450 MPH**. **Yangwang U9: 504 MPH**, con potencia eléctrica de alta velocidad ajustada a su nueva resistencia aerodinámica.
+- Son **límites arcade del videojuego**, no afirmaciones sobre prestaciones homologadas de los vehículos reales. La física trabaja en metros por segundo, convirtiendo las unidades con **1 MPH = 0.44704 m/s**.
+- El **velocímetro se escala automáticamente** al vehículo (350, 450 o 504 MPH): números, divisiones, aguja y arco de progreso comparten el mismo límite. Se retiró el marcador fijo de 260 MPH.
+- En Suzaka, la guardia exterior queda inmediatamente tras el piano: se sustituyen colisionadores verticales sin grosor por **cubos sólidos superpuestos y continuos** alrededor de la vuelta. Las paredes visibles son más altas y coinciden con su zona de colisión física. El puente elevado conserva sus defensas especiales adicionales.
+- Si el auto queda fuera de la protección o inmóvil fuera del piano, **regresa al punto de pista más cercano**; mantiene la progresión de la carrera y recibe una notificación. El sistema de recuperación respeta los tres nuevos topes, evitando el antiguo reinicio automático al superar 200 m/s.
+- La carga aerodinámica se satura para no aplastar la suspensión a velocidades extremas; el turbo y el manejo en curva siguen aplicando sus reducciones de tracción.
+- Las pruebas incluyen impactos contra ambos lados del circuito hasta **225 m/s**, regulador físico y concordancia de siete autos con el HUD. Los 60 FPS y la jugabilidad se deben verificar adicionalmente en el navegador y equipo reales.
+
 ## Puente colgante de Suzaka
 
 - El cruce de Suzaka conserva sus **12 metros de separación vertical** respecto a la pista inferior y su misma trayectoria de carrera. El puente se construye sobre los puntos elevados reales del trazado.
