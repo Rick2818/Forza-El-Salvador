@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { makeRng } from "../core/mathx";
+import { createVisibleSpectators, monzonGrandstandSpectatorPositions } from "./monzonSpectatorTerraces";
 import { createBannerTexture } from "./textures";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
@@ -85,42 +85,31 @@ export class MonzonScenery {
     box("monzon-tower-glass", 575, pitY + 24.8, 57, 28, 8.5, 27, glass);
     box("monzon-tower-roof", 575, pitY + 29.9, 57, 32, 1.1, 31, roof);
 
-    // Grandstand opposite the pit buildings with tiered seating and canopy.
+    // Open grandstand: the old 8m-high opaque base hid the first rows of
+    // viewers, while a 50m-deep canopy made the upper rows hard to see.
     const standY = ground.heightAt(300, -62);
-    box("monzon-grandstand-base", 309, standY + 4, -65, 430, 8, 39, concrete);
+    box("monzon-grandstand-foundation", 309, standY + .65, -65, 430, 1.3, 39, concrete);
     for (let row = 0; row < 9; row++) {
+      const z = -48 - row * 3.1;
+      const riserHeight = 5.05 + row * 1.06;
+      box("monzon-stand-open-riser-" + row, 309, standY + riserHeight / 2,
+        z, 415, riserHeight, 3.02, concrete);
       box("monzon-tier-" + row, 309, standY + 5.2 + row * 1.06,
-        -48 - row * 3.1, 415, 0.53, 3.1, seating[row % seating.length]);
+        z, 415, .53, 3.1, seating[row % seating.length]);
     }
-    box("monzon-grandstand-canopy", 309, standY + 18, -65, 445, 1.05, 50, roof);
-    for (const x of [90, 160, 230, 300, 370, 440, 520]) {
-      box("monzon-canopy-column", x, standY + 10, -85, 0.75, 18.2, 0.75, steel);
+    // Rear-only canopy leaves all track-facing spectators in the open.
+    box("monzon-grandstand-rear-canopy", 309, standY + 22.5, -83, 445, 1.05, 25, roof);
+    for (const x of [90,160,230,300,370,440,520]) {
+      box("monzon-canopy-column", x, standY + 11.25, -92, .75, 22.5, .75, steel);
     }
 
-    // A low-poly instanced crowd gives the stand life while using one draw call.
-    const rng = makeRng(28182027);
-    const crowdCount = 420;
-    const heads = new THREE.InstancedMesh(
-      new THREE.IcosahedronGeometry(0.46, 0),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
-      crowdCount
+    // Human-shaped instanced crowd, in eight UNOBSTRUCTED rows above the
+    // tier surface. 832 people but a fixed six rendering draw calls.
+    const standCrowd = createVisibleSpectators(
+      monzonGrandstandSpectatorPositions(standY),"monzon-open-grandstand-public"
     );
-    heads.name = "monzon-spectators";
-    heads.castShadow = false;
-    const matrix = new THREE.Matrix4();
-    const uniforms = [new THREE.Color(0xfff0cb), new THREE.Color(0xe8ad67),
-      new THREE.Color(0x548fc8), new THREE.Color(0xe9e9e9), new THREE.Color(0xed6b46)];
-    for (let i = 0; i < crowdCount; i++) {
-      const row = Math.floor(rng() * 8);
-      const x = 105 + rng() * 405;
-      const z = -49 - row * 3.1;
-      matrix.makeTranslation(x, standY + 6.1 + row * 1.06, z);
-      heads.setMatrixAt(i, matrix);
-      heads.setColorAt(i, uniforms[Math.floor(rng() * uniforms.length)]);
-    }
-    heads.instanceMatrix.needsUpdate = true;
-    if (heads.instanceColor) heads.instanceColor.needsUpdate = true;
-    this.group.add(heads);
+    this.group.add(standCrowd);
+    this.group.userData.grandstandSpectators = standCrowd.userData.people;
 
     // Braking-distance boards before the first chicane: approach on +X.
     const markerMat = material(0xffffff);
