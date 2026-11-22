@@ -4,6 +4,7 @@ import { Track } from "../world/track";
 import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar } from "../vehicle/ai";
 import { OncomingDriver, ONCOMING_CAR_COUNT, oncomingPose, oncomingSpawnIndex } from "./oncoming";
+import { SUZAKA_BRIDGE_SAFETY_THRESHOLD } from "../world/suzakaSuspensionBridge";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
 import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, vehicleDesign } from "../vehicle/selectedAsset";
@@ -176,7 +177,11 @@ export class Race {
       const v = racer.vehicle.body.linvel();
       const anchor = this.track.sampleAt(racer.hint);
       if (![p.x, p.y, p.z, v.x, v.y, v.z].every(Number.isFinite) ||
-          p.y < anchor.y - 8 || p.y > anchor.y + 80 || Math.hypot(v.x, v.y, v.z) > 200) {
+          p.y < anchor.y - 8 ||
+          (this.track.circuit.id === "suzaka" &&
+           anchor.y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD &&
+           p.y < anchor.y - 2.5) ||
+          p.y > anchor.y + 80 || Math.hypot(v.x, v.y, v.z) > 200) {
         const tangent = this.track.tangentAt(racer.hint);
         racer.vehicle.place(anchor, Math.atan2(tangent.x, tangent.z));
       }
