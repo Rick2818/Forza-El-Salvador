@@ -62,6 +62,15 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - No se añaden servicios de descarga ni texturas de terceros en tiempo de ejecución. Se preservan los circuitos, los siete coches aprobados, el tráfico contrario opcional y la física existente.
 - **Validación:** la compilación y la batería de regresión son obligatorias antes de producción. La calidad visual final y los 60 FPS dependen todavía de una inspección en el navegador y de una medición sobre el equipo del jugador.
 
+## Siete garajes de marcas con mecánicos y equipamiento físico — Monzón
+
+- Los cuatro boxes anteriores se amplían a **siete** (Ferrari, Porsche, Bugatti, Mercedes-Benz, Lamborghini, Koenigsegg y Yangwang), uno por cada automóvil aprobado. Cada garaje mide ahora **18,96 m de ancho × 13,2 m de profundidad × 5,64 m de alto**, un 20% más en cada dimensión.
+- Se instalan dos mecánicos 3D por garaje, **14 en total**, situados en las zonas laterales de servicio para mantener libre el paso del coche.
+- Se conserva el kit ya realizado en Blender con herramientas, gabinetes, llantas, bancos y repuestos. Se reposiciona mediante escalado de planta al nuevo tamaño y se añaden colisionadores físicos sólidos Rapier para **10 conjuntos de objetos por garaje**, además de las paredes y de cada mecánico.
+- Los siete talleres conservan la puerta frontal abierta y la cámara puede seguir al conductor dentro de sus recintos. La salida del pit lane se reubica después del último garaje, a unos 270 m de la recta.
+- Para las tres marcas nuevas los emblemas se dibujan como rótulos de texto hasta contar con una imagen oficial local; la carga de logos faltantes nunca impide que aparezcan los talleres.
+- Las pruebas comprueban recuentos, dimensiones, distancia mínima entre garajes, despeje para los mecánicos, acceso físico y salida. Los 60 FPS deberán confirmarse en hardware real.
+
 ## Pits transitables y público en boxes — Monzón
 
 - La **recta principal de Monzón** dispone de entrada al pit lane alrededor de **x=104 m** y salida alrededor de **x=197 m**, ambas en el lado **+Z** de la pista. Las aberturas corresponden tanto a la pared visual como al colisionador Rapier; no se atraviesan guardarraíles invisibles.

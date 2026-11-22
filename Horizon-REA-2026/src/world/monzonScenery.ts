@@ -54,13 +54,13 @@ export class MonzonScenery {
     box("monzon-pitlane-line", 290, pitRoadY + 0.065, 21.5, 510, 0.02, 0.24, stripe);
     // The complete pit road is connected to the main asphalt at two genuine
     // openings in the +Z barrier. Slabs end at the kerb, not across the raceway.
-    for (const [name, x] of [["entry",104.5],["exit",196.5]] as const) {
+    for (const [name, x] of [["entry",104.5],["exit",270]] as const) {
       box(`monzon-pit-${name}-apron`, x, .005, 18.5, 22, .025, 22, asphalt);
       for (const side of [-1,1]) {
         box(`monzon-pit-${name}-edge`, x + side*10, .039, 20, .18, .02, 17, stripe);
       }
     }
-    box("monzon-pit-forecourt", 153.7, -.013, 27.5, 118, .05, 6.8, asphalt);
+    box("monzon-pit-forecourt", 179.5, -.013, 27.5, 154, .05, 6.8, asphalt);
 
     const addPitSign = (label: string, x: number): void => {
       const canvas = document.createElement("canvas"); canvas.width=512;canvas.height=256;
@@ -76,9 +76,9 @@ export class MonzonScenery {
       this.group.add(sign);
     };
     addPitSign("PIT IN",103);
-    addPitSign("PIT OUT",198);
+    addPitSign("PIT OUT",271);
 
-    // Four genuinely open service bays are built by MonzonGarages. The old
+    // Seven enlarged service bays are built by MonzonGarages. The old
     // solid slab occupied their interiors and hid all workshop equipment.
     // Independent control tower with unobstructed glass panoramic band.
     box("monzon-tower", 575, pitY + 15, 57, 23, 30, 22, concrete);

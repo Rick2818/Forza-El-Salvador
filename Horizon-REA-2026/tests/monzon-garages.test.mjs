@@ -11,10 +11,10 @@ describe("Monzon open service garages", () => {
     track.buildVisuals = () => {};
     track.build();
     const ground = new TerrainField(track);
-    expect(GARAGE_LAYOUT.map(b => b.name)).toEqual(["FERRARI", "PORSCHE", "BUGATTI", "MERCEDES-BENZ"]);
+    expect(GARAGE_LAYOUT.map(b => b.name)).toEqual(["FERRARI", "PORSCHE", "BUGATTI", "MERCEDES-BENZ", "LAMBORGHINI", "KOENIGSEGG", "YANGWANG"]);
     for (const bay of GARAGE_LAYOUT) {
       expect(ground.heightAt(bay.x, 30)).toBeCloseTo(-.14, 3);
-      expect(ground.heightAt(bay.x, 40)).toBeCloseTo(-.14, 3);
+      expect(ground.heightAt(bay.x, 43)).toBeCloseTo(-.14, 3);
     }
     expect(track.barrierLateralOffset).toBeLessThan(29);
     expect(track.sampleAt(0).y).toBe(0);
