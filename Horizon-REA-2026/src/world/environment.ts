@@ -7,6 +7,7 @@ import { Sky } from "three/addons/objects/Sky.js";
 import { MonzonScenery } from "./monzonScenery";
 import { createSuzakaMountain, installSuzakaScenery } from "./suzakaScenery";
 import { createSuzakaPublicStands } from "./suzakaPublicStands";
+import { createNaturalMountainRange } from "./naturalMountains";
 import { installInternationalScenery } from "./internationalScenery";
 import { deg } from "../core/mathx";
 import { TerrainField } from "./terrain";
@@ -84,7 +85,7 @@ export class Environment {
       scene.background = new THREE.Color(0x03060d);
       scene.environment = this.sky.bakeEnvironment(renderer);
       scene.environmentIntensity = isMonzon ? .5 : 1.25;
-      scene.fog = new THREE.FogExp2(0x0b1626, 0.00105);
+      scene.fog = new THREE.FogExp2(0x0b1626, isMonzon ? 0.00055 : 0.00105);
     }
 
     this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : isMonzon ? 0xe0e7e9 : 0xa8c2ff, isDaylight ? 1.8 : isMonzon ? 2.2 : 3.15);
@@ -129,10 +130,13 @@ export class Environment {
         scene.add(light);
       }
       scene.add(new MonzonScenery(track, this.terrain).group);
+      const monzonMountains=createNaturalMountainRange(track);
+      monzonMountains.name="monzon-natural-mountain-background";
+      scene.add(monzonMountains);
       this.garages = new MonzonGarages(scene);
       void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
     } else if (isSuzaka) {
-      scene.add(createSuzakaMountain());
+      scene.add(createSuzakaMountain(track));
       scene.add(createSuzakaPublicStands(track, this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
       void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
