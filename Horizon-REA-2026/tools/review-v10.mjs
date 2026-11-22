@@ -88,9 +88,14 @@ try {
      metadata.cornerCancelsTurbo=true;
      const wheels=v.wheelVisualDebug();
      if(wheels.length!==4||!wheels.slice(0,2).every(w=>w.steer>.04)||!wheels.slice(2).every(w=>w.steer===0)||!wheels.every(w=>Math.abs(w.roll)>.05))throw Error('Wheel animation mismatch');
-     v.body.setLinvel({x:35,y:-17,z:150},true);v.afterPhysicsStep();
+     // Inject above EACH vehicle's 350/450/504 MPH maximum, not the stale
+     // fixed 154 m/s velocity that was BELOW the new speed limit.
+     const overspeed=v.speedLimitMph*.44704+35;
+     v.body.setLinvel({x:fwd.x*overspeed,y:-17,z:fwd.z*overspeed},true);
+     v.afterPhysicsStep();
      const vel=v.body.linvel(),mph=Math.hypot(vel.x,vel.z)/.44704;
-     if(Math.abs(mph-v.speedLimitMph)>.001||vel.y!==-17)throw Error('Governor mismatch');
+     if(Math.abs(mph-v.speedLimitMph)>.001||vel.y!==-17)
+       throw Error('Governor mismatch '+JSON.stringify({id,limit:v.speedLimitMph,mph}));
      metadata.wheels=wheels;metadata.speedCapMph=mph;metadata.animatedTurbo=true;
      v.place(track.sampleAt(index).clone(),Math.atan2(t.x,t.z));
      inject(45.5);v.update(1/60,drive,1);v.syncVisual(1/60);
