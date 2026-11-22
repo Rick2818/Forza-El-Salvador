@@ -1,5 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { Track } from "./track";
+import { suzakaPitBarrierGap } from "./suzakaPitAccess";
 
 /** Suzaka's old rail was 7.5m outside the kerb and had ZERO collider
  * thickness. These overlapping solid volumes sit directly after the kerb
@@ -34,6 +35,8 @@ export function planSuzakaRoadsideProtection(
       const az=a.z+ar.z*side*track.barrierLateralOffset;
       const bx=b.x+br.x*side*track.barrierLateralOffset;
       const bz=b.z+br.z*side*track.barrierLateralOffset;
+      // Keep the same real entry/exit gaps as the visible roadside wall.
+      if (suzakaPitBarrierGap(track, side, {x:(a.x+b.x)/2,y:(a.y+b.y)/2,z:(a.z+b.z)/2})) continue;
       const dx=bx-ax,dz=bz-az;
       const length=Math.hypot(dx,dz);
       if(length<.01) continue;
