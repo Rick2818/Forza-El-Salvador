@@ -46,6 +46,13 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - El efecto continuo y abrasivo de derrape tipo arena se eliminó. El choque contra otro coche produce únicamente un golpe sintetizado breve y grave, sujeto al volumen y al silencio general de los motores.
 - El modo contrario añade dos coches con geometría aprobada y control físico. Se conserva el conjunto de siete autos disponibles y los circuitos existentes. El objetivo de 60 FPS debe verificarse en hardware real con tráfico contrario encendido y apagado.
 
+## Mejoras de vegetación (Monzón y Suzaka)
+
+- **Monzón:** las antiguas copas hechas con figuras geométricas planas se sustituyen por dos variantes orgánicas con troncos y ramas modelados, hojas con máscara alfa y texturas de hojas/corteza generadas localmente. Se conservan el número objetivo de 460 árboles y el área despejada alrededor de pits, boxes, tribunas y pista. Las copas y los troncos se renderizan en grupos instanciados, con un máximo de cuatro llamadas de dibujo.
+- **Suzaka:** se conservan los pinos aprobados de Blender basados en un modelo CC0 de Poly Haven, sin cambiarlos por árboles genéricos. Se mejora el filtrado de las texturas de corteza y agujas, se suavizan los bordes de las agujas mediante alpha-to-coverage con MSAA, y el árbol distante pasa de una silueta autoiluminada 1,7× a material iluminado por la escena. Las distancias LOD se amplían ligeramente a 85 m (cercano) y 205 m (medio), manteniendo el sistema instanciado.
+- No se añaden servicios de descarga ni texturas de terceros en tiempo de ejecución. Se preservan los circuitos, los siete coches aprobados, el tráfico contrario opcional y la física existente.
+- **Validación:** la compilación y la batería de regresión son obligatorias antes de producción. La calidad visual final y los 60 FPS dependen todavía de una inspección en el navegador y de una medición sobre el equipo del jugador.
+
 ## Pits transitables y público en boxes — Monzón
 
 - La **recta principal de Monzón** dispone de entrada al pit lane alrededor de **x=104 m** y salida alrededor de **x=197 m**, ambas en el lado **+Z** de la pista. Las aberturas corresponden tanto a la pared visual como al colisionador Rapier; no se atraviesan guardarraíles invisibles.
