@@ -159,6 +159,8 @@ export class Environment {
   /** Add a static, lower-resolution terrain collision mesh only where the
    * mountain road leaves the flat world plane. This prevents off-track falls. */
   installTerrainPhysics(world: RAPIER.World): void {
+    // Monzon service bays have their own Rapier solids, even on the flat circuit.
+    this.garages?.installPhysics(world);
     if (!this.elevatedTerrain) return;
     const geometry = this.terrainMesh.geometry;
     if (!geometry.index) throw new Error("Sparda terrain collider missing triangles");

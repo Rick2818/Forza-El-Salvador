@@ -4,6 +4,7 @@
 
 import * as THREE from "three";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
+import { monzonPitBarrierGap } from "./monzonPitAccess";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { SETTINGS } from "../core/settings";
 import { smoothstep } from "../core/mathx";
@@ -358,6 +359,11 @@ export class Track {
       positions.push(s.x + r.x * (offset + half), y, s.z + r.z * (offset + half));
     }
     for (let i = 0; i < N; i++) {
+      const from = this.samples[i];
+      const to = this.samples[(i + 1) % N];
+      // The same physical gap is used in the rendered guardrail.
+      if (this.circuit.id === "monzon" &&
+          monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) continue;
       const a = i * 2;
       const b = ((i + 1) % N) * 2;
       indices.push(a, a + 1, b, b, a + 1, b + 1);
@@ -654,6 +660,11 @@ export class Track {
     }
 
     for (let i = 0; i < N; i++) {
+      const from = this.samples[i];
+      const to = this.samples[(i + 1) % N];
+      // The same physical gap is used in the rendered guardrail.
+      if (this.circuit.id === "monzon" &&
+          monzonPitBarrierGap((from.x + to.x) / 2, (from.z + to.z) / 2, offset)) continue;
       const a = i * 2;
       const b = ((i + 1) % N) * 2;
       indices.push(a, a + 1, b, b, a + 1, b + 1);

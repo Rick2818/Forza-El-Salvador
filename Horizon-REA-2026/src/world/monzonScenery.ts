@@ -52,6 +52,32 @@ export class MonzonScenery {
     const pitRoadY = ground.heightAt(290, 25);
     box("monzon-pitlane", 290, pitRoadY - 0.09, 25.5, 510, 0.28, 9, asphalt);
     box("monzon-pitlane-line", 290, pitRoadY + 0.065, 21.5, 510, 0.02, 0.24, stripe);
+    // The complete pit road is connected to the main asphalt at two genuine
+    // openings in the +Z barrier. Slabs end at the kerb, not across the raceway.
+    for (const [name, x] of [["entry",104.5],["exit",196.5]] as const) {
+      box(`monzon-pit-${name}-apron`, x, .005, 18.5, 22, .025, 22, asphalt);
+      for (const side of [-1,1]) {
+        box(`monzon-pit-${name}-edge`, x + side*10, .039, 20, .18, .02, 17, stripe);
+      }
+    }
+    box("monzon-pit-forecourt", 153.7, -.013, 27.5, 118, .05, 6.8, asphalt);
+
+    const addPitSign = (label: string, x: number): void => {
+      const canvas = document.createElement("canvas"); canvas.width=512;canvas.height=256;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle="#f5cb31";ctx.fillRect(0,0,512,256);
+      ctx.fillStyle="#1c252b";ctx.font="bold 100px Arial,sans-serif";
+      ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(label,256,128);
+      const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
+      const sign=new THREE.Mesh(new THREE.PlaneGeometry(5.4,2.7),
+        new THREE.MeshBasicMaterial({map,side:THREE.DoubleSide,toneMapped:false}));
+      sign.name=`monzon-${label.toLowerCase().replace(" ","-")}-sign`;
+      sign.position.set(x,4.2,20);sign.rotation.y=Math.PI/2;
+      this.group.add(sign);
+    };
+    addPitSign("PIT IN",103);
+    addPitSign("PIT OUT",198);
+
     // Four genuinely open service bays are built by MonzonGarages. The old
     // solid slab occupied their interiors and hid all workshop equipment.
     // Independent control tower with unobstructed glass panoramic band.
