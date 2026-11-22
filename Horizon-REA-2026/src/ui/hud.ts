@@ -15,19 +15,30 @@ function polar(angleDeg: number, radius: number): [number, number] {
   return [GAUGE_CX + Math.sin(a) * radius, GAUGE_CY - Math.cos(a) * radius];
 }
 
-function gaugeSvg(): string {
+/** Needle and painted progress ALWAYS share the actual selected car limit. */
+export function speedGaugeFraction(speedMph: number, limitMph: number): number {
+  if (!Number.isFinite(speedMph) || !Number.isFinite(limitMph) || limitMph <= 0) return 0;
+  return Math.max(0, Math.min(1, speedMph / limitMph));
+}
+
+function gaugeSvg(maxMph: number): string {
   const [x0, y0] = polar(-120, GAUGE_R);
   const [x1, y1] = polar(120, GAUGE_R);
   let ticks = "";
-  for (let v = 0; v <= 260; v += 20) {
-    const a = -120 + (v / 260) * 240;
+  // 21 ticks, six readable labels; the right end is precisely the selected
+  // car's 350/450/504 MPH maximum, never the old, incorrect 260 MPH scale.
+  for (let i = 0; i <= 20; i++) {
+    const a = -120 + i / 20 * 240;
     const [ax, ay] = polar(a, GAUGE_R - 3);
     const [bx, by] = polar(a, GAUGE_R - 13);
     const [tx, ty] = polar(a, GAUGE_R - 27);
-    const major = v % 60 === 0;
+    const major = i % 4 === 0;
     ticks += `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="rgba(255,255,255,${major ? 0.55 : 0.28})" stroke-width="${major ? 2 : 1}" />`;
     if (major) {
-      ticks += `<text x="${tx.toFixed(1)}" y="${(ty + 3).toFixed(1)}" fill="rgba(233,242,255,0.38)" font-size="8.5" font-weight="700" text-anchor="middle">${v}</text>`;
+      const v = i === 20 ? maxMph
+        : maxMph === 504 ? Math.round(i / 4) * 100
+        : Math.round(maxMph * i / 20);
+      ticks += `<text x="${tx.toFixed(1)}" y="${(ty + 3).toFixed(1)}" fill="rgba(233,242,255,0.50)" font-size="8.5" font-weight="700" text-anchor="middle">${v}</text>`;
     }
   }
   return `
@@ -71,6 +82,7 @@ export class HUD {
   private startPoint: [number, number];
   private toastTimer = 0;
   private lastSpeed = -1;
+  private gaugeMaxMph = 350;
   private startPhase: StartSignalPhase | null = null;
   private uiElapsed = .1;
 
@@ -93,7 +105,7 @@ export class HUD {
         </div>
         <div class="hud-speed">
           <div class="gauge">
-            ${gaugeSvg()}
+            ${gaugeSvg(this.gaugeMaxMph)}
             <div class="speed-read">
               <div class="num" id="hud-speed">0</div>
               <span class="unit">MPH</span>
@@ -207,12 +219,24 @@ export class HUD {
     this.bestEl.textContent = snapshot.bestLap > 0 ? formatTime(snapshot.bestLap * 1000) : "--:--.---";
     this.lastEl.textContent = snapshot.lastLap > 0 ? formatTime(snapshot.lastLap * 1000) : "--:--.---";
 
+    const maxMph = Math.round(vehicle.speedLimitMph);
+    if (maxMph !== this.gaugeMaxMph) {
+      // Selection is allowed between races; keep dial, labels, arc and needle
+      // in sync without re-creating the rest of the HUD or losing lap times.
+      const svg = this.el.querySelector<SVGSVGElement>(".hud-speed svg");
+      if (svg) svg.outerHTML = gaugeSvg(maxMph);
+      this.needle = this.el.querySelector("#spd-needle");
+      this.arc = this.el.querySelector("#spd-arc");
+      this.gaugeMaxMph = maxMph;
+      this.lastSpeed = -1;
+    }
     const speed = Math.round(vehicle.speedKph / 1.609344);
     if (speed !== this.lastSpeed) {
       this.speedEl.textContent = String(speed);
-      const angle = -120 + Math.min(speed, 260) / 260 * 240;
+      const fraction = speedGaugeFraction(speed, maxMph);
+      const angle = -120 + fraction * 240;
       if (this.needle) this.needle.setAttribute("transform", `rotate(${angle.toFixed(1)} ${GAUGE_CX} ${GAUGE_CY})`);
-      if (this.arc) this.arc.setAttribute("stroke-dashoffset", String(ARC_LEN * (1 - Math.min(speed, 260) / 260)));
+      if (this.arc) this.arc.setAttribute("stroke-dashoffset", String(ARC_LEN * (1 - fraction)));
       this.lastSpeed = speed;
     }
 
