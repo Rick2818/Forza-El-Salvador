@@ -62,6 +62,12 @@ La salida automática comparte el reloj de carrera entre rojo, amarillo y verde.
 - No se añaden servicios de descarga ni texturas de terceros en tiempo de ejecución. Se preservan los circuitos, los siete coches aprobados, el tráfico contrario opcional y la física existente.
 - **Validación:** la compilación y la batería de regresión son obligatorias antes de producción. La calidad visual final y los 60 FPS dependen todavía de una inspección en el navegador y de una medición sobre el equipo del jugador.
 
+## Espectadores visibles en Monzón y Suzaka
+
+- **Monzón:** se rebaja el muro frontal de la tribuna para abrir la vista de sus 420 aficionados; el público pasa de esferas a personas 3D estilizadas con camiseta, cabeza, brazos y piernas. Sobre los siete garajes se amplía la terraza a **dos niveles abiertos**, se sustituyen 80 figuras pequeñas por **160 espectadores** colocados por encima del letrero de los boxes. Total aproximado: 580 personas en Monzón.
+- **Suzaka:** nuevas plataformas abiertas de observación repartidas por sectores de la vuelta, con **48 espectadores por zona**. Se ubican cerca de los márgenes, pero siempre fuera de las barreras y lejos del puente elevado o de cualquier cruce de pista. Los pinos se excluyen de los espacios de tribuna para evitar tapar personas. Las figuras se muestran inmediatamente, sin requerir descargas externas.
+- Todos los aficionados utilizan geometría compartida e instancias Three.js, **sin luces ni sombras dinámicas**, para limitar la sobrecarga. Las nuevas tribunas no añaden colisionadores dentro del carril de carrera ni cierran el acceso a los garajes. La inspección visual y la medición de 60 FPS siguen siendo pruebas necesarias sobre el dispositivo real.
+
 ## Siete garajes de marcas con mecánicos y equipamiento físico — Monzón
 
 - Los cuatro boxes anteriores se amplían a **siete** (Ferrari, Porsche, Bugatti, Mercedes-Benz, Lamborghini, Koenigsegg y Yangwang), uno por cada automóvil aprobado. Cada garaje mide ahora **18,96 m de ancho × 13,2 m de profundidad × 5,64 m de alto**, un 20% más en cada dimensión.
