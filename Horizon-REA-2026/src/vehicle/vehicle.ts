@@ -240,8 +240,11 @@ export class Vehicle {
       // On a straight, compensate aero drag near 350-504 MPH WITHOUT boosting
       // launches, continuous steering or a slide. Restore the previous stable
       // per-brand power levels for corners and AI-driving.
-      engineForce += straightOnlyDragAssist(absSpeed,throttle,this.controls.steer,
+      // Electric U9 needs slightly stronger straight-only compensation at
+      // 504 MPH; six combustion vehicles already met their tested ceilings.
+      const straightAssist = straightOnlyDragAssist(absSpeed,throttle,this.controls.steer,
         lateralSpeed,this.body.angvel().y,grip);
+      engineForce += straightAssist * (this.electric ? 1.65 : 1);
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
     let reverseForce = 0;
