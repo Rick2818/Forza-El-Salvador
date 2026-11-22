@@ -77,7 +77,7 @@ it("persigue al líder y acelera antes de quedarse detrás del grupo", () => {
     targetSpeeds:Array(70).fill(47),curvatures:Array(70).fill(0)
   } as unknown as Track;
   const v={
-    position:new Vector3(),speed:47,onTrack:true,speedLimitMph:350,
+    position:new Vector3(),speed:55,onTrack:true,speedLimitMph:350,
     slip:0,body:{rotation:()=>({x:0,y:0,z:0,w:1})}
   } as unknown as Vehicle;
   const ai=new AIDriver(v,t,0,1,0,"atacante","medio");
