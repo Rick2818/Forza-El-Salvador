@@ -40,8 +40,8 @@ async function check(car) {
         return report;
       }
       const data = await res.json();
-      const licenseUid = String(data.license?.uid ?? "").toLowerCase();
       const licenseLabel = String(data.license?.label ?? data.license?.name ?? "UNVERIFIED");
+      const licenseUid = String(data.license?.uid ?? (licenseLabel === "CC Attribution" ? "by" : licenseLabel === "CC0 Public Domain" ? "cc0" : "")).toLowerCase();
       report.title = data.name ?? report.title;
       report.owner = data.user?.displayName ?? data.user?.username ?? null;
       report.licenseUid = licenseUid;

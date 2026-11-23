@@ -63,17 +63,33 @@
       "displayName": "Mercedes-AMG GT Black Series",
       "kind": "sport",
       "model": "replacements/assets/mercedes-amg-gt-black-series.glb",
-      "license": "PENDING",
-      "creator": "Tiaan Pretorius",
-      "original": "https://sketchfab.com/3d-models/mercedes-benz-amg-gt-black-series-a1c89ee2c731474dacc20701555915c5",
+      "license": "CC-BY-4.0",
+      "creator": "Mona x Supercars",
+      "original": "https://sketchfab.com/3d-models/mercedes-amg-gt-black-series-95259133d4214461bb076512f2dac978",
       "source": null,
       "rightsReviewed": false,
-      "sketchfabUid": "a1c89ee2c731474dacc20701555915c5",
-      "note": "Licencia por corroborar mediante API oficial.",
+      "sketchfabUid": "95259133d4214461bb076512f2dac978",
+      "note": "Modelo CC BY publicado, mismo poligonaje que modelos de otros autores con licencia NC; procedencia por comprobar antes de publicar.",
       "assetImported": false,
       "geometryApproved": false,
       "physicsApproved": false,
-      "runtimeFpsApproved": false
+      "runtimeFpsApproved": false,
+      "alternates": [
+        {
+          "name": "2021 Mercedes-AMG GT Black Series",
+          "uid": "5b62f77d732041a68784d13026ce7a16",
+          "license": "CC-BY-4.0",
+          "creator": "DisneyCars",
+          "notes": "Sin descripción de autoría: revisar la cadena de derechos"
+        },
+        {
+          "name": "Mercedes-Benz AMG GT 2015",
+          "uid": "4d9e0a8cf9a844149bf6630da83eb97b",
+          "license": "CC-BY-4.0",
+          "creator": "MMC Works",
+          "notes": "Creador indica modelado propio y partes separadas; 662k triángulos, NO es Black Series exacta"
+        }
+      ]
     },
     {
       "id": "lamborghini-aventador-roadster",
