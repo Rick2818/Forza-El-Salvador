@@ -49,3 +49,7 @@ El workflow `vehicle-assets-preview.yml` descarga **solo en la ejecución de Git
 ## Mercedes
 
 Se detectó que el Mercedes de Tiaan Pretorius anunciado anteriormente tenía licencia **CC BY-NC**. Se sustituyó la candidatura por el Mercedes AMG GT Black Series de Mona x Supercars con licencia anunciada CC BY, pero presenta coincidencia llamativa de triángulos con otras fuentes. Queda bloqueado hasta esclarecer quién posee los derechos de la malla.
+
+## Descarga oficial de los nueve Sketchfab (sin Blender)
+
+El workflow de ejecución manual `.github/workflows/vehicle-sketchfab-import.yml` incluye los nueve modelos originales identificados y usa exclusivamente la API oficial Sketchfab. Requiere OAuth del propio usuario guardado como secret `SKETCHFAB_OAUTH_TOKEN` en GitHub Actions. No se pueden saltar este paso ni las licencias. Utiliza `gltf-transform copy` para convertir los glTF oficiales a GLB y guarda los GLB solo como artefactos efímeros, sin publicarlos. Una ejecución incluye los nueve trabajos con un máximo de tres simultáneos.
