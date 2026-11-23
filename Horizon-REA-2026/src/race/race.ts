@@ -6,6 +6,11 @@ import { AIDriver, type RaceDifficulty, type RivalPersonality, type TrafficCar }
 import { OncomingDriver, ONCOMING_CAR_COUNT, expectedOncomingCount, oncomingPose, oncomingSpawnIndex } from "./oncoming";
 import { isStationaryUpsideDown, ROLLOVER_RECOVERY_SECONDS } from "./rolloverRecovery";
 import { SUZAKA_BRIDGE_SAFETY_THRESHOLD } from "../world/suzakaSuspensionBridge";
+import {
+  stalledUnderThrottle,
+  STALLED_THROTTLE_RECOVERY_SECONDS,
+  STALLED_THROTTLE_COOLDOWN_SECONDS
+} from "./stalledThrottleRecovery";
 import { inSuzakaPitArea } from "../world/suzakaPitAccess";
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
@@ -77,6 +82,8 @@ export class Race {
   private playerStrandedSeconds = 0;
   private playerRescueCount = 0;
   private playerInvertedSeconds = 0;
+  private playerStalledSeconds = 0;
+  private playerStallRecoveryCooldown = 0;
 
   get rescues(): number { return this.playerRescueCount; }
 
@@ -182,6 +189,7 @@ export class Race {
   }
 
   update(dt: number, input: Input): void {
+    this.playerStallRecoveryCooldown = Math.max(0, this.playerStallRecoveryCooldown - dt);
     // Safety on the Suzaka figure-eight: the old trackside guard stood metres
     // away from the kerb. Even a stationary player stranded OUTSIDE its wall
     // was never recovered because the previous checks only watched altitude.
@@ -198,7 +206,23 @@ export class Race {
       const inPit = !!closest && isSuzaka && inSuzakaPitArea(
         closest.index*this.track.segmentLength,closest.lateral,this.track.barrierLateralOffset);
       const escaped = !!closest && !inPit && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
-      const nearlyStopped = Math.hypot(v.x,v.z)<1.0;
+      const planarSpeed = Math.hypot(v.x,v.z);
+      const nearlyStopped = planarSpeed < 1.0;
+      // Recover when the engine responds to W but a kerb or obstacle prevents
+      // all forward motion. Only deliberate throttle counts; braking, reverse,
+      // pit stops and the starting signal must never trigger this safeguard.
+      if (racer.isPlayer) {
+        this.playerStalledSeconds = finite && stalledUnderThrottle({
+          racing: this.state === "racing",
+          throttle: input.throttle,
+          brake: input.brake,
+          handbrake: input.handbrake,
+          planarSpeed
+        }) ? this.playerStalledSeconds + dt : 0;
+      }
+      const stalledUnderPower = racer.isPlayer &&
+        this.playerStalledSeconds >= STALLED_THROTTLE_RECOVERY_SECONDS &&
+        this.playerStallRecoveryCooldown <= 0;
       if(isSuzaka && racer.isPlayer && closest && !inPit &&
          strandedOutsideSuzakaKerb(closest.lateral,this.track.halfWidth,nearlyStopped?0:Math.hypot(v.x,v.z)) &&
          this.state === "racing") this.playerStrandedSeconds+=dt;
@@ -211,7 +235,7 @@ export class Race {
         this.playerInvertedSeconds = 0;
       }
       const overturned = racer.isPlayer && this.playerInvertedSeconds >= ROLLOVER_RECOVERY_SECONDS;
-      if (!finite || escaped || stuck || overturned ||
+      if (!finite || escaped || stuck || overturned || stalledUnderPower ||
           p.y < anchor.y-8 ||
           (isSuzaka && anchor.y >= SUZAKA_BRIDGE_SAFETY_THRESHOLD &&
            p.y < anchor.y-2.5) ||
@@ -220,7 +244,13 @@ export class Race {
         const tangent=this.track.tangentAt(anchorIndex);
         racer.vehicle.place(anchor,Math.atan2(tangent.x,tangent.z));
         racer.hint=anchorIndex;
-        if(racer.isPlayer) { this.playerStrandedSeconds=0; this.playerInvertedSeconds=0; this.playerRescueCount++; }
+        if(racer.isPlayer) {
+          this.playerStrandedSeconds=0;
+          this.playerInvertedSeconds=0;
+          this.playerStalledSeconds=0;
+          this.playerStallRecoveryCooldown=STALLED_THROTTLE_COOLDOWN_SECONDS;
+          this.playerRescueCount++;
+        }
       }
     }
     if (this.state === "countdown") {
