@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createRealisticPitCrew, advanceRealisticCrew } from "./realisticPitCrew";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 export interface HumanPlacement {
@@ -6,7 +7,7 @@ export interface HumanPlacement {
   worker?:boolean;
 }
 const time={value:0};
-export function advancePeopleAnimation(dt:number):void {time.value+=Math.max(0,Math.min(dt,.05));}
+export function advancePeopleAnimation(dt:number):void {time.value+=Math.max(0,Math.min(dt,.05));advanceRealisticCrew(dt);}
 let assets:Promise<THREE.BufferGeometry[]>|undefined;
 function loadPeople():Promise<THREE.BufferGeometry[]> {
   return assets??=Promise.all(["near","mid","far"].map(async lod=>{
@@ -119,6 +120,7 @@ function humanMaterial():THREE.MeshStandardMaterial {
  * All matrices and attribute buffers are allocated once. Camera-based repartitioning
  * runs only after camera movement or every half-second of animation. */
 export function createHumanPeople(people:readonly HumanPlacement[],name:string,frustumCulled=false):THREE.Group {
+  if(people.some(p=>p.worker))return createRealisticPitCrew(people,name);
   const group=new THREE.Group();group.name=name;
   group.userData.people=people.length;
   group.userData.animated=true;group.userData.drawCalls=3;

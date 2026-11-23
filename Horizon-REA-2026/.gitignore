@@ -1,2 +1,5 @@
 node_modules
 review/
+
+# Reproducible Rocketbox Blender caches
+tools/blender/sources/realistic-crew/

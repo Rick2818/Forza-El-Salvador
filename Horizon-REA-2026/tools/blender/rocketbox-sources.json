@@ -1,0 +1,66 @@
+{
+  "repository": "microsoft/Microsoft-Rocketbox",
+  "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "files": [
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/m_idle_breathe_01.max.fbx",
+      "gitBlobSha1": "735b406c2f19cf233f042bfe0424c2a15c053c95"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/m_work_mid.max.fbx",
+      "gitBlobSha1": "13b5de9500e6654cfb491180d27b56e051115970"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_02/Export/Construction_Male_02.fbx",
+      "gitBlobSha1": "76b497909897cb9c50e6ad737b9bd1dd96d78bb5"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_02/Export/Construction_Male_02_facial.fbx",
+      "gitBlobSha1": "a9a7723bd960dd31c22219775229cc2f25b52dce"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_02/Textures/m101_body_color.tga",
+      "gitBlobSha1": "a10ff14d5e2bf334abd423af3b39259621d7a36e"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_02/Textures/m101_body_normal.tga",
+      "gitBlobSha1": "8e647c76fdee2e2c9112bf5216260d30245d3c90"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_02/Textures/m101_head_color.tga",
+      "gitBlobSha1": "8d685c4e7d7cb58007dfcaea56b1d6067bb7f729"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_02/Textures/m101_head_normal.tga",
+      "gitBlobSha1": "d177a34d0cd8b48eeb9d1bff63b14ebd2a7966bd"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_05/Export/Construction_Male_05.fbx",
+      "gitBlobSha1": "905f76b972d81978dcbbc74abc3b8ffd38ef2916"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_05/Export/Construction_Male_05_facial.fbx",
+      "gitBlobSha1": "7e96d7c27b4fba20d06cec2f4bd781ec84d4adea"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_05/Textures/m104_body_color.tga",
+      "gitBlobSha1": "45defc19c6d6823d2c2e4f4e256c4ec1d40caf6a"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_05/Textures/m104_body_normal.tga",
+      "gitBlobSha1": "ba1e0005b1c64a0250fc9bbdb183fbb4a2bbded8"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_05/Textures/m104_head_color.tga",
+      "gitBlobSha1": "6cecb6232d4009dd151ad2b3fa424b14ee338792"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Construction_Male_05/Textures/m104_head_normal.tga",
+      "gitBlobSha1": "4f293582319733449af27c2610de4318bbfd8037"
+    },
+    {
+      "path": "LICENSE.md",
+      "gitBlobSha1": "9bcfb3ece5301a55d3a41bbd00a029ab27d61d13"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+name: Revisar mecánicos realistas sin publicar
+on:
+  push:
+    branches: [quality/realistic-pit-crew]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm exec vitest run tests/realistic-crew.test.mjs tests/people-assets.test.mjs tests/monzon-pits.test.mjs src/world/crowdVisibility.test.ts
+      - run: npm run build
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: npm run preview > /tmp/horizon-realistic-preview.log 2>&1 &
+      - run: node tools/review-realistic-crew.mjs
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: ffmpeg -y -framerate 12 -i review/realistic-crew/frames/%04d.jpg -c:v libx264 -pix_fmt yuv420p -crf 19 -movflags +faststart review/realistic-crew/mecanicos-realistas.mp4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: horizon-realistic-crew-review
+          path: |
+            Horizon-REA-2026/review/realistic-crew/*.png
+            Horizon-REA-2026/review/realistic-crew/*.json
+            Horizon-REA-2026/review/realistic-crew/*.mp4
+          if-no-files-found: error

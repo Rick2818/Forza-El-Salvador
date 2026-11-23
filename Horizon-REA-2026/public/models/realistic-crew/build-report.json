@@ -1,0 +1,14 @@
+{
+  "senior": {
+    "triangles": 7312,
+    "bones": 80,
+    "materials": 2,
+    "glbBytes": 6073304
+  },
+  "technician": {
+    "triangles": 7008,
+    "bones": 80,
+    "materials": 2,
+    "glbBytes": 5696320
+  }
+}
