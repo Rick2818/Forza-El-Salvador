@@ -14,11 +14,12 @@ permissions:
 
 concurrency:
   group: monzon-blender-assets
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   blender-trees:
     runs-on: ubuntu-24.04
+    timeout-minutes: 35
     steps:
       - name: Descargar rama de trabajo
         uses: actions/checkout@v4
@@ -27,7 +28,7 @@ jobs:
       - name: Instalar Blender
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y blender python3-numpy
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender python3-numpy
           blender -b --factory-startup --python-expr "import bpy, numpy; print('Blender',bpy.app.version_string,'NumPy',numpy.__version__)"
       - name: Tres pasadas reales y exportacion GLB
         working-directory: Horizon-REA-2026
@@ -35,6 +36,11 @@ jobs:
           blender -b -t 2 --factory-startup --python tools/blender/build_monzon_three_pass.py
           test -s public/scenery/monzon-tree-v1.glb
           test -s public/scenery/monzon-tree-v2.glb
+          node tools/verify-monzon-tree-glb.mjs
+          for n in 1 2 3; do
+            test -s "review/monzon-blender/pass-$n-v1.blend"
+            test -s "review/monzon-blender/pass-$n-v2.blend"
+          done
       - name: Guardar evidencia Blender de las tres pasadas
         uses: actions/upload-artifact@v4
         with:
