@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createRealisticPitCrew, advanceRealisticCrew } from "./realisticPitCrew";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { audienceInView, audienceLod, shouldRefreshCrowd } from "./crowdFrameBudget";
 
 export interface HumanPlacement {
   x:number; y:number; z:number; yaw:number; shirt:number; skin:number;
@@ -144,18 +145,26 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
       group.add(mesh);return mesh;
     });
     const cameraLocal=new THREE.Vector3(),last=new THREE.Vector3(Infinity,0,0),worldCamera=new THREE.Vector3();
+    const worldForward=new THREE.Vector3(),localForward=new THREE.Vector3(),lastForward=new THREE.Vector3(0,0,0);
+    const groupRotation=new THREE.Quaternion();
     const position=new THREE.Vector3(),scale=new THREE.Vector3(1,1,1),rotation=new THREE.Quaternion();
     const matrix=new THREE.Matrix4(),tint=new THREE.Color(),axis=new THREE.Vector3(0,1,0);
     let refreshed=-1;
     const refresh=(camera:THREE.Camera)=>{
       camera.getWorldPosition(worldCamera);cameraLocal.copy(worldCamera);group.worldToLocal(cameraLocal);
-      if(last.distanceToSquared(cameraLocal)<.16 && time.value-refreshed<.5)return;
-      last.copy(cameraLocal);refreshed=time.value;
+      camera.getWorldDirection(worldForward);
+      group.getWorldQuaternion(groupRotation);
+      localForward.copy(worldForward).applyQuaternion(groupRotation.invert()).normalize();
+      if(!shouldRefreshCrowd(last.distanceToSquared(cameraLocal),
+        lastForward.dot(localForward),time.value-refreshed))return;
+      last.copy(cameraLocal);lastForward.copy(localForward);refreshed=time.value;
       const counts=[0,0,0];
       for(let i=0;i<people.length;i++) {
-        const p=people[i],distance=Math.hypot(cameraLocal.x-p.x,cameraLocal.y-p.y,cameraLocal.z-p.z);
-        if(distance>850)continue;
-        const lod=distance<23?0:distance<105?1:2;
+        const p=people[i];
+        const dx=p.x-cameraLocal.x,dy=p.y+1-cameraLocal.y,dz=p.z-cameraLocal.z;
+        const distance=Math.hypot(dx,dy,dz);
+        if(!audienceInView(distance,dx*localForward.x+dy*localForward.y+dz*localForward.z))continue;
+        const lod=audienceLod(distance);
         const mesh=batches[lod],index=counts[lod]++;
         position.set(p.x,p.y,p.z);rotation.setFromAxisAngle(axis,p.yaw);
         matrix.compose(position,rotation,scale);mesh.setMatrixAt(index,matrix);
@@ -170,6 +179,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
         for(const attr of ["iSkin","iShirt","iPerson"])mesh.geometry.getAttribute(attr).needsUpdate=true;
       }
       group.userData.lodCounts=counts;
+      group.userData.visibleAudience=counts[0]+counts[1]+counts[2];
     };
     group.userData.updatePeople=refresh;
     group.userData.ready=true;
