@@ -95,8 +95,10 @@ function chooseAngle(angle: string): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-view]")) {
     button.classList.toggle("active", button.dataset.view === angle);
   }
-  // Acercamiento del 40% respecto al encuadre anterior, manteniendo espacio para la carrocería.
-  const distance = Math.max(modelExtent*0.95, 4.5);
+  // Acercar la cámara de las vistas 3D un 28.6% para que el auto aparente
+  // aproximadamente un 40% más grande que en la versión anterior del garaje.
+  // No modificamos escala del GLB, pivotes ni física.
+  const distance = Math.max(modelExtent * 0.95, 4.5) / 1.4;
   let target = new THREE.Vector3(0, height*0.47, 0);
   if (angle === "front") camera.position.set(distance*0.86, height*0.94, distance*1.15);
   else if (angle === "rear") camera.position.set(-distance*0.87, height*0.89, -distance*1.13);
