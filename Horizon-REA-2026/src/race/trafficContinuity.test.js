@@ -66,3 +66,42 @@ it("keeps Monzón running past two minutes when the fifth traffic model is unava
     world.free();
   }
 });
+
+it("recovers a real Rapier-controlled rival trapped in an impact-style deadlock", () => {
+  const track = new Track(getCircuit("monzon"));
+  track.buildVisuals = () => {};
+  track.build();
+  const world = new RAPIER.World({ x: 0, y: -13.5, z: 0 });
+  track.addPhysics(world);
+  const race = new Race(world, new THREE.Scene(), track, selectedVehicle.id, "medio", false);
+  world.timestep = 1 / 60;
+  race.state = "racing";
+  const rival = race.racers.find(r => !r.isPlayer);
+  expect(rival).toBeDefined();
+  const frozen = rival.vehicle.body.translation();
+  const fixedPoint = { x: frozen.x, y: frozen.y, z: frozen.z };
+  const input = { throttle: 0, brake: 0, steer: 0, handbrake: false };
+  let recovered = false;
+  try {
+    for (let i = 0; i < 9 * 60; i++) {
+      // A crush against another car/guardrail produces virtually zero route
+      // progress despite revving/reversing. Freeze only this test rival.
+      rival.vehicle.body.setTranslation(fixedPoint, true);
+      rival.vehicle.body.setLinvel({x:0,y:0,z:0}, true);
+      race.update(1 / 60, input);
+      if (race.aiRescues) {
+        const pos = rival.vehicle.body.translation();
+        expect(Math.hypot(pos.x - fixedPoint.x, pos.z - fixedPoint.z)).toBeGreaterThan(20);
+        recovered = true;
+        break;
+      }
+      world.step();
+      for (const racer of race.racers) racer.vehicle.afterPhysicsStep();
+    }
+    expect(recovered, "Blocked AI car must rejoin the race before 9 seconds").toBe(true);
+    expect(race.elapsed).toBeGreaterThanOrEqual(6);
+  } finally {
+    race.dispose();
+    world.free();
+  }
+});
