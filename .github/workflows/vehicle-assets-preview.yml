@@ -1,0 +1,49 @@
+name: Previsualizar modelos 3D con atribución (no publicar)
+on:
+  push:
+    branches: [art/ten-realistic-vehicles-intake-20261123]
+    paths:
+      - "Horizon-REA-2026/replacements/**"
+      - "Horizon-REA-2026/tools/audit-replacement-models.mjs"
+      - ".github/workflows/vehicle-assets-preview.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview-source-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar para evaluación tres modelos 3D con créditos documentados
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p Horizon-REA-2026/replacements/assets Horizon-REA-2026/replacements/reports
+          BASE="https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main"
+          # Solo evaluación privada en artefacto temporal; no se incorporan al juego.
+          # Porsche Carrera 4S tiene licencia BY-SA: exige evaluación adicional
+          # de obligaciones de distribución al integrar la obra modificada.
+          for entry in \
+            "ferrari-f430:basic/ferrari/f430/f430.glb" \
+            "lamborghini-aventador-preview:basic/lamborghini/aventador/aventador.glb" \
+            "porsche-911-carrera-4s-preview:basic/porsche/nine11/nine11.glb"; do
+            name="${entry%%:*}"; relative="${entry#*:}"
+            echo "PREVISUALIZANDO ${name}"
+            curl --fail --silent --show-error --location --retry 3 --max-time 90 \
+              "${BASE}/${relative}" -o "Horizon-REA-2026/replacements/assets/${name}.glb"
+            ( cd Horizon-REA-2026 &&
+              node tools/audit-replacement-models.mjs --file "replacements/assets/${name}.glb" \
+                | tee -a "replacements/reports/three-preview-models.jsonl" )
+          done
+      - name: Validación general de tenencia y geometría de los 10
+        working-directory: Horizon-REA-2026
+        run: node tools/audit-replacement-models.mjs --available
+      - name: Guardar modelos temporales y sus resultados (sin tocar producción)
+        uses: actions/upload-artifact@v4
+        with:
+          name: previsualizacion-ferrari-lamborghini-porsche
+          path: |
+            Horizon-REA-2026/replacements/assets/*.glb
+            Horizon-REA-2026/replacements/reports/three-preview-models.jsonl
+          retention-days: 7

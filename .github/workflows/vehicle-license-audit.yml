@@ -1,0 +1,29 @@
+name: Auditar licencias Sketchfab de los diez autos (no publicar)
+on:
+  push:
+    branches: [art/ten-realistic-vehicles-intake-20261123]
+    paths:
+      - "Horizon-REA-2026/replacements/**"
+      - "Horizon-REA-2026/tools/audit-sketchfab-sources.mjs"
+      - ".github/workflows/vehicle-license-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-model-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar sintaxis del auditor
+        working-directory: Horizon-REA-2026
+        run: node --check tools/audit-sketchfab-sources.mjs
+      - name: Consultar API pública Sketchfab para las diez fichas
+        working-directory: Horizon-REA-2026
+        run: node tools/audit-sketchfab-sources.mjs
+      - name: Guardar informe de licencia y procedencia
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-licencias-diez-vehiculos
+          path: Horizon-REA-2026/replacements/reports/sketchfab-license-audit.json
+          retention-days: 30

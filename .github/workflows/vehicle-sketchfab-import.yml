@@ -1,0 +1,72 @@
+name: Importar nueve modelos Sketchfab con OAuth (solo preproducción)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  import-licensed-models:
+    if: github.ref_name == 'art/ten-realistic-vehicles-intake-20261123'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - { id: "porsche-911", uid: "877b1bc1739f4a2bb65d62fd7ffd9f75" }
+          - { id: "bugatti-chiron", uid: "374890e62c5a44e9a739ca638b6e0a18" }
+          - { id: "mercedes-amg-gt-black-series", uid: "95259133d4214461bb076512f2dac978" }
+          - { id: "lamborghini-aventador-roadster", uid: "36eb1fa54a0d4be695d4cd90c30f4ff1" }
+          - { id: "yangwang-u9", uid: "c14e3511bb9143acb3fe2aaf8e1b4346" }
+          - { id: "koenigsegg-jesko-odin", uid: "408bed6ddca14a1a9c9eeaa5437f62f0" }
+          - { id: "ram-1500-trx", uid: "d6d548c5fe9f4749813f0a386edfd42c" }
+          - { id: "chevrolet-silverado-z71", uid: "2ad964f59a774e199d9caf143f21e614" }
+          - { id: "ford-f150-raptor", uid: "5acc96d65a374f7280ddbd1c2d5bf12e" }
+    env:
+      SKETCHFAB_TOKEN: ${{ secrets.SKETCHFAB_OAUTH_TOKEN }}
+      MODEL_UID: ${{ matrix.uid }}
+      MODEL_ID: ${{ matrix.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar sesión de usuario y licencia CC BY oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$SKETCHFAB_TOKEN" ]; then
+            echo "::error::Falta OAuth de Sketchfab en SKETCHFAB_OAUTH_TOKEN (GitHub Actions Secrets)"
+            exit 1
+          fi
+          metadata="$(curl --fail --silent --show-error --retry 2 --max-time 40 "https://api.sketchfab.com/v3/models/$MODEL_UID")"
+          license="$(jq -r '.license.label // ""' <<< "$metadata")"
+          downloadable="$(jq -r '.isDownloadable // false' <<< "$metadata")"
+          if [ "$license" != "CC Attribution" ] || [ "$downloadable" != "true" ]; then
+            echo "::error::Modelo sin licencia CC BY descargable. Importación bloqueada."
+            exit 1
+          fi
+      - name: Descargar vía Sketchfab oficial y convertir a GLB sin Blender
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "Horizon-REA-2026/replacements/assets" "$RUNNER_TEMP/sketchfab"
+          info="$(curl --fail --silent --show-error --retry 2 --max-time 60 \
+            --header "Authorization: Bearer $SKETCHFAB_TOKEN" \
+            "https://api.sketchfab.com/v3/models/$MODEL_UID/download")"
+          signed="$(jq -er '.gltf.url' <<< "$info")"
+          curl --fail --silent --show-error --location --retry 2 --max-time 240 "$signed" \
+            -o "$RUNNER_TEMP/model.zip"
+          unzip -q "$RUNNER_TEMP/model.zip" -d "$RUNNER_TEMP/sketchfab"
+          source="$(find "$RUNNER_TEMP/sketchfab" -type f -name '*.gltf' -print -quit)"
+          if [ -z "$source" ]; then echo "::error::Archivos glTF ausentes"; exit 1; fi
+          npm install --global --silent @gltf-transform/cli
+          gltf-transform copy "$source" "Horizon-REA-2026/replacements/assets/$MODEL_ID.glb"
+          test -s "Horizon-REA-2026/replacements/assets/$MODEL_ID.glb"
+      - name: Auditar malla, pivotes, interior y bajos de automóvil importado
+        working-directory: Horizon-REA-2026
+        shell: bash
+        run: node tools/audit-replacement-models.mjs --file "replacements/assets/$MODEL_ID.glb"
+      - name: Retener temporalmente GLB para revisión privada; jamás publicar
+        uses: actions/upload-artifact@v4
+        with:
+          name: modelo-auditoria-${{ matrix.id }}
+          path: Horizon-REA-2026/replacements/assets/${{ matrix.id }}.glb
+          retention-days: 7
