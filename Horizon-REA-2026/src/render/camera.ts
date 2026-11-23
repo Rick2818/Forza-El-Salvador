@@ -16,8 +16,6 @@ const _position = new THREE.Vector3();
 const _seat = new THREE.Vector3();
 const _curve = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
-const _right = new THREE.Vector3();
-const _up = new THREE.Vector3(0, 1, 0);
 
 /** Three modes share the same physics vehicle and world camera. */
 export const CAMERA_LABELS: Record<CameraMode, string> = {
