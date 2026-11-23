@@ -1,0 +1,46 @@
+name: QA capturas GLB originales 6 vehiculos
+on:
+  push:
+    branches: ["qa/real-vehicle-previews-20261123"]
+    paths:
+      - ".github/workflows/qa-real-vehicle-previews.yml"
+      - "Horizon-REA-2026/model-inspection.html"
+      - "Horizon-REA-2026/tools/generate-vehicle-previews.mjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Dependencias base
+        run: npm ci
+      - name: Puppeteer y Chrome
+        run: |
+          npm install --no-save --no-package-lock puppeteer-core
+          (which google-chrome || which chromium) | tee /tmp/chromepath
+          echo "CHROME_PATH=$(cat /tmp/chromepath)" >> "$GITHUB_ENV"
+      - name: Copiar decoder Draco GLB
+        run: |
+          mkdir -p public/model-draco
+          cp node_modules/three/examples/jsm/libs/draco/* public/model-draco/
+      - name: Capturas y auditar geometria 3D real
+        run: node tools/generate-vehicle-previews.mjs
+      - name: Archivo de 24 capturas originales y analisis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: horizon-24-real-model-views
+          path: Horizon-REA-2026/preview-results
+          retention-days: 7
+          if-no-files-found: warn

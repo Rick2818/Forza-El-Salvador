@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;background:#18232d;overflow:hidden;font:20px Arial;color:#f1f5f9}
+#title{position:absolute;z-index:2;top:18px;left:24px;font-weight:bold;text-shadow:0 1px 3px #000}
+#sub{font-size:12px;opacity:.9;margin-top:6px;font-weight:normal}
+#fault{position:absolute;z-index:3;bottom:15px;left:20px;color:#ff8c8c}
+</style></head>
+<body><div id="title">Modelo 3D original<div id="sub">HORIZON EL SALVADOR · INSPECCIÓN REAL DEL ARCHIVO GLB</div></div><div id="fault"></div>
+<script type="module">
+import * as THREE from "three";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {DRACOLoader} from "three/addons/loaders/DRACOLoader.js";
+import {MeshoptDecoder} from "three/addons/libs/meshopt_decoder.module.js";
+const qs=new URLSearchParams(location.search);
+const id=qs.get("model")||"ferrari-f430";
+const view=qs.get("view")||"front";
+const allow=["ferrari-f430","lamborghini-aventador","porsche-911-c4s","bugatti-chiron-profilee","koenigsegg-jesko","ford-f150-raptor-police"];
+const nice={"ferrari-f430":"Ferrari F430","lamborghini-aventador":"Lamborghini Aventador","porsche-911-c4s":"Porsche 911 C4S","bugatti-chiron-profilee":"Bugatti Chiron Profilée","koenigsegg-jesko":"Koenigsegg Jesko","ford-f150-raptor-police":"Ford F-150 Raptor (policial)"};
+window.__previewDone=false;window.__previewError=null;
+if(!allow.includes(id))throw Error("Modelo desconocido");
+document.querySelector("#title").firstChild.textContent=nice[id]+" · "+({front:"VISTA 3/4",rear:"VISTA POSTERIOR",cabin:"CABINA (ESTIMADA)",under:"BAJOS"}[view]||view);
+try{
+ const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,powerPreference:"high-performance"});
+ renderer.setPixelRatio(1);renderer.setSize(innerWidth,innerHeight);
+ renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.5;
+ document.body.appendChild(renderer.domElement);
+ const scene=new THREE.Scene();
+ scene.background=new THREE.Color("#24313c");
+ scene.add(new THREE.HemisphereLight(0xe2efff,0x25313c,3.2));
+ const key=new THREE.DirectionalLight(0xffffff,4.2);key.position.set(7,12,6);scene.add(key);
+ const fill=new THREE.DirectionalLight(0x9dbafc,2.4);fill.position.set(-8,4,-5);scene.add(fill);
+ const rim=new THREE.DirectionalLight(0xffdec1,2.3);rim.position.set(0,3,-9);scene.add(rim);
+ const camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.01,200);
+ const draco=new DRACOLoader();draco.setDecoderPath("/model-draco/");
+ const loader=new GLTFLoader();loader.setDRACOLoader(draco);loader.setMeshoptDecoder(MeshoptDecoder);
+ await MeshoptDecoder.ready;
+ const gltf=await loader.loadAsync("/models/external-candidates/"+id+".glb");
+ const car=gltf.scene;scene.add(car);car.updateMatrixWorld(true);
+ let box=new THREE.Box3().setFromObject(car);
+ const dimensions=box.getSize(new THREE.Vector3());
+ if(!Number.isFinite(dimensions.length())||dimensions.length()===0)throw Error("Geometría ilegible");
+ const scale=5.6/Math.max(dimensions.x,dimensions.z,dimensions.y);
+ car.scale.setScalar(scale);
+ car.updateMatrixWorld(true);box=new THREE.Box3().setFromObject(car);
+ const mid=box.getCenter(new THREE.Vector3());car.position.sub(new THREE.Vector3(mid.x,box.min.y,mid.z));car.updateMatrixWorld(true);
+ box=new THREE.Box3().setFromObject(car);
+ const h=box.max.y;
+ const target=new THREE.Vector3(0,h*.49,0);
+ const s=Math.max(5.6,h*1.1);
+ if(view==="front") camera.position.set(s*.93,h*.99,s*1.23);
+ else if(view==="rear")camera.position.set(-s*.95,h*.78,-s*1.25);
+ else if(view==="cabin"){camera.position.set(0,h*.78,s*.09);target.set(0,h*.65,-s*.80);}
+ else if(view==="under"){camera.position.set(s*.75,-h*1.7,s*.93);target.set(0,h*.34,0);}
+ else camera.position.set(s,h,s);
+ camera.lookAt(target);
+ if(view!=="under"){
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:"#29333c",roughness:.95}));
+  floor.rotation.x=-Math.PI/2;floor.position.y=-.06;scene.add(floor);
+  const grid=new THREE.GridHelper(100,50,0x5b7286,0x3c5265);grid.position.y=-.05;scene.add(grid);
+ }
+ let meshCount=0,triangles=0,glassCount=0,interiorNamed=0,underbodyNamed=0,wheelNamed=0;
+ car.traverse(o=>{if(!o.isMesh)return;meshCount++;const geo=o.geometry;
+  triangles+=geo.index?geo.index.count/3:(geo.attributes.position?.count||0)/3;
+  const n=(o.name+" "+(Array.isArray(o.material)?o.material.map(x=>x.name).join(" "):o.material?.name||"")).toLowerCase();
+  if(/glass|window|windshield/.test(n))glassCount++;
+  if(/interior|seat|cockpit|dashboard|steer/.test(n))interiorNamed++;
+  if(/underbody|chassis|suspension|axle|diffuser|exhaust/.test(n))underbodyNamed++;
+  if(/wheel|tire|tyre|rim/.test(n))wheelNamed++;
+ });
+ window.__previewAudit={id,view,meshCount,triangles:Math.round(triangles),glassCount,interiorNamed,underbodyNamed,wheelNamed,bounds:box.getSize(new THREE.Vector3()).toArray()};
+ renderer.render(scene,camera);await new Promise(ok=>requestAnimationFrame(ok));renderer.render(scene,camera);
+ window.__previewDone=true;
+}catch(e){window.__previewError=String(e);document.querySelector("#fault").textContent=window.__previewError;}
+</script></body></html>
