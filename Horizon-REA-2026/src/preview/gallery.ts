@@ -63,7 +63,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI * 0.98;
 controls.minDistance = 1.5;
-controls.maxDistance = 24;
+controls.maxDistance = 14;
 
 const loader = new GLTFLoader();
 const draco = new DRACOLoader();
@@ -95,7 +95,8 @@ function chooseAngle(angle: string): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-view]")) {
     button.classList.toggle("active", button.dataset.view === angle);
   }
-  const distance = Math.max(modelExtent*1.55, 7);
+  // Acercamiento del 40% respecto al encuadre anterior, manteniendo espacio para la carrocería.
+  const distance = Math.max(modelExtent*0.95, 4.5);
   let target = new THREE.Vector3(0, height*0.47, 0);
   if (angle === "front") camera.position.set(distance*0.86, height*0.94, distance*1.15);
   else if (angle === "rear") camera.position.set(-distance*0.87, height*0.89, -distance*1.13);
@@ -243,7 +244,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelse
 const rotateButton = $("rotate") as HTMLButtonElement;
 rotateButton.addEventListener("click", () => {
   controls.autoRotate = !controls.autoRotate;
-  controls.autoRotateSpeed = 1;
+  // Vuelta completa aprox. cada 10 segundos en vez de 60 (a 60 FPS).
+  controls.autoRotateSpeed = 6;
   rotateButton.setAttribute("aria-pressed", String(controls.autoRotate));
 });
 $("capture").addEventListener("click", () => {
