@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Horizon El Salvador - original 3D racing game (Three.js + Rapier)",
   "scripts": {
-    "dev": "vite --port 5173 --strictPort --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build && node tools/stamp-build.mjs",
+    "dev": "node tools/prepare-draco.mjs && vite --port 5173 --strictPort --host 127.0.0.1",
+    "build": "node tools/prepare-draco.mjs && tsc --noEmit && vite build && node tools/stamp-build.mjs",
     "preview": "vite preview --port 4173 --strictPort --host 127.0.0.1",
     "test": "vitest run"
   },
