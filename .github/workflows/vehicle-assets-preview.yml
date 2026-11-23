@@ -29,8 +29,8 @@ jobs:
               node tools/audit-replacement-models.mjs --file "replacements/assets/${name}.glb" \
                 | tee -a replacements/reports/ferrari-candidate-mesh-audit.jsonl )
           done
-          cp Horizon-REA-2026/replacements/assets/f488.glb \
-            Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
+          cp Horizon-REA-2026/replacements/assets/f430.glb \
+            Horizon-REA-2026/replacements/assets/ferrari-f430.glb
       - name: Diagnóstico del lote completo (sin sustituir autos existentes)
         working-directory: Horizon-REA-2026
         run: node tools/audit-replacement-models.mjs --available

@@ -3,16 +3,16 @@
   "expectedVehicles": 10,
   "cars": [
     {
-      "id": "ferrari-488-pista-spider",
+      "id": "ferrari-f430",
       "replaces": "ferrari-california-t",
-      "displayName": "Ferrari 488 Pista Spider",
+      "displayName": "Ferrari F430 (2005)",
       "kind": "sport",
-      "model": "replacements/assets/ferrari-488-pista-spider.glb",
+      "model": "replacements/assets/ferrari-f430.glb",
       "license": "CC-BY-4.0",
       "creator": "Ddiaz Design",
-      "original": "https://skfb.ly/prvMq",
-      "redistributor": "https://github.com/supercar3d/supercar_3D_asssets/blob/main/basic/ferrari/f488/license.txt",
-      "source": "https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari/f488/f488.glb",
+      "original": "https://skfb.ly/prtB6",
+      "redistributor": "https://github.com/supercar3d/supercar_3D_asssets/blob/main/basic/ferrari/f430/license.txt",
+      "source": "https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari/f430/f430.glb",
       "rightsReviewed": false
     },
     {

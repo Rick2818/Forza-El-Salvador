@@ -14,7 +14,7 @@ Esta carpeta **no sustituye los modelos del juego**. Su fin es obtener, inspecci
 
 ## Candidato disponible para auditoría
 
-**Ferrari 488 Pista Spider**: el repositorio de distribución incluye modelo GLB y un archivo de atribución CC BY 4.0 a Ddiaz Design. Esto **no confirma** todavía ni la autoría original, ni el interior, ni los bajos, ni la calidad del modelo: queda marcado `rightsReviewed=false` y no entra en producción automáticamente.
+**Ferrari F430**: el repositorio de distribución incluye modelo GLB y un archivo de atribución CC BY 4.0 a Ddiaz Design. Esto **no confirma** todavía ni la autoría original, ni el interior, ni los bajos, ni la calidad del modelo: queda marcado `rightsReviewed=false` y no entra en producción automáticamente.
 
 Para inspeccionar manualmente un GLB en `replacements/assets/<id>.glb`:
 
