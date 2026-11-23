@@ -30,5 +30,57 @@
     "sourceCommit": "5948d1307f673e98aedae591c0d78c834f184713",
     "status": "candidate-not-in-roster",
     "note": "Sin certificación de interior completo, pivotes de rueda, rendimiento ni derechos de marcas."
+  },
+  {
+    "id": "porsche-911-c4s",
+    "filename": "porsche-911-c4s.glb",
+    "sizeBytes": 1618524,
+    "sha256": "d5261b30a2c8d11d1f4ed1a2c9d8e8166980acfce1d89255f0818721ecaf11bf",
+    "meshes": 15,
+    "nodes": 33,
+    "author": "JK3Dstudios",
+    "license": "CC BY declarada",
+    "sourceCommit": "3eb0f1afac277d81bca7b7f643de81915ea76965",
+    "status": "candidate-not-in-roster",
+    "note": "Aún por validar ruedas, bajo, interior, variante y FPS."
+  },
+  {
+    "id": "bugatti-chiron-profilee",
+    "filename": "bugatti-chiron-profilee.glb",
+    "sizeBytes": 2989204,
+    "sha256": "2d73cf6197a785367076d02aef5bf8e1ebc583d6e9085e83887f32c2765ba508",
+    "meshes": 47,
+    "nodes": 49,
+    "author": "DisneyCars",
+    "license": "CC BY declarada",
+    "sourceCommit": "3eb0f1afac277d81bca7b7f643de81915ea76965",
+    "status": "candidate-not-in-roster",
+    "note": "Aún por validar ruedas, bajo, interior, variante y FPS."
+  },
+  {
+    "id": "koenigsegg-jesko",
+    "filename": "koenigsegg-jesko.glb",
+    "sizeBytes": 6216192,
+    "sha256": "c7db7e5240a970b0da5910553e44fb931068c6189530e905003c358125a2a122",
+    "meshes": 109,
+    "nodes": 233,
+    "author": "Ddiaz Design",
+    "license": "CC BY declarada",
+    "sourceCommit": "3eb0f1afac277d81bca7b7f643de81915ea76965",
+    "status": "candidate-not-in-roster",
+    "note": "Aún por validar ruedas, bajo, interior, variante y FPS."
+  },
+  {
+    "id": "ford-f150-raptor-police",
+    "filename": "ford-f150-raptor-police.glb",
+    "sizeBytes": 14970508,
+    "sha256": "45f0b6198a6dfd197a503f03a69b4eaf9d6618f774d2351a6908820637abfb46",
+    "meshes": 186,
+    "nodes": 408,
+    "author": "Vehsource",
+    "license": "CC BY declarada",
+    "sourceCommit": "3eb0f1afac277d81bca7b7f643de81915ea76965",
+    "status": "candidate-not-in-roster",
+    "note": "Aún por validar ruedas, bajo, interior, variante y FPS."
   }
 ]
