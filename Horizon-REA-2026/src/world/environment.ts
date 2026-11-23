@@ -16,6 +16,7 @@ import { SuzakaGarages } from "./suzakaGarages";
 import { GoodyearBalloon } from "./goodyearBalloon";
 import { advanceAudienceAnimation } from "./monzonSpectatorTerraces";
 import { createTracksidePartners } from "./tracksidePartners";
+import { createRaceTunnels } from "./raceTunnels";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /**
@@ -125,6 +126,8 @@ export class Environment {
 
     // Conceptual brand panels in both active tracks, outside all safety barriers.
     if (isMonzon || isSuzaka) scene.add(createTracksidePartners(track, this.terrain));
+    // Architectural tunnels are purely visual: no change to asphalt, barriers or Rapier.
+    if (isMonzon || isSuzaka) scene.add(createRaceTunnels(track));
 
     if (isMonzon) {
       // Four unshadowed lights cover the player's vicinity; poles remain instanced.
