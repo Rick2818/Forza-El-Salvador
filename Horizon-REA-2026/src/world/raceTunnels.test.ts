@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import type { Track } from "./track";
-import { planRaceTunnels, TUNNEL_LENGTH_METERS, TUNNELS_PER_CIRCUIT } from "./raceTunnels";
+import { createRaceTunnels, planRaceTunnels, TUNNEL_LENGTH_METERS, TUNNELS_PER_CIRCUIT } from "./raceTunnels";
 
 function fixture(id: string, length = 5800): Track {
   const count = 1500, radius = length / (Math.PI * 2);
@@ -47,4 +47,43 @@ describe("350m race tunnel placements", () => {
     track.samples = [];
     expect(planRaceTunnels(track)).toEqual([]);
   });
+});
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("runtime portal meshes are constructed for both races", () => {
+  // The atlas only needs a harmless Canvas2D stub for scene-graph tests.
+  // Three.js never enters WebGL or loads textures in this unit test.
+  for (const circuit of ["monzon", "suzaka"]) {
+    it(`creates six glowing portal arches and 36 visible partners in ${circuit}`, () => {
+      const ctx = {
+        fillRect: () => undefined,
+        strokeText: () => undefined,
+        fillText: () => undefined
+      };
+      vi.stubGlobal("document", { createElement: () => ({
+        width: 1024, height: 1600, getContext: () => ctx
+      }) });
+      const root = createRaceTunnels(fixture(circuit));
+      expect(root.children).toHaveLength(3);
+      expect(root.userData.tunnelCount).toBe(3);
+      expect(root.userData.portals).toBe(6);
+      expect(root.userData.entriesMeters).toHaveLength(3);
+      for (let i = 0; i < 3; i++) {
+        const tunnel = root.children[i] as THREE.Group;
+        expect(tunnel.userData.tunnel.lengthMeters).toBe(350);
+        expect(tunnel.userData.tunnel.physicsCollidersAdded).toBe(0);
+        expect(tunnel.userData.tunnel.partnerPanels).toBe(12);
+        for (const edge of ["entry", "exit"]) {
+          const fascia = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-${edge}-solid-portal`);
+          const illuminated = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-${edge}-luminous-portal`);
+          expect(fascia).toBeInstanceOf(THREE.Mesh);
+          expect(illuminated).toBeInstanceOf(THREE.Mesh);
+          expect((illuminated as THREE.Mesh).geometry.getAttribute("position").count).toBeGreaterThan(200);
+        }
+        const ads = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-interior-partners`);
+        expect(ads?.userData.brandNames).toHaveLength(12);
+      }
+    });
+  }
 });
