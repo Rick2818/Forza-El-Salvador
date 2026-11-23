@@ -16,7 +16,7 @@ try {
    const g=window.__HORIZON_GAME__;g.prepareCapture();
    const tasks=[];g.scene.traverse(o=>{if(o.userData.readyPromise)tasks.push(o.userData.readyPromise);});await Promise.all(tasks);
   });
-  const views=circuit==='monzon'?['cuerpo','rostro','trabajo']:['suzaka'];
+  const views=circuit==='monzon'?['cuerpo','rostro','trabajo']:['suzaka','garage'];
   for(const view of views) {
    const data=await page.evaluate(({circuit,view})=>{
     const g=window.__HORIZON_GAME__;g.race.state='idle';g.state='results';g.skipRender=true;
@@ -30,8 +30,8 @@ try {
     } else {
      // Frame the actual first mechanic in the transformed daylight garage.
      const world=new staff.position.constructor(-3.7,1.08,1.6);staff.localToWorld(world);
-     const origin=new staff.position.constructor(-5.3,1.58,-2.0);staff.localToWorld(origin);
-     g.camera.position.copy(origin);g.camera.lookAt(world);g.camera.fov=40;
+     const origin=new staff.position.constructor(...(view==='garage'?[-2.0,2.5,-12.8]:[-5.3,1.58,-2.0]));staff.localToWorld(origin);
+     g.camera.position.copy(origin);g.camera.lookAt(world);g.camera.fov=view==='garage'?49:40;
     }
     g.camera.updateProjectionMatrix();g.skipRender=false;g.advance(0);
     if(!staff.userData.rigged||!staff.userData.visibleCrew)throw Error('Rigged textured crew not visible');
