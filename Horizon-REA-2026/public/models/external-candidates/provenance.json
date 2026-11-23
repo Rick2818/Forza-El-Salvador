@@ -1,0 +1,34 @@
+[
+  {
+    "id": "ferrari-f430",
+    "filename": "ferrari-f430.glb",
+    "sizeBytes": 1944816,
+    "sha256": "673886905d2e1f1117681ee1ddf809738fba942c1f71ab1d3d090f9a202aef16",
+    "meshes": 100,
+    "nodes": 204,
+    "wheelNamedNodes": 24,
+    "interiorNamedNodes": 41,
+    "original": "https://skfb.ly/prtB6",
+    "author": "Ddiaz Design",
+    "license": "CC BY 4.0",
+    "sourceCommit": "5948d1307f673e98aedae591c0d78c834f184713",
+    "status": "candidate-not-in-roster",
+    "note": "Sin certificación de interior completo, pivotes de rueda, rendimiento ni derechos de marcas."
+  },
+  {
+    "id": "lamborghini-aventador",
+    "filename": "lamborghini-aventador.glb",
+    "sizeBytes": 7423384,
+    "sha256": "78bb593ae50bf4b26dcf1e6524a84f62f18d7be86e4243de25e36d2930d59760",
+    "meshes": 15,
+    "nodes": 88,
+    "wheelNamedNodes": 2,
+    "interiorNamedNodes": 1,
+    "original": "https://skfb.ly/ovA69",
+    "author": "BlackCube",
+    "license": "CC BY 4.0",
+    "sourceCommit": "5948d1307f673e98aedae591c0d78c834f184713",
+    "status": "candidate-not-in-roster",
+    "note": "Sin certificación de interior completo, pivotes de rueda, rendimiento ni derechos de marcas."
+  }
+]
