@@ -42,6 +42,15 @@ function inspectGlb(filename) {
   };
 }
 
+const standalone = process.argv.indexOf("--file");
+if (standalone >= 0) {
+  const file = process.argv[standalone + 1];
+  if (!file) throw new Error("Falta ruta tras --file");
+  const stats = inspectGlb(resolve(project, file));
+  console.log(JSON.stringify({file, ...stats}));
+  process.exit(0);
+}
+
 for (const car of manifest.cars) {
   const file = resolve(project, car.model);
   if (!existsSync(file)) {

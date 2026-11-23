@@ -1,4 +1,4 @@
-name: Previsualizar Ferrari 488 con licencia documentada (no publicar)
+name: Previsualizar Ferrari con licencia documentada (no publicar)
 on:
   push:
     branches: [art/ten-realistic-vehicles-intake-20261123]
@@ -12,22 +12,33 @@ permissions:
 jobs:
   inspect-ferrari-source:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Descargar candidato Ferrari desde distribución pública CC BY
+      - name: Descargar y comparar seis candidatos Ferrari GLB bajo atribución CC BY
         run: |
-          mkdir -p Horizon-REA-2026/replacements/assets
-          curl --fail --location --retry 3 --max-time 90 \
-            "https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari/f488/f488.glb" \
-            -o Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
-          test -s Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
-      - name: Auditar mallas y nombres de piezas sin instalar en el videojuego
+          mkdir -p Horizon-REA-2026/replacements/assets Horizon-REA-2026/replacements/reports
+          BASE="https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari"
+          for entry in "f488/f488.glb" "f40/f40.glb" "f430/f430.glb" "roma-2020/roma-2020.glb" "sf90/sf90.glb" "cilindri/cilindri.glb"; do
+            name="${entry#*/}"
+            name="${name%.glb}"
+            echo "AUDITANDO Ferrari: ${entry}"
+            curl --fail --silent --show-error --location --retry 3 --max-time 90 \
+              "${BASE}/${entry}" -o "Horizon-REA-2026/replacements/assets/${name}.glb"
+            ( cd Horizon-REA-2026 &&
+              node tools/audit-replacement-models.mjs --file "replacements/assets/${name}.glb" \
+                | tee -a replacements/reports/ferrari-candidate-mesh-audit.jsonl )
+          done
+          cp Horizon-REA-2026/replacements/assets/f488.glb \
+            Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
+      - name: Diagnóstico del lote completo (sin sustituir autos existentes)
         working-directory: Horizon-REA-2026
         run: node tools/audit-replacement-models.mjs --available
-      - name: Conservar Ferrari solo como artefacto de evaluación
+      - name: Guardar modelos para revisión técnica y reporte estructural
         uses: actions/upload-artifact@v4
         with:
-          name: ferrari-488-pista-spider-preproduccion
-          path: Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
+          name: ferrari-candidates-preproduccion
+          path: |
+            Horizon-REA-2026/replacements/assets/*.glb
+            Horizon-REA-2026/replacements/reports/*.jsonl
           retention-days: 7
