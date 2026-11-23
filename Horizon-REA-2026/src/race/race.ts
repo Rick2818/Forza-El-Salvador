@@ -12,6 +12,9 @@ import {
   STALLED_THROTTLE_COOLDOWN_SECONDS
 } from "./stalledThrottleRecovery";
 import { inSuzakaPitArea } from "../world/suzakaPitAccess";
+import { ONCOMING_LANE } from "./oncoming";
+import { newRivalMotionWatch, resetRivalMotion, updateRivalMotion,
+  type RivalMotionWatch } from "./rivalRecovery";
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
@@ -89,6 +92,9 @@ export class Race {
   private playerInvertedSeconds = 0;
   private playerStalledSeconds = 0;
   private playerStallRecoveryCooldown = 0;
+  private readonly rivalMotion = new Map<number, RivalMotionWatch>();
+  private rivalRescueCount = 0;
+  get aiRescues(): number { return this.rivalRescueCount; }
 
   get rescues(): number { return this.playerRescueCount; }
 
@@ -194,6 +200,7 @@ export class Race {
     for (const car of this.oncoming) car.vehicle.dispose(this.world);
     for (const car of this.standbyOncoming) car.vehicle.dispose(this.world);
     this.standbyOncoming.length = 0;
+    this.rivalMotion.clear();
   }
 
   private makeRacer(vehicle: Vehicle, name: string, isPlayer: boolean, id: number): Racer {
@@ -344,6 +351,73 @@ export class Race {
       for (const car of this.oncoming) car.ai.update(dt, traffic.filter(o => o.racerId !== car.id));
     }
     for (const racer of this.racers) this.updateProgress(racer);
+    if (this.state === "racing") this.recoverBlockedAICars(dt);
+  }
+
+  /** Rescue rivals and oncoming traffic when collisions trap them for over
+   * six seconds, even if they continually reverse/turn in circles. */
+  private recoverBlockedAICars(dt: number): void {
+    const N = this.track.samples.length;
+    const monitor = (id: number, index: number, direction: 1 | -1,
+      vehicle: Vehicle, lane: number, onRecovered: (newIndex: number) => void) => {
+      if (index < 0 || !Number.isFinite(index)) return;
+      let watch = this.rivalMotion.get(id);
+      if (!watch) {
+        watch = newRivalMotionWatch(index);
+        this.rivalMotion.set(id, watch);
+      }
+      if (!updateRivalMotion(watch, index, N, this.track.segmentLength, direction,
+        dt, this.state === "racing")) return;
+      // Find a real open part of the existing asphalt, not an adjacent wall
+      // or a position inside another car. This does not create new colliders.
+      const vehicles = [
+        ...this.racers.map(racer => racer.vehicle),
+        ...this.oncoming.map(car => car.vehicle)
+      ];
+      for (let offset = 34; offset <= 285; offset += 22) {
+        const candidate = ((index + direction * Math.round(offset / this.track.segmentLength)) % N + N) % N;
+        const road = this.track.sampleAt(candidate);
+        const right = this.track.rightAt(candidate);
+        const position = new THREE.Vector3(
+          road.x + right.x * lane, road.y, road.z + right.z * lane
+        );
+        const occupied = vehicles.some(other => {
+          if (other === vehicle) return false;
+          const body = other.body;
+          if (!body.isEnabled()) return false;
+          const p = body.translation();
+          // Preserve the Suzaka flyover's independent elevation.
+          return Math.abs(p.y - position.y) < 5 &&
+            Math.hypot(p.x - position.x, p.z - position.z) < 17;
+        });
+        if (occupied) continue;
+        const tangent = this.track.tangentAt(candidate);
+        const heading = Math.atan2(tangent.x * direction, tangent.z * direction);
+        vehicle.place(position, heading);
+        onRecovered(candidate);
+        resetRivalMotion(watch, candidate);
+        this.rivalRescueCount++;
+        return;
+      }
+      // Keep looking on a later watchdog cycle instead of placing two cars
+      // on top of one another and creating another collision deadlock.
+    };
+    for (const racer of this.racers) {
+      if (racer.isPlayer || racer.finished || !racer.ai) continue;
+      monitor(racer.id, racer.hint, 1, racer.vehicle,
+        racer.id % 2 === 0 ? -2.7 : 2.7, newIndex => {
+          racer.hint = newIndex;
+          racer.progress = this.track.progress(newIndex);
+          racer.lastProgress = racer.progress;
+          racer.ai?.recoverAt(newIndex);
+        });
+    }
+    for (const car of this.oncoming) {
+      const index = car.ai.routeIndex >= 0 ? car.ai.routeIndex :
+        this.track.nearestIndex(car.vehicle.position, -1);
+      monitor(car.id, index, -1, car.vehicle, ONCOMING_LANE,
+        newIndex => car.ai.recoverAt(newIndex));
+    }
   }
 
   /** Returns one impact pulse only for physical player/car contacts, with a cooldown. */
