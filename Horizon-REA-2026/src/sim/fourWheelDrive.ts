@@ -6,7 +6,7 @@
  * contact-aware traction factor is an arcade simulation, not a mechanical
  * transfer-case / differential solver.
  */
-export type FourWheelDriveMode = "2H" | "4H";
+export type FourWheelDriveMode = "2H" | "4A" | "4H";
 
 export const FOUR_BY_FOUR_PICKUP_IDS = [
   "ram-1500-trx",
@@ -20,12 +20,17 @@ export function isFourWheelDrivePickup(vehicleId: string | undefined): boolean {
   return !!vehicleId && FOUR_BY_FOUR_PICKUP_IDS.some((id) => id === vehicleId);
 }
 
-/** Changing the transfer case at high road speeds is prohibited. */
+/** RAM TRX is full-time 4WD: there is no 2H setting on that model. */
+export function defaultFourWheelDriveMode(vehicleId: string | undefined): FourWheelDriveMode {
+  return vehicleId === "ram-1500-trx" ? "4A" : "2H";
+}
+
+/** Changes simulated transfer-case mode at a conservative low speed. */
 export function nextFourWheelDriveMode(
-  current: FourWheelDriveMode, speedKph: number
+  current: FourWheelDriveMode, speedKph: number, vehicleId?: string
 ): FourWheelDriveMode {
   if (!Number.isFinite(speedKph) || Math.abs(speedKph) > MAX_MODE_SWITCH_KPH) return current;
-  return current === "2H" ? "4H" : "2H";
+  return current === "4H" ? defaultFourWheelDriveMode(vehicleId) : "4H";
 }
 
 /**
@@ -41,10 +46,9 @@ export function pickupContactTraction(
   if (contacts.length !== 4) throw new Error("Se requieren cuatro ruedas");
   const front = (Number(contacts[0]) + Number(contacts[1])) * 0.5;
   const rear = (Number(contacts[2]) + Number(contacts[3])) * 0.5;
-  const powered = mode === "4H" ? Math.max(rear, (front + rear) * 0.5) : rear;
+  const powered = mode === "2H" ? rear : Math.max(rear, (front + rear) * 0.5);
   if (powered === 0) return 0;
-  const offRoad = mode === "4H"
-    ? 1 + 0.22 * Math.max(0, Math.min(1, (0.86 - surfaceGrip) / 0.36))
-    : 1;
+  const offRoad = mode === "2H" ? 1 : 1 + (mode === "4H" ? 0.22 : 0.1)
+    * Math.max(0, Math.min(1, (0.86 - surfaceGrip) / 0.36));
   return Math.min(1.22, powered * offRoad);
 }

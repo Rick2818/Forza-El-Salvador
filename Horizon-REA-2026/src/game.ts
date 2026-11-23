@@ -471,7 +471,7 @@ export class Game {
     this.hud.setFourWheelDriveControl(
       this.state === "racing" && this.chase.mode === "hood" &&
         this.race.player.vehicle.supportsFourWheelDrive,
-      this.race.player.vehicle.fourWheelDriveActive
+      this.race.player.vehicle.fourWheelDriveMode
     );
   }
 
@@ -485,8 +485,7 @@ export class Game {
       return;
     }
     this.refreshFourWheelDriveControl();
-    this.hud.toast(v.fourWheelDriveActive
-      ? "Tracción 4×4 conectada" : "Tracción 4×4 desconectada", 1700);
+    this.hud.toast("Tracción seleccionada: " + v.fourWheelDriveMode, 1700);
   }
 
   private toggleMute(): void {

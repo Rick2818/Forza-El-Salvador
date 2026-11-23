@@ -8,7 +8,7 @@ import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
 import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
-import { isFourWheelDrivePickup, nextFourWheelDriveMode, pickupContactTraction, type FourWheelDriveMode } from "../sim/fourWheelDrive";
+import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, type FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
@@ -76,12 +76,12 @@ export class Vehicle {
   private readonly forceForward = new THREE.Vector3();
   private readonly localVelocity = new THREE.Vector3();
 
-  get fourWheelDriveActive(): boolean { return this.supportsFourWheelDrive && this.fourWheelDriveMode === "4H"; }
+  get fourWheelDriveActive(): boolean { return this.supportsFourWheelDrive && this.fourWheelDriveMode !== "2H"; }
 
   /** Transfer switch is disabled above 30 km/h; existing sportscars are untouched. */
   toggleFourWheelDrive(): boolean {
     if (!this.supportsFourWheelDrive) return false;
-    const next = nextFourWheelDriveMode(this.fourWheelDriveMode, this.speedKph);
+    const next = nextFourWheelDriveMode(this.fourWheelDriveMode, this.speedKph, this.vehicleId);
     if (next === this.fourWheelDriveMode) return false;
     this.fourWheelDriveMode = next;
     return true;
@@ -102,6 +102,7 @@ export class Vehicle {
     const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
     this.electric = design?.powertrain === "electric";
     this.supportsFourWheelDrive = isFourWheelDrivePickup(opts.vehicleId);
+    this.fourWheelDriveMode = defaultFourWheelDriveMode(opts.vehicleId);
     this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
     this.wheelRadius = design?.wheelRadius ?? .36;

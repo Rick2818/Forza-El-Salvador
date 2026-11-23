@@ -4,6 +4,7 @@ import { RELEASE_LABEL } from "../core/version";
 import type { RaceSnapshot, Racer } from "../race/race";
 import type { Track } from "../world/track";
 import type { Vehicle } from "../vehicle/vehicle";
+import type { FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { formatTime } from "../core/mathx";
 
 const GAUGE_CX = 134;
@@ -183,12 +184,11 @@ export class HUD {
     this.toastTimer = duration / 1000;
   }
 
-  setFourWheelDriveControl(visible: boolean, enabled: boolean): void {
+  setFourWheelDriveControl(visible: boolean, mode: FourWheelDriveMode): void {
     this.fourByFourButton.hidden = !visible;
-    this.fourByFourButton.textContent = enabled ? "🚙 4×4 ON" : "🚙 4×4 OFF";
-    this.fourByFourButton.setAttribute("aria-pressed", String(enabled));
-    this.fourByFourButton.setAttribute("aria-label", enabled
-      ? "Desconectar tracción 4x4" : "Conectar tracción 4x4");
+    this.fourByFourButton.textContent = mode === "4H" ? "🚙 4H LOCK" : mode === "4A" ? "🚙 4A AUTO" : "🚙 2H";
+    this.fourByFourButton.setAttribute("aria-pressed", String(mode === "4H"));
+    this.fourByFourButton.setAttribute("aria-label", "Cambiar tracción 4x4. Actual: " + mode);
   }
 
   setCameraMode(mode: CameraMode): void {

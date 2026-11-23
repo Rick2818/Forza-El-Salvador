@@ -1,6 +1,6 @@
 # Botón 4×4 en primera persona — fase de preparación
 
-Se incorporó un modo de tracción simulado 2H ↔ 4H para **RAM 1500 TRX, Chevrolet Silverado Z71 y Ford F-150 Raptor**. El botón en el HUD solo aparece cuando una pickup con un GLB compatible está seleccionada y la cámara se encuentra en **1ª persona**. Tecla **X** como alternativa a pulsar el botón; el cambio no está permitido por encima de **30 km/h**.
+Se incorporó un modo de tracción simulado para **RAM 1500 TRX, Chevrolet Silverado Z71 y Ford F-150 Raptor**. La RAM TRX utiliza **4A ↔ 4H**, ya que viene con tracción integral permanente; Chevrolet y Ford utilizan **2H ↔ 4H**. El botón en el HUD solo aparece cuando una pickup con un GLB compatible está seleccionada y la cámara se encuentra en **1ª persona**. Tecla **X** como alternativa a pulsar el botón; el cambio no está permitido por encima de **30 km/h**.
 
 ### Física
 
