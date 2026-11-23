@@ -1,0 +1,36 @@
+name: Importar GLB reales F430 y Aventador (candidatos)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-existing-vehicles.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: import-existing-vehicles
+  cancel-in-progress: false
+jobs:
+  import-prebuilt-glb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Obtener repositorio
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Preparar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Descargar originales, comprobar GLB y conservar atribución
+        run: node tools/import-existing-vehicles.mjs
+      - name: Registrar candidatos reales sin cambiar el roster actual
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/public/models/external-candidates/
+          if ! git diff --cached --quiet; then
+            git commit -m "assets: guardar modelos originales F430 y Aventador con licencias"
+            git push origin HEAD:main
+          fi
