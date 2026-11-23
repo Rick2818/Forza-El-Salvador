@@ -302,6 +302,15 @@ it.each(VEHICLE_DESIGNS.filter(d=>d.id!=='ferrari-california-t').flatMap(design=
   }
   appendFileSync('review/quality/race-validation.jsonl',JSON.stringify({playerCar:id,circuit,difficulty,physicsHz:60,rendering:false,recoveries,
     drivers:race.racers.map(r=>({car:r.vehicle.vehicleId,finished:r.finished,finishSeconds:r.finishTime,bestLapSeconds:r.bestLap}))})+'\n');
-  try {expect(race.racers.every(r=>r.finished)).toBe(true);expect(recoveries).toBe(0);}
+  try {
+    expect(race.racers.every(r=>r.finished)).toBe(true);
+    // The old invariant banned ALL rescue actions, including the new
+    // collision-deadlock rescue explicitly requested for AI opponents.
+    // Keep the meaningful safety guarantee: no player teleports and every
+    // rare AI repositioning is accounted for by the bounded watchdog.
+    expect(race.rescues).toBe(0);
+    expect(recoveries).toBe(race.aiRescues);
+    expect(race.aiRescues).toBeLessThanOrEqual(6);
+  }
   finally {race.dispose();world.free();}
 },180000);

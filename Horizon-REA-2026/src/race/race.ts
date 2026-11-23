@@ -12,6 +12,9 @@ import {
   STALLED_THROTTLE_COOLDOWN_SECONDS
 } from "./stalledThrottleRecovery";
 import { inSuzakaPitArea } from "../world/suzakaPitAccess";
+import { ONCOMING_LANE } from "./oncoming";
+import { newRivalMotionWatch, resetRivalMotion, updateRivalMotion,
+  type RivalMotionWatch } from "./rivalRecovery";
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
@@ -72,6 +75,11 @@ const ROSTER = [
 export class Race {
   readonly racers: Racer[] = [];
   readonly oncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
+  // Allocate reverse-traffic vehicle models before the race clock starts.
+  // Delayed construction at 30/60/90/120 s can stall the rendering thread
+  // while a GLB, rigid body and raycast controller are created mid-race.
+  private readonly standbyOncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
+  get standbyTrafficCount(): number { return this.standbyOncoming.length; }
   readonly player: Racer;
   state: RaceState = "idle";
   countdown = SETTINGS.race.countdown;
@@ -84,6 +92,9 @@ export class Race {
   private playerInvertedSeconds = 0;
   private playerStalledSeconds = 0;
   private playerStallRecoveryCooldown = 0;
+  private readonly rivalMotion = new Map<number, RivalMotionWatch>();
+  private rivalRescueCount = 0;
+  get aiRescues(): number { return this.rivalRescueCount; }
 
   get rescues(): number { return this.playerRescueCount; }
 
@@ -141,34 +152,55 @@ export class Race {
       racer.lastProgress = racer.progress;
     });
 
-    if (oncomingEnabled) this.spawnOncomingCar();
+    if (oncomingEnabled) {
+      this.prepareOncomingCars();
+      this.spawnOncomingCar();
+    }
   }
 
-  /** Add one new wrong-way car per interval; existing cars keep circulating. */
+  /** Prepare physical traffic away from the 60 Hz race loop.
+   * Each standby body is disabled until its scheduled appearance: it cannot
+   * collide with the track, drive, or consume a physics timestep. */
+  private prepareOncomingCars(): void {
+    const available = VEHICLE_DESIGNS.filter(design => design.id !== this.vehicleId);
+    const ready = available.filter(design => hasSelectedAsset(design.id));
+    if (!ready.length) return;
+    for (let i = 0; i < ONCOMING_CAR_COUNT; i++) {
+      const preferred = available[i % available.length];
+      const design = hasSelectedAsset(preferred.id) ? preferred : ready[i % ready.length];
+      const vehicle = new Vehicle(this.world, this.scene, {
+        paintColor: Number.parseInt(design.paint.slice(1), 16),
+        accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
+        number: 80 + i,
+        vehicleId: design.id
+      });
+      const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
+      const pose = oncomingPose(this.track, index);
+      vehicle.place(pose.position, pose.heading);
+      vehicle.body.setEnabled(false);
+      vehicle.visual.root.visible = false;
+      this.standbyOncoming.push({ id: 100 + i, vehicle,
+        ai: new OncomingDriver(vehicle, this.track) });
+    }
+  }
+
+  /** Enable a car already constructed before the race instead of allocating
+   * a new GLB and Rapier raycast controller in the 30/60/90/120 s frame. */
   private spawnOncomingCar(): void {
     if (!this.oncomingEnabled || this.oncoming.length >= ONCOMING_CAR_COUNT) return;
-    const i = this.oncoming.length;
-    const available = VEHICLE_DESIGNS.filter(design => design.id !== this.vehicleId);
-    const preferred = available[i % available.length];
-    // A delayed or failed GLB download must never interrupt the physics step.
-    const ready = available.filter(design => hasSelectedAsset(design.id));
-    if (ready.length === 0) return;
-    const design = hasSelectedAsset(preferred.id) ? preferred : ready[i % ready.length];
-    const vehicle = new Vehicle(this.world, this.scene, {
-      paintColor: Number.parseInt(design.paint.slice(1), 16),
-      accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
-      number: 80 + i,
-      vehicleId: design.id
-    });
-    const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
-    const pose = oncomingPose(this.track, index);
-    vehicle.place(pose.position, pose.heading);
-    this.oncoming.push({ id: 100 + i, vehicle, ai: new OncomingDriver(vehicle, this.track) });
+    const next = this.standbyOncoming.shift();
+    if (!next) return;
+    next.vehicle.body.setEnabled(true);
+    next.vehicle.visual.root.visible = true;
+    this.oncoming.push(next);
   }
 
   dispose(): void {
     for (const racer of this.racers) racer.vehicle.dispose(this.world);
     for (const car of this.oncoming) car.vehicle.dispose(this.world);
+    for (const car of this.standbyOncoming) car.vehicle.dispose(this.world);
+    this.standbyOncoming.length = 0;
+    this.rivalMotion.clear();
   }
 
   private makeRacer(vehicle: Vehicle, name: string, isPlayer: boolean, id: number): Racer {
@@ -319,6 +351,94 @@ export class Race {
       for (const car of this.oncoming) car.ai.update(dt, traffic.filter(o => o.racerId !== car.id));
     }
     for (const racer of this.racers) this.updateProgress(racer);
+    if (this.state === "racing") this.recoverBlockedAICars(dt);
+  }
+
+  /** Rescue rivals and oncoming traffic when collisions trap them for over
+   * six seconds, even if they continually reverse/turn in circles. */
+  private recoverBlockedAICars(dt: number): void {
+    const N = this.track.samples.length;
+    const monitor = (id: number, index: number, direction: 1 | -1,
+      vehicle: Vehicle, lane: number, onRecovered: (newIndex: number) => void) => {
+      if (index < 0 || !Number.isFinite(index)) return;
+      let watch = this.rivalMotion.get(id);
+      if (!watch) {
+        watch = newRivalMotionWatch(index);
+        this.rivalMotion.set(id, watch);
+      }
+      if (!updateRivalMotion(watch, index, N, this.track.segmentLength, direction,
+        dt, this.state === "racing")) return;
+      // A slow sector or cautious braking is not a collision. Only recover
+      // when the car also has physical evidence of a genuine deadlock:
+      // a practically stationary chassis, another car touching its envelope,
+      // or the vehicle beyond the asphalt after a barrier impact.
+      const vehicles = [
+        ...this.racers.map(racer => racer.vehicle),
+        ...this.oncoming.map(car => car.vehicle)
+      ];
+      const p = vehicle.body.translation();
+      const speed = vehicle.body.linvel();
+      const planarSpeed = Math.hypot(speed.x, speed.z);
+      const center = this.track.sampleAt(index);
+      const side = this.track.rightAt(index);
+      const lateral = (p.x - center.x) * side.x + (p.z - center.z) * side.z;
+      const blockedByCar = vehicles.some(other => {
+        if (other === vehicle || !other.body.isEnabled()) return false;
+        const otherP = other.body.translation();
+        return Math.abs(p.y - otherP.y) < 3 &&
+          Math.hypot(p.x - otherP.x, p.z - otherP.z) < 9;
+      });
+      const offRoad = Math.abs(lateral) > this.track.halfWidth + .6;
+      if (!blockedByCar && !offRoad && planarSpeed >= 1.2) {
+        resetRivalMotion(watch, index);
+        return;
+      }
+      // Find a real open part of existing asphalt, not a roadside wall
+      // or a position overlapping another body; zero new colliders.
+      for (let offset = 34; offset <= 285; offset += 22) {
+        const candidate = ((index + direction * Math.round(offset / this.track.segmentLength)) % N + N) % N;
+        const road = this.track.sampleAt(candidate);
+        const right = this.track.rightAt(candidate);
+        const position = new THREE.Vector3(
+          road.x + right.x * lane, road.y, road.z + right.z * lane
+        );
+        const occupied = vehicles.some(other => {
+          if (other === vehicle) return false;
+          const body = other.body;
+          if (!body.isEnabled()) return false;
+          const p = body.translation();
+          // Preserve the Suzaka flyover's independent elevation.
+          return Math.abs(p.y - position.y) < 5 &&
+            Math.hypot(p.x - position.x, p.z - position.z) < 17;
+        });
+        if (occupied) continue;
+        const tangent = this.track.tangentAt(candidate);
+        const heading = Math.atan2(tangent.x * direction, tangent.z * direction);
+        vehicle.place(position, heading);
+        onRecovered(candidate);
+        resetRivalMotion(watch, candidate);
+        this.rivalRescueCount++;
+        return;
+      }
+      // Keep looking on a later watchdog cycle instead of placing two cars
+      // on top of one another and creating another collision deadlock.
+    };
+    for (const racer of this.racers) {
+      if (racer.isPlayer || racer.finished || !racer.ai) continue;
+      monitor(racer.id, racer.hint, 1, racer.vehicle,
+        racer.id % 2 === 0 ? -2.7 : 2.7, newIndex => {
+          racer.hint = newIndex;
+          racer.progress = this.track.progress(newIndex);
+          racer.lastProgress = racer.progress;
+          racer.ai?.recoverAt(newIndex);
+        });
+    }
+    for (const car of this.oncoming) {
+      const index = car.ai.routeIndex >= 0 ? car.ai.routeIndex :
+        this.track.nearestIndex(car.vehicle.position, -1);
+      monitor(car.id, index, -1, car.vehicle, ONCOMING_LANE,
+        newIndex => car.ai.recoverAt(newIndex));
+    }
   }
 
   /** Returns one impact pulse only for physical player/car contacts, with a cooldown. */

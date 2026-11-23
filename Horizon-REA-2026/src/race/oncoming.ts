@@ -38,6 +38,13 @@ export class OncomingDriver {
   private hint = -1;
   constructor(readonly vehicle: Vehicle, private readonly track: Track, readonly lane = ONCOMING_LANE) {}
 
+  /** Drop the previous aim point after an obstruction recovery. */
+  get routeIndex(): number { return this.hint; }
+
+  recoverAt(index: number): void {
+    this.hint = index;
+  }
+
   plan(traffic: readonly TrafficCar[] = []): DriveInput {
     const vehicle = this.vehicle;
     const pos = vehicle.position.clone();

@@ -69,6 +69,16 @@ export class AIDriver {
     this.difficulty = difficulty;
   }
 
+  /** Clear a blocked reverse/overtake plan after the race watchdog has
+   * returned this rival to safe asphalt. The AI then recalculates its route. */
+  recoverAt(index: number): void {
+    this.hint = index;
+    this.stuckTime = 0;
+    this.reverseTime = 0;
+    this.pass = null;
+    this.currentLane = this.baseLane;
+  }
+
   update(dt: number, time: number, traffic: readonly TrafficCar[] = [], grip = 1): void {
     const driving = this.plan(dt, time, traffic);
     this.vehicle.update(dt, driving, grip);
