@@ -6,7 +6,7 @@ import { createTunnelArchitecture, makeTunnelConcreteTexture } from "./tunnelArc
 /**
  * Six 350 m architectural tunnels, attached to the EXISTING track centerline.
  * Visual-only structures: NO new Rapier bodies, road meshes, barriers or physics.
- * All luminaires are unlit/emissive meshes, not dozens of dynamic PointLights.
+ * Instanced LED fixtures provide depth; three pooled shadow-free lights illuminate cars and road.
  */
 export const TUNNEL_LENGTH_METERS = 350;
 export const TUNNELS_PER_CIRCUIT = 3;
@@ -95,7 +95,7 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
       color: plan.circuit === "monzon" ? 0xdde1e3 : 0xe4e9ec,
       map: concreteMap, metalness: .07, roughness: .89,
       side: THREE.DoubleSide,
-      emissive: 0x32404b, emissiveIntensity: .55
+      emissive: 0x8b9ba6, emissiveIntensity: .8
     }));
   shell.name = `${plan.id}-vault-and-walls`;
   shell.castShadow = false;
@@ -145,39 +145,44 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
     at: distance => frameAt(track, distance)
   }));
 
-  // Longitudinal luminous side rails: one geometry and one draw call.
+  // Continuous LED lighting at shoulder, eye and upper-wall height on both
+  // sides. Six strips per tunnel in a single static draw call.
   const stripPositions: number[] = [], stripUv: number[] = [], stripIndices: number[] = [];
   for (const side of [-1, 1]) {
-    const startVertex = stripPositions.length / 3;
-    for (let i = 0; i <= N; i++) {
-      const d = TUNNEL_LENGTH_METERS * i / N;
-      const frame = frameAt(track, plan.startMeters + d);
-      const lateral = side * (half - .13);
-      for (const y of [3.75, 3.95]) {
-        stripPositions.push(frame.point.x + frame.right.x * lateral, frame.point.y + y,
-          frame.point.z + frame.right.z * lateral);
-        stripUv.push(d / 10, y);
-      }
-      if (i) {
-        const prev = startVertex + (i - 1) * 2, next = startVertex + i * 2;
-        stripIndices.push(prev, next, prev + 1, next, next + 1, prev + 1);
+    for (const [bottom, top] of [[.95, 1.17], [3.75, 3.99], [6.18, 6.42]] as const) {
+      const startVertex = stripPositions.length / 3;
+      for (let i = 0; i <= N; i++) {
+        const d = (TUNNEL_LENGTH_METERS * i) / N;
+        const frame = frameAt(track, plan.startMeters + d);
+        const lateral = side * (half - .13);
+        for (const y of [bottom, top]) {
+          stripPositions.push(frame.point.x + frame.right.x * lateral, frame.point.y + y,
+            frame.point.z + frame.right.z * lateral);
+          stripUv.push(d / 10, y);
+        }
+        if (i) {
+          const prev = startVertex + (i - 1) * 2, next = startVertex + i * 2;
+          stripIndices.push(prev, next, prev + 1, next, next + 1, prev + 1);
+        }
       }
     }
   }
   const rails = new THREE.Mesh(geometryOf(stripPositions, stripUv, stripIndices),
-    new THREE.MeshBasicMaterial({ color: 0xd9eeff, side: THREE.DoubleSide, toneMapped: false }));
+    new THREE.MeshBasicMaterial({ color: 0xf2f8ff, side: THREE.DoubleSide, toneMapped: false }));
   rails.name = `${plan.id}-continuous-led-rails`;
+  rails.userData.stripCount = 6;
   group.add(rails);
 
-  // 25 bright overhead luminaires per 350 m. One instanced draw call/tunnel.
-  const lampCount = 25;
-  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(half * 1.55, .065, .48),
-    new THREE.MeshBasicMaterial({ color: 0xfff7e5, toneMapped: false }), lampCount);
+  // Industrial-grade lighting every seven metres across all 350 m. Only
+  // ONE instanced draw call regardless of the number of fixture meshes.
+  const lampCount = 49;
+  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(half * 1.55, .08, .76),
+    new THREE.MeshBasicMaterial({ color: 0xfffdf1, toneMapped: false }), lampCount);
   const matrix = new THREE.Matrix4();
   const rot = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < lampCount; i++) {
-    const frame = frameAt(track, plan.startMeters + 7 + i * 14);
+    const frame = frameAt(track, plan.startMeters + 7 + i * 7);
     rot.setFromAxisAngle(up, -Math.atan2(frame.right.z, frame.right.x));
     matrix.compose(frame.point.clone().addScaledVector(up, 9.63), rot, new THREE.Vector3(1, 1, 1));
     lamps.setMatrixAt(i, matrix);
@@ -247,7 +252,7 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
 
   group.userData.tunnel = {
     ...plan, visiblePortals: 2, widthMeters: half * 2, ceilingClearanceMeters: 10.6,
-    overheadLights: lampCount, partnerPanels: brandNames.length, physicsCollidersAdded: 0
+    overheadLights: lampCount, continuousLedStrips: 6, partnerPanels: brandNames.length, physicsCollidersAdded: 0
   };
   return group;
 }
