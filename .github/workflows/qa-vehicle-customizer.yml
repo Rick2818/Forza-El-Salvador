@@ -1,0 +1,51 @@
+name: QA garaje 3D colores y llantas reales
+on:
+  push:
+    branches: ["feat/ten-real-glb-gallery-20261123"]
+    paths:
+      - ".github/workflows/qa-vehicle-customizer.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile-and-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Pruebas completas
+        run: npm test
+      - name: Compilar juego y garaje 3D
+        run: npm run build
+      - name: Comprobar página compilada y 10 GLB
+        run: |
+          test -s dist/index.html
+          test -s dist/model-gallery.html
+          test -f dist/model-draco/draco_decoder.wasm
+          find dist/models/external-candidates/ -maxdepth 1 -name '*.glb' | tee /tmp/horizon_glb_list
+          test "$(wc -l < /tmp/horizon_glb_list)" -eq 10
+      - name: Instalar navegador para inspección real
+        run: |
+          npm install --no-save --no-package-lock puppeteer-core
+          (which google-chrome || which chromium) | tee /tmp/chrome-bin
+          echo "CHROME_PATH=$(cat /tmp/chrome-bin)" >> "$GITHUB_ENV"
+      - name: Comprobar los diez modelos en navegador y cambiar llantas y pintura
+        run: node tools/test-gallery-customization.mjs
+      - name: Guardar capturas y resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-10-model-gallery-customizer-qa
+          path: Horizon-REA-2026/qa-customizer-results/
+          if-no-files-found: warn
+          retention-days: 7
