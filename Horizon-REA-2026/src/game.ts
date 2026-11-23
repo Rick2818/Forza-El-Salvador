@@ -18,6 +18,7 @@ import { Input } from "./core/input";
 import { ChaseCamera, CAMERA_LABELS, type CameraMode } from "./render/camera";
 import { SmokeSystem } from "./render/effects";
 import { GameAudio } from "./audio/engine";
+import { shouldResumeFromFocusLoss } from "./core/focusPause";
 import { SETTINGS } from "./core/settings";
 import { clamp } from "./core/mathx";
 import type { DriveInput } from "./vehicle/vehicle";
@@ -61,6 +62,7 @@ export class Game {
   private fireworks: MonzonLaunchFireworks | null = null;
   private openingTime = 0;
   private pausedOpening = false;
+  private automaticallyPausedForFocusLoss = false;
   private readonly openingOverlay: HTMLDivElement;
   private finishDelay = 0;
   private lowFpsTime = 0;
@@ -199,6 +201,7 @@ export class Game {
     this.input.attach(canvas);
     window.addEventListener("resize", this.onResize);
     window.addEventListener("blur", this.onWindowBlur);
+    window.addEventListener("focus", this.onWindowFocus);
     document.addEventListener("visibilitychange", this.onVisibilityChange);
     canvas.addEventListener("webglcontextlost", this.onContextLost, false);
     canvas.addEventListener("webglcontextrestored", this.onContextRestored, false);
@@ -340,6 +343,7 @@ export class Game {
 
   pause(): void {
     if (this.state !== "racing" && this.state !== "opening") return;
+    this.automaticallyPausedForFocusLoss = false;
     this.pausedOpening = this.state === "opening";
     this.openingOverlay.hidden = true;
     this.state = "paused";
@@ -353,6 +357,7 @@ export class Game {
 
   resume(): void {
     if (this.state !== "paused") return;
+    this.automaticallyPausedForFocusLoss = false;
     this.state = this.pausedOpening ? "opening" : "racing";
     this.openingOverlay.hidden = !this.pausedOpening;
     this.physicsAccum = 0;
@@ -468,17 +473,30 @@ export class Game {
   };
 
   /**
-   * Losing focus used to let the rivals keep lapping while the player sat
-   * still, which silently turned a race into a last place. Pause instead.
+   * Losing focus stops the race clock and rivals. Re-entering the same tab must
+   * then resume that *automatic* pause; previously engine and race remained
+   * silent indefinitely until the user knew to press P or Escape.
    */
-  private onWindowBlur = (): void => {
+  private pauseForFocusLoss(): void {
     if (this.captureMode) return;
-    if (this.state === "racing" || this.state === "opening") this.pause();
-  };
+    if (this.state === "racing" || this.state === "opening") {
+      this.pause();
+      this.automaticallyPausedForFocusLoss = true;
+    }
+  }
 
+  private resumeAfterFocusReturn(): void {
+    if (this.captureMode || !shouldResumeFromFocusLoss(
+      this.automaticallyPausedForFocusLoss, document.hidden, document.hasFocus()
+    )) return;
+    this.resume();
+  }
+
+  private onWindowBlur = (): void => this.pauseForFocusLoss();
+  private onWindowFocus = (): void => this.resumeAfterFocusReturn();
   private onVisibilityChange = (): void => {
-    if (this.captureMode) return;
-    if (document.hidden && (this.state === "racing" || this.state === "opening")) this.pause();
+    if (document.hidden) this.pauseForFocusLoss();
+    else this.resumeAfterFocusReturn();
   };
 
   /**
