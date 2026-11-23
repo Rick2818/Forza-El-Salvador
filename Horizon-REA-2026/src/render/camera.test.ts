@@ -4,9 +4,10 @@ import { ChaseCamera } from "./camera";
 import { SETTINGS } from "../core/settings";
 import type { Vehicle } from "../vehicle/vehicle";
 
-function fakeCar(speed: number): Vehicle {
+function fakeCar(speed: number, vehicleId?: string): Vehicle {
   return {
     speed,
+    vehicleId,
     body: {
       translation: () => ({ x: 100, y: 1.4, z: 200 }),
       rotation: () => ({ x: 0, y: 0, z: 0, w: 1 })
@@ -68,9 +69,9 @@ describe("close-up chase camera for driver and vehicle details", () => {
     expect(chase.toggle()).toBe("hood");
     chase.update(1/60,car,0);
     const driverEye=camera.position.clone();
-    expect(driverEye.z).toBeGreaterThan(200);
-    expect(driverEye.z).toBeLessThan(201);
-    expect(driverEye.y).toBeCloseTo(1.86);
+    expect(driverEye.z).toBeCloseTo(199.89);
+    expect(driverEye.x).toBeCloseTo(100 - 1.9 * .181);
+    expect(driverEye.y).toBeCloseTo(1.88);
     expect(driverEye.distanceTo(third)).toBeGreaterThan(4);
     chase.setMode("chase");
     chase.update(1/60,car,0);
@@ -92,7 +93,60 @@ describe("close-up chase camera for driver and vehicle details", () => {
     const direction=new THREE.Vector3();
     camera.getWorldDirection(direction);
     expect(direction.x).toBeGreaterThan(.98);
-    expect(camera.position.x).toBeGreaterThan(0);
+    // The camera is seated left of centre and just behind the dash, not
+    // placed outside the front bonnet as the previous fixed-offset view was.
+    expect(camera.position.x).toBeLessThan(0);
+    expect(camera.position.z).toBeGreaterThan(0);
+  });
+
+  it("adapts the driver's eye to each approved cabin instead of clipping low roofs", () => {
+    const high = new THREE.PerspectiveCamera(), low = new THREE.PerspectiveCamera();
+    const ferrari = new ChaseCamera(high), lamborghini = new ChaseCamera(low);
+    ferrari.setMode("hood");
+    lamborghini.setMode("hood");
+    ferrari.update(1/60, fakeCar(0, "ferrari-california-t"), 0);
+    lamborghini.update(1/60, fakeCar(0, "lamborghini-aventador-roadster"), 0);
+    expect(high.position.y).toBeCloseTo(1.905);
+    expect(low.position.y).toBeCloseTo(1.716);
+    expect(low.position.y).toBeLessThan(high.position.y - .15);
+    expect(high.position.x).toBeCloseTo(100 - 1.91 * .181);
+    expect(low.position.x).toBeCloseTo(100 - 2.03 * .181);
+  });
+
+  it("keeps the cockpit locked to the chassis during hard cornering", () => {
+    const camera = new THREE.PerspectiveCamera(), chase = new ChaseCamera(camera);
+    chase.setMode("hood");
+    const yaw = new THREE.Quaternion();
+    const car = {
+      speed: 95, vehicleId: "porsche-911",
+      body: {
+        translation: () => ({ x: 10, y: 1.4, z: 20 }),
+        rotation: () => ({ x: yaw.x, y: yaw.y, z: yaw.z, w: yaw.w })
+      }
+    } as unknown as Vehicle;
+    chase.update(1/60, car, 0);
+    yaw.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+    chase.update(1/60, car, 1/60);
+    const target = new THREE.Vector3(-1.9 * .181, .485, -.11)
+      .applyQuaternion(yaw).add(new THREE.Vector3(10, 1.4, 20));
+    expect(camera.position.distanceTo(target)).toBeLessThan(1e-6);
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    expect(direction.x).toBeGreaterThan(.98);
+  });
+
+  it("does not float above the seat on lower-elevation track sections", () => {
+    const camera = new THREE.PerspectiveCamera(), chase = new ChaseCamera(camera);
+    const car = {
+      ...fakeCar(0, "ferrari-california-t"),
+      body: {
+        translation: () => ({ x: 0, y: -.5, z: 0 }),
+        rotation: () => ({ x: 0, y: 0, z: 0, w: 1 })
+      }
+    } as unknown as Vehicle;
+    chase.setMode("hood");
+    chase.update(1/60, car, 0);
+    expect(camera.position.y).toBeCloseTo(.005);
   });
 });
 
