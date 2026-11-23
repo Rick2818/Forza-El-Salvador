@@ -4,6 +4,7 @@ import { RELEASE_LABEL } from "../core/version";
 import type { RaceSnapshot, Racer } from "../race/race";
 import type { Track } from "../world/track";
 import type { Vehicle } from "../vehicle/vehicle";
+import type { FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { formatTime } from "../core/mathx";
 
 const GAUGE_CX = 134;
@@ -85,6 +86,7 @@ export class HUD {
   private lastSpeed = -1;
   private gaugeMaxMph = 350;
   readonly cameraButton: HTMLButtonElement;
+  readonly fourByFourButton: HTMLButtonElement;
   private startPhase: StartSignalPhase | null = null;
   private uiElapsed = .1;
 
@@ -122,6 +124,9 @@ export class HUD {
         <button class="mute-btn" id="mute-btn" title="Silenciar (M)">🔊</button>
         <button class="camera-btn" id="camera-btn" type="button" title="Cambiar cámara (C)"
           aria-label="Cambiar cámara: primera o tercera persona">📷 3ª PERSONA</button>
+        <button class="fourbyfour-btn" id="fourbyfour-btn" type="button" hidden
+          title="Cambiar 2H / 4H (X). Solo pickups en primera persona y a menos de 30 km/h"
+          aria-label="Conectar tracción 4x4" aria-pressed="false">🚙 4×4 OFF</button>
       </div>
     `;
     root.appendChild(wrap);
@@ -129,6 +134,7 @@ export class HUD {
     this.el = wrap.querySelector("#hud")!;
     this.countdownEl = wrap.querySelector("#countdown")!;
     this.cameraButton = wrap.querySelector<HTMLButtonElement>("#camera-btn")!;
+    this.fourByFourButton = wrap.querySelector<HTMLButtonElement>("#fourbyfour-btn")!;
     this.toastEl = wrap.querySelector("#toast")!;
     this.posEl = wrap.querySelector("#hud-pos")!;
     this.lapEl = wrap.querySelector("#hud-lap")!;
@@ -176,6 +182,13 @@ export class HUD {
     this.toastEl.textContent = message;
     this.toastEl.classList.add("show");
     this.toastTimer = duration / 1000;
+  }
+
+  setFourWheelDriveControl(visible: boolean, mode: FourWheelDriveMode): void {
+    this.fourByFourButton.hidden = !visible;
+    this.fourByFourButton.textContent = mode === "4H" ? "🚙 4H LOCK" : mode === "4A" ? "🚙 4A AUTO" : "🚙 2H";
+    this.fourByFourButton.setAttribute("aria-pressed", String(mode === "4H"));
+    this.fourByFourButton.setAttribute("aria-label", "Cambiar tracción 4x4. Actual: " + mode);
   }
 
   setCameraMode(mode: CameraMode): void {

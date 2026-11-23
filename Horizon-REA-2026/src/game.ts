@@ -211,6 +211,7 @@ export class Game {
     this.hud.cameraButton.addEventListener("click", () => {
       if (this.state === "racing") this.switchCamera();
     });
+    this.hud.fourByFourButton.addEventListener("click", () => this.toggleFourWheelDrive());
 
     this.menu.setAudioVolumes(this.audio.getVolumes());
     this.menu.setEngineProfile(this.audio.getEngineProfile());
@@ -315,6 +316,7 @@ export class Game {
     this.menu.hide();
     this.input.setTouchControlsVisible(!this.fireworks);
     this.hud.show(!this.fireworks);
+    this.refreshFourWheelDriveControl();
     this.hud.setStartSignal(this.fireworks ? null : "red");
     if (!this.fireworks) this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
     // The start button keeps DOM focus after a click; move it back to the
@@ -336,6 +338,7 @@ export class Game {
     this.chase.update(1 / 60, this.race.player.vehicle, this.time);
     this.input.setTouchControlsVisible(true);
     this.hud.show(true);
+    this.refreshFourWheelDriveControl();
     this.hud.setStartSignal("red");
     this.input.focusGame();
   }
@@ -346,6 +349,7 @@ export class Game {
     this.physicsAccum = 0;
     this.lastEnteredPitGarage = null;
     this.chase?.snap();
+    this.refreshFourWheelDriveControl();
   }
 
   pause(): void {
@@ -459,7 +463,29 @@ export class Game {
     if (mode) this.chase.setMode(mode);
     else this.chase.toggle();
     this.hud.setCameraMode(this.chase.mode);
+    this.refreshFourWheelDriveControl();
     this.hud.toast("Cámara: " + CAMERA_LABELS[this.chase.mode], 1450);
+  }
+
+  private refreshFourWheelDriveControl(): void {
+    this.hud.setFourWheelDriveControl(
+      this.state === "racing" && this.chase.mode === "hood" &&
+        this.race.player.vehicle.supportsFourWheelDrive,
+      this.race.player.vehicle.fourWheelDriveMode
+    );
+  }
+
+  /** Switch from driver's seat (HUD or X). No 4x4 button on seven sports cars. */
+  private toggleFourWheelDrive(): void {
+    if (this.state !== "racing" || this.chase.mode !== "hood") return;
+    const v = this.race.player.vehicle;
+    if (!v.supportsFourWheelDrive) return;
+    if (!v.toggleFourWheelDrive()) {
+      this.hud.toast("Cambiar 4×4 solo a 30 km/h o menos", 1700);
+      return;
+    }
+    this.refreshFourWheelDriveControl();
+    this.hud.toast("Tracción seleccionada: " + v.fourWheelDriveMode, 1700);
   }
 
   private toggleMute(): void {
@@ -818,6 +844,7 @@ export class Game {
     }
     if (this.input.consume("KeyM")) this.toggleMute();
     if (this.input.consume("KeyC") || this.input.consume("KeyV")) this.switchCamera();
+    if (this.input.consume("KeyX")) this.toggleFourWheelDrive();
     if (this.input.consume("Digit1")) this.switchCamera("hood");
     if (this.input.consume("Digit3")) this.switchCamera("chase");
     if (this.input.consume("KeyR") && this.state === "racing") {
