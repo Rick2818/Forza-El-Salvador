@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Track } from "./track";
 import { TRACKSIDE_BRANDS, makeBrandAtlas } from "./tracksidePartners";
+import { createTunnelArchitecture, makeTunnelConcreteTexture } from "./tunnelArchitecture";
 
 /**
  * Six 350 m architectural tunnels, attached to the EXISTING track centerline.
@@ -61,7 +62,7 @@ function geometryOf(positions: number[], uvs: number[], indices: number[]): THRE
   return geo;
 }
 
-function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: THREE.Texture): THREE.Group {
+function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: THREE.Texture, concreteMap: THREE.Texture): THREE.Group {
   const group = new THREE.Group();
   group.name = plan.id;
   const half = Math.max(track.barrierLateralOffset + 3.0, track.halfWidth + 4.5);
@@ -91,9 +92,10 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
   }
   const shell = new THREE.Mesh(geometryOf(positions, uv, indices),
     new THREE.MeshStandardMaterial({
-      color: plan.circuit === "monzon" ? 0xabbcc8 : 0xa5b6c3,
-      metalness: .10, roughness: .70, side: THREE.DoubleSide,
-      emissive: 0x344956, emissiveIntensity: .75
+      color: plan.circuit === "monzon" ? 0xdde1e3 : 0xe4e9ec,
+      map: concreteMap, metalness: .07, roughness: .89,
+      side: THREE.DoubleSide,
+      emissive: 0x32404b, emissiveIntensity: .55
     }));
   shell.name = `${plan.id}-vault-and-walls`;
   shell.castShadow = false;
@@ -130,6 +132,18 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
     leds.frustumCulled = false;
     group.add(fascia, leds);
   }
+
+  group.add(createTunnelArchitecture({
+    name: plan.id,
+    circuit: plan.circuit,
+    ordinal,
+    concreteMap,
+    halfWidth: half,
+    startMeters: plan.startMeters,
+    lengthMeters: TUNNEL_LENGTH_METERS,
+    profile,
+    at: distance => frameAt(track, distance)
+  }));
 
   // Longitudinal luminous side rails: one geometry and one draw call.
   const stripPositions: number[] = [], stripUv: number[] = [], stripIndices: number[] = [];
@@ -243,8 +257,9 @@ export function createRaceTunnels(track: Track): THREE.Group {
   group.name = `illuminated-race-tunnels-${track.circuit.id}`;
   const plans = planRaceTunnels(track);
   if (!plans.length) return group;
-  const atlas = makeBrandAtlas(); // shared by all six panels per wall
-  plans.forEach((plan, i) => group.add(createTunnel(track, plan, i, atlas)));
+  const atlas = makeBrandAtlas(); // shared throughout the whole circuit
+  const concreteMap = makeTunnelConcreteTexture();
+  plans.forEach((plan, i) => group.add(createTunnel(track, plan, i, atlas, concreteMap)));
   group.userData.tunnelCount = plans.length;
   group.userData.entriesMeters = plans.map(plan => Math.round(plan.startMeters));
   group.userData.portals = plans.length * 2;
