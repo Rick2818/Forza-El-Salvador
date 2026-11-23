@@ -146,7 +146,8 @@ function partitionWheelMesh(
     if(indices.length<3)continue;
     const divided=new THREE.BufferGeometry();
     for(const [k,attribute] of Object.entries(geo.attributes))divided.setAttribute(k,attribute);
-    for(const [k,attrs] of Object.entries(geo.morphAttributes))divided.morphAttributes[k]=attrs;
+    // Preserve named morph attributes without indexing Three.js' typed attribute object.
+    Object.assign(divided.morphAttributes,geo.morphAttributes);
     divided.setIndex(indices);
     divided.addGroup(0,indices.length,0);
     divided.computeBoundingSphere();
