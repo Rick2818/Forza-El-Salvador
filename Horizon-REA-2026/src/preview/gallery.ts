@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GalleryCustomizer, type WheelSet } from "./customizer";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -69,6 +70,7 @@ const draco = new DRACOLoader();
 draco.setDecoderPath(import.meta.env.BASE_URL + "model-draco/");
 loader.setDRACOLoader(draco);
 loader.setMeshoptDecoder(MeshoptDecoder);
+const customizer = new GalleryCustomizer(scene, loader);
 
 let currentModel: THREE.Group | null = null;
 let currentCar = MODELS[0];
@@ -112,6 +114,7 @@ function chooseAngle(angle: string): void {
 }
 
 function releaseOld(): void {
+  customizer.dispose();
   if (!currentModel) return;
   scene.remove(currentModel);
   currentModel.traverse(child => {
@@ -192,6 +195,7 @@ async function showModel(car: GalleryCar): Promise<void> {
       if (/underbody|chassis|suspension|axle|diffuser|exhaust|floorpan/.test(label)) underNames++;
     });
     currentModel = group;
+    customizer.attach(group,car.id,car.type);
     chooseAngle(activeView);
     status.textContent = "✓ Archivo original cargado y renderizado. Arrastra para inspeccionarlo.";
     metrics.textContent = "Mallas: " + meshes + " · Triángulos: " + Math.round(triangles).toLocaleString("es") +
@@ -227,6 +231,14 @@ for (const car of MODELS) {
 
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-view]")) {
   button.addEventListener("click", () => chooseAngle(button.dataset.view ?? "front"));
+}
+for (const swatch of document.querySelectorAll<HTMLButtonElement>("[data-paint]")) {
+  swatch.addEventListener("click", () => customizer.setPaint(swatch.dataset.paint ?? "original"));
+}
+const customPaint = $("custom-paint") as HTMLInputElement;
+customPaint.addEventListener("input", () => customizer.setPaint(customPaint.value));
+for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelset]")) {
+  button.addEventListener("click", () => { void customizer.setWheels((button.dataset.wheelset ?? "original") as WheelSet); });
 }
 const rotateButton = $("rotate") as HTMLButtonElement;
 rotateButton.addEventListener("click", () => {
