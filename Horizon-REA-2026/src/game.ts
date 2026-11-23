@@ -506,19 +506,26 @@ export class Game {
   private onContextLost = (event: Event): void => {
     event.preventDefault();
     this.audio.silence();
-    if (document.getElementById("context-lost")) return;
+    this.showRecovery(
+      "context-lost",
+      "Se perdió la conexión con la tarjeta gráfica",
+      "El navegador reinició WebGL. Recarga el juego para iniciar una nueva carrera."
+    );
+  };
+
+  private showRecovery(id: string, heading: string, message: string): void {
+    if (document.getElementById(id)) return;
     const overlay = document.createElement("div");
-    overlay.id = "context-lost";
+    overlay.id = id;
     overlay.style.cssText =
       "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;" +
       "flex-direction:column;gap:12px;padding:24px;text-align:center;background:#05080f;" +
       "color:#dfe8f6;font:600 17px/1.45 system-ui,-apple-system,sans-serif";
     const title = document.createElement("div");
-    title.textContent = "Se perdió la conexión con la tarjeta gráfica";
+    title.textContent = heading;
     title.style.cssText = "font-size:22px";
     const note = document.createElement("div");
-    note.textContent =
-      "El navegador reinició WebGL. Pulsa el botón para volver a cargar la carrera.";
+    note.textContent = message;
     note.style.cssText = "font-weight:400;opacity:.75;max-width:460px";
     const button = document.createElement("button");
     button.type = "button";
@@ -529,7 +536,8 @@ export class Game {
     button.addEventListener("click", () => window.location.reload());
     overlay.append(title, note, button);
     document.body.appendChild(overlay);
-  };
+    button.focus();
+  }
 
   private onContextRestored = (): void => {
     // A restored context re-creates no render targets or materials here, so a
@@ -539,8 +547,27 @@ export class Game {
 
   private frame = (): void => {
     const rawDt = this.clock.getDelta();
-    const dt = Math.min(rawDt, 0.05);
-    this.tick(dt, rawDt);
+    try {
+      this.tick(Math.min(rawDt, 0.05), rawDt);
+    } catch (error) {
+      const context = {
+        version: RELEASE_LABEL,
+        circuit: this.track.circuit.id,
+        gameState: this.state,
+        raceState: this.race.state,
+        elapsedSeconds: this.race.elapsed,
+        segment: this.race.player.hint,
+        vehicle: this.selectedVehicleId
+      };
+      console.error("[Horizon] fallo en el bucle de carrera", context, error);
+      this.showRecovery(
+        "frame-failure",
+        "La carrera se interrumpió",
+        `Circuito: ${this.track.circuit.name} · ${RELEASE_LABEL}. Recarga el juego para iniciar una nueva carrera.`
+      );
+      this.renderer.setAnimationLoop(null);
+      this.audio.silence();
+    }
   };
 
   /** Manual step used by the video renderer; no rAF, no wall clock. */
