@@ -368,12 +368,33 @@ export class Race {
       }
       if (!updateRivalMotion(watch, index, N, this.track.segmentLength, direction,
         dt, this.state === "racing")) return;
-      // Find a real open part of the existing asphalt, not an adjacent wall
-      // or a position inside another car. This does not create new colliders.
+      // A slow sector or cautious braking is not a collision. Only recover
+      // when the car also has physical evidence of a genuine deadlock:
+      // a practically stationary chassis, another car touching its envelope,
+      // or the vehicle beyond the asphalt after a barrier impact.
       const vehicles = [
         ...this.racers.map(racer => racer.vehicle),
         ...this.oncoming.map(car => car.vehicle)
       ];
+      const p = vehicle.body.translation();
+      const speed = vehicle.body.linvel();
+      const planarSpeed = Math.hypot(speed.x, speed.z);
+      const center = this.track.sampleAt(index);
+      const side = this.track.rightAt(index);
+      const lateral = (p.x - center.x) * side.x + (p.z - center.z) * side.z;
+      const blockedByCar = vehicles.some(other => {
+        if (other === vehicle || !other.body.isEnabled()) return false;
+        const otherP = other.body.translation();
+        return Math.abs(p.y - otherP.y) < 3 &&
+          Math.hypot(p.x - otherP.x, p.z - otherP.z) < 9;
+      });
+      const offRoad = Math.abs(lateral) > this.track.halfWidth + .6;
+      if (!blockedByCar && !offRoad && planarSpeed >= 1.2) {
+        resetRivalMotion(watch, index);
+        return;
+      }
+      // Find a real open part of existing asphalt, not a roadside wall
+      // or a position overlapping another body; zero new colliders.
       for (let offset = 34; offset <= 285; offset += 22) {
         const candidate = ((index + direction * Math.round(offset / this.track.segmentLength)) % N + N) % N;
         const road = this.track.sampleAt(candidate);
