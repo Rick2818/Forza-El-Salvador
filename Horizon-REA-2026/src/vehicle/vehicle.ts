@@ -8,6 +8,7 @@ import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
 import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
+import { isFourWheelDrivePickup, nextFourWheelDriveMode, pickupContactTraction, type FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
@@ -63,6 +64,8 @@ export class Vehicle {
   private smoothedGrip = 1;
   readonly vehicleId: string | undefined;
   readonly electric: boolean;
+  readonly supportsFourWheelDrive: boolean;
+  fourWheelDriveMode: FourWheelDriveMode = "2H";
   private readonly wheelMounts: typeof WHEELS;
   private readonly wheelRadius: number;
   private readonly wheelRoll = [0, 0, 0, 0];
@@ -72,6 +75,17 @@ export class Vehicle {
   private readonly tuning;
   private readonly forceForward = new THREE.Vector3();
   private readonly localVelocity = new THREE.Vector3();
+
+  get fourWheelDriveActive(): boolean { return this.supportsFourWheelDrive && this.fourWheelDriveMode === "4H"; }
+
+  /** Transfer switch is disabled above 30 km/h; existing sportscars are untouched. */
+  toggleFourWheelDrive(): boolean {
+    if (!this.supportsFourWheelDrive) return false;
+    const next = nextFourWheelDriveMode(this.fourWheelDriveMode, this.speedKph);
+    if (next === this.fourWheelDriveMode) return false;
+    this.fourWheelDriveMode = next;
+    return true;
+  }
 
   get turboActive(): boolean { return this.turboState.active > 0 && this.turboDelivery > .01; }
   get turboStrength(): number { return this.turboActive ? this.turboDelivery : 0; }
@@ -87,6 +101,7 @@ export class Vehicle {
     this.vehicleId = opts.vehicleId;
     const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
     this.electric = design?.powertrain === "electric";
+    this.supportsFourWheelDrive = isFourWheelDrivePickup(opts.vehicleId);
     this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
     this.wheelRadius = design?.wheelRadius ?? .36;
@@ -266,7 +281,13 @@ export class Vehicle {
     const fwd = forward;
     const nitro = this.turboActive && !this.controls.handbrake &&
       speed < this.tuning.topSpeed ? TURBO_FORCE_N * this.turboDelivery : 0;
-    const drive = engineForce + nitro - reverseForce;
+    // The 4x4 mode only affects future pickups; no alteration to the seven
+    // racecar force curves or Rapier raycast stabilisation.
+    const contactTraction = this.supportsFourWheelDrive
+      ? pickupContactTraction(this.fourWheelDriveMode,
+          Array.from({ length: 4 }, (_, i) => this.controller.wheelIsInContact(i)), grip)
+      : 1;
+    const drive = (engineForce + nitro - reverseForce) * contactTraction;
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
     }

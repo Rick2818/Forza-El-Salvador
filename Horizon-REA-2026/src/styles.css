@@ -667,3 +667,21 @@ button.difficulty-btn.is-active {
 #skip-opening { position: absolute; right: 4%; bottom: 6%; pointer-events: auto; background: #0b1222d9; border: 1px solid #ffffff60; }
 #skip-opening small { opacity: .6; margin-left: 10px; }
 @media (max-width: 600px) { .event-caption strong { font-size: 19px; } #skip-opening { bottom: 23%; } }
+
+/* 4x4 transfer switch: only for licensed pickup models in first-person view.
+   Hidden until a pickup asset actually passes the game's model loader. */
+.fourbyfour-btn {
+  position: absolute; right: 22px; top: 223px;
+  pointer-events: auto; min-height: 42px; min-width: 134px;
+  padding: 9px 12px; border-radius: 10px;
+  border: 1px solid rgba(224,199,112,.75);
+  background: rgba(10,27,31,.92); color: #ffedae;
+  font: 800 12px/1.2 system-ui,sans-serif; cursor: pointer;
+  touch-action: manipulation; backdrop-filter: blur(10px);
+}
+.fourbyfour-btn[hidden] { display: none !important; }
+.fourbyfour-btn[aria-pressed="true"] { background: rgba(27,82,46,.94); border-color: #a4eeb0; color: white; }
+.fourbyfour-btn:focus-visible { outline: 3px solid #ffdf76; outline-offset: 2px; }
+@media (max-width: 720px) {
+  .fourbyfour-btn { right: 14px; top: 160px; min-height: 42px; min-width: 122px; }
+}

@@ -85,6 +85,7 @@ export class HUD {
   private lastSpeed = -1;
   private gaugeMaxMph = 350;
   readonly cameraButton: HTMLButtonElement;
+  readonly fourByFourButton: HTMLButtonElement;
   private startPhase: StartSignalPhase | null = null;
   private uiElapsed = .1;
 
@@ -122,6 +123,9 @@ export class HUD {
         <button class="mute-btn" id="mute-btn" title="Silenciar (M)">🔊</button>
         <button class="camera-btn" id="camera-btn" type="button" title="Cambiar cámara (C)"
           aria-label="Cambiar cámara: primera o tercera persona">📷 3ª PERSONA</button>
+        <button class="fourbyfour-btn" id="fourbyfour-btn" type="button" hidden
+          title="Cambiar 2H / 4H (X). Solo pickups en primera persona y a menos de 30 km/h"
+          aria-label="Conectar tracción 4x4" aria-pressed="false">🚙 4×4 OFF</button>
       </div>
     `;
     root.appendChild(wrap);
@@ -129,6 +133,7 @@ export class HUD {
     this.el = wrap.querySelector("#hud")!;
     this.countdownEl = wrap.querySelector("#countdown")!;
     this.cameraButton = wrap.querySelector<HTMLButtonElement>("#camera-btn")!;
+    this.fourByFourButton = wrap.querySelector<HTMLButtonElement>("#fourbyfour-btn")!;
     this.toastEl = wrap.querySelector("#toast")!;
     this.posEl = wrap.querySelector("#hud-pos")!;
     this.lapEl = wrap.querySelector("#hud-lap")!;
@@ -176,6 +181,14 @@ export class HUD {
     this.toastEl.textContent = message;
     this.toastEl.classList.add("show");
     this.toastTimer = duration / 1000;
+  }
+
+  setFourWheelDriveControl(visible: boolean, enabled: boolean): void {
+    this.fourByFourButton.hidden = !visible;
+    this.fourByFourButton.textContent = enabled ? "🚙 4×4 ON" : "🚙 4×4 OFF";
+    this.fourByFourButton.setAttribute("aria-pressed", String(enabled));
+    this.fourByFourButton.setAttribute("aria-label", enabled
+      ? "Desconectar tracción 4x4" : "Conectar tracción 4x4");
   }
 
   setCameraMode(mode: CameraMode): void {
