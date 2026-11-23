@@ -4,6 +4,9 @@ on:
     branches: ["feat/ten-real-glb-gallery-20261123"]
     paths:
       - ".github/workflows/qa-vehicle-build-fast.yml"
+      - "Horizon-REA-2026/vite.config.ts"
+      - "Horizon-REA-2026/package.json"
+      - "Horizon-REA-2026/tools/prepare-draco.mjs"
   workflow_dispatch:
 permissions:
   contents: read
