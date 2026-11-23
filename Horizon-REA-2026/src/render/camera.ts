@@ -71,7 +71,9 @@ export class ChaseCamera {
       // GLB shell is displaced by BODY_CENTER_Y relative to the physics body.
       // Keep the lens slightly ahead of the helmet visor, but behind the dash:
       // this prevents head/visor polygons covering the picture at tight FOV.
-      const eyeY = clamp(Math.min(1.125, roofHeight - .20) - BODY_CENTER_Y, .26, .51);
+      const pickup = vehicle.supportsFourWheelDrive;
+      const eyeY = clamp(Math.min(pickup ? 1.73 : 1.125, roofHeight - .20) - BODY_CENTER_Y,
+        pickup ? .65 : .26, pickup ? 1.15 : .51);
       _seat.set(-cabinWidth * .181, eyeY, -.11).applyQuaternion(_quat);
       _desired.copy(pos).add(_seat);
       _look.copy(_desired).addScaledVector(_forward, 25);

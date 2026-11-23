@@ -3,11 +3,15 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { SELECTED_VEHICLES } from "./roster";
+import { EXTERNAL_VEHICLES, isExternalVehicle } from "./externalRoster";
+import { loadExternalVehicle, hasExternalVehicle, createExternalVisual, externalWheelMounts } from "./externalDriving";
 import { BODY_CENTER_Y, type CarVisual } from "./carModel";
 import { RELEASE_LABEL } from "../core/version";
 
 export type VehicleDesign = (typeof designs)[number];
 export const VEHICLE_DESIGNS: readonly VehicleDesign[] = SELECTED_VEHICLES.map((car) => designs.find((design) => design.id === car.id)!);
+/** External models are loaded only when needed, avoiding 17 simultaneous GLB downloads. */
+export const EXTERNAL_VEHICLE_DESIGNS: readonly VehicleDesign[] = EXTERNAL_VEHICLES.map((car) => designs.find(d => d.id === car.id)!);
 export const DEFAULT_SELECTED_ID = "ferrari-california-t";
 const cache = new Map<string, THREE.Group>();
 const pending = new Map<string, Promise<void>>();
@@ -19,11 +23,12 @@ export function vehicleDesign(id: string): VehicleDesign {
   return result;
 }
 
-export function hasSelectedAsset(id: string): boolean { return cache.has(id); }
+export function hasSelectedAsset(id: string): boolean { return isExternalVehicle(id)?hasExternalVehicle(id):cache.has(id); }
 
 /** Reject a missing/incomplete model rather than substituting the old generic car. */
 export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
-  vehicleDesign(id);
+  const design = vehicleDesign(id);
+  if (isExternalVehicle(id))return loadExternalVehicle(id,design,url);
   if (cache.has(id)) return Promise.resolve();
   const running = pending.get(id);
   if (running) return running;
@@ -52,6 +57,7 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
 
 export function wheelConnections(id: string): { x: number; y: number; z: number; front: boolean }[] {
   const d = vehicleDesign(id);
+  if(isExternalVehicle(id))return externalWheelMounts(d);
   const scene = cache.get(id);
   if (scene) {
     return WHEEL_NAMES.map((name, index) => {
@@ -167,6 +173,7 @@ export function prepareSelectedMaterial(material: THREE.Material): void {
 }
 
 export function createSelectedVisual(id: string): CarVisual {
+  if(isExternalVehicle(id))return createExternalVisual(id,vehicleDesign(id));
   const source = cache.get(id);
   if (!source) throw new Error(`El modelo ${id} no está cargado`);
   const d = vehicleDesign(id);

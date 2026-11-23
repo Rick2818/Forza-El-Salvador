@@ -11,7 +11,10 @@ export type FourWheelDriveMode = "2H" | "4A" | "4H";
 export const FOUR_BY_FOUR_PICKUP_IDS = [
   "ram-1500-trx",
   "chevrolet-silverado-z71",
-  "ford-f150-raptor"
+  "ford-f150-raptor",
+  "ford-f150-raptor-police",
+  "ram-3500-alternative",
+  "chevrolet-silverado-ev-alternative"
 ] as const;
 
 export const MAX_MODE_SWITCH_KPH = 30;
