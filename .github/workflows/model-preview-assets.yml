@@ -1,0 +1,27 @@
+name: Vista directa de modelos GLB descargados
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/model-preview-assets.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare-raw-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Incluir solamente GLB reales y procedencia
+        run: |
+          test -s Horizon-REA-2026/public/models/external-candidates/ferrari-f430.glb
+          test -s Horizon-REA-2026/public/models/external-candidates/bugatti-chiron-profilee.glb
+      - name: Archivar archivos 3D originales para vista y render
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-6-candidate-glb
+          path: |
+            Horizon-REA-2026/public/models/external-candidates/*.glb
+            Horizon-REA-2026/public/models/external-candidates/provenance.json
+          if-no-files-found: error
+          retention-days: 3
