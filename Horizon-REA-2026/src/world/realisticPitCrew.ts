@@ -13,17 +13,17 @@ function loadCrew():Promise<GLTF[]> {
 /** Recolor only blue workwear, preserving photographic skin, stitching and folds. */
 function teamWorkwear(source:THREE.MeshStandardMaterial,color:number):THREE.MeshStandardMaterial {
   const material=source.clone();
-  const team=new THREE.Color(color).lerp(new THREE.Color(0x737d88),.20);
+  const team=new THREE.Color(color).lerp(new THREE.Color(0xe3e5e7),.07);
   material.onBeforeCompile=shader=>{
     shader.uniforms.crewTeam={value:team};
     shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\nuniform vec3 crewTeam;");
     shader.fragmentShader=shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
-      float blueCloth=smoothstep(.008,.055,diffuseColor.b-max(diffuseColor.r,diffuseColor.g));
+      float blueCloth=smoothstep(.008,.045,diffuseColor.b-max(diffuseColor.r,diffuseColor.g));
       float clothLight=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
-      diffuseColor.rgb=mix(diffuseColor.rgb,crewTeam*(.20+clothLight*3.2),blueCloth*.85);
+      float fabricShade=clamp(.60+clothLight*1.8,.56,1.10);\n      diffuseColor.rgb=mix(diffuseColor.rgb,crewTeam*fabricShade,blueCloth);
     `);
   };
-  material.customProgramCacheKey=()=>"rocketbox-textured-workwear-v1";
+  material.customProgramCacheKey=()=>"rocketbox-textured-workwear-v2";
   return material;
 }
 /** Independent skinned rigs sharing source geometry/textures. Limbs, hands and
