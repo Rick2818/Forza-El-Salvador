@@ -1,0 +1,40 @@
+name: QA integrar diez autos GLB reales
+on:
+  push:
+    branches: ["feat/drive-10-external-glbs-20261123"]
+    paths:
+      - ".github/workflows/qa-drive-ten-real-glbs.yml"
+      - "Horizon-REA-2026/src/vehicle/externalDriving.ts"
+      - "Horizon-REA-2026/src/vehicle/selectedAsset.ts"
+      - "Horizon-REA-2026/src/vehicle/externalRoster.ts"
+      - "Horizon-REA-2026/src/vehicle/roster.ts"
+      - "Horizon-REA-2026/src/ui/vehiclePicker.ts"
+      - "Horizon-REA-2026/src/race/race.ts"
+      - "Horizon-REA-2026/src/main.ts"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - name: TypeScript y Vite sin errores
+        run: npm run build
+      - name: Tests de selección, GLB, física y tracción
+        run: npm test
+      - name: Registrar distribución sin desplegar
+        run: |
+          test -s dist/index.html
+          test -s dist/model-gallery.html
+          test "$(find dist/models/external-candidates -maxdepth 1 -name '*.glb' | wc -l)" -eq 10
