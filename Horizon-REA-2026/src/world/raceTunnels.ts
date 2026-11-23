@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import type { Track } from "./track";
 import { TRACKSIDE_BRANDS, makeBrandAtlas } from "./tracksidePartners";
+import { createTunnelArchitecture, makeTunnelConcreteTexture } from "./tunnelArchitecture";
 
 /**
  * Six 350 m architectural tunnels, attached to the EXISTING track centerline.
  * Visual-only structures: NO new Rapier bodies, road meshes, barriers or physics.
- * All luminaires are unlit/emissive meshes, not dozens of dynamic PointLights.
+ * Instanced LED fixtures provide depth; three pooled shadow-free lights illuminate cars and road.
  */
 export const TUNNEL_LENGTH_METERS = 350;
 export const TUNNELS_PER_CIRCUIT = 3;
@@ -61,7 +62,7 @@ function geometryOf(positions: number[], uvs: number[], indices: number[]): THRE
   return geo;
 }
 
-function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: THREE.Texture): THREE.Group {
+function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: THREE.Texture, concreteMap: THREE.Texture): THREE.Group {
   const group = new THREE.Group();
   group.name = plan.id;
   const half = Math.max(track.barrierLateralOffset + 3.0, track.halfWidth + 4.5);
@@ -91,48 +92,97 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
   }
   const shell = new THREE.Mesh(geometryOf(positions, uv, indices),
     new THREE.MeshStandardMaterial({
-      color: plan.circuit === "monzon" ? 0x65717a : 0x76818b,
-      metalness: .35, roughness: .78, side: THREE.DoubleSide,
-      emissive: 0x203442, emissiveIntensity: .30
+      color: plan.circuit === "monzon" ? 0xdde1e3 : 0xe4e9ec,
+      map: concreteMap, metalness: .07, roughness: .89,
+      side: THREE.DoubleSide,
+      emissive: 0x8b9ba6, emissiveIntensity: .8
     }));
   shell.name = `${plan.id}-vault-and-walls`;
   shell.castShadow = false;
   shell.receiveShadow = false;
   group.add(shell);
 
-  // Longitudinal luminous side rails: one geometry and one draw call.
+  // These bold, 3D entrance/exit arches are visible from the chase camera.
+  // The previous thin, gray tunnel walls had no prominent portals; players
+  // could pass the entire structure without recognizing it as a tunnel.
+  // The complete arch follows the road height and leaves the driving surface
+  // and all original Rapier guardrails completely untouched.
+  const portalMaterial = new THREE.MeshBasicMaterial({ color: 0x192a38, toneMapped: false });
+  const ledMaterial = new THREE.MeshBasicMaterial({
+    color: plan.circuit === "monzon" ? 0xffe8aa : 0xd7faff,
+    toneMapped: false
+  });
+  for (const [end, offset] of [["entry", 0], ["exit", TUNNEL_LENGTH_METERS]] as const) {
+    const frame = frameAt(track, plan.startMeters + offset);
+    const makeOutline = (inset: number): THREE.Vector3[] =>
+      profile.map(([lateral, height]) =>
+        frame.point.clone().addScaledVector(frame.right, lateral)
+          .add(new THREE.Vector3(0, height + inset, 0)));
+    const fascia = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(makeOutline(.06), false), 80, .48, 7, false),
+      portalMaterial
+    );
+    fascia.name = `${plan.id}-${end}-solid-portal`;
+    const leds = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(makeOutline(.12), false), 80, .19, 6, false),
+      ledMaterial
+    );
+    leds.name = `${plan.id}-${end}-luminous-portal`;
+    fascia.frustumCulled = false;
+    leds.frustumCulled = false;
+    group.add(fascia, leds);
+  }
+
+  group.add(createTunnelArchitecture({
+    name: plan.id,
+    circuit: plan.circuit,
+    ordinal,
+    concreteMap,
+    halfWidth: half,
+    startMeters: plan.startMeters,
+    lengthMeters: TUNNEL_LENGTH_METERS,
+    profile,
+    at: distance => frameAt(track, distance)
+  }));
+
+  // Continuous LED lighting at shoulder, eye and upper-wall height on both
+  // sides. Six strips per tunnel in a single static draw call.
   const stripPositions: number[] = [], stripUv: number[] = [], stripIndices: number[] = [];
   for (const side of [-1, 1]) {
-    const startVertex = stripPositions.length / 3;
-    for (let i = 0; i <= N; i++) {
-      const d = TUNNEL_LENGTH_METERS * i / N;
-      const frame = frameAt(track, plan.startMeters + d);
-      const lateral = side * (half - .13);
-      for (const y of [3.75, 3.95]) {
-        stripPositions.push(frame.point.x + frame.right.x * lateral, frame.point.y + y,
-          frame.point.z + frame.right.z * lateral);
-        stripUv.push(d / 10, y);
-      }
-      if (i) {
-        const prev = startVertex + (i - 1) * 2, next = startVertex + i * 2;
-        stripIndices.push(prev, next, prev + 1, next, next + 1, prev + 1);
+    for (const [bottom, top] of [[.95, 1.17], [3.75, 3.99], [6.18, 6.42]] as const) {
+      const startVertex = stripPositions.length / 3;
+      for (let i = 0; i <= N; i++) {
+        const d = (TUNNEL_LENGTH_METERS * i) / N;
+        const frame = frameAt(track, plan.startMeters + d);
+        const lateral = side * (half - .13);
+        for (const y of [bottom, top]) {
+          stripPositions.push(frame.point.x + frame.right.x * lateral, frame.point.y + y,
+            frame.point.z + frame.right.z * lateral);
+          stripUv.push(d / 10, y);
+        }
+        if (i) {
+          const prev = startVertex + (i - 1) * 2, next = startVertex + i * 2;
+          stripIndices.push(prev, next, prev + 1, next, next + 1, prev + 1);
+        }
       }
     }
   }
   const rails = new THREE.Mesh(geometryOf(stripPositions, stripUv, stripIndices),
-    new THREE.MeshBasicMaterial({ color: 0xd9eeff, side: THREE.DoubleSide, toneMapped: false }));
+    new THREE.MeshBasicMaterial({ color: 0xf2f8ff, side: THREE.DoubleSide, toneMapped: false }));
   rails.name = `${plan.id}-continuous-led-rails`;
+  rails.userData.stripCount = 6;
   group.add(rails);
 
-  // 25 bright overhead luminaires per 350 m. One instanced draw call/tunnel.
-  const lampCount = 25;
-  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(half * 1.55, .065, .48),
-    new THREE.MeshBasicMaterial({ color: 0xfff7e5, toneMapped: false }), lampCount);
+  // Industrial-grade lighting every seven metres across all 350 m. Only
+  // ONE instanced draw call regardless of the number of fixture meshes.
+  const lampCount = 49;
+  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(half * 1.55, .08, .76),
+    new THREE.MeshBasicMaterial({ color: 0xfffdf1, toneMapped: false }), lampCount);
   const matrix = new THREE.Matrix4();
   const rot = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < lampCount; i++) {
-    const frame = frameAt(track, plan.startMeters + 7 + i * 14);
+    const frame = frameAt(track, plan.startMeters + 7 + i * 7);
     rot.setFromAxisAngle(up, -Math.atan2(frame.right.z, frame.right.x));
     matrix.compose(frame.point.clone().addScaledVector(up, 9.63), rot, new THREE.Vector3(1, 1, 1));
     lamps.setMatrixAt(i, matrix);
@@ -201,8 +251,8 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
   group.add(adverts);
 
   group.userData.tunnel = {
-    ...plan, widthMeters: half * 2, ceilingClearanceMeters: 10.6,
-    overheadLights: lampCount, partnerPanels: brandNames.length, physicsCollidersAdded: 0
+    ...plan, visiblePortals: 2, widthMeters: half * 2, ceilingClearanceMeters: 10.6,
+    overheadLights: lampCount, continuousLedStrips: 6, partnerPanels: brandNames.length, physicsCollidersAdded: 0
   };
   return group;
 }
@@ -212,9 +262,12 @@ export function createRaceTunnels(track: Track): THREE.Group {
   group.name = `illuminated-race-tunnels-${track.circuit.id}`;
   const plans = planRaceTunnels(track);
   if (!plans.length) return group;
-  const atlas = makeBrandAtlas(); // shared by all six panels per wall
-  plans.forEach((plan, i) => group.add(createTunnel(track, plan, i, atlas)));
+  const atlas = makeBrandAtlas(); // shared throughout the whole circuit
+  const concreteMap = makeTunnelConcreteTexture();
+  plans.forEach((plan, i) => group.add(createTunnel(track, plan, i, atlas, concreteMap)));
   group.userData.tunnelCount = plans.length;
+  group.userData.entriesMeters = plans.map(plan => Math.round(plan.startMeters));
+  group.userData.portals = plans.length * 2;
   group.userData.lengthMetersEach = TUNNEL_LENGTH_METERS;
   group.userData.visualOnly = true;
   return group;

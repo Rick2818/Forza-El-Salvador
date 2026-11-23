@@ -17,6 +17,7 @@ import { GoodyearBalloon } from "./goodyearBalloon";
 import { advanceAudienceAnimation } from "./monzonSpectatorTerraces";
 import { createTracksidePartners } from "./tracksidePartners";
 import { createRaceTunnels } from "./raceTunnels";
+import { TunnelLighting } from "./tunnelLighting";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /**
@@ -39,6 +40,7 @@ export class Environment {
   private suzakaGarages: SuzakaGarages | null = null;
   private balloon: GoodyearBalloon | null = null;
   private readonly trackLights: THREE.PointLight[] = [];
+  private readonly tunnelLighting: TunnelLighting;
   private readonly lampPositions: readonly THREE.Vector3[];
   private lightRefresh = 1;
 
@@ -128,6 +130,9 @@ export class Environment {
     if (isMonzon || isSuzaka) scene.add(createTracksidePartners(track, this.terrain));
     // Architectural tunnels are purely visual: no change to asphalt, barriers or Rapier.
     if (isMonzon || isSuzaka) scene.add(createRaceTunnels(track));
+    // Three adaptive light pools illuminate vehicles and tarmac under the roof,
+    // without assigning real-time lights to every decorative LED fixture.
+    this.tunnelLighting = new TunnelLighting(scene, track);
 
     if (isMonzon) {
       // Four unshadowed lights cover the player's vicinity; poles remain instanced.
@@ -200,6 +205,7 @@ export class Environment {
     this.balloon?.update(dt);
     advanceAudienceAnimation(dt);
     this.forest?.update(center,dt);
+    this.tunnelLighting.update(center, dt);
     this.lightRefresh += dt;
     if (this.trackLights.length && this.lightRefresh >= .25) {
       this.lightRefresh = 0;

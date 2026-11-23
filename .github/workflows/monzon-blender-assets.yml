@@ -48,5 +48,17 @@ jobs:
           git add Horizon-REA-2026/public/scenery/monzon-tree-v1.glb Horizon-REA-2026/public/scenery/monzon-tree-v2.glb
           if ! git diff --cached --quiet; then
             git commit -m "art: bake Monzon trees with three Blender passes [skip ci]"
-            git push
+            # Blender takes time; other deployment commits may advance main.
+            # Rebase only the generated assets, never force-push over others.
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "ERROR: generated trees could not be published after 3 safe retries"
+                exit 1
+              fi
+            done
           fi
