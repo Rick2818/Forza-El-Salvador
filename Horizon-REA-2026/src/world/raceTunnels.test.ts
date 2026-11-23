@@ -59,7 +59,9 @@ describe("runtime portal meshes are constructed for both races", () => {
       const ctx = {
         fillRect: () => undefined,
         strokeText: () => undefined,
-        fillText: () => undefined
+        fillText: () => undefined,
+        createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+        putImageData: () => undefined
       };
       vi.stubGlobal("document", { createElement: () => ({
         width: 1024, height: 1600, getContext: () => ctx
@@ -73,6 +75,14 @@ describe("runtime portal meshes are constructed for both races", () => {
         const tunnel = root.children[i] as THREE.Group;
         expect(tunnel.userData.tunnel.lengthMeters).toBe(350);
         expect(tunnel.userData.tunnel.physicsCollidersAdded).toBe(0);
+        const finish = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-architectural-finishings`);
+        expect(finish).toBeInstanceOf(THREE.Group);
+        expect(finish?.userData.physicalColliders).toBe(0);
+        expect(finish?.userData.concretePortals).toBe(2);
+        expect(finish?.userData.expansionJoints).toBeGreaterThan(40);
+        expect(finish?.userData.ventilationGrilles).toBe(12);
+        expect(finish?.getObjectByName(`${circuit}-tunnel-${i + 1}-entrance-cast-concrete-portal`)).toBeInstanceOf(THREE.Mesh);
+        expect(finish?.getObjectByName(`${circuit}-tunnel-${i + 1}-departure-identification`)).toBeInstanceOf(THREE.Mesh);
         expect(tunnel.userData.tunnel.partnerPanels).toBe(12);
         for (const edge of ["entry", "exit"]) {
           const fascia = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-${edge}-solid-portal`);
