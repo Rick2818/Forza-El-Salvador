@@ -15,7 +15,7 @@ import { inSuzakaPitArea } from "../world/suzakaPitAccess";
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
-import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, vehicleDesign } from "../vehicle/selectedAsset";
+import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, hasSelectedAsset, vehicleDesign } from "../vehicle/selectedAsset";
 
 export type Difficulty = RaceDifficulty;
 export type RaceState = "idle" | "countdown" | "racing" | "finished";
@@ -149,7 +149,11 @@ export class Race {
     if (!this.oncomingEnabled || this.oncoming.length >= ONCOMING_CAR_COUNT) return;
     const i = this.oncoming.length;
     const available = VEHICLE_DESIGNS.filter(design => design.id !== this.vehicleId);
-    const design = available[i % available.length];
+    const preferred = available[i % available.length];
+    // A delayed or failed GLB download must never interrupt the physics step.
+    const ready = available.filter(design => hasSelectedAsset(design.id));
+    if (ready.length === 0) return;
+    const design = hasSelectedAsset(preferred.id) ? preferred : ready[i % ready.length];
     const vehicle = new Vehicle(this.world, this.scene, {
       paintColor: Number.parseInt(design.paint.slice(1), 16),
       accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
