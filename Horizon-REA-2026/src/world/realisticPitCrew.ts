@@ -42,7 +42,9 @@ export function createRealisticPitCrew(placements:readonly HumanPlacement[],name
       station.add(root);group.add(station);
       root.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
-        // Keep close-up PBR materials, but avoid two expensive shadow passes\n        // for every 80-bone worker when the player selects high quality.\n        object.castShadow=false;object.receiveShadow=true;object.frustumCulled=false;
+        // Keep close-up PBR materials, but avoid two expensive shadow passes
+        // for every 80-bone worker when the player selects high quality.
+        object.castShadow=false;object.receiveShadow=true;object.frustumCulled=false;
         const materials=Array.isArray(object.material)?object.material:[object.material];
         const mapped=materials.map(m=>m.name.endsWith("_body")?
           teamWorkwear(m as THREE.MeshStandardMaterial,p.shirt):m);
@@ -70,7 +72,10 @@ export function createRealisticPitCrew(placements:readonly HumanPlacement[],name
         actor.station.visible=distance<180 && frustum.intersectsSphere(sphere);
         if(!actor.station.visible)continue;
         visible++;
-        if(distance<80 && crewTime-actor.lastPoseTime>=1/30){\n          actor.mixer.setTime(crewTime+actor.phase);actor.station.updateMatrixWorld(true);\n          actor.lastPoseTime=crewTime;animated++;\n        }
+        if(distance<80 && crewTime-actor.lastPoseTime>=1/30){
+          actor.mixer.setTime(crewTime+actor.phase);actor.station.updateMatrixWorld(true);
+          actor.lastPoseTime=crewTime;animated++;
+        }
       }
       group.userData.visibleCrew=visible;group.userData.animatedCrew=animated;
     };
