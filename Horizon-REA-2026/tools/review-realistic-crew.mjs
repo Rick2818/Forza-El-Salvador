@@ -25,7 +25,7 @@ try {
     if(!staff?.userData.ready)throw Error('Dedicated staff not loaded');
     if(circuit==='monzon') {
      if(view==='rostro'){g.camera.position.set(113.55,1.73,34.26);g.camera.lookAt(114.3,1.66,35.65);g.camera.fov=43;}
-     else if(view==='trabajo'){g.camera.position.set(112.65,1.28,34.1);g.camera.lookAt(114.3,1.12,35.65);g.camera.fov=43;}
+     else if(view==='trabajo'){g.camera.position.set(123.0,1.48,32.0);g.camera.lookAt(121.6,1.10,35.35);g.camera.fov=43;}
      else {g.camera.position.set(112.9,1.45,32.1);g.camera.lookAt(114.3,1.02,35.65);g.camera.fov=40;}
     } else {
      // Frame the actual first mechanic in the transformed daylight garage.
@@ -46,7 +46,7 @@ try {
    await mkdir(`${out}/frames`,{recursive:true});
    await page.evaluate(()=>{const g=window.__HORIZON_GAME__;g.prepareCapture(1280,720);g.camera.position.set(113.1,1.48,32.5);g.camera.lookAt(114.3,1.05,35.65);g.camera.fov=40;g.camera.updateProjectionMatrix();});
    for(let frame=0;frame<90;frame++) {
-    const image=await page.evaluate(()=>{const g=window.__HORIZON_GAME__;g.skipRender=true;for(let i=0;i<5;i++)g.advance(1/60);g.skipRender=false;g.advance(0);return g.renderer.domElement.toDataURL('image/jpeg',.9);});
+    const image=await page.evaluate(frame=>{const g=window.__HORIZON_GAME__;if(frame===36){g.camera.position.set(123.0,1.48,32.0);g.camera.lookAt(121.6,1.10,35.35);g.camera.updateProjectionMatrix();}g.skipRender=true;for(let i=0;i<5;i++)g.advance(1/60);g.skipRender=false;g.advance(0);return g.renderer.domElement.toDataURL('image/jpeg',.9);},frame);
     await writeFile(`${out}/frames/${String(frame).padStart(4,'0')}.jpg`,Buffer.from(image.split(',')[1],'base64'));
    }
   }
