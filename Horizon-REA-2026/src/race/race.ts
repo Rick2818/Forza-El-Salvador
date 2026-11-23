@@ -72,6 +72,11 @@ const ROSTER = [
 export class Race {
   readonly racers: Racer[] = [];
   readonly oncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
+  // Allocate reverse-traffic vehicle models before the race clock starts.
+  // Delayed construction at 30/60/90/120 s can stall the rendering thread
+  // while a GLB, rigid body and raycast controller are created mid-race.
+  private readonly standbyOncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
+  get standbyTrafficCount(): number { return this.standbyOncoming.length; }
   readonly player: Racer;
   state: RaceState = "idle";
   countdown = SETTINGS.race.countdown;
@@ -141,34 +146,54 @@ export class Race {
       racer.lastProgress = racer.progress;
     });
 
-    if (oncomingEnabled) this.spawnOncomingCar();
+    if (oncomingEnabled) {
+      this.prepareOncomingCars();
+      this.spawnOncomingCar();
+    }
   }
 
-  /** Add one new wrong-way car per interval; existing cars keep circulating. */
+  /** Prepare physical traffic away from the 60 Hz race loop.
+   * Each standby body is disabled until its scheduled appearance: it cannot
+   * collide with the track, drive, or consume a physics timestep. */
+  private prepareOncomingCars(): void {
+    const available = VEHICLE_DESIGNS.filter(design => design.id !== this.vehicleId);
+    const ready = available.filter(design => hasSelectedAsset(design.id));
+    if (!ready.length) return;
+    for (let i = 0; i < ONCOMING_CAR_COUNT; i++) {
+      const preferred = available[i % available.length];
+      const design = hasSelectedAsset(preferred.id) ? preferred : ready[i % ready.length];
+      const vehicle = new Vehicle(this.world, this.scene, {
+        paintColor: Number.parseInt(design.paint.slice(1), 16),
+        accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
+        number: 80 + i,
+        vehicleId: design.id
+      });
+      const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
+      const pose = oncomingPose(this.track, index);
+      vehicle.place(pose.position, pose.heading);
+      vehicle.body.setEnabled(false);
+      vehicle.visual.root.visible = false;
+      this.standbyOncoming.push({ id: 100 + i, vehicle,
+        ai: new OncomingDriver(vehicle, this.track) });
+    }
+  }
+
+  /** Enable a car already constructed before the race instead of allocating
+   * a new GLB and Rapier raycast controller in the 30/60/90/120 s frame. */
   private spawnOncomingCar(): void {
     if (!this.oncomingEnabled || this.oncoming.length >= ONCOMING_CAR_COUNT) return;
-    const i = this.oncoming.length;
-    const available = VEHICLE_DESIGNS.filter(design => design.id !== this.vehicleId);
-    const preferred = available[i % available.length];
-    // A delayed or failed GLB download must never interrupt the physics step.
-    const ready = available.filter(design => hasSelectedAsset(design.id));
-    if (ready.length === 0) return;
-    const design = hasSelectedAsset(preferred.id) ? preferred : ready[i % ready.length];
-    const vehicle = new Vehicle(this.world, this.scene, {
-      paintColor: Number.parseInt(design.paint.slice(1), 16),
-      accentColor: i === 0 ? 0xf5e2ac : 0xffb65e,
-      number: 80 + i,
-      vehicleId: design.id
-    });
-    const index = oncomingSpawnIndex(this.track.startIndex, i, this.track.samples.length);
-    const pose = oncomingPose(this.track, index);
-    vehicle.place(pose.position, pose.heading);
-    this.oncoming.push({ id: 100 + i, vehicle, ai: new OncomingDriver(vehicle, this.track) });
+    const next = this.standbyOncoming.shift();
+    if (!next) return;
+    next.vehicle.body.setEnabled(true);
+    next.vehicle.visual.root.visible = true;
+    this.oncoming.push(next);
   }
 
   dispose(): void {
     for (const racer of this.racers) racer.vehicle.dispose(this.world);
     for (const car of this.oncoming) car.vehicle.dispose(this.world);
+    for (const car of this.standbyOncoming) car.vehicle.dispose(this.world);
+    this.standbyOncoming.length = 0;
   }
 
   private makeRacer(vehicle: Vehicle, name: string, isPlayer: boolean, id: number): Racer {
