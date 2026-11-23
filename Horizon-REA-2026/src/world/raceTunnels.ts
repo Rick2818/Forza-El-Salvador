@@ -91,14 +91,45 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
   }
   const shell = new THREE.Mesh(geometryOf(positions, uv, indices),
     new THREE.MeshStandardMaterial({
-      color: plan.circuit === "monzon" ? 0x65717a : 0x76818b,
-      metalness: .35, roughness: .78, side: THREE.DoubleSide,
-      emissive: 0x203442, emissiveIntensity: .30
+      color: plan.circuit === "monzon" ? 0xabbcc8 : 0xa5b6c3,
+      metalness: .10, roughness: .70, side: THREE.DoubleSide,
+      emissive: 0x344956, emissiveIntensity: .75
     }));
   shell.name = `${plan.id}-vault-and-walls`;
   shell.castShadow = false;
   shell.receiveShadow = false;
   group.add(shell);
+
+  // These bold, 3D entrance/exit arches are visible from the chase camera.
+  // The previous thin, gray tunnel walls had no prominent portals; players
+  // could pass the entire structure without recognizing it as a tunnel.
+  // The complete arch follows the road height and leaves the driving surface
+  // and all original Rapier guardrails completely untouched.
+  const portalMaterial = new THREE.MeshBasicMaterial({ color: 0x192a38, toneMapped: false });
+  const ledMaterial = new THREE.MeshBasicMaterial({
+    color: plan.circuit === "monzon" ? 0xffe8aa : 0xd7faff,
+    toneMapped: false
+  });
+  for (const [end, offset] of [["entry", 0], ["exit", TUNNEL_LENGTH_METERS]] as const) {
+    const frame = frameAt(track, plan.startMeters + offset);
+    const makeOutline = (inset: number): THREE.Vector3[] =>
+      profile.map(([lateral, height]) =>
+        frame.point.clone().addScaledVector(frame.right, lateral)
+          .add(new THREE.Vector3(0, height + inset, 0)));
+    const fascia = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(makeOutline(.06), false), 80, .48, 7, false),
+      portalMaterial
+    );
+    fascia.name = `${plan.id}-${end}-solid-portal`;
+    const leds = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(makeOutline(.12), false), 80, .19, 6, false),
+      ledMaterial
+    );
+    leds.name = `${plan.id}-${end}-luminous-portal`;
+    fascia.frustumCulled = false;
+    leds.frustumCulled = false;
+    group.add(fascia, leds);
+  }
 
   // Longitudinal luminous side rails: one geometry and one draw call.
   const stripPositions: number[] = [], stripUv: number[] = [], stripIndices: number[] = [];
@@ -201,7 +232,7 @@ function createTunnel(track: Track, plan: TunnelPlan, ordinal: number, atlas: TH
   group.add(adverts);
 
   group.userData.tunnel = {
-    ...plan, widthMeters: half * 2, ceilingClearanceMeters: 10.6,
+    ...plan, visiblePortals: 2, widthMeters: half * 2, ceilingClearanceMeters: 10.6,
     overheadLights: lampCount, partnerPanels: brandNames.length, physicsCollidersAdded: 0
   };
   return group;
@@ -215,6 +246,8 @@ export function createRaceTunnels(track: Track): THREE.Group {
   const atlas = makeBrandAtlas(); // shared by all six panels per wall
   plans.forEach((plan, i) => group.add(createTunnel(track, plan, i, atlas)));
   group.userData.tunnelCount = plans.length;
+  group.userData.entriesMeters = plans.map(plan => Math.round(plan.startMeters));
+  group.userData.portals = plans.length * 2;
   group.userData.lengthMetersEach = TUNNEL_LENGTH_METERS;
   group.userData.visualOnly = true;
   return group;
