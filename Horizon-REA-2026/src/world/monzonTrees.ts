@@ -3,6 +3,7 @@ import { makeRng } from "../core/mathx";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
 import { buildBroadleaf, createBarkTexture, createBroadleafTexture } from "./vegetation";
+import { upgradeMonzonTreesFromBlender } from "./monzonBlenderTrees";
 
 /** Keep the original positions/density, but replace faceted blobs with actual
  * branching skeletons and hundreds of alpha-cut leaves per crown. Only four
@@ -97,6 +98,15 @@ export function createMonzonOrganicTrees(track: Track, ground: TerrainField): TH
     foliage.computeBoundingSphere();
     root.add(trunk, foliage);
   }
+  root.userData.source = "procedural-safe";
+  // Load Blender outputs only after generation; preserve all the original
+  // safe placements and never block the physics startup on an art download.
+  void upgradeMonzonTreesFromBlender(root, matrices.map((entries, i) => ({
+    matrices: entries, barkColors: barkColors[i], foliageColors: foliageColors[i]
+  }))).catch(error => {
+    root.userData.blenderLoadError = String(error);
+    console.warn("[Horizon] Monzon Blender foliage unavailable; procedural trees remain:", error);
+  });
   root.userData.trees = matrices.reduce((sum, items) => sum + items.length, 0);
   root.userData.drawCalls = root.children.length;
   root.userData.leafCardsPerVariant = variants.map(asset => asset.leaves.index?.count ?? asset.leaves.getAttribute("position").count);
