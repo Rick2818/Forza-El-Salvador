@@ -1,7 +1,7 @@
 import {spawn} from "node:child_process";
 import {mkdir,writeFile} from "node:fs/promises";
 import puppeteer from "puppeteer-core";
-const names=["ferrari-f430","lamborghini-aventador","porsche-911-c4s","bugatti-chiron-profilee","koenigsegg-jesko","ford-f150-raptor-police"];
+const names=["ferrari-f430","lamborghini-aventador","porsche-911-c4s","bugatti-chiron-profilee","koenigsegg-jesko","ford-f150-raptor-police","mercedes-amg-gt-alternative","tesla-roadster-electric-alternative","ram-3500-alternative","chevrolet-silverado-ev-alternative"];
 const views=["front","rear","cabin","under"];
 const chrome=process.env.CHROME_PATH||"/usr/bin/google-chrome";
 const vite=spawn("./node_modules/.bin/vite",["--host","127.0.0.1","--port","5173","--strictPort"],{stdio:"inherit"});
