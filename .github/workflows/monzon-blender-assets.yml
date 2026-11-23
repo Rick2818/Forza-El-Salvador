@@ -3,7 +3,7 @@ name: Construir arboles Monzon - Blender 3 pasadas
 on:
   push:
     branches:
-      - feature/monzon-suzaka-illuminated-tunnels
+      - main
     paths:
       - Horizon-REA-2026/tools/blender/build_monzon_three_pass.py
       - .github/workflows/monzon-blender-assets.yml
@@ -27,8 +27,8 @@ jobs:
       - name: Instalar Blender
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y blender
-          blender -b --factory-startup --python-expr "import bpy; print(bpy.app.version_string)"
+          sudo apt-get install -y blender python3-numpy
+          blender -b --factory-startup --python-expr "import bpy, numpy; print('Blender',bpy.app.version_string,'NumPy',numpy.__version__)"
       - name: Tres pasadas reales y exportacion GLB
         working-directory: Horizon-REA-2026
         run: |
@@ -41,7 +41,7 @@ jobs:
           name: monzon-tree-blender-three-passes
           path: Horizon-REA-2026/review/monzon-blender/pass-*.blend
           retention-days: 14
-      - name: Incorporar modelos generados a la rama, sin publicar todavia
+      - name: Guardar modelos GLB en main para que GitHub Pages los publique
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
