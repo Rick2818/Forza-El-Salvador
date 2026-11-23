@@ -43,6 +43,18 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
  .viewer{order:1;height:70vh;min-height:490px}.heading{padding:10px 13px}.controls{padding:9px 12px}
  .details{padding:8px 12px}.capture{margin-left:0}
 }
+
+.customizer{padding:12px 20px 14px;background:#111b2a;border-top:1px solid #36475a;display:grid;gap:10px}
+.custom-group{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.custom-label{font-size:12px;font-weight:800;color:#f1d1a0;min-width:74px}
+.swatch{width:29px;height:29px;border-radius:50%;border:2px solid #657184;background:var(--swatch,#888);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.swatch.original{width:auto;min-width:75px;border-radius:8px;padding:4px 8px;background:#243145;font-size:11px}
+.swatch.selected,.wheel-option.selected{border-color:#ffba69;box-shadow:0 0 0 2px #ffba694f}
+.wheel-option{border-radius:9px;border:1px solid #566479;background:#1a2a3d;color:#fff;padding:9px 11px;font-size:12px;cursor:pointer}
+.custom-group input[type=color]{height:31px;width:43px;border:0;background:transparent;cursor:pointer}
+#finish-status{font-size:11px;color:#c8d3e0;min-height:15px}
+@media(max-width:700px){.customizer{padding:9px 12px}.custom-label{width:100%}.wheel-option{font-size:11px;padding:8px}}
+
 </style>
 </head>
 <body>
@@ -67,6 +79,27 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 </div>
 <button type="button" id="rotate" class="rotate" aria-pressed="false">↻ Girar</button>
 <button type="button" id="capture" class="capture">📷 Guardar captura real</button>
+</div>
+<div class="customizer" role="region" aria-label="Personalizar vehículo">
+<div class="custom-group">
+<span class="custom-label">🎨 Pintura</span>
+<button type="button" data-paint="original" class="swatch original" aria-label="Pintura original">Original</button>
+<button type="button" data-paint="#E5222D" class="swatch" style="--swatch:#E5222D" aria-label="Rojo" title="Rojo"></button>
+<button type="button" data-paint="#161B21" class="swatch" style="--swatch:#161B21" aria-label="Negro grafito" title="Negro grafito"></button>
+<button type="button" data-paint="#135BBD" class="swatch" style="--swatch:#135BBD" aria-label="Azul" title="Azul"></button>
+<button type="button" data-paint="#EFAB35" class="swatch" style="--swatch:#EFAB35" aria-label="Dorado" title="Dorado"></button>
+<button type="button" data-paint="#F5F7FA" class="swatch" style="--swatch:#F5F7FA" aria-label="Blanco" title="Blanco"></button>
+<button type="button" data-paint="#676C77" class="swatch" style="--swatch:#676C77" aria-label="Gris titanio" title="Gris titanio"></button>
+<button type="button" data-paint="#168A65" class="swatch" style="--swatch:#168A65" aria-label="Verde" title="Verde"></button>
+<label for="custom-paint" style="font-size:11px;color:#d2dce8">Color libre</label><input type="color" id="custom-paint" value="#e5222d" aria-label="Elegir color libre de carrocería"/>
+</div>
+<div class="custom-group">
+<span class="custom-label">🛞 Llantas</span>
+<button type="button" data-wheelset="original" class="wheel-option selected">De fábrica</button>
+<button type="button" data-wheelset="ferrari" class="wheel-option">Juego Ferrari F430 (3D)</button>
+<button type="button" data-wheelset="jesko" class="wheel-option">Juego Jesko (3D)</button>
+</div>
+<div id="finish-status" role="status" aria-live="polite">Los cambios de color y llantas se guardan para este vehículo en este navegador. Vista previa, no carrera.</div>
 </div>
 <div class="details">
 <div><strong>Autor y procedencia:</strong> <span id="credits"></span></div>
