@@ -259,7 +259,14 @@ export class Game {
         wheelVisuals: this.race.player.vehicle.wheelVisualDebug(),
         turboActive: this.race.player.vehicle.turboActive,
         speedLimitMph: this.race.player.vehicle.speedLimitMph,
-        trackLength: Number(this.track.length.toFixed(1))
+        trackLength: Number(this.track.length.toFixed(1)),
+        // Browser console: HORIZON.stats() must report three real tunnel groups.
+        tunnelCount: this.scene.getObjectByName(
+          "illuminated-race-tunnels-" + this.track.circuit.id
+        )?.children.length ?? 0,
+        tunnelEntrancesMeters: this.scene.getObjectByName(
+          "illuminated-race-tunnels-" + this.track.circuit.id
+        )?.userData.entriesMeters ?? []
       }),
       performanceReport: () => this.performanceReport(),
       start: () => this.startRace(),
