@@ -83,6 +83,13 @@ describe("runtime portal meshes are constructed for both races", () => {
         expect(finish?.userData.ventilationGrilles).toBe(12);
         expect(finish?.getObjectByName(`${circuit}-tunnel-${i + 1}-entrance-cast-concrete-portal`)).toBeInstanceOf(THREE.Mesh);
         expect(finish?.getObjectByName(`${circuit}-tunnel-${i + 1}-departure-identification`)).toBeInstanceOf(THREE.Mesh);
+        expect(tunnel.userData.tunnel.overheadLights).toBe(49);
+        expect(tunnel.userData.tunnel.continuousLedStrips).toBe(6);
+        const lamps = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-overhead-luminaires`) as THREE.InstancedMesh;
+        expect(lamps).toBeInstanceOf(THREE.InstancedMesh);
+        expect(lamps.count).toBe(49);
+        const rails = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-continuous-led-rails`);
+        expect(rails?.userData.stripCount).toBe(6);
         expect(tunnel.userData.tunnel.partnerPanels).toBe(12);
         for (const edge of ["entry", "exit"]) {
           const fascia = tunnel.getObjectByName(`${circuit}-tunnel-${i + 1}-${edge}-solid-portal`);
