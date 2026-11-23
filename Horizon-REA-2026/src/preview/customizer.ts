@@ -8,8 +8,8 @@ const DONOR_IDS: Record<Exclude<WheelSet,"original">,string> = {
   ferrari: "ferrari-f430",
   jesko: "koenigsegg-jesko"
 };
-const BODY_PATTERN = /exterior_mm_ext|paint|carrosserie|car_?body|bodypaint|^body$|color1mtl|vehicle_generic_smallspecmap__paint/i;
-const NON_PAINT = /wheel|tire|tyre|rim|glass|window|windscreen|headlight|taillight|interior|seat|dashboard|undercarriage|chassis|brake|caliper|rotor|spoiler|mirror|plastic|steer|carbon/i;
+const BODY_PATTERN = /exterior_mm_ext|paint|carrosserie|car_?body|bodyshell|bodypaint|(?:^|[_:])body(?:[0-9_]|$)|color1mtl|vehicle_generic_smallspecmap__paint/i;
+const NON_PAINT = /wheel|tire|tyre|rim|glass|window|windscreen|headlight|taillight|light|badge|emblem|intake|grille|interior|seat|dashboard|undercarriage|chassis|brake|caliper|rotor|spoiler|mirror|plastic|steer|carbon|misc|tyrewall/i;
 const SAVED_PREFIX = "horizon.gallery.custom.";
 
 export const PAINTS = ["#E5222D","#161B21","#135BBD","#EFAB35","#F5F7FA","#676C77","#168A65"] as const;
@@ -24,7 +24,7 @@ export function isBodyPaintMesh(mesh: THREE.Mesh): boolean {
     mesh.parent?.name ?? "",
     ...materials.map(m=>m.name)
   ].join(" ").toLowerCase();
-  if (NON_PAINT.test(descriptor) && !BODY_PATTERN.test(descriptor)) return false;
+  if (NON_PAINT.test(descriptor)) return false;
   return BODY_PATTERN.test(descriptor) || /^object_\d+$/.test(mesh.name.toLowerCase())
     && /^body/i.test(mesh.parent?.name ?? "");
 }
@@ -48,6 +48,9 @@ export function tintVehicleBody(car: THREE.Object3D, hex: string): number {
       const copy=material.clone();
       if(copy instanceof THREE.MeshStandardMaterial){
         if(color)copy.color.copy(color);
+        // Evita multiplicar el color nuevo por la textura original (roja en el F430).
+        copy.map = null;
+        copy.needsUpdate = true;
         copy.metalness=Math.max(copy.metalness,0.18);
         copy.roughness=Math.min(copy.roughness,0.45);
         if(copy instanceof THREE.MeshPhysicalMaterial){
@@ -148,6 +151,7 @@ export class GalleryCustomizer{
   private kind:"sport"|"pickup"="sport";
   private finish:VehicleFinish={paint:"original",wheels:"original"};
   private overlay:THREE.Group|null=null;
+  private hiddenOriginals=new Map<THREE.Mesh,boolean>();
   private generation=0;
   private donors=new Map<string,Promise<RimDonor>>();
   constructor(private readonly scene:THREE.Scene,private readonly loader:GLTFLoader){}
@@ -223,7 +227,16 @@ export class GalleryCustomizer{
         group.add(wheel);
       }
       this.scene.add(group);this.overlay=group;
-      if(result)result.textContent="Juego de llantas 3D montado. Posiciones aproximadas; inspección visual pendiente.";
+      let hidden=0;
+      this.car.traverse(node=>{
+        if(!(node instanceof THREE.Mesh))return;
+        const names=[node.name,node.parent?.name??"",node.parent?.parent?.name??""].join(" ").toLowerCase();
+        if(!/wheel|tire|tyre|rim|neumatico/.test(names)||/steering|steer|volante|handwheel/.test(names))return;
+        this.hiddenOriginals.set(node,node.visible);
+        node.visible=false;
+        hidden++;
+      });
+      if(result)result.textContent="Juego de llantas 3D montado. "+(hidden?"Originales ocultas en la vista. ":"Llantas originales no separables en este GLB. ")+"Posiciones aproximadas, verificar visualmente.";
     }catch(error){
       if(token!==this.generation)return;
       this.finish.wheels="original";safeSave(this.id,this.finish);this.renderControls();
@@ -231,6 +244,8 @@ export class GalleryCustomizer{
     }
   }
   private clearWheels():void{
+    for(const [wheel,visible] of this.hiddenOriginals)wheel.visible=visible;
+    this.hiddenOriginals.clear();
     if(!this.overlay)return;
     this.scene.remove(this.overlay);
     this.overlay.traverse(obj=>{
