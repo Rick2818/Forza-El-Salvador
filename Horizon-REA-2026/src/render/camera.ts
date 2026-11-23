@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { SETTINGS } from "../core/settings";
 import { clamp, damp } from "../core/mathx";
 import type { Vehicle } from "../vehicle/vehicle";
+import { BODY_CENTER_Y } from "../vehicle/carModel";
+import { vehicleDesign } from "../vehicle/selectedAsset";
 
 export type CameraMode = "chase" | "hood" | "wide";
 
@@ -11,6 +13,7 @@ const _forward = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _look = new THREE.Vector3();
 const _position = new THREE.Vector3();
+const _seat = new THREE.Vector3();
 const _curve = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _right = new THREE.Vector3();
@@ -62,13 +65,19 @@ export class ChaseCamera {
     const cameraSettings = SETTINGS.camera;
 
     if (this.mode === "hood") {
-      // Driver-eye view follows the SAME Rapier chassis in both tracks.
-      // The eye sits forward of the embedded pilot's visor, avoiding an opaque helmet.
-      _right.set(_forward.z, 0, -_forward.x);
-      _desired.copy(pos).addScaledVector(_forward, .21)
-        .addScaledVector(_right, -.24).addScaledVector(_up, .46);
+      // Put the lens at the actual left-hand driver's eye, not out on the hood.
+      // Heights vary by ~20 cm across the seven approved low-roof supercars.
+      const design = vehicle.vehicleId ? vehicleDesign(vehicle.vehicleId) : undefined;
+      const cabinWidth = design?.width ?? 1.9;
+      const roofHeight = design?.height ?? 1.3;
+      // GLB shell is displaced by BODY_CENTER_Y relative to the physics body.
+      // Keep the lens slightly ahead of the helmet visor, but behind the dash:
+      // this prevents head/visor polygons covering the picture at tight FOV.
+      const eyeY = clamp(Math.min(1.125, roofHeight - .20) - BODY_CENTER_Y, .26, .51);
+      _seat.set(-cabinWidth * .181, eyeY, -.11).applyQuaternion(_quat);
+      _desired.copy(pos).add(_seat);
       _look.copy(_desired).addScaledVector(_forward, 25);
-      _look.y += .05;
+      _look.y += .035;
     } else if (this.mode === "wide") {
       // Panoramic: further back, lower, and aimed above the roof so the sky
       // and the star field stay in frame.
@@ -104,15 +113,18 @@ export class ChaseCamera {
       }
     }
 
-    _desired.y = Math.max(_desired.y, 0.8);
+    // Do not lift the driver camera away from the seat on downhill sections.
+    if (this.mode !== "hood") _desired.y = Math.max(_desired.y, 0.8);
 
-    if (!this.initialized) {
+    // The cockpit must track its rigid chassis exactly every frame. Damping
+    // between two cockpit poses moves the camera through the roof in corners.
+    if (!this.initialized || this.mode === "hood") {
       this.position.copy(_desired);
       this.lookAt.copy(_look);
       this.initialized = true;
     } else {
-      const posLag = this.mode === "hood" ? 26 : this.mode === "wide" ? 5.5 : 7.5;
-      const lookLag = this.mode === "hood" ? 22 : this.mode === "wide" ? 9 : 11;
+      const posLag = this.mode === "wide" ? 5.5 : 7.5;
+      const lookLag = this.mode === "wide" ? 9 : 11;
       this.position.x = damp(this.position.x, _desired.x, posLag, dt);
       this.position.y = damp(this.position.y, _desired.y, posLag, dt);
       this.position.z = damp(this.position.z, _desired.z, posLag, dt);
