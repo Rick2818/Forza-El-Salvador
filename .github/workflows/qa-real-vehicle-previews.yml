@@ -33,7 +33,7 @@ jobs:
       - name: Copiar decoder Draco GLB
         run: |
           mkdir -p public/model-draco
-          cp node_modules/three/examples/jsm/libs/draco/* public/model-draco/
+          cp -a node_modules/three/examples/jsm/libs/draco/gltf/. public/model-draco/
       - name: Capturas y auditar geometria 3D real
         run: node tools/generate-vehicle-previews.mjs
       - name: Archivo de 24 capturas originales y analisis
