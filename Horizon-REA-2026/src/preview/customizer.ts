@@ -31,7 +31,7 @@ export function isBodyPaintMesh(mesh: THREE.Mesh): boolean {
 
 /** Alters only identified body panels. The original GLB meshes remain intact. */
 export function tintVehicleBody(car: THREE.Object3D, hex: string): number {
-  const color = new THREE.Color(hex);
+  const color = hex === "original" ? null : new THREE.Color(hex);
   let count=0;
   car.traverse(obj=>{
     if (!(obj instanceof THREE.Mesh) || !isBodyPaintMesh(obj)) return;
@@ -39,13 +39,15 @@ export function tintVehicleBody(car: THREE.Object3D, hex: string): number {
     if(!obj.userData.horizonOriginalPaint)obj.userData.horizonOriginalPaint=original;
     const stored = obj.userData.horizonOriginalPaint as THREE.Material[];
     if(hex === "original") {
+      const previous = Array.isArray(obj.material) ? obj.material : [obj.material];
+      previous.forEach(material => { if(!stored.includes(material)) material.dispose(); });
       obj.material=stored.length===1?stored[0]:stored;
       count++; return;
     }
     const replacements=stored.map(material=>{
       const copy=material.clone();
       if(copy instanceof THREE.MeshStandardMaterial){
-        copy.color.copy(color);
+        if(color)copy.color.copy(color);
         copy.metalness=Math.max(copy.metalness,0.18);
         copy.roughness=Math.min(copy.roughness,0.45);
         if(copy instanceof THREE.MeshPhysicalMaterial){
@@ -127,7 +129,7 @@ function findPositions(scene:THREE.Object3D,dimensions:THREE.Vector3,kind:"sport
     const selected=quad.map(([sx,sz])=>candidates
       .filter(p=>Math.sign(p.x-center.x)===sx&&Math.sign(p.z-center.z)===sz)
       .sort((a,b)=>Math.abs(b.x-center.x)-Math.abs(a.x-center.x))[0]);
-    if(selected.every(Boolean))return selected;
+    if(selected.every((p):p is THREE.Vector3 => p !== undefined))return selected;
   }
   const radius=kind==="pickup"?Math.max(.39,Math.min(dimensions.y*.29,.74))
                               :Math.max(.28,Math.min(dimensions.y*.30,.50));
