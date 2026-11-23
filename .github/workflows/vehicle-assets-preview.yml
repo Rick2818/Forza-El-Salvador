@@ -1,0 +1,33 @@
+name: Previsualizar Ferrari 488 con licencia documentada (no publicar)
+on:
+  push:
+    branches: [art/ten-realistic-vehicles-intake-20261123]
+    paths:
+      - "Horizon-REA-2026/replacements/**"
+      - "Horizon-REA-2026/tools/audit-replacement-models.mjs"
+      - ".github/workflows/vehicle-assets-preview.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-ferrari-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar candidato Ferrari desde distribución pública CC BY
+        run: |
+          mkdir -p Horizon-REA-2026/replacements/assets
+          curl --fail --location --retry 3 --max-time 90 \
+            "https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari/f488/f488.glb" \
+            -o Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
+          test -s Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
+      - name: Auditar mallas y nombres de piezas sin instalar en el videojuego
+        working-directory: Horizon-REA-2026
+        run: node tools/audit-replacement-models.mjs --available
+      - name: Conservar Ferrari solo como artefacto de evaluación
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferrari-488-pista-spider-preproduccion
+          path: Horizon-REA-2026/replacements/assets/ferrari-488-pista-spider.glb
+          retention-days: 7

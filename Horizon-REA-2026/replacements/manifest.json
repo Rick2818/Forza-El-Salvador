@@ -1,0 +1,127 @@
+{
+  "purpose": "Auditar diez sustitutos 3D antes de instalar en las carreras. NO son autos activos.",
+  "expectedVehicles": 10,
+  "cars": [
+    {
+      "id": "ferrari-488-pista-spider",
+      "replaces": "ferrari-california-t",
+      "displayName": "Ferrari 488 Pista Spider",
+      "kind": "sport",
+      "model": "replacements/assets/ferrari-488-pista-spider.glb",
+      "license": "CC-BY-4.0",
+      "creator": "Ddiaz Design",
+      "original": "https://skfb.ly/prvMq",
+      "redistributor": "https://github.com/supercar3d/supercar_3D_asssets/blob/main/basic/ferrari/f488/license.txt",
+      "source": "https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari/f488/f488.glb",
+      "rightsReviewed": false
+    },
+    {
+      "id": "porsche-911",
+      "replaces": "porsche-911",
+      "displayName": "Porsche 911 con interior",
+      "kind": "sport",
+      "model": "replacements/assets/porsche-911.glb",
+      "license": "PENDING",
+      "creator": "n.brizitskaya",
+      "original": "https://sketchfab.com/3d-models/porsche-911-with-interior-877b1bc1739f4a2bb65d62fd7ffd9f75",
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "bugatti-chiron",
+      "replaces": "bugatti-chiron",
+      "displayName": "Bugatti Chiron",
+      "kind": "sport",
+      "model": "replacements/assets/bugatti-chiron.glb",
+      "license": "PENDING",
+      "creator": "ALIEEEN",
+      "original": "https://skfb.ly/oO9Jx",
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "mercedes-amg-gt-black-series",
+      "replaces": "mercedes-amg-gt-black-series",
+      "displayName": "Mercedes-AMG GT Black Series",
+      "kind": "sport",
+      "model": "replacements/assets/mercedes-amg-gt-black-series.glb",
+      "license": "PENDING",
+      "creator": null,
+      "original": null,
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "lamborghini-aventador-roadster",
+      "replaces": "lamborghini-aventador-roadster",
+      "displayName": "Lamborghini Aventador Roadster",
+      "kind": "sport",
+      "model": "replacements/assets/lamborghini-aventador-roadster.glb",
+      "license": "PENDING",
+      "creator": null,
+      "original": null,
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "yangwang-u9",
+      "replaces": "yangwang-u9",
+      "displayName": "Yangwang U9",
+      "kind": "sport",
+      "model": "replacements/assets/yangwang-u9.glb",
+      "license": "PENDING",
+      "creator": null,
+      "original": null,
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "koenigsegg-jesko-odin",
+      "replaces": "koenigsegg-jesko-odin",
+      "displayName": "Koenigsegg Jesko Odin",
+      "kind": "sport",
+      "model": "replacements/assets/koenigsegg-jesko-odin.glb",
+      "license": "PENDING",
+      "creator": null,
+      "original": null,
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "ram-1500-trx",
+      "replaces": null,
+      "displayName": "RAM 1500 TRX 4x4",
+      "kind": "pickup",
+      "model": "replacements/assets/ram-1500-trx.glb",
+      "license": "PENDING",
+      "creator": "Outlaw Games",
+      "original": "https://sketchfab.com/3d-models/2021-ram-1500-trx-4fad9badee2449b9a5addadc11c3f4e1",
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "chevrolet-silverado-z71",
+      "replaces": null,
+      "displayName": "Chevrolet Silverado Z71 4x4",
+      "kind": "pickup",
+      "model": "replacements/assets/chevrolet-silverado-z71.glb",
+      "license": "PENDING",
+      "creator": "Romanov_13",
+      "original": "https://sketchfab.com/3d-models/free-2010-chevrolet-silverado-z71-4x4-2ad964f59a774e199d9caf143f21e614",
+      "source": null,
+      "rightsReviewed": false
+    },
+    {
+      "id": "ford-f150-raptor",
+      "replaces": null,
+      "displayName": "Ford F-150 Raptor 4x4",
+      "kind": "pickup",
+      "model": "replacements/assets/ford-f150-raptor.glb",
+      "license": "PENDING",
+      "creator": "Outlaw Games",
+      "original": "https://sketchfab.com/3d-models/ford-f150-raptor-5bde9684bf6d40e0902ee8e482ad1063",
+      "source": null,
+      "rightsReviewed": false
+    }
+  ]
+}
