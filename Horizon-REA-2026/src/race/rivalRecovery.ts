@@ -49,8 +49,14 @@ export function updateRivalMotion(
     state.withoutProgressSeconds = 0;
     return false;
   }
+  // Do not count cooldown time toward the next incident: a failed rescue
+  // must not cause another teleport immediately after the cooldown expires.
+  if (state.cooldownSeconds > 0) {
+    state.withoutProgressSeconds = 0;
+    return false;
+  }
   state.withoutProgressSeconds += elapsed;
-  if (state.withoutProgressSeconds < AI_RECOVERY_STAGNANT_SECONDS || state.cooldownSeconds > 0) return false;
+  if (state.withoutProgressSeconds < AI_RECOVERY_STAGNANT_SECONDS) return false;
   // Caller must find clear track space before teleporting. No repeated
   // per-frame rescue attempts, even if nearby cars are temporarily packed.
   state.withoutProgressSeconds = 0;
