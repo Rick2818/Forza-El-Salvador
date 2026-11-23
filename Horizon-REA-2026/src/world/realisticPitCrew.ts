@@ -42,7 +42,7 @@ export function createRealisticPitCrew(placements:readonly HumanPlacement[],name
       station.add(root);group.add(station);
       root.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
-        object.castShadow=true;object.receiveShadow=true;object.frustumCulled=false;
+        // Keep close-up PBR materials, but avoid two expensive shadow passes\n        // for every 80-bone worker when the player selects high quality.\n        object.castShadow=false;object.receiveShadow=true;object.frustumCulled=false;
         const materials=Array.isArray(object.material)?object.material:[object.material];
         const mapped=materials.map(m=>m.name.endsWith("_body")?
           teamWorkwear(m as THREE.MeshStandardMaterial,p.shirt):m);
@@ -54,7 +54,7 @@ export function createRealisticPitCrew(placements:readonly HumanPlacement[],name
       mixer.clipAction(clip).play();
       const phase=((i*37+17)%101)/101*clip.duration;
       mixer.setTime(phase);root.updateMatrixWorld(true);
-      return {station,mixer,phase};
+      return {station,mixer,phase,lastPoseTime:-Infinity};
     });
     const cameraWorld=new THREE.Vector3(),center=new THREE.Vector3();
     const frustum=new THREE.Frustum(),viewProjection=new THREE.Matrix4();
@@ -67,10 +67,10 @@ export function createRealisticPitCrew(placements:readonly HumanPlacement[],name
       for(const actor of actors) {
         actor.station.getWorldPosition(center);center.y+=.9;
         const distance=center.distanceTo(cameraWorld);sphere.center.copy(center);
-        actor.station.visible=distance<230 && frustum.intersectsSphere(sphere);
+        actor.station.visible=distance<180 && frustum.intersectsSphere(sphere);
         if(!actor.station.visible)continue;
         visible++;
-        if(distance<100){actor.mixer.setTime(crewTime+actor.phase);actor.station.updateMatrixWorld(true);animated++;}
+        if(distance<80 && crewTime-actor.lastPoseTime>=1/30){\n          actor.mixer.setTime(crewTime+actor.phase);actor.station.updateMatrixWorld(true);\n          actor.lastPoseTime=crewTime;animated++;\n        }
       }
       group.userData.visibleCrew=visible;group.userData.animatedCrew=animated;
     };
