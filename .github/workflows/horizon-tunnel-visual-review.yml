@@ -1,0 +1,54 @@
+name: Validar tuneles iluminados - Monzon y Suzaka
+
+on:
+  push:
+    branches: [fix/visible-tunnel-portals]
+    paths:
+      - 'Horizon-REA-2026/src/world/*unnel*.ts'
+      - 'Horizon-REA-2026/src/world/environment.ts'
+      - 'Horizon-REA-2026/tools/review-tunnel-lighting.mjs'
+      - '.github/workflows/horizon-tunnel-visual-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Instalar dependencias y Playwright
+        run: npm ci && npm install --no-save --package-lock=false playwright
+      - name: Compilar fuentes del juego
+        run: npm run build
+      - name: Instalar navegador de pruebas
+        run: npx playwright install --with-deps chromium
+      - name: Iniciar build real
+        run: |
+          npm run preview >/tmp/horizon-tunnel-preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/horizon-tunnel-preview.log
+          exit 1
+      - name: Comprobar los seis tuneles en WebGL y luminosidad
+        run: node tools/review-tunnel-lighting.mjs
+      - name: Guardar doce capturas reales de los tuneles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-real-tunnel-lighting
+          path: Horizon-REA-2026/review/tunnel-lighting/
+          retention-days: 10
+          if-no-files-found: warn
