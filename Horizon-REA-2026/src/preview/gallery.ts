@@ -246,8 +246,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelse
 const rotateButton = $("rotate") as HTMLButtonElement;
 rotateButton.addEventListener("click", () => {
   controls.autoRotate = !controls.autoRotate;
-  // Vuelta completa aprox. cada 10 segundos en vez de 60 (a 60 FPS).
-  controls.autoRotateSpeed = 6;
+  // Girar al doble de la velocidad anterior: vuelta de 360° aprox. cada 5 segundos a 60 FPS.
+  controls.autoRotateSpeed = 12;
   rotateButton.setAttribute("aria-pressed", String(controls.autoRotate));
 });
 $("capture").addEventListener("click", () => {
