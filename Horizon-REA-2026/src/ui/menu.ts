@@ -5,6 +5,8 @@ import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
 import { vehiclePickerMarkup } from "./vehiclePicker";
 import { SELECTED_VEHICLES } from "../vehicle/roster";
+import { EXTERNAL_VEHICLES } from "../vehicle/externalRoster";
+const ALL_MENU_VEHICLES = [...EXTERNAL_VEHICLES,...SELECTED_VEHICLES];
 import { analyzeCircuitDefinition, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
 
 export interface MenuCallbacks {
@@ -231,13 +233,13 @@ export class Menu {
         <div class="setup-tabs" role="tablist" aria-label="Configurar la carrera">
           <button id="tab-autos" class="setup-tab ${this.activeSetupTab === "autos" ? "is-active" : ""}"
             type="button" role="tab" data-action="tab-autos" aria-selected="${this.activeSetupTab === "autos"}"
-            aria-controls="autos-panel">🚗 Autos · ${SELECTED_VEHICLES.length}</button>
+            aria-controls="autos-panel">🚗 Autos · ${EXTERNAL_VEHICLES.length}</button>
           <button id="tab-circuitos" class="setup-tab ${this.activeSetupTab === "circuitos" ? "is-active" : ""}"
             type="button" role="tab" data-action="tab-circuitos" aria-selected="${this.activeSetupTab === "circuitos"}"
             aria-controls="circuitos-panel">🏁 Circuitos</button>
         </div>
         ${this.activeSetupTab === "autos" ? vehiclePickerMarkup(this.selectedId) : circuitPanelMarkup}
-        <p class="sub">Auto elegido: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong></p>
+        <p class="sub">Auto elegido: <strong>${ALL_MENU_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong></p>
         <div class="difficulty-panel">
           <div class="brand">Dificultad de los rivales</div>
           <div class="difficulty-choices" role="group" aria-label="Dificultad de carrera">

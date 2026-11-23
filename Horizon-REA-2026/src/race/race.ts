@@ -18,7 +18,8 @@ import { newRivalMotionWatch, resetRivalMotion, updateRivalMotion,
 import { escapedSuzakaBarrier, strandedOutsideSuzakaKerb, exceedsArcadeSafetyVelocity, SUZAKA_STRANDED_DELAY_SEC } from "./suzakaRecovery";
 import { SETTINGS } from "../core/settings";
 import type { Input } from "../core/input";
-import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, hasSelectedAsset, vehicleDesign } from "../vehicle/selectedAsset";
+import { DEFAULT_SELECTED_ID, VEHICLE_DESIGNS, EXTERNAL_VEHICLE_DESIGNS, hasSelectedAsset, vehicleDesign } from "../vehicle/selectedAsset";
+import { isExternalVehicle } from "../vehicle/externalRoster";
 
 export type Difficulty = RaceDifficulty;
 export type RaceState = "idle" | "countdown" | "racing" | "finished";
@@ -116,7 +117,10 @@ export class Race {
     this.player = this.makeRacer(playerVehicle, "TÚ", true, 1);
 
     const playerSlot = 2;
-    const rivals = VEHICLE_DESIGNS.filter((design) => design.id !== vehicleId)
+    const newRivals=isExternalVehicle(vehicleId)
+      ? EXTERNAL_VEHICLE_DESIGNS.filter(d=>d.id!==vehicleId && hasSelectedAsset(d.id))
+      : [];
+    const rivals=[...newRivals,...VEHICLE_DESIGNS.filter(d=>d.id!==vehicleId && hasSelectedAsset(d.id))]
       .slice(0, SETTINGS.race.rivals).map((opponent, i) => {
       const cfg = ROSTER[i];
       const vehicle = new Vehicle(this.world, scene, {

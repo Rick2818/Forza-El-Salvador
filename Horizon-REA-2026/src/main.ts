@@ -4,7 +4,7 @@ import { Game } from "./game";
 import { preloadCarAsset, USE_BLENDER_SHELL } from "./vehicle/carAsset";
 import { Track } from "./world/track";
 import { availableCircuits, DEFAULT_CIRCUIT_ID, getCircuit } from "./world/circuits";
-import { VEHICLE_DESIGNS, loadSelectedVehicle } from "./vehicle/selectedAsset";
+import { VEHICLE_DESIGNS, EXTERNAL_VEHICLE_DESIGNS, loadSelectedVehicle } from "./vehicle/selectedAsset";
 
 const loading = document.createElement("div");
 loading.id = "loading";
@@ -49,6 +49,12 @@ async function boot(): Promise<void> {
   try { savedVehicle = localStorage.getItem("horizon.selected-vehicle"); } catch { /* optional */ }
   const initialModels = VEHICLE_DESIGNS.filter((d, i) => i < 4 || d.id === savedVehicle);
   await Promise.all(initialModels.map((d) => loadSelectedVehicle(d.id)));
+  // Prime four authentic third-party models for player selection and rival AI.
+  // A failed external GLB must not prevent the legacy game from starting.
+  const externalWarm = EXTERNAL_VEHICLE_DESIGNS.filter((d,i)=>i<4 || d.id===savedVehicle);
+  const results = await Promise.allSettled(externalWarm.map(d=>loadSelectedVehicle(d.id)));
+  for(let i=0;i<results.length;i++)if(results[i].status==="rejected")
+    console.warn("[Horizon] Modelo GLB nuevo no disponible",externalWarm[i].id,(results[i] as PromiseRejectedResult).reason);
 
   const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
   const ui = document.getElementById("ui") as HTMLElement;
