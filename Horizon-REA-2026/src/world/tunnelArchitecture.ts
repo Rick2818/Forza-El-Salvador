@@ -12,6 +12,7 @@ export interface TunnelArchitectureOptions {
   name: string;
   circuit: string;
   ordinal: number;
+  concreteMap: THREE.Texture;
   halfWidth: number;
   startMeters: number;
   lengthMeters: number;
@@ -89,13 +90,13 @@ export function makeTunnelPortalSign(name: string, ordinal: number): THREE.Textu
  * Every detail is outside the car's normal envelope.
  */
 export function createTunnelArchitecture(options: TunnelArchitectureOptions): THREE.Group {
-  const { name, circuit, ordinal, halfWidth: half, startMeters, lengthMeters, profile, at } = options;
+  const { name, circuit, ordinal, concreteMap, halfWidth: half, startMeters, lengthMeters, profile, at } = options;
   const group = new THREE.Group();
   group.name = `${name}-architectural-finishings`;
   const up = new THREE.Vector3(0, 1, 0);
   const concrete = new THREE.MeshStandardMaterial({
     color: 0xc4cbd0, metalness: .08, roughness: .91,
-    map: makeTunnelConcreteTexture(), side: THREE.DoubleSide
+    map: concreteMap, side: THREE.DoubleSide
   });
   const steel = new THREE.MeshStandardMaterial({
     color: 0x283d4a, roughness: .41, metalness: .65
