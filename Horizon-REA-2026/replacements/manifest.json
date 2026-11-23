@@ -1,5 +1,5 @@
 {
-  "purpose": "Auditar diez sustitutos 3D antes de instalar en las carreras. NO son autos activos.",
+  "purpose": "Preproducción de 7 modelos deportivos y 3 pickups 4x4. No instalados, no publicados.",
   "expectedVehicles": 10,
   "cars": [
     {
@@ -13,7 +13,13 @@
       "original": "https://skfb.ly/prtB6",
       "redistributor": "https://github.com/supercar3d/supercar_3D_asssets/blob/main/basic/ferrari/f430/license.txt",
       "source": "https://raw.githubusercontent.com/supercar3d/supercar_3D_asssets/main/basic/ferrari/f430/f430.glb",
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "note": "Descargado de repositorio CC BY atribuido a Ddiaz Design; derechos subyacentes aún por verificar.",
+      "sketchfabUid": null,
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "porsche-911",
@@ -21,11 +27,17 @@
       "displayName": "Porsche 911 con interior",
       "kind": "sport",
       "model": "replacements/assets/porsche-911.glb",
-      "license": "PENDING",
+      "license": "CC-BY-4.0",
       "creator": "n.brizitskaya",
       "original": "https://sketchfab.com/3d-models/porsche-911-with-interior-877b1bc1739f4a2bb65d62fd7ffd9f75",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "877b1bc1739f4a2bb65d62fd7ffd9f75",
+      "note": "Porsche 911 con interior; verificar mallas inferiores y poligonaje en archivo.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "bugatti-chiron",
@@ -33,11 +45,17 @@
       "displayName": "Bugatti Chiron",
       "kind": "sport",
       "model": "replacements/assets/bugatti-chiron.glb",
-      "license": "PENDING",
+      "license": "CC-BY-4.0",
       "creator": "ALIEEEN",
-      "original": "https://skfb.ly/oO9Jx",
+      "original": "https://sketchfab.com/3d-models/free-bugatti-chiron-374890e62c5a44e9a739ca638b6e0a18",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "374890e62c5a44e9a739ca638b6e0a18",
+      "note": "Procedencia autoral por confirmar.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "mercedes-amg-gt-black-series",
@@ -46,10 +64,16 @@
       "kind": "sport",
       "model": "replacements/assets/mercedes-amg-gt-black-series.glb",
       "license": "PENDING",
-      "creator": null,
-      "original": null,
+      "creator": "Tiaan Pretorius",
+      "original": "https://sketchfab.com/3d-models/mercedes-benz-amg-gt-black-series-a1c89ee2c731474dacc20701555915c5",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "a1c89ee2c731474dacc20701555915c5",
+      "note": "Licencia por corroborar mediante API oficial.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "lamborghini-aventador-roadster",
@@ -57,11 +81,17 @@
       "displayName": "Lamborghini Aventador Roadster",
       "kind": "sport",
       "model": "replacements/assets/lamborghini-aventador-roadster.glb",
-      "license": "PENDING",
-      "creator": null,
-      "original": null,
+      "license": "CC-BY-4.0",
+      "creator": "BlackCube",
+      "original": "https://sketchfab.com/3d-models/lamborghini-aventador-with-interior-36eb1fa54a0d4be695d4cd90c30f4ff1",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "36eb1fa54a0d4be695d4cd90c30f4ff1",
+      "note": "Modelo Aventador con interior, no Roadster exacto; ensamble de obras de terceros: verificar derechos de todas las partes.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "yangwang-u9",
@@ -69,11 +99,17 @@
       "displayName": "Yangwang U9",
       "kind": "sport",
       "model": "replacements/assets/yangwang-u9.glb",
-      "license": "PENDING",
-      "creator": null,
-      "original": null,
+      "license": "CC-BY-4.0",
+      "creator": "tonielpro520",
+      "original": "https://sketchfab.com/3d-models/2024-byd-yangwang-u9-c14e3511bb9143acb3fe2aaf8e1b4346",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "c14e3511bb9143acb3fe2aaf8e1b4346",
+      "note": "No usar versión Ddiaz (CC-BY-NC-SA y derivada de NFS Mobile); verificar que esta versión no reutilice ese modelo.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "koenigsegg-jesko-odin",
@@ -81,11 +117,17 @@
       "displayName": "Koenigsegg Jesko Odin",
       "kind": "sport",
       "model": "replacements/assets/koenigsegg-jesko-odin.glb",
-      "license": "PENDING",
-      "creator": null,
-      "original": null,
+      "license": "CC-BY-4.0",
+      "creator": "kevin (ケビン)",
+      "original": "https://sketchfab.com/3d-models/2019-koenigsegg-jesko-408bed6ddca14a1a9c9eeaa5437f62f0",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "408bed6ddca14a1a9c9eeaa5437f62f0",
+      "note": "Jesko 2019, no edición Odin exacta; no usar modelos extraídos de Real Racing 3/CSR2/PUBG.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "ram-1500-trx",
@@ -93,11 +135,17 @@
       "displayName": "RAM 1500 TRX 4x4",
       "kind": "pickup",
       "model": "replacements/assets/ram-1500-trx.glb",
-      "license": "PENDING",
-      "creator": "Outlaw Games",
-      "original": "https://sketchfab.com/3d-models/2021-ram-1500-trx-4fad9badee2449b9a5addadc11c3f4e1",
+      "license": "CC-BY-4.0",
+      "creator": "DR1KING100K",
+      "original": "https://sketchfab.com/3d-models/dodge-ram-1500-trx-d6d548c5fe9f4749813f0a386edfd42c",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "d6d548c5fe9f4749813f0a386edfd42c",
+      "note": "Sustituto del modelo Outlaw Games CC-BY-NC; revisar autoría y mecanismo 4x4.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "chevrolet-silverado-z71",
@@ -105,11 +153,17 @@
       "displayName": "Chevrolet Silverado Z71 4x4",
       "kind": "pickup",
       "model": "replacements/assets/chevrolet-silverado-z71.glb",
-      "license": "PENDING",
+      "license": "CC-BY-4.0",
       "creator": "Romanov_13",
       "original": "https://sketchfab.com/3d-models/free-2010-chevrolet-silverado-z71-4x4-2ad964f59a774e199d9caf143f21e614",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "2ad964f59a774e199d9caf143f21e614",
+      "note": "La ficha describe protecciones inferiores, no prueba que estén modeladas.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     },
     {
       "id": "ford-f150-raptor",
@@ -117,11 +171,17 @@
       "displayName": "Ford F-150 Raptor 4x4",
       "kind": "pickup",
       "model": "replacements/assets/ford-f150-raptor.glb",
-      "license": "PENDING",
-      "creator": "Outlaw Games",
-      "original": "https://sketchfab.com/3d-models/ford-f150-raptor-5bde9684bf6d40e0902ee8e482ad1063",
+      "license": "CC-BY-4.0",
+      "creator": "David_Holiday",
+      "original": "https://sketchfab.com/3d-models/ford-f150-raptor-2021-5acc96d65a374f7280ddbd1c2d5bf12e",
       "source": null,
-      "rightsReviewed": false
+      "rightsReviewed": false,
+      "sketchfabUid": "5acc96d65a374f7280ddbd1c2d5bf12e",
+      "note": "Sustituto del modelo Outlaw Games CC-BY-NC; aprox. 1.1 millones de triángulos: optimización LOD indispensable.",
+      "assetImported": false,
+      "geometryApproved": false,
+      "physicsApproved": false,
+      "runtimeFpsApproved": false
     }
   ]
 }
