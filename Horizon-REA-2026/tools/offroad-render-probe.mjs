@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
+import {mkdir,writeFile} from "node:fs/promises";
 
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--enable-unsafe-swiftshader"]});
 try {
@@ -13,6 +14,10 @@ try {
     const {runOffroadRenderProbe}=await import("/tools/offroad-render-browser.mjs");
     return await runOffroadRenderProbe();
   });
+  await mkdir("review/quality/offroad-v293",{recursive:true});
+  for(const shot of results.captures)await writeFile(`review/quality/offroad-v293/${shot.id}-${shot.second}s.png`,Buffer.from(shot.png,"base64"));
+  delete results.captures;
+  await writeFile("review/quality/offroad-v293/results.json",JSON.stringify(results,null,2));
   console.log(JSON.stringify(results,null,2));
   assert.deepEqual(errors,[]);
   assert.deepEqual(results.shaderErrors,[]);
