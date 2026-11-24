@@ -49,6 +49,8 @@ jobs:
           git add Horizon-REA-2026/public/vehicles/generated/
           if ! git diff --cached --quiet; then
             git commit -m "review(v20): generate ten exact GLB showroom screenshots [skip ci]"
+            # Vite recompila dist/ y otros ficheros versionados; no forman parte del PR.
+            git reset --hard HEAD
             git fetch origin fix/v20-model-integrity-20261123
             git rebase origin/fix/v20-model-integrity-20261123
             git push origin HEAD:fix/v20-model-integrity-20261123
