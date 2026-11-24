@@ -343,13 +343,13 @@ export class Race {
               : { throttle: 0, brake: 0.6, steer: 0, handbrake: false };
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
-          const tyreGrip = this.track.gripAtFootprints(racer.vehicle.wheelContactPoints(), locate.index);
+          const tyreGrip = this.track.gripAtFootprints(racer.vehicle.wheelContactPoints(), locate.index, racer.vehicle.wheelGripBuffer());
           racer.vehicle.update(dt, driving, grip, tyreGrip);
           racer.vehicle.setBrakeLights(driving.brake > 0.05 || this.state === "finished");
         } else if (racer.ai) {
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
-          const tyreGrip = this.track.gripAtFootprints(racer.vehicle.wheelContactPoints(), locate.index);
+          const tyreGrip = this.track.gripAtFootprints(racer.vehicle.wheelContactPoints(), locate.index, racer.vehicle.wheelGripBuffer());
           racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id &&
             Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5), grip, tyreGrip);
         }
