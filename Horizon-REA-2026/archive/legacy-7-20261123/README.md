@@ -30,3 +30,7 @@ Mantener como respaldo aun después de que los diez modelos externos pasen a pro
 | `src/vehicle/roster.ts` | 2845 | `c149dff79ab6b019668d690b02cce3f43c0d4fea` |
 | `src/vehicle/selectedAsset.ts` | 13817 | `162bbcc9c74c94d5628ecad99d4f4375d9db739c` |
 | `src/vehicle/vehicle-designs.json` | 4499 | `2504c757a5e8560b4f59681e9af47b23af6a6bf5` |
+
+## Showroom como nueva portada (archivo activo)
+Los 7 históricos ya no aparecen en el selector del jugador ni en el garaje. Sus GLB y configuración permanecen en este respaldo. Los originales en `public/models/selected` continúan como dependencia técnica de los rivales de IA y recuperación segura; no se eliminan hasta desacoplarlos y validar todos los circuitos.
+`index.html` es el showroom 3D, `race.html` es el juego y `model-gallery.html` funciona como alias del showroom. La selección se conserva en `horizon.selected-vehicle`.

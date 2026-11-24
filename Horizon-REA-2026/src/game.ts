@@ -22,7 +22,8 @@ import { shouldResumeFromFocusLoss } from "./core/focusPause";
 import { SETTINGS } from "./core/settings";
 import { clamp } from "./core/mathx";
 import type { DriveInput } from "./vehicle/vehicle";
-import { DEFAULT_SELECTED_ID, loadSelectedVehicle, vehicleDesign } from "./vehicle/selectedAsset";
+import { loadSelectedVehicle, vehicleDesign } from "./vehicle/selectedAsset";
+import { EXTERNAL_VEHICLES, isExternalVehicle } from "./vehicle/externalRoster";
 
 export type GameState = "menu" | "opening" | "racing" | "paused" | "results";
 type Quality = "alta" | "equilibrada";
@@ -35,7 +36,7 @@ export class Game {
   readonly track: Track;
   readonly environment: Environment;
   race: Race;
-  private selectedVehicleId = DEFAULT_SELECTED_ID;
+  private selectedVehicleId = EXTERNAL_VEHICLES[0].id;
   private difficulty: Difficulty = "medio";
   private oncomingEnabled = true;
   private lastEnteredPitGarage: string | null = null;
@@ -138,7 +139,7 @@ export class Game {
     this.applyResolution();
     try {
       const saved = localStorage.getItem("horizon.selected-vehicle");
-      if (saved) { vehicleDesign(saved); this.selectedVehicleId = saved; }
+      if (saved && isExternalVehicle(saved)) { vehicleDesign(saved); this.selectedVehicleId = saved; }
       const savedQuality = localStorage.getItem("horizon.quality");
       if (savedQuality === "alta" || savedQuality === "equilibrada") this.quality=savedQuality;
       const savedTraffic = localStorage.getItem("horizon.oncoming-traffic");

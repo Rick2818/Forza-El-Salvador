@@ -4,9 +4,8 @@ import { formatTime } from "../core/mathx";
 import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
 import { vehiclePickerMarkup } from "./vehiclePicker";
-import { SELECTED_VEHICLES } from "../vehicle/roster";
 import { EXTERNAL_VEHICLES } from "../vehicle/externalRoster";
-const ALL_MENU_VEHICLES = [...EXTERNAL_VEHICLES,...SELECTED_VEHICLES];
+const ALL_MENU_VEHICLES = EXTERNAL_VEHICLES;
 import { analyzeCircuitDefinition, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
 
 export interface MenuCallbacks {
@@ -52,7 +51,7 @@ export class Menu {
   private activeSetupTab: "autos" | "circuitos" = "autos";
   private visible = false;
   private trackLengthKm = 0;
-  private selectedId = "ferrari-california-t";
+  private selectedId = "ferrari-f430";
   private garageOpen = false;
   private selecting = false;
 

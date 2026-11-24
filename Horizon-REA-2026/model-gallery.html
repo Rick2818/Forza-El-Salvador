@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#080d16">
 <meta name="description" content="Sala de inspección 3D: diez vehículos reales importados a Horizon El Salvador.">
-<title>Garaje 3D · Horizon El Salvador</title>
+<title>Showroom · Horizon El Salvador</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,Segoe UI,Arial,sans-serif;background:#080d16;color:#f5f7fb}
 *{box-sizing:border-box}body{margin:0;min-height:100vh}button,a{font:inherit}
@@ -33,6 +33,8 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 .views button,.rotate,.capture{border:1px solid #546479;border-radius:9px;background:#182437;color:#f1f5fa;padding:8px 10px;cursor:pointer;font-size:12px}
 .views button.active{background:#a64f19;border-color:#f78a44}
 .capture{margin-left:auto}.rotate[aria-pressed=true]{border-color:#ffa85c}
+#drive-current{background:linear-gradient(110deg,#e97528,#b82835);color:white;border-color:#ffa968;font-weight:900}
+#drive-current:disabled{opacity:.48;cursor:wait}
 .details{padding:12px 20px 16px;color:#bfcbda;font-size:12px;line-height:1.6;background:#0d1420}
 .details strong{color:#fff}.details a{color:#ffbf74}
 #metrics{margin-top:5px;color:#dbe6ef}
@@ -58,11 +60,11 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 </style>
 </head>
 <body>
-<header class="top"><div class="brand">HORIZON <span>EL SALVADOR</span> · GARAJE 3D</div><a class="back" href="./" aria-label="Regresar al juego">← Volver a carreras</a></header>
+<header class="top"><div class="brand">HORIZON <span>EL SALVADOR</span> · SHOWROOM 3D</div><a class="back" href="race.html" aria-label="Entrar al circuito">🏁 Ir a carreras</a></header>
 <main class="layout">
 <aside class="sidebar" aria-label="Diez modelos 3D descargados">
-<h1>10 archivos GLB reales</h1>
-<p class="intro">Selecciona cualquier vehículo. Gira el modelo con el mouse, acerca con la rueda o pellizca en pantalla. Puedes inspeccionar los 10 modelos 3D y elegir uno para volver al juego. Los 7 anteriores siguen disponibles.</p>
+<h1>Elige tu próximo vehículo</h1>
+<p class="intro">Showroom oficial: 7 deportivos y 3 pickups 4×4. Inspecciona cada modelo, personaliza su pintura y llantas y entra a carreras. Los 7 anteriores están archivados, fuera de la selección.</p>
 <div class="group-title">7 deportivos</div><div id="sports"></div>
 <div class="group-title">3 pickups</div><div id="pickups"></div>
 </aside>
@@ -78,7 +80,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 <button type="button" data-view="under">Bajos</button>
 </div>
 <button type="button" id="rotate" class="rotate" aria-pressed="false">↻ Girar</button>
-<button type="button" id="drive-current" class="rotate" disabled>🏁 Elegir para correr</button>
+<button type="button" id="drive-current" class="rotate" disabled>🏁 Entrar a carreras con este auto</button>
 <button type="button" id="capture" class="capture">📷 Guardar captura real</button>
 </div>
 <div class="customizer" role="region" aria-label="Personalizar vehículo">

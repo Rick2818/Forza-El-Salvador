@@ -74,6 +74,10 @@ const customizer = new GalleryCustomizer(scene, loader);
 
 let currentModel: THREE.Group | null = null;
 let currentCar = MODELS[0];
+try {
+  const saved = localStorage.getItem("horizon.selected-vehicle");
+  currentCar = MODELS.find(car => car.id === saved) ?? MODELS[0];
+} catch { /* persistencia opcional */ }
 let activeView = "front";
 let height = 1.8;
 let modelExtent = 6;
@@ -249,7 +253,7 @@ $("drive-current").addEventListener("click", () => {
   if (!currentModel) return;
   try {
     localStorage.setItem("horizon.selected-vehicle", currentCar.id);
-    window.location.assign("./");
+    window.location.assign("race.html");
   } catch {
     status.textContent = "No se puede guardar la elección. Habilita el almacenamiento local.";
   }
