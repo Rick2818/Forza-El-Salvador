@@ -55,12 +55,19 @@ export class PineForest {
   this.group.name='suzaka-pine-forest';scene.add(this.group);
   this.placements=pinePlacements(track,ground);
   // Immediately available realistic foliage, independent of network and GLB.
-  this.group.add(createSuzakaResilientPines(this.placements));
+  const fallback=createSuzakaResilientPines(this.placements);
+  this.group.add(fallback);
   this.group.userData.treeCount=this.placements.length;
   this.group.userData.source="procedural-safe";
   this.ready=this.load().then(()=>{
     this.group.userData.ready=true;
-    this.group.userData.source="Blender-CC0-and-organic";
+    this.group.userData.source="Blender-CC0";
+    // Do not draw the procedural fallback on top of the successfully loaded forest.
+    fallback.removeFromParent();
+    const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();
+    fallback.traverse(o=>{if(o instanceof THREE.InstancedMesh){geometries.add(o.geometry);for(const m of [o.material].flat())materials.add(m);o.dispose();}});
+    for(const g of geometries)g.dispose();
+    for(const m of materials)m.dispose();
     this.update(new THREE.Vector3(0,0,0),1);
   }).catch(error=>{
     this.group.userData.ready=true;
@@ -138,7 +145,7 @@ export class PineForest {
    const distance=Math.hypot(tree.x-center.x,tree.z-center.z);
    if(distance>1100)continue;
    // More trees retain their actual Blender branches before becoming impostors.
-   const tier=distance<85?0:distance<205?1:2,index=counts[tier]++;
+   const tier=distance<40?0:distance<95?1:2,index=counts[tier]++;
    position.set(tree.x,tree.y,tree.z);scale.set(tree.width*tree.height/15.8,tree.height/15.8,tree.width*tree.height/15.8);
    rotation.setFromAxisAngle(axis,tree.yaw);matrix.compose(position,rotation,scale);
    tint.setRGB(tree.shade,tree.shade,tree.shade);
