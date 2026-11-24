@@ -6,7 +6,8 @@ it("steers front wheels left and right with a realistic visible yaw", () => {
   expect(visibleWheelSteer(-.22,true)).toBeCloseTo(-.22, 6);
   expect(visibleWheelSteer(.22,false)).toBe(0);
   expect(visibleWheelSteer(-.22,false)).toBe(0);
-  expect(visibleWheelSteer(5,true)).toBe(.48);
+  expect(visibleWheelSteer(5,true)).toBe(.60);
+  expect(visibleWheelSteer(.52,true)).toBe(.52);
 });
 
 it("rolls wheels from real speed, reverses with direction and stops at zero", () => {
