@@ -68,7 +68,7 @@ export function externalWheelRadii(id:string,d:ExternalDimensions):readonly numb
   return fitted ? [...fitted.radii] : [d.wheelRadius,d.wheelRadius,d.wheelRadius,d.wheelRadius];
 }
 
-const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rin|neumatico|pneu|tyrewall|llanta|rueda)([_:\s.0-9]|$)/i;
+const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rim|rims|rin|rines|neumatico|pneu|tyrewall|llanta|rueda)([_:\s.0-9]|$)/i;
 const IS_STEERING = /steering[_\s-]*wheel|steerwheel|volante|handwheel|steer_wheel|steeringcolumn/i;
 const PAINT_PART = /(^|[_\s:.])(body|bodyshell|paint|carrosserie)([_\s.0-9]|$)|exterior_mm_ext|color1mtl|vehicle_generic_smallspecmap__paint/i;
 const EXCLUDED_PAINT = /wheel|tyre|tire|rim|neumatico|glass|window|windscreen|windshield|light|badge|emblem|brake|caliper|mirror|steer|interior|seat|chassis|plastic|carbon/i;
@@ -116,7 +116,7 @@ function wheelLabel(mesh:THREE.Mesh):string{
 }
 function isWheel(mesh:THREE.Mesh):boolean{
   const n=wheelLabel(mesh);
-  return !IS_STEERING.test(n)&&HAS_WHEEL.test(n);
+  return !IS_STEERING.test(n)&&! /wheel[_\s-]*(arch|well|house)|spare[_\s-]*(wheel|tyre|tire)/i.test(n)&&HAS_WHEEL.test(n);
 }
 /** Fit independently named tyre meshes; reject ambiguous geometry instead of
  * silently treating a rim or a merged axle as a measured tyre. */
@@ -145,6 +145,39 @@ function measureExternalTyres(model:THREE.Object3D,d:ExternalDimensions):Externa
      Math.abs(chosen[0].radius-chosen[1].radius)>.04||
      Math.abs(chosen[2].radius-chosen[3].radius)>.04)return undefined;
   return {centers:chosen.map(x=>x.center),radii:chosen.map(x=>x.radius)};
+}
+
+/** Measure tyres that share a single GLB mesh using their actual indexed
+ * vertices in each quadrant, rather than guessing the wheelbase. */
+function measureMergedTyres(model:THREE.Object3D,d:ExternalDimensions):ExternalTyreFit|undefined{
+  const center=new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3());
+  const bounds=Array.from({length:4},()=>new THREE.Box3());
+  const point=new THREE.Vector3();
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh))return;
+    const label=wheelLabel(obj);
+    if(IS_STEERING.test(label)||/spare|wheel[_\s-]*(arch|well|house)/i.test(label)||
+       !/tyre|tire|neumatico|pneu|caucho|rubber/i.test(label))return;
+    const pos=obj.geometry.getAttribute("position"),idx=obj.geometry.index;
+    if(!pos)return;
+    for(let i=0;i<(idx?.count??pos.count);i++){
+      point.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(obj.matrixWorld);
+      if(Math.abs(point.x-center.x)<d.track*.22||
+         Math.abs(point.z-center.z)<d.wheelbase*.18||
+         point.y<-.08||point.y>d.wheelRadius*2.8)continue;
+      const quadrant=(point.z>=center.z?0:2)+(point.x>=center.x?0:1);
+      bounds[quadrant].expandByPoint(point);
+    }
+  });
+  if(bounds.some(b=>b.isEmpty()))return undefined;
+  const sizes=bounds.map(b=>b.getSize(new THREE.Vector3()));
+  const centers=bounds.map(b=>b.getCenter(new THREE.Vector3()));
+  const radii=sizes.map(s=>(s.y+s.z)/4);
+  if(sizes.some((s,i)=>radii[i]<d.wheelRadius*.60||radii[i]>d.wheelRadius*1.45||
+    Math.abs(s.y-s.z)>radii[i]*.25||s.x>radii[i]*2.2||bounds[i].min.y>.20)||
+    Math.abs(centers[0].z-centers[1].z)>.12||Math.abs(centers[2].z-centers[3].z)>.12||
+    Math.abs(radii[0]-radii[1])>.05||Math.abs(radii[2]-radii[3])>.05)return undefined;
+  return {centers,radii};
 }
 
 function triangulationCount(geo:THREE.BufferGeometry):number{
@@ -195,7 +228,7 @@ export async function loadExternalVehicle(
     if(after.length()<.01)throw Error(id+": modelo no renderizable");
     if(id==="ferrari-f430")measuredTyres.set(id,measureFerrariF430Tyres(scene));
     else {
-      const fit=measureExternalTyres(scene,d);
+      const fit=measureExternalTyres(scene,d)??measureMergedTyres(scene,d);
       if(fit)measuredTyres.set(id,fit);
       else console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
     }
@@ -300,7 +333,9 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     for(const item of parts){
       // The wheel is moved, not duplicated; GLB material and geometry survive.
       root.updateMatrixWorld(true);
-      wheels[item.hub].spin.attach(item.mesh);
+      // Brake calipers steer with the hub but must never rotate with the rim.
+      const fixedBrake=/caliper|étrier|etrier|pinza/i.test(wheelLabel(item.mesh));
+      (fixedBrake?wheels[item.hub].steer:wheels[item.hub].spin).attach(item.mesh);
       counts[item.hub]++;
       copied+=triangulationCount(item.mesh.geometry);
     }
