@@ -58,6 +58,19 @@ jobs:
         working-directory: Horizon-REA-2026
         run: node tools/verify-circuit-assets.mjs
 
+      - name: Verificar Silverado y pickups reales antes de publicar
+        working-directory: Horizon-REA-2026
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          npm run dev > /tmp/horizon-release-probe.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          node tools/pickup-v24-probe.mjs
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
