@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { VehicleBodyLod } from "../render/vehicleBodyLod";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "../world/track";
 import { Vehicle } from "../vehicle/vehicle";
@@ -83,6 +84,30 @@ export class Race {
   get standbyTrafficCount(): number { return this.standbyOncoming.length; }
   /** Only the pre-race graphics preparation may temporarily reveal these roots. */
   standbyVisuals(): THREE.Group[] { return this.standbyOncoming.map(car => car.vehicle.visual.root); }
+  private readonly rivalLods = new Map<Vehicle,VehicleBodyLod>();
+  /** Prepare body variants for rivals and preallocated traffic only. */
+  async prepareRivalLods():Promise<void>{
+    const rivals=[...this.racers.filter(r=>!r.isPlayer),...this.oncoming,...this.standbyOncoming];
+    for(const {vehicle} of rivals){
+      if(this.rivalLods.has(vehicle))continue;
+      const lod=new VehicleBodyLod();
+      await lod.prepare(vehicle.visual.bodyRoot);
+      this.rivalLods.set(vehicle,lod);
+      // Yield between cars while the race remains in its loading state.
+      await new Promise<void>(resolve=>setTimeout(resolve,0));
+    }
+  }
+  updateRivalLods(camera:THREE.Camera):void{
+    for(const [vehicle,lod] of this.rivalLods){
+      if(!vehicle.visual.root.visible)continue;
+      lod.update(camera.position.distanceTo(vehicle.visual.root.position));
+    }
+  }
+  rivalLodStats(){
+    return [...this.rivalLods].map(([vehicle,lod])=>({id:vehicle.vehicleId,level:lod.level,
+      eligibleTriangles:lod.triangleCounts[0],currentTriangles:lod.triangleCounts[lod.level],
+      budgets:lod.triangleCounts}));
+  }
   readonly player: Racer;
   state: RaceState = "idle";
   countdown = SETTINGS.race.countdown;
@@ -202,6 +227,8 @@ export class Race {
   }
 
   dispose(): void {
+    for(const lod of this.rivalLods.values())lod.dispose();
+    this.rivalLods.clear();
     for (const racer of this.racers) racer.vehicle.dispose(this.world);
     for (const car of this.oncoming) car.vehicle.dispose(this.world);
     for (const car of this.standbyOncoming) car.vehicle.dispose(this.world);
