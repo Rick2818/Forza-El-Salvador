@@ -1,0 +1,42 @@
+name: QA F430 - neumáticos reales contra pista
+on:
+  push:
+    branches: [fix/f430-tire-fit-and-ground-clearance-20261123]
+    paths:
+      - '.github/workflows/qa-f430-wheel-fit.yml'
+      - 'Horizon-REA-2026/tools/qa-f430-wheel-fit.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-physics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - name: Compilar motor y vehículos
+        run: npm run build
+      - name: Instalar navegador para prueba física WebGL
+        run: |
+          npm install --no-save --no-package-lock puppeteer-core
+          (which google-chrome || which chromium) | tee /tmp/chrome-bin
+          echo "CHROME_PATH=$(cat /tmp/chrome-bin)" >> "$GITHUB_ENV"
+      - name: Probar Ferrari en pista con aceleración y neumáticos en contacto
+        run: node tools/qa-f430-wheel-fit.mjs
+      - name: Conservar captura y telemetría sin modificar main
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f430-contact-with-race-track
+          path: Horizon-REA-2026/qa-f430-wheel-fit/
+          if-no-files-found: warn
+          retention-days: 7
