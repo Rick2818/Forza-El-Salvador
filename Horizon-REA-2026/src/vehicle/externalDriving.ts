@@ -311,6 +311,34 @@ export async function loadExternalVehicle(
       scene.updateMatrixWorld(true);box.setFromObject(scene);
       dim=box.getSize(new THREE.Vector3());
     }
+    // Mercedes Object_28 has four measured circular tyre clusters on a
+    // rotated rectangle. Recover its actual longitudinal axis, not a guess
+    // from the overall body bounds. Rotate the complete source before fitting.
+    if(id==="mercedes-amg-gt-alternative"){
+      const middle=new THREE.Box3().setFromObject(scene,true).getCenter(new THREE.Vector3());
+      let yaw:number|undefined;
+      scene.traverse(obj=>{
+        if(!(obj instanceof THREE.Mesh)||obj.name!=="Object_28")return;
+        const b=quadrantWheelBounds(obj,middle);
+        if(b.some(x=>x.isEmpty()))return;
+        const p=b.map(x=>x.getCenter(new THREE.Vector3()));
+        const front=p[0].clone().add(p[1]).multiplyScalar(.5);
+        const rear=p[2].clone().add(p[3]).multiplyScalar(.5);
+        const axis=front.sub(rear);
+        const frontWidth=p[0].clone().sub(p[1]),rearWidth=p[2].clone().sub(p[3]);
+        // Both axles must agree and be perpendicular to the longitudinal axis.
+        if(axis.length()<.001||frontWidth.length()<.001||rearWidth.length()<.001)return;
+        if(Math.abs(axis.clone().normalize().dot(frontWidth.clone().normalize()))>.12||
+          Math.abs(axis.clone().normalize().dot(rearWidth.clone().normalize()))>.12)return;
+        yaw=Math.atan2(axis.x,axis.z);
+      });
+      if(yaw!==undefined&&Math.abs(yaw)<Math.PI/4){
+        scene.rotation.y-=yaw;
+        scene.updateMatrixWorld(true);
+        box.setFromObject(scene);dim=box.getSize(new THREE.Vector3());
+        console.info("[Horizon] MERCEDES_AXLE_YAW_DEG",yaw*180/Math.PI);
+      }
+    }
     if(dim.x<.0001||dim.y<.0001||dim.z<.0001)throw Error(id+": geometría degenerada");
     // Preserve proportions. Allow mirror/bumper overhang; avoid height stretching.
     const factor=Math.min(d.length/dim.z,d.width*1.20/dim.x,d.height*1.20/dim.y);
@@ -456,11 +484,12 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       // For an explicitly named complete rim/tyre ring, align its radial
       // centre with the measured tyre axle. Preserve X (rim dish/offset),
       // radius, mesh shape and the original authored material.
-      if(!fixedBrake&&measuredTyres.has(id)&&/tyre|tire|neumatico|pneu|rubber|caucho|rim|rines?/i.test(sourceLabel)){
+      const ramRearCandidate=id==="ram-3500-alternative"&&item.hub===2&&item.mesh.name==="Object_4";
+      if(!fixedBrake&&measuredTyres.has(id)&&(/tyre|tire|neumatico|pneu|rubber|caucho|rim|rines?|sidewall|thread|tread|LOD_A_WHEEL/i.test(sourceLabel)||ramRearCandidate)){
         const bound=indexedWorldBounds(item.mesh),s=bound.getSize(new THREE.Vector3());
         const p=bound.getCenter(new THREE.Vector3()),h=hubs[item.hub],r=externalWheelRadii(id,d)[item.hub];
         const partR=(s.y+s.z)/4,offset=Math.hypot(p.y-h.y,p.z-h.z);
-        if(partR>=r*.48&&partR<=r*1.18&&Math.abs(s.y-s.z)<=partR*.20&&
+        if(partR>=r*.48&&partR<=r*1.18&&Math.abs(s.y-s.z)<=partR*(ramRearCandidate?.28:.20)&&
            s.x<=r*2&&offset>Math.min(.025,r*.075)&&offset<=r*.32){
           const worldOrigin=item.mesh.getWorldPosition(new THREE.Vector3());
           worldOrigin.y+=h.y-p.y;worldOrigin.z+=h.z-p.z;
@@ -488,8 +517,8 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       // not expected to have a bounding box centered on the hub.
       if(partRadius<radius*.48||partRadius>radius*1.18||Math.abs(s.y-s.z)>partRadius*.28)return;
       const label=String(obj.userData.originalWheelLabel??wheelLabel(obj));
-      const kind=/tyre|tire|neumatico|pneu|rubber|caucho/i.test(label)?"tyre":
-        /rim|rines?|llanta/i.test(label)?"rim":"unidentified";
+      const kind=/tyre|tire|neumatico|pneu|rubber|caucho|sidewall|thread|tread|(?:^|_)NEUMA(?:_|$)/i.test(label)?"tyre":
+        /rim|rines?|llanta|LOD_A_WHEEL/i.test(label)?"rim":"unidentified";
       parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
         radiusM:partRadius,center:p.toArray(),...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
     });
