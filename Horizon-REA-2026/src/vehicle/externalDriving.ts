@@ -145,6 +145,13 @@ export async function loadExternalVehicle(
       scene.updateMatrixWorld(true);box.setFromObject(scene);
       dim=box.getSize(new THREE.Vector3());
     }
+    // Ford's imported nose points opposite the +Z physics forward axis,
+    // as reported in the V21 road test. Rotate the asset, never the inputs.
+    if(id==="ford-f150-raptor-police"){
+      scene.rotation.y+=Math.PI;
+      scene.updateMatrixWorld(true);box.setFromObject(scene);
+      dim=box.getSize(new THREE.Vector3());
+    }
     if(dim.x<.0001||dim.y<.0001||dim.z<.0001)throw Error(id+": geometría degenerada");
     // Preserve proportions. Allow mirror/bumper overhang; avoid height stretching.
     const factor=Math.min(d.length/dim.z,d.width*1.20/dim.x,d.height*1.20/dim.y);
