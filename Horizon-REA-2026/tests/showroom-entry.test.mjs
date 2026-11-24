@@ -14,7 +14,13 @@ describe("showroom como entrada al videojuego",()=>{
     const game=read("race.html");
     expect(game).toContain('id="game-canvas"');
     expect(game).toContain('src="/src/main.ts"');
-    expect(read("src/preview/gallery.ts")).toContain('window.location.assign("race.html")');
+    const gallery=read("src/preview/gallery.ts");
+    expect(gallery).toContain('destination.searchParams.set("vehicle", currentCar.id)');
+    expect(gallery).toContain('window.location.assign(destination.toString())');
+    expect(read("src/main.ts")).toContain('isExternalVehicle(requestedVehicle)');
+    expect(read("src/game.ts")).toContain('this.selectedVehicleId = requestedVehicle');
+    expect(gallery).toContain('releaseOld();');
+    expect(gallery).toContain('($("drive-current") as HTMLButtonElement).disabled = true;');
     for(const name of ["index.html","race.html","model-gallery.html"])
       expect(read("vite.config.ts")).toContain(name);
   });
