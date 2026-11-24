@@ -33,15 +33,26 @@ try {
     window.HORIZON.start();
     window.HORIZON.skipOpening();
   });
-  await page.waitForFunction(()=>window.HORIZON.stats().raceState==="racing",
-    {timeout:120000});
+  // Headless software WebGL may produce less than one frame per second.
+  // Always capture the actual state instead of waiting 120 seconds blindly.
+  await page.bringToFront();
+  const warmup=[];
+  for(let i=0;i<7;i++){
+    await new Promise(r=>setTimeout(r,3000));
+    const sample=await page.evaluate(()=>window.HORIZON.stats());
+    warmup.push({state:sample.state,raceState:sample.raceState,elapsed:sample.elapsed,
+      wheels:sample.wheels,speedKph:sample.speedKph});
+    console.log("F430_WARMUP",JSON.stringify(warmup[warmup.length-1]));
+    if(sample.state==="paused")await page.evaluate(()=>window.HORIZON.resume());
+    if(sample.raceState==="racing")break;
+  }
   await page.keyboard.down("w");
   await new Promise(r=>setTimeout(r,4500));
   const driving=await page.evaluate(()=>window.HORIZON.stats());
   await page.keyboard.up("w");
   await page.screenshot({path:out+"/f430-on-track.png"});
   const contactCount=driving.wheels.filter(w=>w.contact).length;
-  const result={initial:first,driving,contactCount,pageErrors:failures};
+  const result={initial:first,warmup,driving,contactCount,pageErrors:failures};
   await writeFile(out+"/f430-contact-qa.json",JSON.stringify(result,null,2));
   console.log("F430_RACE_CONTACT_QA",JSON.stringify(result));
   assert.equal(driving.vehicleId,"ferrari-f430");
