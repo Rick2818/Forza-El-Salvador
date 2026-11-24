@@ -26,6 +26,11 @@ export function sceneWorkload(scene:THREE.Scene,camera:THREE.Camera){
       materials:Array.isArray(o.material)?o.material.length:1});
   });
   const rank=(a:{triangles:number},b:{triangles:number})=>b.triangles-a.triangles;
-  return {candidateTriangles:[...groups.values()].reduce((s,g)=>s+g.triangles,0),
+  const vegetation:unknown[]=[];
+  scene.traverse(o=>{
+    if(o.name==="monzon-organic-tree-grove")vegetation.push({name:o.name,placed:o.userData.trees,source:o.userData.source,counts:o.userData.treeLodCounts,ready:o.userData.treeLodReady});
+    if(o.name==="suzaka-pine-forest")vegetation.push({name:o.name,placed:o.userData.treeCount,source:o.userData.source,counts:o.userData.counts,hasFallback:!!o.getObjectByName("suzaka-resilient-organic-pines")});
+  });
+  return {vegetation,candidateTriangles:[...groups.values()].reduce((s,g)=>s+g.triangles,0),
     groups:[...groups.values()].sort(rank),objects:objects.sort(rank).slice(0,25)};
 }
