@@ -149,6 +149,7 @@ function measureExternalTyres(model:THREE.Object3D,d:ExternalDimensions):Externa
 }
 
 const isPickupAsset=(id:string)=>/^(ford-|ram-|chevrolet-)/.test(id);
+const needsGeometricFit=(id:string)=>isPickupAsset(id)||id==="mercedes-amg-gt-alternative"||id==="tesla-roadster-electric-alternative";
 
 /** Unnamed pickup wheel primitives: use measured bounding geometry, not
  * material names. Require four symmetric, ground-adjacent circular assemblies. */
@@ -268,9 +269,20 @@ export async function loadExternalVehicle(
     if(after.length()<.01)throw Error(id+": modelo no renderizable");
     if(id==="ferrari-f430")measuredTyres.set(id,measureFerrariF430Tyres(scene));
     else {
-      const fit=measureExternalTyres(scene,d)??measureMergedTyres(scene,d)??(isPickupAsset(id)?measurePickupGeometry(scene,d):undefined);
+      const fit=measureExternalTyres(scene,d)??measureMergedTyres(scene,d)??(needsGeometricFit(id)?measurePickupGeometry(scene,d):undefined);
       if(fit)measuredTyres.set(id,fit);
-      else console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
+      else {
+        console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
+        if(needsGeometricFit(id)){
+          const candidates:unknown[]=[];
+          scene.traverse(obj=>{
+            if(!(obj instanceof THREE.Mesh))return;
+            const b=new THREE.Box3().setFromObject(obj,true),s=b.getSize(new THREE.Vector3()),p=b.getCenter(new THREE.Vector3());
+            candidates.push({name:wheelLabel(obj),size:s.toArray(),center:p.toArray(),minY:b.min.y});
+          });
+          console.warn("[Horizon] WHEEL_GEOMETRY_DIAG",id,JSON.stringify(candidates));
+        }
+      }
     }
     loaded.set(id,scene);
   }).finally(()=>pending.delete(id));
@@ -359,7 +371,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   imported.traverse(child=>{
     if(!(child instanceof THREE.Mesh))return;
     sourceMeshes++;sourceTriangles+=triangulationCount(child.geometry);
-    if(isWheel(child)||(isPickupAsset(id)&&measuredTyres.has(id)&&atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))))wheelMeshes.push(child);
+    if(isWheel(child)||(needsGeometricFit(id)&&measuredTyres.has(id)&&atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))))wheelMeshes.push(child);
   });
   const counts=[0,0,0,0];
   // Reattach wheel meshes from source GLB to live pivots; no substitute tyres.
