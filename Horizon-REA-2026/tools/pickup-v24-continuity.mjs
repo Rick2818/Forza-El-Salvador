@@ -84,6 +84,14 @@ try{
       game.overrideInput=pilot.plan(.05,game.race.elapsed,traffic);
     },50);
   },mode);
+  if(mode!=="physics-only"){
+    const workload=await Promise.race([page.evaluate(async()=>{
+      const g=window.__HORIZON_GAME__;
+      const {sceneWorkload}=await import("/src/render/sceneWorkload.ts");
+      return sceneWorkload(g.scene,g.camera);
+    }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Scene workload snapshot timed out")),15000))]);
+    console.log("V29_SCENE_WORKLOAD",JSON.stringify(workload));
+  }
   let previous=null, stagnant=0;
   const start=Date.now();
   const samples=[];
