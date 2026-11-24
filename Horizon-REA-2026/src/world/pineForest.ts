@@ -7,6 +7,14 @@ import {distanceToTrack, type TerrainField} from './terrain';
 import {createSuzakaResilientPines} from './suzakaResilientPines';
 import {inSuzakaPublicStand, planSuzakaPublicStands} from './suzakaPublicStands';
 
+/** Distance thresholds with hysteresis prevent repeated instance repacking at
+ * a boundary. Near detail stays geometric, distant pines use the authored atlas. */
+export function pineDetail(distance:number,previous:0|1|2):0|1|2{
+  if(distance<(previous===0?46:36))return 0;
+  if(distance<(previous===2?85:105))return 1;
+  return 2;
+}
+
 export interface PinePlacement {x:number; y:number; z:number; height:number; width:number; yaw:number; shade:number}
 
 /** Clustered spacing, with a clear safety corridor around EVERY road segment. */
@@ -50,10 +58,12 @@ export class PineForest {
  readonly placements:PinePlacement[];
  private tiers:THREE.InstancedMesh[][]=[];
  private refresh=1;
+ private detailLevels: (0|1|2)[]=[];
  private lastCenter=new THREE.Vector3(Infinity,Infinity,Infinity);
  constructor(scene:THREE.Scene,track:Track,ground:TerrainField) {
   this.group.name='suzaka-pine-forest';scene.add(this.group);
   this.placements=pinePlacements(track,ground);
+  this.detailLevels=this.placements.map(()=>2);
   // Immediately available realistic foliage, independent of network and GLB.
   const fallback=createSuzakaResilientPines(this.placements);
   this.group.add(fallback);
@@ -141,11 +151,12 @@ export class PineForest {
   this.refresh=0;this.lastCenter.copy(center);
   const counts=[0,0,0],matrix=new THREE.Matrix4(),position=new THREE.Vector3(),scale=new THREE.Vector3(),rotation=new THREE.Quaternion();
   const tint=new THREE.Color(),axis=new THREE.Vector3(0,1,0);
-  for(const tree of this.placements) {
+  for(let i=0;i<this.placements.length;i++) {
+   const tree=this.placements[i];
    const distance=Math.hypot(tree.x-center.x,tree.z-center.z);
    if(distance>1100)continue;
    // More trees retain their actual Blender branches before becoming impostors.
-   const tier=distance<40?0:distance<95?1:2,index=counts[tier]++;
+   const tier=this.detailLevels[i]=pineDetail(distance,this.detailLevels[i]),index=counts[tier]++;
    position.set(tree.x,tree.y,tree.z);scale.set(tree.width*tree.height/15.8,tree.height/15.8,tree.width*tree.height/15.8);
    rotation.setFromAxisAngle(axis,tree.yaw);matrix.compose(position,rotation,scale);
    tint.setRGB(tree.shade,tree.shade,tree.shade);
