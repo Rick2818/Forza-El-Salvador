@@ -14,6 +14,7 @@ export class MudSpray {
   private readonly points:THREE.Points;
   private cursor=0;
   private emission=0;
+  private nextWheel=0;
   constructor(scene:THREE.Scene){
     this.positions.fill(-10000);
     this.geometry.setAttribute("position",new THREE.BufferAttribute(this.positions,3).setUsage(THREE.DynamicDrawUsage));
@@ -44,7 +45,7 @@ export class MudSpray {
     this.emission+=emit?Math.min(85,speed*(sector.surface==="puddle"?10:6))*dt:0;
     const count=Math.floor(this.emission);this.emission-=count;
     for(let j=0;j<count;j++){
-      const wheel=(this.cursor+j)%4;
+      const wheel=this.nextWheel++%4;
       if(!vehicle.controller.wheelIsInContact(wheel))continue;
       const p=contact[wheel],i=this.cursor++%this.capacity,k=i*3;
       const tangent=track.tangentAt(where.index),right=track.rightAt(where.index);
