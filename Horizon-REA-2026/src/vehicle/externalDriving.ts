@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { BODY_CENTER_Y, type CarVisual } from "./carModel";
+import { removeExternalStage } from "./externalBackdrop";
 
 /**
  * Visual adapter for THIRD-PARTY GLBs. No procedural car body/wheels.
@@ -88,6 +89,7 @@ export async function loadExternalVehicle(
   const running=pending.get(id);if(running)return running;
   const task=externalLoader().loadAsync(url??(import.meta.env.BASE_URL+
     "models/external-candidates/"+id+".glb")).then(({scene})=>{
+    removeExternalStage(id, scene);
     scene.updateMatrixWorld(true);
     let box=new THREE.Box3().setFromObject(scene);
     if(box.isEmpty())throw Error(id+": GLB sin carrocería");
