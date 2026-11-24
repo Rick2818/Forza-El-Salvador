@@ -11,6 +11,7 @@ import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
 import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
 import { updateHumanPeople, prepareHumanImpostors, crowdStats, type CrowdMode } from "./world/humanPeople";
+import { prepareMonzonTreeLods, updateMonzonTreeLods } from "./world/monzonBlenderTrees";
 import { Environment } from "./world/environment";
 import { MonzonLaunchFireworks, MONZON_OPENING_DURATION } from "./world/monzonFireworks";
 import { Race, type Difficulty } from "./race/race";
@@ -387,6 +388,8 @@ export class Game {
     this.framePhase = "graphics-preparation";
     await this.environment.whenReady(this.scene);
     await prepareHumanImpostors(this.renderer,this.scene,this.crowdMode);
+    prepareMonzonTreeLods(this.scene,this.renderer);
+    updateMonzonTreeLods(this.scene,this.camera.position);
     await this.race.prepareRivalLods();
     this.fireworks?.prepareGpu(this.renderer);
     const hiddenCars = this.race.standbyVisuals();
@@ -951,7 +954,10 @@ export class Game {
     }
 
     if (this.onBeforeRender) this.onBeforeRender();
-    if (!this.skipRender && !this.captureMode) this.race.updateRivalLods(this.camera);
+    if (!this.skipRender && !this.captureMode) {
+      this.race.updateRivalLods(this.camera);
+      updateMonzonTreeLods(this.scene,this.camera.position);
+    }
     this.framePhase = "gpu-backpressure";
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
