@@ -22,6 +22,8 @@ export class PickupMudCoating {
   get coverage():number {return this.amount.value;}
   update(root: THREE.Object3D, coverage:number, dt:number):void {
     this.amount.value = THREE.MathUtils.clamp(coverage,0,1);
+    // Keep approved materials untouched until actual mud is accumulated.
+    if (this.amount.value <= .001 && this.assigned.size === 0) return;
     this.nextScan -= dt;
     if (this.nextScan > 0) return;
     this.nextScan = .5;
@@ -41,13 +43,13 @@ export class PickupMudCoating {
           shader.fragmentShader="uniform float horizonMud; varying vec3 vMudLocal;\n"+shader.fragmentShader;
           shader.fragmentShader=shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
             float fleck = fract(sin(dot(floor(vMudLocal*57.0),vec3(12.9898,78.233,39.425)))*43758.5453);
-            float patch = 0.5+0.5*sin(vMudLocal.x*17.0+sin(vMudLocal.z*11.0)*3.0+vMudLocal.y*13.0);
-            float smear = smoothstep(0.12,0.65,horizonMud*(0.65+patch*0.55+fleck*0.35));
+            float mudPattern = 0.5+0.5*sin(vMudLocal.x*17.0+sin(vMudLocal.z*11.0)*3.0+vMudLocal.y*13.0);
+            float smear = smoothstep(0.12,0.65,horizonMud*(0.65+mudPattern*0.55+fleck*0.35));
             float mudMix = smear * horizonMud * ${max.toFixed(2)};
             diffuseColor.rgb = mix(diffuseColor.rgb,mix(vec3(.055,.027,.012),vec3(.22,.12,.055),fleck),mudMix);
           `);
         };
-        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v1-"+max;
+        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v2-"+max;
         this.copies.set(m,clone);
         return clone;
       };
