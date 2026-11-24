@@ -3,6 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { BODY_CENTER_Y, type CarVisual } from "./carModel";
+import { removeExternalStage } from "./externalBackdrop";
+import { EXTERNAL_VEHICLES } from "./externalRoster";
 
 /**
  * Visual adapter for THIRD-PARTY GLBs. No procedural car body/wheels.
@@ -86,8 +88,10 @@ export async function loadExternalVehicle(
 ):Promise<void>{
   if(loaded.has(id))return;
   const running=pending.get(id);if(running)return running;
-  const task=externalLoader().loadAsync(url??(import.meta.env.BASE_URL+
-    "models/external-candidates/"+id+".glb")).then(({scene})=>{
+  const rosterVehicle=EXTERNAL_VEHICLES.find(car=>car.id===id);
+  if(!url && !rosterVehicle?.modelUrl)throw Error("El modelo no está en la lista de vehículos jugables: "+id);
+  const task=externalLoader().loadAsync(url??(import.meta.env.BASE_URL+rosterVehicle!.modelUrl)).then(({scene})=>{
+    removeExternalStage(id, scene);
     scene.updateMatrixWorld(true);
     let box=new THREE.Box3().setFromObject(scene);
     if(box.isEmpty())throw Error(id+": GLB sin carrocería");

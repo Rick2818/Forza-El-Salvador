@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { GalleryCustomizer, type WheelSet } from "./customizer";
+import { removeExternalStage } from "../vehicle/externalBackdrop";
+import { EXTERNAL_VEHICLES } from "../vehicle/externalRoster";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -73,6 +75,7 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const customizer = new GalleryCustomizer(scene, loader);
 
 let currentModel: THREE.Group | null = null;
+let thumbnailCamera: THREE.OrthographicCamera | null = null;
 let currentCar = MODELS[0];
 try {
   const saved = localStorage.getItem("horizon.selected-vehicle");
@@ -120,6 +123,52 @@ function chooseAngle(angle: string): void {
   camera.lookAt(target);
 }
 
+/** Keep the selected showroom card's photograph synchronized with its live GLB. */
+/**
+ * Render previews of the imported GLB using its measured full bounds,
+ * rather than cropping the car with an over-close perspective camera.
+ * Does not change geometry or the interactive 3D view.
+ */
+function frameGLBForThumbnail(model: THREE.Object3D): void {
+  const bounds = new THREE.Box3().setFromObject(model);
+  const middle = bounds.getCenter(new THREE.Vector3());
+  const stageAspect = Math.max(stage.clientWidth,100)/Math.max(stage.clientHeight,100);
+  const inspectionCamera = new THREE.OrthographicCamera(-3,3,3,-3,0.1,100);
+  inspectionCamera.position.copy(middle).add(new THREE.Vector3(1.5,1.0,2.1).normalize().multiplyScalar(25));
+  inspectionCamera.lookAt(middle);
+  inspectionCamera.updateMatrixWorld(true);
+  const min=new THREE.Vector2(Infinity,Infinity);
+  const max=new THREE.Vector2(-Infinity,-Infinity);
+  for(const x of [bounds.min.x,bounds.max.x])
+    for(const y of [bounds.min.y,bounds.max.y])
+      for(const z of [bounds.min.z,bounds.max.z]){
+        const p=new THREE.Vector3(x,y,z).applyMatrix4(inspectionCamera.matrixWorldInverse);
+        min.min(new THREE.Vector2(p.x,p.y));max.max(new THREE.Vector2(p.x,p.y));
+      }
+  const halfY=Math.max((max.y-min.y)/2/.80,(max.x-min.x)/2/(stageAspect*.80),.2);
+  inspectionCamera.left=-halfY*stageAspect;
+  inspectionCamera.right=halfY*stageAspect;
+  inspectionCamera.top=halfY;
+  inspectionCamera.bottom=-halfY;
+  inspectionCamera.updateProjectionMatrix();
+  thumbnailCamera=inspectionCamera;
+}
+
+function captureCurrentModelPhoto(): void {
+  if (!currentModel) return;
+  const photo = Array.from(document.querySelectorAll<HTMLImageElement>("img.glb-photo"))
+    .find(img => img.closest<HTMLButtonElement>(".choice")?.dataset.car === currentCar.id);
+  if (!photo) return;
+  try {
+    renderer.render(scene,camera);
+    photo.src = canvas.toDataURL("image/png");
+    photo.hidden = false;
+    photo.closest(".choice")?.querySelector(".glb-photo-pending")?.remove();
+  } catch (error) {
+    console.warn("[Horizon] Captura 3D no disponible", error);
+  }
+}
+
 function releaseOld(): void {
   customizer.dispose();
   if (!currentModel) return;
@@ -143,6 +192,9 @@ async function showModel(car: GalleryCar): Promise<void> {
   const token = ++generation;
   currentCar = car;
   ($("drive-current") as HTMLButtonElement).disabled = true;
+  // Remove the previous car immediately: a failed selection must never leave
+  // another vehicle visible under the requested model's name.
+  releaseOld();
   modelName.textContent = car.title;
   subtitle.textContent = car.note;
   status.textContent = "Cargando archivo GLB real…";
@@ -159,7 +211,9 @@ async function showModel(car: GalleryCar): Promise<void> {
   }
   try {
     await MeshoptDecoder.ready;
-    const file = import.meta.env.BASE_URL + "models/external-candidates/" + car.id + ".glb";
+    const rosterVehicle = EXTERNAL_VEHICLES.find(vehicle => vehicle.id === car.id);
+    if (!rosterVehicle?.modelUrl) throw new Error("El modelo no está en la misma lista usada en carrera: " + car.id);
+    const file = import.meta.env.BASE_URL + rosterVehicle.modelUrl;
     const gltf = await loader.loadAsync(file, event => {
       if (token !== generation) return;
       if (event.total) status.textContent = "Descargando GLB: " + Math.round(100*event.loaded/event.total) + "%";
@@ -170,8 +224,8 @@ async function showModel(car: GalleryCar): Promise<void> {
       });
       return;
     }
-    releaseOld();
     const group = gltf.scene;
+    removeExternalStage(car.id, group);
     scene.add(group);
     group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(group);
@@ -206,7 +260,17 @@ async function showModel(car: GalleryCar): Promise<void> {
     ($("drive-current") as HTMLButtonElement).disabled = false;
     customizer.attach(group,car.id,car.type);
     chooseAngle(activeView);
-    status.textContent = "✓ Archivo original cargado y renderizado. Arrastra para inspeccionarlo.";
+    // Screenshot automation uses the actual GLB in WebGL, not a separate
+    // render file; leave game geometry, colors and wheel sets untouched.
+    if (new URLSearchParams(window.location.search).has("render-thumbnails")) {
+      floor.visible=false;
+      grid.visible=false;
+      scene.background = new THREE.Color("#172434");
+      frameGLBForThumbnail(group);
+    }
+    if (!new URLSearchParams(window.location.search).has("render-thumbnails"))
+      requestAnimationFrame(captureCurrentModelPhoto);
+    status.textContent = "✓ GLB candidato cargado. Falta validar fidelidad, licencia y comportamiento en carrera.";
     metrics.textContent = "Mallas: " + meshes + " · Triángulos: " + Math.round(triangles).toLocaleString("es") +
       " · Piezas de ruedas identificadas: " + wheelNames +
       " · Cabina: " + cabinNames + " · Bajos: " + underNames;
@@ -229,11 +293,26 @@ for (const car of MODELS) {
   button.className = "choice";
   button.dataset.car = car.id;
   button.setAttribute("aria-pressed", "false");
+  // Generated by WebGL from precisely the same GLB used in the showroom and race.
+  // Missing previews must never be replaced with commercial/reference photos.
+  const photo = document.createElement("img");
+  photo.className = "glb-photo";
+  photo.src = import.meta.env.BASE_URL + "vehicles/generated/" + car.id + ".png";
+  photo.alt = "Vista del archivo GLB " + car.title;
+  photo.loading = "lazy";
+  photo.decoding = "async";
+  photo.addEventListener("error", () => {
+    photo.hidden = true;
+    const pending = document.createElement("span");
+    pending.className = "glb-photo-pending";
+    pending.textContent = "Vista 3D pendiente";
+    button.insertBefore(pending, button.firstChild);
+  });
   const title = document.createElement("strong");
   title.textContent = car.title;
   const description = document.createElement("small");
   description.textContent = car.note;
-  button.append(title,description);
+  button.append(photo,title,description);
   button.addEventListener("click", () => { void showModel(car); });
   (car.type === "sport" ? $("sports") : $("pickups")).append(button);
 }
@@ -242,21 +321,30 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-view]")
   button.addEventListener("click", () => chooseAngle(button.dataset.view ?? "front"));
 }
 for (const swatch of document.querySelectorAll<HTMLButtonElement>("[data-paint]")) {
-  swatch.addEventListener("click", () => customizer.setPaint(swatch.dataset.paint ?? "original"));
+  swatch.addEventListener("click", () => {
+    customizer.setPaint(swatch.dataset.paint ?? "original");
+    requestAnimationFrame(captureCurrentModelPhoto);
+  });
 }
 const customPaint = $("custom-paint") as HTMLInputElement;
-customPaint.addEventListener("input", () => customizer.setPaint(customPaint.value));
+customPaint.addEventListener("input", () => {
+  customizer.setPaint(customPaint.value);
+  requestAnimationFrame(captureCurrentModelPhoto);
+});
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelset]")) {
-  button.addEventListener("click", () => { void customizer.setWheels((button.dataset.wheelset ?? "original") as WheelSet); });
+  button.addEventListener("click", async () => {
+    await customizer.setWheels((button.dataset.wheelset ?? "original") as WheelSet);
+    requestAnimationFrame(captureCurrentModelPhoto);
+  });
 }
 $("drive-current").addEventListener("click", () => {
   if (!currentModel) return;
-  try {
-    localStorage.setItem("horizon.selected-vehicle", currentCar.id);
-    window.location.assign("race.html");
-  } catch {
-    status.textContent = "No se puede guardar la elección. Habilita el almacenamiento local.";
-  }
+  // Include the exact asset ID in the navigation as well as localStorage.
+  // This works when mobile/private browsers block localStorage.
+  try { localStorage.setItem("horizon.selected-vehicle", currentCar.id); } catch { /* URL is authoritative */ }
+  const destination = new URL("race.html", window.location.href);
+  destination.searchParams.set("vehicle", currentCar.id);
+  window.location.assign(destination.toString());
 });
 const rotateButton = $("rotate") as HTMLButtonElement;
 rotateButton.addEventListener("click", () => {
@@ -277,7 +365,7 @@ $("capture").addEventListener("click", () => {
 renderer.setAnimationLoop(() => {
   if (!document.hidden) {
     controls.update();
-    renderer.render(scene,camera);
+    renderer.render(scene,thumbnailCamera ?? camera);
   }
 });
 void showModel(currentCar);
