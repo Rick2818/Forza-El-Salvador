@@ -1,0 +1,53 @@
+name: V20 - Ferrari F430 GLB real vistas para revision
+on:
+  push:
+    branches: [fix/v20-model-integrity-20261123]
+    paths:
+      - '.github/workflows/v20-ferrari-real-render.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: v20-f430-source-render
+  cancel-in-progress: false
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Instalar Blender
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends blender python3-numpy
+          blender -b --factory-startup --python-expr "import bpy; print('Blender',bpy.app.version_string)"
+      - name: Render 3 vistas del GLB F430 recuperado
+        working-directory: Horizon-REA-2026
+        shell: bash
+        run: |
+          blender -b -t 2 --factory-startup --python tools/blender/render-f430-v20.py
+          test -s review/v20-f430/f430-3d-front34.png
+          test -s review/v20-f430/f430-3d-side.png
+          test -s review/v20-f430/f430-3d-rear34.png
+      - name: Conservar las capturas reales en la rama V20
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/review/v20-f430/f430-3d-*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "review(v20): real GLB Ferrari F430 source views [skip ci]"
+            git fetch origin fix/v20-model-integrity-20261123
+            git rebase origin/fix/v20-model-integrity-20261123
+            git push origin HEAD:fix/v20-model-integrity-20261123
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v20-f430-real-glb-renders
+          path: Horizon-REA-2026/review/v20-f430/*.png
+          if-no-files-found: warn
+          retention-days: 7
