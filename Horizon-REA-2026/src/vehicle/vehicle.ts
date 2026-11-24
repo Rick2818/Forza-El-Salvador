@@ -210,7 +210,7 @@ export class Vehicle {
       const w = this.wheelMounts[i];
       const suspension = this.controller.wheelSuspensionLength(i);
       const length = typeof suspension === "number" && Number.isFinite(suspension)
-        ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + this.suspension.travel)
+        ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + (this.suspension?.travel ?? SETTINGS.physics.maxSuspensionTravel))
         : SETTINGS.physics.suspensionRest;
       const point = this.wheelProbes[i].set(w.x, w.y - length - (this.wheelRadii?.[i] ?? this.wheelRadius), w.z).applyQuaternion(quat);
       point.x += t.x; point.y += t.y; point.z += t.z;
@@ -480,7 +480,7 @@ export class Vehicle {
     for (let i = 0; i < this.visual.wheels.length; i++) {
       const wheel = this.visual.wheels[i];
       const suspension = this.controller.wheelSuspensionLength(i);
-      wheel.steer.position.y = this.wheelMounts[i].y - (typeof suspension === "number" && Number.isFinite(suspension) ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + this.suspension.travel) : SETTINGS.physics.suspensionRest);
+      wheel.steer.position.y = this.wheelMounts[i].y - (typeof suspension === "number" && Number.isFinite(suspension) ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + (this.suspension?.travel ?? SETTINGS.physics.maxSuspensionTravel)) : SETTINGS.physics.suspensionRest);
       wheel.steer.rotation.y = visibleWheelSteer(this.steerAngle, this.wheelMounts[i].front);
       wheel.spin.rotation.x = this.wheelRoll[i];
     }
