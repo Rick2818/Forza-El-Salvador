@@ -1,4 +1,4 @@
-import { OFFROAD_CIRCUIT, offroadSectorAt } from "../world/offroadPrototype";
+import { OFFROAD_CIRCUIT, offroadSectorAt, isOffroadEligible } from "../world/offroadPrototype";
 import * as THREE from "three";
 import { VehicleBodyLod } from "../render/vehicleBodyLod";
 import RAPIER from "@dimforge/rapier3d-compat";
@@ -170,6 +170,7 @@ export class Race {
       ? EXTERNAL_VEHICLE_DESIGNS.filter(d=>d.id!==vehicleId && hasSelectedAsset(d.id))
       : [];
     const rivals=[...newRivals,...VEHICLE_DESIGNS.filter(d=>d.id!==vehicleId && hasSelectedAsset(d.id))]
+      .filter(d=>this.track.circuit.id!==OFFROAD_CIRCUIT.id || isOffroadEligible(d.id))
       .slice(0, SETTINGS.race.rivals).map((opponent, i) => {
       const cfg = ROSTER[i];
       const vehicle = new Vehicle(this.world, scene, {
@@ -291,13 +292,14 @@ export class Race {
       const v = racer.vehicle.body.linvel();
       const finite = [p.x,p.y,p.z,v.x,v.y,v.z].every(Number.isFinite);
       const isSuzaka = this.track.circuit.id === "suzaka";
-      const closest = finite && isSuzaka
+      const offroad = this.track.circuit.id === OFFROAD_CIRCUIT.id;
+      const closest = finite && (isSuzaka || offroad)
         ? this.track.locate(new THREE.Vector3(p.x,p.y,p.z),racer.hint) : null;
       const anchorIndex = closest?.index ?? racer.hint;
       const anchor = this.track.sampleAt(anchorIndex);
       const inPit = !!closest && isSuzaka && inSuzakaPitArea(
         closest.index*this.track.segmentLength,closest.lateral,this.track.barrierLateralOffset);
-      const escaped = !!closest && !inPit && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset);
+      const escaped = !!closest && (offroad ? Math.abs(closest.lateral)>this.track.halfWidth+4 : !inPit && escapedSuzakaBarrier(closest.lateral,this.track.barrierLateralOffset));
       const planarSpeed = Math.hypot(v.x,v.z);
       const nearlyStopped = planarSpeed < 1.0;
       // Recover when the engine responds to W but a kerb or obstacle prevents
