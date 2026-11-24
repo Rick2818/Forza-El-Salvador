@@ -230,6 +230,7 @@ export class MonzonLaunchFireworks {
   private readonly layers:Array<{points:THREE.Points;perBurst:number;lead:number;life:number}>=[];
   private readonly smokeAtlas=makeSmokeFlipbook();
   private readonly circuitId:string;
+  private gpuPrepared=false;
   private elapsed = 0;
   private burstCursor = 0;
   private launchCursor = 0;
@@ -384,6 +385,27 @@ export class MonzonLaunchFireworks {
     scene.add(this.group);
   }
 
+  /** Upload every resident particle buffer before the opening. A tiny private
+   * target avoids drawing the entire circuit a second time. */
+  prepareGpu(renderer:THREE.WebGLRenderer):void{
+    if(this.gpuPrepared)return;
+    const stage=new THREE.Scene(),camera=new THREE.PerspectiveCamera(60,1,.1,1000);
+    camera.position.set(0,50,150);camera.lookAt(0,100,0);
+    const target=new THREE.WebGLRenderTarget(4,4),previous=renderer.getRenderTarget();
+    const ranges=this.layers.map(l=>({...l.points.geometry.drawRange}));
+    try{
+      for(const layer of this.layers){
+        layer.points.geometry.setDrawRange(0,1);
+        const clone=layer.points.clone(false);clone.frustumCulled=false;stage.add(clone);
+      }
+      renderer.setRenderTarget(target);renderer.render(stage,camera);
+      if(renderer.getContext().isContextLost())throw Error("Fireworks preparation lost WebGL");
+      this.gpuPrepared=true;
+    }finally{
+      this.layers.forEach((l,i)=>l.points.geometry.setDrawRange(ranges[i].start,ranges[i].count));
+      renderer.setRenderTarget(previous);target.dispose();
+    }
+  }
   private updateDrawRanges(t:number):void{
     let total=0;
     for(const layer of this.layers){
