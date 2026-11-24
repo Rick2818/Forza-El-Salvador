@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { batchRigidPart } from "../render/rigidVehicleBatch";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
@@ -462,6 +461,14 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     sourceMeshes++;sourceTriangles+=triangulationCount(child.geometry);
     // Mercedes wheel material primitives are merged across all corners.
     // Only admit them if their referenced vertices fit measured hub envelopes.
+    // Silverado has 12 explicitly audited source primitives. Do not let
+    // broad geometric/name heuristics detach coachwork or rear lamps.
+    if(id==="chevrolet-silverado-ev-alternative"){
+      if(/^Object_(7001|19001|15001|25001)_NEUMA_0$/i.test(child.name)||
+        /^Object_(9001|21001|13001|27001)_(DARK_GRAY|CHROME)_0$/i.test(child.name))
+        wheelMeshes.push(child);
+      return;
+    }
     if(isWheel(child)||(needsGeometricFit(id)&&measuredTyres.has(id)&&
       (atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))||
        (id==='mercedes-amg-gt-alternative'&&isMergedHubAssembly(child,hubs,externalWheelRadii(id,d))))))wheelMeshes.push(child);
@@ -484,12 +491,20 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       const fixedBrake=/caliper|étrier|etrier|pinza/i.test(sourceLabel);
       item.mesh.userData.originalWheelLabel=sourceLabel;
       const pivot=fixedBrake?wheels[item.hub].steer:wheels[item.hub].spin;
-      pivot.attach(item.mesh);
+      if(id==="chevrolet-silverado-ev-alternative"){
+        // Preserve the complete authored affine transform, including any
+        // shear/nonuniform ancestor scale. Object3D.attach decomposes TRS.
+        const originalWorld=item.mesh.matrixWorld.clone();
+        pivot.add(item.mesh);
+        item.mesh.matrix.copy(pivot.matrixWorld.clone().invert().multiply(originalWorld));
+        item.mesh.matrixAutoUpdate=false;
+        item.mesh.matrixWorldNeedsUpdate=true;
+      }else pivot.attach(item.mesh);
       // For an explicitly named complete rim/tyre ring, align its radial
       // centre with the measured tyre axle. Preserve X (rim dish/offset),
       // radius, mesh shape and the original authored material.
       const ramRearCandidate=id==="ram-3500-alternative"&&item.hub===2&&item.mesh.name==="Object_4";
-      if(!fixedBrake&&measuredTyres.has(id)&&(/tyre|tire|neumatico|pneu|rubber|caucho|rim|rines?|sidewall|thread|tread|LOD_A_WHEEL/i.test(sourceLabel)||ramRearCandidate)){
+      if(id!=="chevrolet-silverado-ev-alternative"&&!fixedBrake&&measuredTyres.has(id)&&(/tyre|tire|neumatico|pneu|rubber|caucho|rim|rines?|sidewall|thread|tread|LOD_A_WHEEL/i.test(sourceLabel)||ramRearCandidate)){
         const bound=indexedWorldBounds(item.mesh),s=bound.getSize(new THREE.Vector3());
         const p=bound.getCenter(new THREE.Vector3()),h=hubs[item.hub],r=externalWheelRadii(id,d)[item.hub];
         const partR=(s.y+s.z)/4,offset=Math.hypot(p.y-h.y,p.z-h.z);
@@ -585,7 +600,10 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   let renderMeshesBefore=0,renderMeshesAfter=0;
   root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesBefore++;});
   // Keep tyre/rim/caliper meshes independently inspectable until visual acceptance.
-  owned.push(...batchRigidPart(bodyRoot));
+  // V29 production regression: coachwork visibly fragmented on Silverado.
+  // Keep original GLB hierarchy, transforms and attributes intact. No
+  // destructive geometry merge until source-pose fidelity is verified.
+  // Applies to all ten imported models, not only the reported pickup.
   root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesAfter++;});
   root.userData.renderMeshBudget={before:renderMeshesBefore,after:renderMeshesAfter};
   root.userData.ownedBatchGeometry=owned;
