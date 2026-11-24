@@ -94,7 +94,7 @@ try{
       const s=window.HORIZON.stats();
       return {state:s.state,raceState:s.raceState,elapsed:s.elapsed,frameAgeMs:s.frameAgeMs,fps:s.fps,
         vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,graphicsPreparationMs:s.graphicsPreparationMs,framePhase:s.framePhase,frameSource:s.frameSource,animationFrames:s.animationFrames,fallbackFrames:s.fallbackFrames,maxFrameGapMs:s.maxFrameGapMs,submittedDraws:s.submittedDraws,skippedDraws:s.skippedDraws,drawAgeMs:s.drawAgeMs,
-        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,triangles:g.renderer.info.render.triangles,rivalLods:s.rivalLods,culledRivals:s.culledRivals,callbackFps:s.callbackFps,renderedFps:s.renderedFps,
+        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,triangles:g.renderer.info.render.triangles,rivalLods:s.rivalLods,culledRivals:s.culledRivals,crowd:s.crowd,crowdMode:s.crowdMode,fireworksActiveVertices:s.fireworksActiveVertices,callbackFps:s.callbackFps,renderedFps:s.renderedFps,
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
         positions:g.race.racers.map(r=>{const p=r.vehicle.body.translation();return {id:r.id,x:p.x,y:p.y,z:p.z,finished:r.finished};}),
@@ -107,8 +107,8 @@ try{
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
-    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V28","Unexpected running build");
-    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV28\b/);
+    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V29","Unexpected running build");
+    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV29\b/);
     assert.equal(sample.contextLost,false);
     assert.equal(sample.recovery,false);
     assert.equal(errors.length,0);
