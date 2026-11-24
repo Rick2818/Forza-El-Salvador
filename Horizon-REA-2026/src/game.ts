@@ -54,6 +54,8 @@ export class Game {
   private smoke: SmokeSystem;
   private clock = new THREE.Clock();
   private time = 0;
+  private lastCompletedFrame = performance.now();
+  private framePhase = "init";
   private physicsAccum = 0;
   private readonly fixedStep = 1 / 60;
   private fpsFrames = 0;
@@ -238,6 +240,7 @@ export class Game {
     this.hud.show(false);
     this.installDebugApi();
     this.renderer.setAnimationLoop(this.frame);
+    window.setInterval(this.checkFrameContinuity, 1000);
   }
 
   private muteButton(): HTMLElement | null {
@@ -254,6 +257,8 @@ export class Game {
         difficulty: this.difficulty,
         raceState: this.race.state,
         openingTime: this.openingTime,
+        framePhase: this.framePhase,
+        frameAgeMs: Math.round(performance.now() - this.lastCompletedFrame),
         fps: Number(this.fps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
         gear: this.race.player.vehicle.gear + 1,
@@ -590,10 +595,35 @@ export class Game {
     if (document.getElementById("context-lost")) window.location.reload();
   };
 
+  // A running Web Audio graph may outlive a stopped animation loop. This
+  // independent watchdog provides a recovery path when the JS event loop is
+  // responsive. A completely blocked GPU/JS process still requires a reload.
+  private checkFrameContinuity = (): void => {
+    if (this.captureMode || document.hidden || !document.hasFocus() ||
+        (this.state !== "racing" && this.state !== "opening")) {
+      this.lastCompletedFrame = performance.now();
+      return;
+    }
+    if (performance.now() - this.lastCompletedFrame < 5000 ||
+        document.getElementById("frame-failure") || document.getElementById("context-lost")) return;
+    const context = { version: RELEASE_LABEL, circuit: this.track.circuit.id,
+      vehicle: this.selectedVehicleId, phase: this.framePhase,
+      elapsed: this.race.elapsed, fps: this.fps };
+    console.error("[Horizon] fotogramas interrumpidos", context);
+    try { localStorage.setItem("horizon.last-frame-failure", JSON.stringify(context)); } catch { /* optional */ }
+    this.audio.silence();
+    this.showRecovery("frame-failure", "Carrera interrumpida",
+      "El juego dejó de completar fotogramas. Recarga para reiniciar la carrera. Fase: " + this.framePhase);
+    this.renderer.setAnimationLoop(null);
+  };
+
   private frame = (): void => {
     const rawDt = this.clock.getDelta();
     try {
+      this.framePhase = "tick";
       this.tick(Math.min(rawDt, 0.05), rawDt);
+      this.lastCompletedFrame = performance.now();
+      this.framePhase = "completed";
     } catch (error) {
       const context = {
         version: RELEASE_LABEL,
@@ -679,6 +709,7 @@ export class Game {
       this.physicsAccum = Math.min(this.physicsAccum + dt, this.fixedStep * 4);
       let steps = 0;
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
+        this.framePhase = "race-update";
         this.race.update(this.fixedStep, drive as Input);
         if(this.track.circuit.id==="suzaka"){
           const p=this.race.player.vehicle.body.translation();
@@ -695,6 +726,7 @@ export class Game {
           const allowEntry=nearOpening && closeToBarrier && this.race.player.vehicle.speedKph<55;
           setSuzakaPitGatesOpen(this.world,allowEntry||parkedInPits);
         }
+        this.framePhase = "rapier-step";
         this.world.step();
         for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep(this.fixedStep);
         for (const car of this.race.oncoming) car.vehicle.afterPhysicsStep(this.fixedStep);
@@ -709,6 +741,7 @@ export class Game {
         this.hud.toast("✅ Auto enderezado y recuperado en la pista", 2600);
       }
 
+      this.framePhase = "vehicle-visual-sync";
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
@@ -791,6 +824,7 @@ export class Game {
     if (!this.skipRender) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
       if (measured) this.gpuTimer.begin();
+      this.framePhase = "webgl-render";
       this.renderer.render(this.scene, this.camera);
       if (measured) {
         this.gpuTimer.end();
