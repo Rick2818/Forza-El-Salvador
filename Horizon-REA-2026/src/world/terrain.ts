@@ -82,6 +82,7 @@ export class TerrainField {
   private readonly isDesert: boolean;
   private readonly isSuzaka: boolean;
   private readonly isMonzon: boolean;
+  private readonly isOffroad: boolean;
   private readonly roadSamples: readonly THREE.Vector3[];
   private readonly count = TERRAIN_SEGMENTS + 1;
 
@@ -90,6 +91,7 @@ export class TerrainField {
     this.isSparda = track.circuit?.id === "sparda";
     this.isDesert = track.circuit?.id === "sakhir-horizon";
     this.isMonzon = track.circuit?.id === "monzon";
+    this.isOffroad = track.circuit?.id === "el-imposible-4x4";
     this.roadSamples = track.samples;
     // Centre the terrain on the currently selected layout. Monzon is much
     // larger than the original coastal circuits and must not run off the mesh.
@@ -102,7 +104,7 @@ export class TerrainField {
     }
     this.centerX = Number.isFinite(minX) ? (minX + maxX) / 2 : TERRAIN_CENTER_X;
     this.centerZ = Number.isFinite(minZ) ? (minZ + maxZ) / 2 : TERRAIN_CENTER_Z;
-    this.size = Math.max(TERRAIN_SIZE, Math.ceil((Math.max(maxX - minX, maxZ - minZ) + 600) / 100) * 100);
+    this.size = Math.max(this.isOffroad ? 1200 : TERRAIN_SIZE, Math.ceil((Math.max(maxX - minX, maxZ - minZ) + 600) / 100) * 100);
     this.step = this.size / this.segments;
     const count = this.count;
     const heights = new Float32Array(count * count);
@@ -118,6 +120,17 @@ export class TerrainField {
   }
 
   private computeHeight(x: number, z: number, trackDistance: number): number {
+    if (this.isOffroad) {
+      // Follow the graded route with a conservative shoulder below the road.
+      let closest=0,minDistance=Infinity;
+      for(let i=0;i<this.roadSamples.length;i+=4){
+        const p=this.roadSamples[i],d=(p.x-x)**2+(p.z-z)**2;
+        if(d<minDistance){minDistance=d;closest=p.y;}
+      }
+      const outside=smoothstep(14,95,trackDistance);
+      const far=smoothstep(100,360,trackDistance);
+      return closest-1.6+outside*((fbm(x*.018,z*.018,3)-.5)*3-1.2)+far*(fbm(x*.005+13,z*.005,4)*45-8);
+    }
     if (this.isSparda) {
       // Terrain follows the graded mountain road, always below the tyre
       // surface. A separate static collider supplies off-track support.
@@ -201,8 +214,8 @@ export class TerrainField {
     geo.translate(this.centerX, 0, this.centerZ);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(this.isMonzon ? 0x304b30 : this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x395837);
-    const dryGrass = new THREE.Color(this.isMonzon ? 0x526044 : this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x68704e);
+    const grass = new THREE.Color(this.isOffroad ? 0x4b5232 : this.isMonzon ? 0x304b30 : this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x395837);
+    const dryGrass = new THREE.Color(this.isOffroad ? 0x78684a : this.isMonzon ? 0x526044 : this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x68704e);
     const rock = new THREE.Color(this.isSparda ? 0x737a6c : this.isDesert ? 0x766450 : 0x6d717a);
     const tmp = new THREE.Color();
 
