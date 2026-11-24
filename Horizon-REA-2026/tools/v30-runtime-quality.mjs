@@ -24,7 +24,9 @@ try {
    await page.waitForFunction(()=>document.querySelector("#loading")?.classList.contains("done"),{},{timeout:30000});
    const state=await page.evaluate(()=>window.HORIZON.stats());
    assert.equal(state.vehicleId,id);assert.equal(state.circuit,"el-imposible-4x4");
-   await page.evaluate(()=>window.HORIZON.start());
+   const startButton=page.locator('[data-action="start"]').first();
+   if(!(await startButton.isVisible())) await page.locator('[data-action="tab-circuitos"]').click();
+   await startButton.click({timeout:30000});
    await page.waitForFunction(()=>window.HORIZON.stats().raceState==="countdown"||window.HORIZON.stats().raceState==="racing",{},{timeout:180000});
    await page.screenshot({path:join(out,id+"-grid.png")});
    await page.waitForFunction(()=>window.HORIZON.stats().raceState==="racing",{},{timeout:60000});
