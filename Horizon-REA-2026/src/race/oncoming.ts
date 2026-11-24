@@ -98,7 +98,7 @@ export class OncomingDriver {
     const input = this.plan(traffic);
     const location = this.track.locate(this.vehicle.position, this.hint);
     this.vehicle.update(dt, input, this.track.gripAt(location.index, location.lateral),
-      this.track.gripAtFootprints(this.vehicle.wheelContactPoints(), location.index));
+      this.track.gripAtFootprints(this.vehicle.wheelContactPoints(), location.index, this.vehicle.wheelGripBuffer()));
     this.vehicle.setBrakeLights(input.brake > 0.05);
   }
 }
