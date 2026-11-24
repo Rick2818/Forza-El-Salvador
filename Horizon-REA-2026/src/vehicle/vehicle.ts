@@ -185,7 +185,7 @@ export class Vehicle {
     for (let i=0;i<this.wheelMounts.length;i++) {
       const w = this.wheelMounts[i];
       const suspension = this.controller.wheelSuspensionLength(i);
-      const length = Number.isFinite(suspension)
+      const length = typeof suspension === "number" && Number.isFinite(suspension)
         ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + SETTINGS.physics.maxSuspensionTravel)
         : SETTINGS.physics.suspensionRest;
       const point = this.wheelProbes[i].set(w.x, w.y - length - this.wheelRadius, w.z).applyQuaternion(quat);
