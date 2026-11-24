@@ -81,6 +81,8 @@ export class Race {
   // while a GLB, rigid body and raycast controller are created mid-race.
   private readonly standbyOncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
   get standbyTrafficCount(): number { return this.standbyOncoming.length; }
+  /** Only the pre-race graphics preparation may temporarily reveal these roots. */
+  standbyVisuals(): THREE.Group[] { return this.standbyOncoming.map(car => car.vehicle.visual.root); }
   readonly player: Racer;
   state: RaceState = "idle";
   countdown = SETTINGS.race.countdown;
