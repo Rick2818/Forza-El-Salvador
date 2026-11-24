@@ -285,6 +285,11 @@ export class Menu {
         <div class="menu-note">Circuitos originales de Horizon · sin afiliación con autódromos reales.</div>
       </div>
     `;
+    // If a snapshot was not generated from this exact GLB, show ID-only
+    // fallback rather than a misleading photograph of a different vehicle.
+    for (const img of this.overlay.querySelectorAll<HTMLImageElement>("img.vehicle-pick-photo")) {
+      img.addEventListener("error", () => { img.hidden = true; });
+    }
     this.overlay.classList.remove("hidden");
     this.visible = true;
     void this.loadCircuits();

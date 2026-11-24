@@ -618,7 +618,15 @@ button.difficulty-btn.is-active {
   border-radius: 8px; border: 1px solid #e2edf43b;
   object-fit: contain; background-color: #090e15;
 }
-.vehicle-pick-no-photo { display: grid; place-items: center; font-size: 28px; }
+.vehicle-pick-no-photo { display: grid; place-items: center; font-size: 14px; font-weight:800; }
+.vehicle-pick-media { display:block; position:relative; flex:0 0 82px; width:82px; height:56px; }
+.vehicle-pick-media .vehicle-pick-photo,
+.vehicle-pick-media .vehicle-pick-no-photo {
+  position:absolute; inset:0; width:100%; height:100%; flex:none;
+}
+.vehicle-pick-media .vehicle-pick-photo { z-index:1; object-fit:contain; background:#172434; }
+.vehicle-pick-media .vehicle-pick-photo[hidden] { display:none; }
+
 
 .audio-panel { border:1px solid #334352; border-radius:12px; padding:14px 18px; margin:22px 0; color:#ced8e5; }
 .audio-panel legend { padding:0 8px; font-weight:700; }

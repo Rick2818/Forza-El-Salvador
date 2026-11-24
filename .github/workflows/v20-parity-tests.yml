@@ -1,0 +1,35 @@
+name: V20 - Pruebas integridad showroom vs carrera
+on:
+  push:
+    branches: [fix/v20-model-integrity-20261123]
+    paths:
+      - '.github/workflows/v20-parity-tests.yml'
+      - 'Horizon-REA-2026/tests/showroom-photo-parity.test.mjs'
+      - 'Horizon-REA-2026/src/vehicle/externalBackdrop.ts'
+      - 'Horizon-REA-2026/src/vehicle/externalDriving.ts'
+      - 'Horizon-REA-2026/src/preview/gallery.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Comprobar fotos, hashes de GLB y plataforma Mercedes
+        run: npm test
+      - name: Compilar showroom y carrera para WebGL
+        run: npm run build
+      - name: Verificar correspondencia digital final
+        run: node tools/verify-glb-showroom-photos.mjs

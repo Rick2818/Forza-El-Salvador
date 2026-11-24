@@ -5,6 +5,7 @@ import { preloadCarAsset, USE_BLENDER_SHELL } from "./vehicle/carAsset";
 import { Track } from "./world/track";
 import { availableCircuits, DEFAULT_CIRCUIT_ID, getCircuit } from "./world/circuits";
 import { VEHICLE_DESIGNS, EXTERNAL_VEHICLE_DESIGNS, loadSelectedVehicle } from "./vehicle/selectedAsset";
+import { isExternalVehicle } from "./vehicle/externalRoster";
 
 const loading = document.createElement("div");
 loading.id = "loading";
@@ -46,7 +47,12 @@ async function boot(): Promise<void> {
   // The four race slots keep the same initial download as V9. The additional
   // approved cars load on selection, including a remembered player choice.
   let savedVehicle: string | null = null;
-  try { savedVehicle = localStorage.getItem("horizon.selected-vehicle"); } catch { /* optional */ }
+  const requestedVehicle = new URLSearchParams(window.location.search).get("vehicle");
+  if (requestedVehicle && isExternalVehicle(requestedVehicle)) {
+    savedVehicle = requestedVehicle;
+  } else {
+    try { savedVehicle = localStorage.getItem("horizon.selected-vehicle"); } catch { /* optional */ }
+  }
   const initialModels = VEHICLE_DESIGNS.filter((d, i) => i < 4 || d.id === savedVehicle);
   await Promise.all(initialModels.map((d) => loadSelectedVehicle(d.id)));
   // Prime four authentic third-party models for player selection and rival AI.
@@ -95,4 +101,10 @@ boot().catch((error: unknown) => {
   console.error("[Horizon] fallo de arranque", error);
   label.textContent = `Error al iniciar: ${error instanceof Error ? error.message : String(error)}`;
   label.style.color = "#ff7a6a";
+  // A missing GLB must not strand the user in a blank game with dead controls.
+  const home = document.createElement("a");
+  home.href = import.meta.env.BASE_URL + "index.html";
+  home.textContent = "Regresar al showroom y elegir otro vehículo";
+  home.style.cssText = "display:inline-block;margin-top:16px;padding:12px;background:#30445d;color:white;border-radius:8px";
+  label.append(document.createElement("br"), home);
 });

@@ -1,0 +1,56 @@
+name: V20 · Auditar geometría GLB recuperada
+on:
+  push:
+    branches: [fix/v20-model-integrity-20261123]
+    paths:
+      - '.github/workflows/v20-f430-geometry-audit.yml'
+      - 'Horizon-REA-2026/replacements/assets/ferrari-f430.glb'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-f430:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Auditar bytes del Ferrari F430 real y geometría declarada
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p Horizon-REA-2026/review/quality
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const path='Horizon-REA-2026/replacements/assets/ferrari-f430.glb';
+          const data=fs.readFileSync(path);
+          const sha=crypto.createHash('sha256').update(data).digest('hex');
+          const expected='673886905d2e1f1117681ee1ddf809738fba942c1f71ab1d3d090f9a202aef16';
+          if(sha!==expected)throw new Error('GLB difiere de la fuente importada y auditada.');
+          if(data.toString('ascii',0,4)!=='glTF'||data.readUInt32LE(4)!==2||data.readUInt32LE(8)!==data.length)
+            throw new Error('Cabecera GLB 2.0 no válida');
+          const gltf=JSON.parse(data.subarray(20,20+data.readUInt32LE(12)).toString('utf8'));
+          const names=[...(gltf.nodes||[]),...(gltf.meshes||[])].map(x=>x.name||'');
+          const count=(rx)=>names.filter(n=>rx.test(n)).length;
+          const report={
+            id:'ferrari-f430',sha256:sha,bytes:data.length,
+            meshes:(gltf.meshes||[]).length,nodes:(gltf.nodes||[]).length,
+            wheelNames:count(/wheel|tire|tyre|rim|llanta|rueda/i),
+            cabinNames:count(/interior|cockpit|seat|dashboard|steering|asiento|tablero/i),
+            underbodyNames:count(/underbody|chassis|underfloor|suspension|axle|exhaust|diffuser/i),
+            identity:'Coincide con el GLB F430 descargado y conservado en GitHub',
+            rightsApproved:false,visualApproved:false,drivingApproved:false
+          };
+          fs.writeFileSync('Horizon-REA-2026/review/quality/v20-f430-geometry.json',JSON.stringify(report,null,2));
+          console.log(JSON.stringify(report,null,2));
+          if(report.wheelNames<4||report.cabinNames<1||report.underbodyNames<1)
+            console.log('::warning::Piezas de rueda/cabina/bajos requieren revisión manual de mallas');
+          console.log('::warning::Sólo 1 de 10 archivos objetivo ha sido localizado físicamente: no publicar.');
+          NODE
+      - name: Guardar auditoría de geometría (no renders)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v20-f430-geometria
+          path: Horizon-REA-2026/review/quality/v20-f430-geometry.json
+          retention-days: 7

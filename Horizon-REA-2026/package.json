@@ -8,7 +8,9 @@
     "dev": "node tools/prepare-draco.mjs && vite --port 5173 --strictPort --host 127.0.0.1",
     "build": "node tools/prepare-draco.mjs && tsc --noEmit && vite build && node tools/stamp-build.mjs",
     "preview": "vite preview --port 4173 --strictPort --host 127.0.0.1",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit:v20": "node tools/verify-v20-release.mjs",
+    "release-check:v20": "node tools/verify-v20-release.mjs --strict"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
