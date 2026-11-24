@@ -353,7 +353,15 @@ export class Track {
     for (let i=0;i<n;i++) {
       const p = this.samples[i], r = this.rights[i];
       const sector = offroadSectorAt(this.progress(i));
-      const color = new THREE.Color(sector.surface === "dirt" ? 0x8b6848 : sector.surface === "mud" ? 0x58402d : 0x46382d);
+      // Blend neighbouring sector colours instead of abruptly changing bands.
+      // This affects appearance only; grip, geometry and colliders are unchanged.
+      const palette={dirt:new THREE.Color(0xa47b4c),mud:new THREE.Color(0x715038),puddle:new THREE.Color(0x493729)};
+      const color=palette[sector.surface].clone().multiplyScalar(.5);
+      for(const d of [-8,-4,4,8]){
+        const k=(i+d+n)%n;
+        const tone=palette[offroadSectorAt(this.progress(k)).surface];
+        color.r+=tone.r*.125;color.g+=tone.g*.125;color.b+=tone.b*.125;
+      }
       // Smooth continuous shallow ruts, independent of the surface boundary.
       const t = i/n * 2*Math.PI;
       for (let j=0;j<=cols;j++) {
@@ -362,7 +370,12 @@ export class Track {
         const ripple = .009*Math.sin(25*t + lateral*.7) + .006*Math.cos(17*t-lateral);
         pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
         const shade=1-.32*Math.exp(-((Math.abs(lateral)-1.0)**2)/.32);
-        colors.push(color.r*shade,color.g*shade,color.b*shade);
+        const edge=smoothstep(this.halfWidth-1.5,this.halfWidth,Math.abs(lateral));
+        const uneven=.94+.06*Math.sin(t*39+lateral*1.8)+.04*Math.cos(t*67-lateral*2.1);
+        const verge=new THREE.Color(0x756146);
+        colors.push((color.r*(1-edge*.35)+verge.r*edge*.35)*shade*uneven,
+          (color.g*(1-edge*.35)+verge.g*edge*.35)*shade*uneven,
+          (color.b*(1-edge*.35)+verge.b*edge*.35)*shade*uneven);
         uv.push((p.x+r.x*lateral)/5,(p.z+r.z*lateral)/5);
       }
     }
