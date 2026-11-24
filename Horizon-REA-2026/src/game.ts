@@ -383,16 +383,45 @@ export class Game {
     })();
   }
 
+  /** A bounded asynchronous fence between expensive preparation stages.
+   * Do not discard an in-flight gameplay fence and immediately submit more
+   * work. Never use gl.finish or a blocking clientWaitSync timeout. */
+  private async drainPreparationGpu(stage:string):Promise<void>{
+    const gl=this.renderer.getContext() as WebGL2RenderingContext;
+    if(gl.isContextLost())throw Error(stage+": WebGL context lost");
+    const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
+    if(!fence)throw Error(stage+": could not create GPU preparation fence");
+    const started=performance.now();gl.flush();
+    try{
+      for(;;){
+        if(gl.isContextLost())throw Error(stage+": WebGL context lost");
+        const status=gl.clientWaitSync(fence,0,0);
+        if(status===gl.ALREADY_SIGNALED||status===gl.CONDITION_SATISFIED)break;
+        if(status===gl.WAIT_FAILED)throw Error(stage+": GPU wait failed");
+        if(performance.now()-started>=30000)throw Error(stage+": GPU preparation exceeded 30 seconds");
+        await new Promise<void>(resolve=>setTimeout(resolve,8));
+      }
+    }finally{
+      if(!gl.isContextLost())gl.deleteSync(fence);
+      console.info("[Horizon] GPU_PREPARATION",stage,Math.round(performance.now()-started));
+    }
+  }
+
   private async prepareRaceGraphics(): Promise<void> {
     const started = performance.now();
     this.framePhase = "graphics-preparation";
+    await this.drainPreparationGpu("previous-menu-frame");
+    this.gpuBackpressure.reset();
     await this.environment.whenReady(this.scene);
     await prepareHumanImpostors(this.renderer,this.scene,this.crowdMode);
+    await this.drainPreparationGpu("audience-atlas");
     prepareMonzonTreeLods(this.scene,this.renderer);
+    await this.drainPreparationGpu("vegetation-atlas");
     updateMonzonTreeLods(this.scene,this.camera.position);
     this.environment.updateVegetationView(this.camera.position,1);
     await this.race.prepareRivalLods();
     this.fireworks?.prepareGpu(this.renderer);
+    await this.drainPreparationGpu("fireworks-buffers");
     const hiddenCars = this.race.standbyVisuals();
     const saved = hiddenCars.map(root => root.visible);
     const fireworks = this.fireworks?.group;
@@ -409,7 +438,12 @@ export class Game {
           if(material instanceof THREE.ShaderMaterial)for(const uniform of Object.values(material.uniforms))if(uniform.value instanceof THREE.Texture)textures.add(uniform.value);
         }
       });
-      for (const texture of textures) if(!texture.isRenderTargetTexture)this.renderer.initTexture(texture);
+      let uploads=0;
+      for (const texture of textures) if(!texture.isRenderTargetTexture){
+        this.renderer.initTexture(texture);
+        if(++uploads%12===0)await this.drainPreparationGpu("textures-"+uploads);
+      }
+      await this.drainPreparationGpu("textures-complete");
       updateHumanPeople(this.scene,this.camera);
       if (fireworks) {
         fireworks.visible = true;
@@ -421,7 +455,11 @@ export class Game {
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
       this.chase.snap();
       this.chase.update(1 / 60, this.race.player.vehicle, this.time);
+      this.race.updateRivalLods(this.camera);
+      updateMonzonTreeLods(this.scene,this.camera.position);
+      this.environment.updateVegetationView(this.camera.position,1);
       this.renderer.render(this.scene, this.camera);
+      await this.drainPreparationGpu("representative-race-frame");
       if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
     } finally {
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
