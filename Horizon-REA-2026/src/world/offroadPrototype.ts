@@ -34,6 +34,7 @@ export const OFFROAD_SECTORS: readonly OffroadSector[] = [
   { start: .94, end: 1, surface: "puddle", grip: .32, resistance: .38 },
 ];
 export const OFFROAD_PICKUP_IDS = [
+  "chevrolet-silverado-ev-alternative", "ram-3500-alternative", "ford-f150-raptor-police",
   "chevrolet-silverado-z71", "ram-1500-trx", "ford-f150-raptor",
 ] as const;
 
