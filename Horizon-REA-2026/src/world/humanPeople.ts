@@ -162,7 +162,7 @@ async function bakeCrowdAtlas(renderer:THREE.WebGLRenderer):Promise<THREE.Textur
   const shadow=renderer.shadowMap.enabled,tone=renderer.toneMapping;
   try{
     renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.NoToneMapping;
-    renderer.setRenderTarget(target);renderer.setViewport(0,0,ATLAS_COLS*TILE,ATLAS_ROWS*TILE);
+    renderer.setRenderTarget(target);
     renderer.setScissorTest(false);renderer.setClearColor(0,0);renderer.clear(true,true,true);
     renderer.render(stage,camera);
     if(renderer.getContext().isContextLost())throw Error("Crowd atlas WebGL context lost");
@@ -217,6 +217,43 @@ export function crowdStats(scene:THREE.Scene){
 /** Three LOD draw calls per audience sector, with geometry loaded once for the world.
  * All matrices and attribute buffers are allocated once. Camera-based repartitioning
  * runs only after camera movement or every half-second of animation. */
+/** Small reusable cloth flags, no per-person physics or objects. */
+function addCrowdFlags(group:THREE.Group,people:readonly HumanPlacement[]):void{
+  const fans=people.filter((_,i)=>i%97===43);
+  if(!fans.length)return;
+  const geometry=new THREE.PlaneGeometry(.82,.49,8,3);
+  geometry.translate(.41,0,0);
+  const flags=new THREE.InstancedBufferAttribute(new Float32Array(fans.length),1);
+  geometry.setAttribute("iFlag",flags);
+  const material=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.flagTime=time;
+    shader.vertexShader=shader.vertexShader.replace("#include <common>",`#include <common>
+      uniform float flagTime; attribute float iFlag; varying vec2 vFlagUV; varying float vFlag;
+    `).replace("#include <begin_vertex>",`#include <begin_vertex>
+      vFlagUV=uv;vFlag=iFlag;
+      transformed.z+=uv.x*.11*sin(uv.x*9.0-flagTime*4.0+iFlag*2.0);
+    `);
+    shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\\nvarying vec2 vFlagUV; varying float vFlag;")
+      .replace("#include <color_fragment>",`#include <color_fragment>
+        if(vFlag<.5)diffuseColor.rgb*=vFlagUV.y>.333&&vFlagUV.y<.667?vec3(1.0):vec3(.025,.17,.56);
+        else diffuseColor.rgb*=mod(floor(vFlagUV.x*8.0)+floor(vFlagUV.y*5.0),2.0)<.5?vec3(.035):vec3(.95);
+      `);
+  };
+  material.customProgramCacheKey=()=>"v29-flags";
+  const mesh=new THREE.InstancedMesh(geometry,material,fans.length);
+  const pole=new THREE.InstancedMesh(new THREE.CylinderGeometry(.012,.012,1.12,5),new THREE.MeshLambertMaterial({color:0x85878a}),fans.length);
+  const m=new THREE.Matrix4(),q=new THREE.Quaternion(),axis=new THREE.Vector3(0,1,0),p=new THREE.Vector3(),s=new THREE.Vector3(1,1,1);
+  fans.forEach((fan,i)=>{
+    flags.setX(i,i%4===0?1:0);
+    q.setFromAxisAngle(axis,fan.yaw);p.set(fan.x,fan.y+2.24,fan.z);
+    m.compose(p,q,s);mesh.setMatrixAt(i,m);
+    p.y-=.4;m.compose(p,q,s);pole.setMatrixAt(i,m);
+  });
+  mesh.name="v29-crowd-cloth-flags";pole.name="v29-crowd-flag-poles";
+  mesh.computeBoundingSphere();pole.computeBoundingSphere();
+  group.add(mesh,pole);group.userData.flags=fans.length;
+}
 export function createHumanPeople(people:readonly HumanPlacement[],name:string,frustumCulled=false):THREE.Group {
   if(people.some(p=>p.worker))return createRealisticPitCrew(people,name);
   const group=new THREE.Group();group.name=name;
@@ -315,6 +352,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
       group.userData.visibleAudience=counts[0]+counts[1]+counts[2];
     };
     group.userData.updatePeople=refresh;
+    addCrowdFlags(group,people);
     group.userData.ready=true;
   }).catch(error=>{group.userData.error=String(error);console.error("Human models failed",error);throw error;});
   return group;
