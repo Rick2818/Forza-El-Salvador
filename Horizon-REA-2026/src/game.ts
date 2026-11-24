@@ -388,6 +388,7 @@ export class Game {
     await this.environment.whenReady(this.scene);
     await prepareHumanImpostors(this.renderer,this.scene,this.crowdMode);
     await this.race.prepareRivalLods();
+    this.fireworks?.prepareGpu(this.renderer);
     const hiddenCars = this.race.standbyVisuals();
     const saved = hiddenCars.map(root => root.visible);
     const fireworks = this.fireworks?.group;
