@@ -390,6 +390,7 @@ export class Game {
     await prepareHumanImpostors(this.renderer,this.scene,this.crowdMode);
     prepareMonzonTreeLods(this.scene,this.renderer);
     updateMonzonTreeLods(this.scene,this.camera.position);
+    this.environment.updateVegetationView(this.camera.position,1);
     await this.race.prepareRivalLods();
     this.fireworks?.prepareGpu(this.renderer);
     const hiddenCars = this.race.standbyVisuals();
@@ -957,6 +958,7 @@ export class Game {
     if (!this.skipRender && !this.captureMode) {
       this.race.updateRivalLods(this.camera);
       updateMonzonTreeLods(this.scene,this.camera.position);
+      this.environment.updateVegetationView(this.camera.position,dt);
     }
     this.framePhase = "gpu-backpressure";
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
