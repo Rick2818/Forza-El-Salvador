@@ -5,7 +5,7 @@ import { mkdir } from "node:fs/promises";
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
-assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio"].includes(mode));
+assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
 const errors=[];
@@ -45,6 +45,8 @@ try{
     game.scene.traverse(o=>{if(o.name.startsWith("tunnel-driving-light-"))tunnelLights.push(o);});
     if(mode==="physics-only")game.skipRender=true;
     if(mode==="no-rival-audio")game.audio.updateRivals=()=>{};
+    if(mode==="no-gpu-timer"){game.gpuTimer.begin=()=>{};game.gpuTimer.end=()=>{};game.gpuTimer.collect=()=>[];}
+    if(mode==="adaptive-resolution")game.autoScale=true;
     if(mode==="constant-tunnel-lights"){
       const lighting=game.environment.tunnelLighting;
       const update=lighting.update.bind(lighting);
@@ -69,6 +71,10 @@ try{
     timeMethod(game.environment,"update","environment");
     timeMethod(game.audio,"updateRivals","rival-audio");
     timeMethod(game.renderer,"render","webgl");
+    timeMethod(game.gpuTimer,"begin","gpu-timer-begin");
+    timeMethod(game.gpuTimer,"end","gpu-timer-end");
+    timeMethod(game.gpuTimer,"collect","gpu-timer-collect");
+    timeMethod(game,"adaptResolution","adaptive-resolution");
     window.setInterval(()=>{
       const traffic=game.race.racers.filter(r=>!r.isPlayer&&!r.finished).map(r=>({
         position:r.vehicle.position.clone(),speed:r.vehicle.speed,isPlayer:false,racerId:r.id
@@ -94,6 +100,7 @@ try{
         segment:g.race.player.hint,playerSpeedKph:s.speedKph,playerRescues:g.race.rescues,
         programs:g.renderer.info.programs?.length??null,
         geometries:g.renderer.info.memory.geometries,textures:g.renderer.info.memory.textures,
+        meshBudget:g.race.racers.map(r=>({id:r.vehicle.vehicleId,...r.vehicle.visual.root.userData.renderMeshBudget})),
         diagnostics:window.__HORIZON_DIAG__};
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
