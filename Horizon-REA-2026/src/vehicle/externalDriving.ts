@@ -439,6 +439,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   for(const mesh of wheelMeshes){
     if(!mesh.parent)continue;
     candidateCount++;
+    const sourceLabel=wheelLabel(mesh);
     const box=indexedWorldBounds(mesh),size=box.getSize(new THREE.Vector3());
     const multi=size.x>d.width*.64||size.z>d.wheelbase*.52;
     const parts=multi?partitionWheelMesh(mesh,hubs,owned):
@@ -448,8 +449,26 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       // The wheel is moved, not duplicated; GLB material and geometry survive.
       root.updateMatrixWorld(true);
       // Brake calipers steer with the hub but must never rotate with the rim.
-      const fixedBrake=/caliper|étrier|etrier|pinza/i.test(wheelLabel(item.mesh));
-      (fixedBrake?wheels[item.hub].steer:wheels[item.hub].spin).attach(item.mesh);
+      const fixedBrake=/caliper|étrier|etrier|pinza/i.test(sourceLabel);
+      item.mesh.userData.originalWheelLabel=sourceLabel;
+      const pivot=fixedBrake?wheels[item.hub].steer:wheels[item.hub].spin;
+      pivot.attach(item.mesh);
+      // For an explicitly named complete rim/tyre ring, align its radial
+      // centre with the measured tyre axle. Preserve X (rim dish/offset),
+      // radius, mesh shape and the original authored material.
+      if(!fixedBrake&&measuredTyres.has(id)&&/tyre|tire|neumatico|pneu|rubber|caucho|rim|rines?/i.test(sourceLabel)){
+        const bound=indexedWorldBounds(item.mesh),s=bound.getSize(new THREE.Vector3());
+        const p=bound.getCenter(new THREE.Vector3()),h=hubs[item.hub],r=externalWheelRadii(id,d)[item.hub];
+        const partR=(s.y+s.z)/4,offset=Math.hypot(p.y-h.y,p.z-h.z);
+        if(partR>=r*.48&&partR<=r*1.18&&Math.abs(s.y-s.z)<=partR*.20&&
+           s.x<=r*2&&offset>Math.min(.025,r*.075)&&offset<=r*.32){
+          const worldOrigin=item.mesh.getWorldPosition(new THREE.Vector3());
+          worldOrigin.y+=h.y-p.y;worldOrigin.z+=h.z-p.z;
+          item.mesh.position.copy(pivot.worldToLocal(worldOrigin));
+          item.mesh.userData.radialCorrectionM=offset;
+          item.mesh.updateWorldMatrix(true,false);
+        }
+      }
       counts[item.hub]++;
       copied+=triangulationCount(item.mesh.geometry);
     }
@@ -468,11 +487,11 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       // Full circular surfaces only: spokes, balance weights and lugs are
       // not expected to have a bounding box centered on the hub.
       if(partRadius<radius*.48||partRadius>radius*1.18||Math.abs(s.y-s.z)>partRadius*.28)return;
-      const label=wheelLabel(obj);
+      const label=String(obj.userData.originalWheelLabel??wheelLabel(obj));
       const kind=/tyre|tire|neumatico|pneu|rubber|caucho/i.test(label)?"tyre":
         /rim|rines?|llanta/i.test(label)?"rim":"unidentified";
       parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
-        radiusM:partRadius,center:p.toArray()});
+        radiusM:partRadius,center:p.toArray(),...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
     });
     const tyres=parts.filter(p=>p.kind==="tyre"),rims=parts.filter(p=>p.kind==="rim");
     const maxOffsetM=parts.length?Math.max(...parts.map(p=>p.radialOffsetM)):null;
