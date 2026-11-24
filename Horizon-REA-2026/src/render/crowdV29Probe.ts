@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createHumanPeople, advancePeopleAnimation, prepareHumanImpostors, updateHumanPeople, crowdStats, type CrowdMode, type HumanPlacement } from "../world/humanPeople";
+import { createHumanPeople, advancePeopleAnimation, prepareHumanImpostors, updateHumanPeople, crowdStats, inspectCrowdAtlas, type CrowdMode, type HumanPlacement } from "../world/humanPeople";
 
 /** Controlled comparison of the existing anatomical meshes against the new
  * atlas at identical camera, resolution, lighting and spectator placements.
@@ -48,7 +48,7 @@ export async function createCrowdBenchmark(){
       const latency=await waitGpu();if(latency!==null)completion.push(latency);
     }
     const summary=(a:number[])=>a.length?{mean:a.reduce((x,y)=>x+y,0)/a.length,max:Math.max(...a)}:null;
-    return {mode,...crowdStats(scene),actualTriangles:renderer.info.render.triangles,
+    return {mode,...crowdStats(scene),atlas:inspectCrowdAtlas(renderer),actualTriangles:renderer.info.render.triangles,
       actualDraws:renderer.info.render.calls,preparationMs,renderCpuMs:summary(cpu),
       gpuFenceCompletionMs:summary(completion),contextLost:gl.isContextLost(),
       renderer:gl.getParameter(gl.RENDERER)};
