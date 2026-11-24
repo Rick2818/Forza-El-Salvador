@@ -1,0 +1,47 @@
+name: Offroad V29.3 visual regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/src/render/pickupMud*'
+      - 'Horizon-REA-2026/tools/offroad-render*'
+      - '.github/workflows/offroad-visual-regression.yml'
+permissions:
+  contents: read
+concurrency:
+  group: offroad-visual-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx vitest run src/render/pickupMud.test.ts src/world/offroadTrack.test.ts src/world/offroadPrototype.test.ts
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Real WebGL silhouette at five exposure times
+        run: |
+          npm run dev > /tmp/offroad-visual-vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html >/dev/null
+          node tools/offroad-render-probe.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offroad-v293-visual-evidence
+          path: Horizon-REA-2026/review/quality/offroad-v293
+          if-no-files-found: warn
