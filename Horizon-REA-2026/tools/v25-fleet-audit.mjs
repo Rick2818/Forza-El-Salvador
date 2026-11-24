@@ -21,7 +21,7 @@ try{
           const wheels=visual.wheels.map(w=>({spinMeshes:w.spin.children.filter(o=>o.isMesh).length,pivot:w.steer.position.toArray()}));
           data.push({id:design.id,measured:hasMeasuredExternalTyres(design.id),wheelMeshes:audit?.assignedWheelMeshes??[],
             mounts:wheelConnections(design.id),radii:wheelRadiiForVehicle(design.id),wheels,
-            sourceTriangles:audit?.sourceTriangles,triangles,budget:visual.root.userData.renderMeshBudget});
+            sourceTriangles:audit?.sourceTriangles,triangles,budget:visual.root.userData.renderMeshBudget,alignment:visual.root.userData.wheelAlignment});
         }finally{disposeSelectedVisual(visual);}
       }catch(e){data.push({id:design.id,error:String(e)});}
     }
@@ -37,6 +37,12 @@ try{
     if(r.triangles!==r.sourceTriangles)issues.push(r.id+": triangle count changed");
     if(r.radii.length!==4||r.radii.some(n=>!Number.isFinite(n)||n<=0))issues.push(r.id+": invalid tyre radius");
     if(!r.budget||r.budget.after>r.budget.before)issues.push(r.id+": invalid mesh budget");
+    if(!Array.isArray(r.alignment)||r.alignment.length!==4)issues.push(r.id+": missing alignment audit");
+    else for(const w of r.alignment){
+      if(w.maxOffsetM===null||w.maxOffsetM>w.toleranceM)issues.push(r.id+" "+w.corner+": radial alignment failed "+w.maxOffsetM);
+      if(w.pairOffsetM!==null&&w.pairOffsetM>w.toleranceM)issues.push(r.id+" "+w.corner+": tyre/rim centers differ "+w.pairOffsetM);
+      if(!w.explicitPair)issues.push(r.id+" "+w.corner+": separate tyre/rim geometry not identified; manual or component audit required");
+    }
   }
   assert.deepEqual(issues,[]);
 }finally{await browser.close();}
