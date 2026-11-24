@@ -17,6 +17,7 @@ try{
   await page.bringToFront();
   await page.waitForFunction(()=>window.__HORIZON_GAME__&&window.HORIZON,{},{timeout:120000});
   await page.evaluate(()=>{window.HORIZON.setQuality("equilibrada");window.HORIZON.autoScale(false);window.HORIZON.setScale(.5);});
+  if(mode==="physics-only")await page.evaluate(()=>{window.__HORIZON_GAME__.skipRender=true;});
   await page.locator('#autos-panel button[data-action="start"]').click({timeout:60000});
   await page.waitForFunction(()=>!window.__HORIZON_GAME__.preparingGraphics&&["opening","racing"].includes(window.__HORIZON_GAME__.state),{},{timeout:180000});
   await page.evaluate(async(mode)=>{
@@ -91,7 +92,7 @@ try{
       const g=window.__HORIZON_GAME__;
       const s=window.HORIZON.stats();
       return {state:s.state,raceState:s.raceState,elapsed:s.elapsed,frameAgeMs:s.frameAgeMs,fps:s.fps,
-        vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,graphicsPreparationMs:s.graphicsPreparationMs,
+        vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,graphicsPreparationMs:s.graphicsPreparationMs,framePhase:s.framePhase,frameSource:s.frameSource,animationFrames:s.animationFrames,fallbackFrames:s.fallbackFrames,maxFrameGapMs:s.maxFrameGapMs,submittedDraws:s.submittedDraws,skippedDraws:s.skippedDraws,drawAgeMs:s.drawAgeMs,
         hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
@@ -105,12 +106,13 @@ try{
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
-    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V25","Unexpected running build");
-    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV25\b/);
+    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V26","Unexpected running build");
+    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV26\b/);
     assert.equal(sample.contextLost,false);
     assert.equal(sample.recovery,false);
     assert.equal(errors.length,0);
     assert.ok(sample.frameAgeMs<5000,"Frame completion stopped");
+    if(mode!=="physics-only")assert.ok(sample.drawAgeMs<5000,"Actual WebGL draws stopped");
     assert.ok(sample.positions.every(p=>[p.x,p.y,p.z].every(Number.isFinite)));
     if(previous&&previous.raceState==="racing"&&sample.raceState==="racing"){
       assert.ok(sample.elapsed>previous.elapsed,"Race clock stopped");
@@ -119,7 +121,8 @@ try{
       assert.ok(stagnant<3,"Entire field stopped moving");
     }
     if(sample.elapsed>=125&&sample.raceState==="racing"){
-      if(mode!=="physics-only")assert.ok(sample.drawCalls>0,"No rendering");
+      if(mode!=="physics-only"){assert.ok(sample.drawCalls>0,"No rendering");assert.ok(sample.submittedDraws>100,"Insufficient actual rendered frames");}
+      assert.equal(sample.oncoming,5,"Traffic did not fully activate");
       assert.ok(samples.some(s=>s.elapsed>=48&&s.elapsed<60),"Did not sample original freeze window");
       console.log("CONTINUITY_PASS",id,mode,JSON.stringify({elapsed:sample.elapsed,samples:samples.length,wallSeconds:(Date.now()-start)/1000,minimumSampleFPS:Math.min(...samples.filter(s=>s.raceState==="racing").map(s=>s.fps))}));
       break;
