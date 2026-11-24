@@ -14,7 +14,11 @@ function vehicleTile(car: SelectedVehicle, selectedId: string, external: boolean
     "ford-f150-raptor-police":"F-150", "ram-3500-alternative":"RAM",
     "chevrolet-silverado-ev-alternative":"SILV."
   };
-  const thumbnail = `<span class="vehicle-pick-no-photo" aria-hidden="true">${identity[car.id] ?? "GLB"}</span>`;
+  const thumbnail = `<span class="vehicle-pick-media">
+    <img class="vehicle-pick-photo" src="${import.meta.env.BASE_URL}vehicles/generated/${car.id}.png"
+      alt="Vista del mismo GLB ${car.name}" loading="lazy">
+    <span class="vehicle-pick-no-photo" aria-hidden="true">${identity[car.id] ?? "GLB"}</span>
+  </span>`;
   return `<button type="button" class="vehicle-pick vehicle-select ${chosen ? "is-selected" : ""}"
     data-action="select-vehicle" data-vehicle-id="${car.id}" aria-pressed="${chosen}"
     aria-label="Elegir ${car.name} para competir">
