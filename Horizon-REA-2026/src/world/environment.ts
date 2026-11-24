@@ -60,7 +60,9 @@ export class Environment {
     const isSparda = track.circuit.id === "sparda";
     const isSakhir = track.circuit.id === "sakhir-horizon";
     this.elevatedTerrain = isSparda;
-    const isDaylight = isSuzaka || isSparda || track.circuit.id === "el-imposible-4x4";
+    const isOffroad = track.circuit.id === "el-imposible-4x4";
+    scene.userData.offroadVehicleFinish=isOffroad;
+    const isDaylight = isSuzaka || isSparda || isOffroad;
     this.moonDirection.setFromSphericalCoords(1, deg(isDaylight ? 90 - 53 : 90 - 25), deg(208));
 
     if (isDaylight) {
@@ -85,7 +87,7 @@ export class Environment {
       reflectionSky.material.uniforms["sunPosition"].value.copy(this.moonDirection);
       reflectionScene.add(reflectionSky);
       scene.environment = pmrem.fromScene(reflectionScene, 0, 1, 16000).texture;
-      scene.environmentIntensity = isSuzaka ? .008 : .55; // prevent overbright blue sky reflections on car finishes
+      scene.environmentIntensity = isSuzaka ? .008 : isOffroad ? .10 : .55; // prevent overbright blue sky reflections on car finishes
       pmrem.dispose();
       scene.background = new THREE.Color(0x9cc7e8);
       scene.fog = new THREE.FogExp2(0xb7cddd, 0.00025);
@@ -99,7 +101,7 @@ export class Environment {
       scene.fog = new THREE.FogExp2(0x0b1626, isMonzon ? 0.00055 : 0.00105);
     }
 
-    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : isMonzon ? 0xe0e7e9 : 0xa8c2ff, isDaylight ? 1.8 : isMonzon ? 2.2 : 3.15);
+    this.moon = new THREE.DirectionalLight(isDaylight ? 0xfff3dc : isMonzon ? 0xe0e7e9 : 0xa8c2ff, isDaylight ? (isOffroad ? 1.45 : 1.8) : isMonzon ? 2.2 : 3.15);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     this.moon.shadow.camera.near = 1;
@@ -114,8 +116,8 @@ export class Environment {
     scene.add(this.moon);
     scene.add(this.moon.target);
     if (isDaylight) {
-      scene.add(new THREE.HemisphereLight(0xd8e3f0, 0x55694b, isSuzaka ? .72 : 1.15));
-      scene.add(new THREE.AmbientLight(0xffffff, isSuzaka ? .1 : .28));
+      scene.add(new THREE.HemisphereLight(0xd8e3f0, 0x55694b, isSuzaka ? .72 : isOffroad ? .80 : 1.15));
+      scene.add(new THREE.AmbientLight(0xffffff, isSuzaka ? .1 : isOffroad ? .10 : .28));
     } else {
       scene.add(new THREE.HemisphereLight(isMonzon ? 0x9ba8b4 : 0x2b4d82, isMonzon ? 0x242a20 : 0x04060a, isMonzon ? .65 : 1.05));
       scene.add(new THREE.AmbientLight(isMonzon ? 0xc0b6a4 : 0x101d33, isMonzon ? .17 : .45));
