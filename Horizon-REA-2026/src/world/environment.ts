@@ -206,6 +206,8 @@ export class Environment {
     world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.92), fixed);
   }
 
+  updateVegetationView(center:THREE.Vector3,dt:number):void {this.forest?.update(center,dt);}
+
   setPixelRatio(ratio: number): void {
     this.sky?.setPixelRatio(ratio);
   }
@@ -216,7 +218,7 @@ export class Environment {
     this.garages?.update(center);
     this.balloon?.update(dt);
     advanceAudienceAnimation(dt);
-    this.forest?.update(center,dt);
+    // Forest LOD is driven by the actual camera immediately before rendering.
     this.tunnelLighting.update(center, dt);
     this.lightRefresh += dt;
     if (this.trackLights.length && this.lightRefresh >= .25) {
