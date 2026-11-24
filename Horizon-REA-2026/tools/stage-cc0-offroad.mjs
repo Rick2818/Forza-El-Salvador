@@ -19,7 +19,7 @@ for(const asset of assets){
  const metadata=await res.json();
  for(const kind of ["diff","nor_gl","rough"]){
   const aliases={diff:["diff","diffuse","albedo"],nor_gl:["nor_gl","normal_gl"],rough:["rough","roughness"]}[kind];
-  const key=aliases.find(k=>metadata[k]?.["2k"]);
+  const key=Object.keys(metadata).find(k=>aliases.includes(k.toLowerCase())&&metadata[k]?.["2k"]);
   const variants=metadata[key]?.["2k"];
   console.log(asset.id,kind,"available maps",Object.keys(metadata),"selected",key,"formats",Object.keys(variants??{}));
   const entry=variants?.jpg??variants?.png;
