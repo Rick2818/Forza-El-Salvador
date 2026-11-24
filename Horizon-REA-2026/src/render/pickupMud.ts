@@ -51,8 +51,10 @@ export class PickupMudCoating {
             float mudMix = smear * horizonMud * ${max.toFixed(2)};
             diffuseColor.rgb = mix(diffuseColor.rgb,mix(vec3(.065,.032,.015),vec3(.15,.075,.032),mudPattern),mudMix);
           `);
+          // Dirty coating is less reflective than clean automotive paint.
+          shader.fragmentShader=shader.fragmentShader.replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.88,mudMix);");
         };
-        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v3-"+max;
+        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v4-"+max;
         this.copies.set(m,clone);
         return clone;
       };
