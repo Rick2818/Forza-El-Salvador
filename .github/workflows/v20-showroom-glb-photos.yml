@@ -6,6 +6,7 @@ on:
       - '.github/workflows/v20-showroom-glb-photos.yml'
       - 'Horizon-REA-2026/tools/generate-glb-showroom-photos.mjs'
       - 'Horizon-REA-2026/src/preview/gallery.ts'
+      - 'Horizon-REA-2026/public/models/external-candidates/*.glb'
   workflow_dispatch:
 permissions:
   contents: write
