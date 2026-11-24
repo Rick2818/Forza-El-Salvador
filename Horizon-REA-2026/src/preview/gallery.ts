@@ -120,6 +120,22 @@ function chooseAngle(angle: string): void {
   camera.lookAt(target);
 }
 
+/** Keep the selected showroom card's photograph synchronized with its live GLB. */
+function captureCurrentModelPhoto(): void {
+  if (!currentModel) return;
+  const photo = Array.from(document.querySelectorAll<HTMLImageElement>("img.glb-photo"))
+    .find(img => img.closest<HTMLButtonElement>(".choice")?.dataset.car === currentCar.id);
+  if (!photo) return;
+  try {
+    renderer.render(scene,camera);
+    photo.src = canvas.toDataURL("image/png");
+    photo.hidden = false;
+    photo.closest(".choice")?.querySelector(".glb-photo-pending")?.remove();
+  } catch (error) {
+    console.warn("[Horizon] Captura 3D no disponible", error);
+  }
+}
+
 function releaseOld(): void {
   customizer.dispose();
   if (!currentModel) return;
@@ -217,6 +233,8 @@ async function showModel(car: GalleryCar): Promise<void> {
       camera.position.sub(controls.target).multiplyScalar(0.55).add(controls.target);
       controls.update();
     }
+    if (!new URLSearchParams(window.location.search).has("render-thumbnails"))
+      requestAnimationFrame(captureCurrentModelPhoto);
     status.textContent = "✓ GLB candidato cargado. Falta validar fidelidad, licencia y comportamiento en carrera.";
     metrics.textContent = "Mallas: " + meshes + " · Triángulos: " + Math.round(triangles).toLocaleString("es") +
       " · Piezas de ruedas identificadas: " + wheelNames +
@@ -268,12 +286,21 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-view]")
   button.addEventListener("click", () => chooseAngle(button.dataset.view ?? "front"));
 }
 for (const swatch of document.querySelectorAll<HTMLButtonElement>("[data-paint]")) {
-  swatch.addEventListener("click", () => customizer.setPaint(swatch.dataset.paint ?? "original"));
+  swatch.addEventListener("click", () => {
+    customizer.setPaint(swatch.dataset.paint ?? "original");
+    requestAnimationFrame(captureCurrentModelPhoto);
+  });
 }
 const customPaint = $("custom-paint") as HTMLInputElement;
-customPaint.addEventListener("input", () => customizer.setPaint(customPaint.value));
+customPaint.addEventListener("input", () => {
+  customizer.setPaint(customPaint.value);
+  requestAnimationFrame(captureCurrentModelPhoto);
+});
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelset]")) {
-  button.addEventListener("click", () => { void customizer.setWheels((button.dataset.wheelset ?? "original") as WheelSet); });
+  button.addEventListener("click", async () => {
+    await customizer.setWheels((button.dataset.wheelset ?? "original") as WheelSet);
+    requestAnimationFrame(captureCurrentModelPhoto);
+  });
 }
 $("drive-current").addEventListener("click", () => {
   if (!currentModel) return;
