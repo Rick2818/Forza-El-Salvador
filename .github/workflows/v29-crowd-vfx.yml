@@ -1,0 +1,54 @@
+name: V29 Crowd and cinematic VFX validation (no deployment)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/v29-crowd-vfx.yml'
+permissions:
+  contents: read
+concurrency:
+  group: v29-crowd-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  vfx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {test: benchmark, circuit: monzon}
+          - {test: opening, circuit: monzon}
+          - {test: opening, circuit: suzaka}
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          npm run dev > /tmp/horizon-v29-vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          if [ "${{ matrix.test }}" = "benchmark" ]; then
+            node tools/v29-crowd-benchmark.mjs
+          else
+            node tools/v29-opening.mjs "${{ matrix.circuit }}" hybrid
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v29-${{ matrix.test }}-${{ matrix.circuit }}
+          path: Horizon-REA-2026/review/quality/v29-*
+          if-no-files-found: warn
