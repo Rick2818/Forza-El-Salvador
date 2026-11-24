@@ -32,3 +32,4 @@ jobs:
           done
           curl -fsS http://127.0.0.1:5173/race.html > /dev/null
           node tools/pickup-v24-probe.mjs
+          node tools/pickup-v24-continuity.mjs ram-3500-alternative
