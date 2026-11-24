@@ -56,6 +56,7 @@ export class Game {
   private readonly gpuTimer: GPUFrameTimer;
   private readonly gpuBackpressure: RenderBackpressure;
   private lastDrawAt = performance.now();
+  private geometryPressureUntil = 0;
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -480,6 +481,7 @@ export class Game {
 
   private beginPreparedRace(): void {
     this.performanceLog.reset();
+    this.geometryPressureUntil = 0;
     this.lastEnteredPitGarage = null;
     this.audio.silence();
     this.audio.ensure();
@@ -1005,7 +1007,11 @@ export class Game {
 
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender && !this.captureMode) {
-      this.race.updateRivalLods(this.camera);
+      const now=performance.now();
+      const active=this.state==="racing"||this.state==="opening";
+      if(active && !document.hidden && document.hasFocus() && now-this.lastDrawAt>250)
+        this.geometryPressureUntil=now+5000;
+      this.race.updateRivalLods(this.camera,active&&now<this.geometryPressureUntil);
       updateMonzonTreeLods(this.scene,this.camera.position);
       this.environment.updateVegetationView(this.camera.position,dt);
     }
