@@ -1,0 +1,129 @@
+name: V20 · Recuperar GLB exactos (sólo preproducción)
+on:
+  push:
+    branches: [fix/v20-model-integrity-20261123]
+    paths:
+      - '.github/workflows/v20-import-exact-models.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  oauth:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - name: Comprobar acceso autorizado a Sketchfab (sin revelar credenciales)
+        id: check
+        env:
+          SKETCHFAB_TOKEN: ${{ secrets.SKETCHFAB_OAUTH_TOKEN }}
+        shell: bash
+        run: |
+          if [ -n "$SKETCHFAB_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Autenticación de usuario configurada; se permite recuperación privada."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No hay acceso de usuario a Sketchfab. No se extraerán modelos ni se usarán sustitutos."
+          fi
+
+  import:
+    needs: oauth
+    if: needs.oauth.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      SKETCHFAB_TOKEN: ${{ secrets.SKETCHFAB_OAUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar importador oficial glTF
+        run: npm install --global --silent @gltf-transform/cli@4
+      - name: Recuperar los nueve modelos exactos mediante la API oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="Horizon-REA-2026/replacements/assets"
+          mkdir -p "$target" "$RUNNER_TEMP/v20"
+          failures=0
+          while IFS='|' read -r id uid; do
+            [ -n "$id" ] || continue
+            echo "::group::Verificar y descargar $id"
+            tmp="$RUNNER_TEMP/v20/$id"
+            mkdir -p "$tmp"
+            if ! curl --fail --silent --show-error --retry 2 --max-time 45 \
+              "https://api.sketchfab.com/v3/models/$uid" -o "$tmp/meta.json"; then
+              echo "::error::No se pudo comprobar fuente $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            license="$(jq -r '.license.label // ""' "$tmp/meta.json")"
+            canDownload="$(jq -r '.isDownloadable // false' "$tmp/meta.json")"
+            if [ "$license" != "CC Attribution" ] || [ "$canDownload" != "true" ]; then
+              echo "::error::Licencia o descarga no apta para $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            if ! curl --fail --silent --show-error --retry 2 --max-time 50 \
+              --header "Authorization: Bearer $SKETCHFAB_TOKEN" \
+              "https://api.sketchfab.com/v3/models/$uid/download" -o "$tmp/download.json"; then
+              echo "::error::OAuth no autorizado para $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            signed="$(jq -r '.gltf.url // empty' "$tmp/download.json")"
+            if [ -z "$signed" ]; then
+              echo "::error::Sketchfab no entregó recurso glTF para $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            if ! curl --fail --silent --show-error --location --retry 2 --max-time 240 "$signed" -o "$tmp/download.zip"; then
+              echo "::error::La descarga oficial falló para $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            mkdir -p "$tmp/unpacked"
+            if ! unzip -q "$tmp/download.zip" -d "$tmp/unpacked"; then
+              echo "::error::ZIP corrupto para $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            source="$(find "$tmp/unpacked" -type f -name '*.gltf' -print -quit)"
+            if [ -z "$source" ] || ! gltf-transform copy "$source" "$target/$id.glb"; then
+              echo "::error::No se generó GLB para $id"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            if ! node -e 'const fs=require("fs");const b=fs.readFileSync(process.argv[1]);if(b.length<128||b.toString("ascii",0,4)!=="glTF"||b.readUInt32LE(4)!==2||b.readUInt32LE(8)!==b.length)process.exit(1)' "$target/$id.glb"; then
+              echo "::error::GLB inválido para $id"; rm -f "$target/$id.glb"; failures=$((failures+1)); echo "::endgroup::"; continue
+            fi
+            {
+              echo "Fuente oficial: https://sketchfab.com/3d-models/$uid"
+              echo "Autor: $(jq -r '.user.displayName // .user.username // "sin verificar"' "$tmp/meta.json")"
+              echo "Licencia declarada por el publicador: $license"
+              echo "IMPORTANTE: titularidad de terceros/marcas e interior y bajos todavía sin aprobar."
+            } > "$target/$id-SOURCE.txt"
+            echo "GLB importado para revisión: $id"
+            echo "::endgroup::"
+          done <<'MODEL_IDS'
+porsche-911|877b1bc1739f4a2bb65d62fd7ffd9f75
+bugatti-chiron|374890e62c5a44e9a739ca638b6e0a18
+mercedes-amg-gt-black-series|95259133d4214461bb076512f2dac978
+lamborghini-aventador-roadster|36eb1fa54a0d4be695d4cd90c30f4ff1
+yangwang-u9|c14e3511bb9143acb3fe2aaf8e1b4346
+koenigsegg-jesko-odin|408bed6ddca14a1a9c9eeaa5437f62f0
+ram-1500-trx|d6d548c5fe9f4749813f0a386edfd42c
+chevrolet-silverado-z71|2ad964f59a774e199d9caf143f21e614
+ford-f150-raptor|5acc96d65a374f7280ddbd1c2d5bf12e
+MODEL_IDS
+          if [ -f Horizon-REA-2026/public/models/external-candidates/ferrari-f430.glb ]; then
+            cp Horizon-REA-2026/public/models/external-candidates/ferrari-f430.glb "$target/ferrari-f430.glb"
+            cp Horizon-REA-2026/public/models/external-candidates/ferrari-f430-LICENSE.txt "$target/ferrari-f430-SOURCE.txt"
+          fi
+          if ls "$target"/*.glb >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "Horizon-REA-2026/replacements/assets/"
+            git diff --cached --quiet || git commit -m "assets(v20): import official licensed candidates for 3D review"
+            git push origin "HEAD:fix/v20-model-integrity-20261123"
+          fi
+          if [ "$failures" -gt 0 ]; then
+            echo "::error::Hay $failures modelos faltantes. No se autoriza lanzamiento."
+            exit 1
+          fi
+      - name: Conservar archivos para inspección, no publicar
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v20-modelos-importados-para-auditoria
+          path: Horizon-REA-2026/replacements/assets/*.glb
+          if-no-files-found: ignore
+          retention-days: 7
