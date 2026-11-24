@@ -143,6 +143,9 @@ async function showModel(car: GalleryCar): Promise<void> {
   const token = ++generation;
   currentCar = car;
   ($("drive-current") as HTMLButtonElement).disabled = true;
+  // Remove the previous car immediately: a failed selection must never leave
+  // another vehicle visible under the requested model's name.
+  releaseOld();
   modelName.textContent = car.title;
   subtitle.textContent = car.note;
   status.textContent = "Cargando archivo GLB real…";
@@ -170,7 +173,6 @@ async function showModel(car: GalleryCar): Promise<void> {
       });
       return;
     }
-    releaseOld();
     const group = gltf.scene;
     scene.add(group);
     group.updateMatrixWorld(true);
@@ -206,7 +208,7 @@ async function showModel(car: GalleryCar): Promise<void> {
     ($("drive-current") as HTMLButtonElement).disabled = false;
     customizer.attach(group,car.id,car.type);
     chooseAngle(activeView);
-    status.textContent = "✓ Archivo original cargado y renderizado. Arrastra para inspeccionarlo.";
+    status.textContent = "✓ GLB candidato cargado. Falta validar fidelidad, licencia y comportamiento en carrera.";
     metrics.textContent = "Mallas: " + meshes + " · Triángulos: " + Math.round(triangles).toLocaleString("es") +
       " · Piezas de ruedas identificadas: " + wheelNames +
       " · Cabina: " + cabinNames + " · Bajos: " + underNames;
@@ -251,12 +253,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelse
 }
 $("drive-current").addEventListener("click", () => {
   if (!currentModel) return;
-  try {
-    localStorage.setItem("horizon.selected-vehicle", currentCar.id);
-    window.location.assign("race.html");
-  } catch {
-    status.textContent = "No se puede guardar la elección. Habilita el almacenamiento local.";
-  }
+  // Include the exact asset ID in the navigation as well as localStorage.
+  // This works when mobile/private browsers block localStorage.
+  try { localStorage.setItem("horizon.selected-vehicle", currentCar.id); } catch { /* URL is authoritative */ }
+  const destination = new URL("race.html", window.location.href);
+  destination.searchParams.set("vehicle", currentCar.id);
+  window.location.assign(destination.toString());
 });
 const rotateButton = $("rotate") as HTMLButtonElement;
 rotateButton.addEventListener("click", () => {
