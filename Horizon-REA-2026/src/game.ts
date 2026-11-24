@@ -10,7 +10,7 @@ import { Track } from "./world/track";
 import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
 import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
-import { updateHumanPeople } from "./world/humanPeople";
+import { updateHumanPeople, prepareHumanImpostors, crowdStats, type CrowdMode } from "./world/humanPeople";
 import { Environment } from "./world/environment";
 import { MonzonLaunchFireworks, MONZON_OPENING_DURATION } from "./world/monzonFireworks";
 import { Race, type Difficulty } from "./race/race";
@@ -76,6 +76,7 @@ export class Game {
   private goFlash = 0;
   private goShown = false;
   private fireworks: MonzonLaunchFireworks | null = null;
+  private crowdMode:CrowdMode="hybrid";
   private openingTime = 0;
   private pausedOpening = false;
   private automaticallyPausedForFocusLoss = false;
@@ -146,13 +147,15 @@ export class Game {
     // Never add debug helpers or a second directional light in production.
     this.environment = new Environment(this.scene, this.renderer, this.track);
     this.environment.installTerrainPhysics(this.world);
-    if (this.track.circuit.id === "monzon") {
+    if (this.track.circuit.id === "monzon" || this.track.circuit.id === "suzaka") {
       this.fireworks = new MonzonLaunchFireworks(this.scene, this.track,
         cue => cue.kind === "launch"
           ? this.audio.playFireworkLaunch(cue.distance)
           : this.audio.playFireworkBurst(cue.distance,cue.pattern));
     }
     this.applyResolution();
+    const requestedCrowd=new URLSearchParams(window.location.search).get("crowd");
+    if(requestedCrowd==="3d"||requestedCrowd==="hybrid"||requestedCrowd==="impostors")this.crowdMode=requestedCrowd;
     const requestedVehicle = new URLSearchParams(window.location.search).get("vehicle");
     const validRequestedVehicle = requestedVehicle !== null && isExternalVehicle(requestedVehicle);
     if (validRequestedVehicle) this.selectedVehicleId = requestedVehicle;
@@ -183,7 +186,7 @@ export class Game {
     this.openingOverlay = document.createElement("div");
     this.openingOverlay.id = "event-opening";
     this.openingOverlay.hidden = true;
-    this.openingOverlay.innerHTML = `<div class="event-caption"><span>HORIZON EL SALVADOR</span><strong>La noche nos reúne</strong><small>MONZÓN · APERTURA DEL EVENTO</small></div><button type="button" class="btn" id="skip-opening">Omitir presentación <small>Enter</small></button>`;
+    this.openingOverlay.innerHTML = `<div class="event-caption"><span>HORIZON EL SALVADOR</span><strong>${this.track.circuit.id==="monzon"?"La noche nos reúne":"El día de la velocidad"}</strong><small>${this.track.circuit.id==="monzon"?"MONZÓN":"SUZAKA"} · APERTURA DEL EVENTO</small></div><button type="button" class="btn" id="skip-opening">Omitir presentación <small>Enter</small></button>`;
     uiRoot.append(this.openingOverlay);
     this.openingOverlay.querySelector("button")!.addEventListener("click", () => this.skipOpening());
     this.menu = new Menu(uiRoot, {
@@ -277,6 +280,10 @@ export class Game {
         fallbackFrames: this.scheduler.fallbackFrames,
         lastFrameGapMs: this.lastFrameGapMs,
         maxFrameGapMs: this.maxFrameGapMs,
+        crowdMode:this.crowdMode,
+        crowd:crowdStats(this.scene),
+        fireworksActiveVertices:this.fireworks?.group.userData.activeParticleVertices??0,
+        fireworksAllocatedVertices:this.fireworks?.group.userData.particleCount??0,
         rivalLods: this.race.rivalLodStats(),
         culledRivals: this.race.culledRivalCount,
         submittedDraws: this.gpuBackpressure.submitted,
@@ -379,6 +386,7 @@ export class Game {
     const started = performance.now();
     this.framePhase = "graphics-preparation";
     await this.environment.whenReady(this.scene);
+    await prepareHumanImpostors(this.renderer,this.scene,this.crowdMode);
     await this.race.prepareRivalLods();
     const hiddenCars = this.race.standbyVisuals();
     const saved = hiddenCars.map(root => root.visible);
@@ -393,9 +401,11 @@ export class Game {
         if (!(object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.Line)) return;
         for (const material of [object.material].flat()) {
           for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+          if(material instanceof THREE.ShaderMaterial)for(const uniform of Object.values(material.uniforms))if(uniform.value instanceof THREE.Texture)textures.add(uniform.value);
         }
       });
-      for (const texture of textures) this.renderer.initTexture(texture);
+      for (const texture of textures) if(!texture.isRenderTargetTexture)this.renderer.initTexture(texture);
+      updateHumanPeople(this.scene,this.camera);
       if (fireworks) {
         fireworks.visible = true;
         await this.renderer.compileAsync(this.scene, this.camera);
