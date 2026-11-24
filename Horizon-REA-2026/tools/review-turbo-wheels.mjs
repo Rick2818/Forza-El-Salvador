@@ -42,14 +42,18 @@ try {
       throw Error("Four wheel meshes do not spin with ground speed "+
         JSON.stringify(wheels));
 
-    // 200 mph is a physical cap; the same governor accepts per-car 230 mph
-    // tuning for the Bugatti, validated by dedicated roster unit tests.
-    inject(131);
+    // Test the true governor: feed a velocity ABOVE the selected car's
+    // 350/450/504 MPH ceiling and confirm it is reduced to that cap.
+    // A fixed 131 m/s (293 MPH) test speed was below the new 350 MPH cap,
+    // and therefore incorrectly failed even though the game worked.
+    const limitMph=v.speedLimitMph;
+    const overspeedMs=limitMph*.44704+35;
+    inject(overspeedMs);
     v.syncVisual(1/60);
     const capped=v.speedKph/1.609344;
-    if(Math.abs(capped-v.speedLimitMph)>.05)
+    if(Math.abs(capped-limitMph)>.05)
       throw Error("Governor did not enforce physical mph ceiling "+
-        JSON.stringify({capped,limit:v.speedLimitMph}));
+        JSON.stringify({injectedMph:overspeedMs/.44704,capped,limit:limitMph}));
     if(![v.position.x,v.position.y,v.position.z].every(Number.isFinite))
       throw Error("Non-finite car state");
     return {turboAtMph:45.5/.44704,wheels,flamesVisible:active,cornerCancelsTurbo:!v.turboActive,
