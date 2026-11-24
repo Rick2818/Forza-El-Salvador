@@ -1,4 +1,5 @@
 import { RacePerformance, GPUFrameTimer } from "./render/performance";
+import { FrameScheduler } from "./core/frameScheduler";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import { RELEASE_LABEL } from "./core/version";
@@ -55,6 +56,10 @@ export class Game {
   private clock = new THREE.Clock();
   private time = 0;
   private lastCompletedFrame = performance.now();
+  private readonly scheduler = new FrameScheduler(source => this.frame(source));
+  private lastFrameSource: "raf" | "timer" = "raf";
+  private lastFrameGapMs = 0;
+  private maxFrameGapMs = 0;
   private preparingGraphics = false;
   private graphicsPreparationMs = 0;
   private framePhase = "init";
@@ -241,7 +246,7 @@ export class Game {
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
     this.installDebugApi();
-    this.renderer.setAnimationLoop(this.frame);
+    this.scheduler.start();
     window.setInterval(this.checkFrameContinuity, 1000);
   }
 
@@ -260,6 +265,11 @@ export class Game {
         raceState: this.race.state,
         openingTime: this.openingTime,
         framePhase: this.framePhase,
+        frameSource: this.lastFrameSource,
+        animationFrames: this.scheduler.animationFrames,
+        fallbackFrames: this.scheduler.fallbackFrames,
+        lastFrameGapMs: this.lastFrameGapMs,
+        maxFrameGapMs: this.maxFrameGapMs,
         preparingGraphics: this.preparingGraphics,
         graphicsPreparationMs: Math.round(this.graphicsPreparationMs),
         frameAgeMs: Math.round(performance.now() - this.lastCompletedFrame),
@@ -331,7 +341,7 @@ export class Game {
         // Paint the loading state before doing expensive scene work.
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
         this.replaceRace();
-        await this.prepareRaceGraphics();
+        if (!this.skipRender) await this.prepareRaceGraphics();
         this.lastCompletedFrame = performance.now();
         this.clock.getDelta();
         this.beginPreparedRace();
@@ -396,6 +406,8 @@ export class Game {
     this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
     this.race.state = this.fireworks ? "idle" : "countdown";
     this.race.countdown = SETTINGS.race.countdown;
+    this.maxFrameGapMs = 0;
+    this.lastFrameGapMs = 0;
     this.state = this.fireworks ? "opening" : "racing";
     this.goFlash = 0;
     this.goShown = false;
@@ -692,13 +704,16 @@ export class Game {
     this.audio.silence();
     this.showRecovery("frame-failure", "Carrera interrumpida",
       "El juego dejó de completar fotogramas. Recarga para reiniciar la carrera. Fase: " + this.framePhase);
-    this.renderer.setAnimationLoop(null);
+    this.scheduler.stop();
   };
 
-  private frame = (): void => {
+  private frame = (source: "raf" | "timer" = "raf"): void => {
     const rawDt = this.clock.getDelta();
+    this.lastFrameSource = source;
     if (this.preparingGraphics) { this.lastCompletedFrame = performance.now(); return; }
     try {
+      this.lastFrameGapMs = Math.round(performance.now() - this.lastCompletedFrame);
+      this.maxFrameGapMs = Math.max(this.maxFrameGapMs, this.lastFrameGapMs);
       this.framePhase = "tick";
       this.tick(Math.min(rawDt, 0.05), rawDt);
       this.lastCompletedFrame = performance.now();
@@ -719,7 +734,7 @@ export class Game {
         "La carrera se interrumpió",
         `Circuito: ${this.track.circuit.name} · ${RELEASE_LABEL}. Recarga el juego para iniciar una nueva carrera.`
       );
-      this.renderer.setAnimationLoop(null);
+      this.scheduler.stop();
       this.audio.silence();
     }
   };
@@ -746,7 +761,7 @@ export class Game {
     canvas.style.width = "100%";
     canvas.style.height = "auto";
     canvas.style.maxHeight = "100%";
-    this.renderer.setAnimationLoop(null);
+    this.scheduler.stop();
   }
 
   private tick(dt: number, rawDt: number): void {
@@ -824,6 +839,7 @@ export class Game {
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
+      this.framePhase = "environment";
       this.environment.update(this.race.player.vehicle.position, dt);
       if (!this.captureMode) {
         this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
@@ -845,6 +861,7 @@ export class Game {
           this.hud.toast("🏁 Garage "+garage+": área de servicio",2400);
         this.lastEnteredPitGarage = garage;
       }
+      this.framePhase = "audio";
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
       const listener = player.body.translation();
       const velocity = player.body.linvel();
@@ -902,11 +919,14 @@ export class Game {
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
+      this.framePhase = "gpu-query-begin";
       if (measured) this.gpuTimer.begin();
       this.framePhase = "webgl-render";
       this.renderer.render(this.scene, this.camera);
       if (measured) {
+        this.framePhase = "gpu-query-end";
         this.gpuTimer.end();
+        this.framePhase = "gpu-query-collect";
         for (const ms of this.gpuTimer.collect()) this.performanceLog.recordGPU(ms);
         if (!document.hidden && document.hasFocus()) this.performanceLog.record(rawDt*1000,performance.now()-workStarted,{
           width:this.renderer.domElement.width,height:this.renderer.domElement.height,quality:this.quality,circuit:this.track.circuit.id
@@ -914,6 +934,7 @@ export class Game {
         else this.performanceLog.interrupt("La pestaña perdió el foco durante la medición.");
       }
     }
+    this.framePhase = "input-end";
     this.input.endFrame();
   };
 
