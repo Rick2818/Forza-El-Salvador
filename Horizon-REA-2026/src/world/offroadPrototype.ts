@@ -26,12 +26,12 @@ export interface OffroadSector {
   resistance: number;
 }
 export const OFFROAD_SECTORS: readonly OffroadSector[] = [
-  { start: 0, end: .18, surface: "dirt", grip: .78, resistance: .08 },
-  { start: .18, end: .35, surface: "mud", grip: .44, resistance: .28 },
-  { start: .35, end: .44, surface: "puddle", grip: .32, resistance: .38 },
-  { start: .44, end: .68, surface: "dirt", grip: .78, resistance: .08 },
-  { start: .68, end: .85, surface: "mud", grip: .44, resistance: .28 },
-  { start: .85, end: 1, surface: "dirt", grip: .78, resistance: .08 },
+  { start: 0, end: .10, surface: "dirt", grip: .78, resistance: .08 },
+  { start: .10, end: .35, surface: "mud", grip: .44, resistance: .28 },
+  { start: .35, end: .52, surface: "puddle", grip: .32, resistance: .38 },
+  { start: .52, end: .62, surface: "dirt", grip: .78, resistance: .08 },
+  { start: .62, end: .94, surface: "mud", grip: .44, resistance: .28 },
+  { start: .94, end: 1, surface: "puddle", grip: .32, resistance: .38 },
 ];
 export const OFFROAD_PICKUP_IDS = [
   "chevrolet-silverado-z71", "ram-1500-trx", "ford-f150-raptor",
