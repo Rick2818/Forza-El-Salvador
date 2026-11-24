@@ -9,7 +9,7 @@ import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
 import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, type FourWheelDriveMode } from "../sim/fourWheelDrive";
-import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections } from "./selectedAsset";
+import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections, wheelRadiiForVehicle } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
   ENGINE_REDLINE_RPM,
@@ -67,7 +67,7 @@ export class Vehicle {
   readonly supportsFourWheelDrive: boolean;
   fourWheelDriveMode: FourWheelDriveMode = "2H";
   private readonly wheelMounts: typeof WHEELS;
-  private readonly wheelRadius: number;
+  private readonly wheelRadii: readonly number[];
   private readonly wheelRoll = [0, 0, 0, 0];
   private readonly surfaceGrip = [1, 1, 1, 1];
   private readonly contactScratch = [false, false, false, false];
@@ -108,7 +108,7 @@ export class Vehicle {
     this.fourWheelDriveMode = defaultFourWheelDriveMode(opts.vehicleId);
     this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
-    this.wheelRadius = design?.wheelRadius ?? .36;
+    this.wheelRadii = opts.vehicleId ? wheelRadiiForVehicle(opts.vehicleId) : [.36,.36,.36,.36];
     this.visual = opts.vehicleId ? createSelectedVisual(opts.vehicleId) : createCarVisual(opts);
     if (opts.vehicleId === "ferrari-california-t" && this.visual.paint instanceof THREE.MeshPhysicalMaterial &&
         scene.userData.vehicleReflectionEnvironment instanceof THREE.Texture) {
@@ -151,7 +151,7 @@ export class Vehicle {
         { x: 0, y: -1, z: 0 },
         { x: -1, y: 0, z: 0 },
         SETTINGS.physics.suspensionRest,
-        this.wheelRadius
+        this.wheelRadii[i]
       );
       this.controller.setWheelSuspensionStiffness(i, SETTINGS.physics.suspensionStiffness);
       this.controller.setWheelSuspensionCompression(i, SETTINGS.physics.suspensionCompression);
@@ -194,7 +194,7 @@ export class Vehicle {
       const length = typeof suspension === "number" && Number.isFinite(suspension)
         ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + SETTINGS.physics.maxSuspensionTravel)
         : SETTINGS.physics.suspensionRest;
-      const point = this.wheelProbes[i].set(w.x, w.y - length - this.wheelRadius, w.z).applyQuaternion(quat);
+      const point = this.wheelProbes[i].set(w.x, w.y - length - this.wheelRadii[i], w.z).applyQuaternion(quat);
       point.x += t.x; point.y += t.y; point.z += t.z;
     }
     return this.wheelProbes;
@@ -440,7 +440,7 @@ export class Vehicle {
       for (let i=0;i<this.wheelMounts.length;i++) {
         const wheel = this.wheelMounts[i];
         this.wheelRoll[i] = nextWheelRoll(
-          this.wheelRoll[i], this.speed, yawRate, wheel.x, this.wheelRadius,
+          this.wheelRoll[i], this.speed, yawRate, wheel.x, this.wheelRadii[i],
           dt, this.controller.wheelIsInContact(i),
           this.controls.handbrake && !wheel.front
         );
