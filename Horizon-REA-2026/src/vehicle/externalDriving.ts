@@ -181,7 +181,7 @@ function measurePickupGeometry(model:THREE.Object3D,d:ExternalDimensions):Extern
 function atMeasuredPickupHub(mesh:THREE.Mesh,hubs:readonly THREE.Vector3[],radii:readonly number[]):boolean{
   const label=wheelLabel(mesh);
   if(IS_STEERING.test(label)||/spare|wheel[_\s-]*(arch|well|house)/i.test(label))return false;
-  const box=new THREE.Box3().setFromObject(mesh,true),size=box.getSize(new THREE.Vector3()),p=box.getCenter(new THREE.Vector3());
+  const box=indexedWorldBounds(mesh),size=box.getSize(new THREE.Vector3()),p=box.getCenter(new THREE.Vector3());
   const i=distanceToHub(p,hubs),r=radii[i],h=hubs[i];
   return Math.abs(p.x-h.x)<=r*.65&&Math.abs(p.y-h.y)<=r*.36&&Math.abs(p.z-h.z)<=r*.36&&
     size.x<=r*2.0&&size.y<=r*2.25&&size.z<=r*2.25&&
@@ -382,9 +382,14 @@ function partitionWheelMesh(
     Object.assign(divided.morphAttributes,geo.morphAttributes);
     divided.setIndex(indices);
     divided.addGroup(0,indices.length,0);
-    divided.computeBoundingSphere();
-    owned.push(divided);
-    const part=new THREE.Mesh(divided,mesh.material);
+    // Expand only this corner's referenced triangles. Sharing the full axle's
+    // position buffer gave each wheel an invalid full-axle bounding box.
+    const compact=divided.toNonIndexed();
+    divided.dispose();
+    compact.computeBoundingBox();
+    compact.computeBoundingSphere();
+    owned.push(compact);
+    const part=new THREE.Mesh(compact,mesh.material);
     part.name=mesh.name+"_original_wheel_"+hub;
     part.position.copy(mesh.position);
     part.quaternion.copy(mesh.quaternion);
@@ -449,6 +454,33 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       copied+=triangulationCount(item.mesh.geometry);
     }
   }
+  // Audit actual wheel-local geometry after attachment. Axial X offsets are
+  // intentional (rim dish); radial Y/Z eccentricity is not.
+  root.updateMatrixWorld(true);
+  const wheelAlignment=wheels.map((wheel,i)=>{
+    const center=wheel.steer.getWorldPosition(new THREE.Vector3());
+    const radius=externalWheelRadii(id,d)[i];
+    const parts:Array<{name:string;kind:string;radialOffsetM:number;radiusM:number;center:number[]}>= [];
+    wheel.spin.traverse(obj=>{
+      if(!(obj instanceof THREE.Mesh))return;
+      const bounds=indexedWorldBounds(obj),s=bounds.getSize(new THREE.Vector3()),p=bounds.getCenter(new THREE.Vector3());
+      const partRadius=(s.y+s.z)/4;
+      // Full circular surfaces only: spokes, balance weights and lugs are
+      // not expected to have a bounding box centered on the hub.
+      if(partRadius<radius*.48||partRadius>radius*1.18||Math.abs(s.y-s.z)>partRadius*.28)return;
+      const label=wheelLabel(obj);
+      const kind=/tyre|tire|neumatico|pneu|rubber|caucho/i.test(label)?"tyre":
+        /rim|rines?|llanta/i.test(label)?"rim":"unidentified";
+      parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
+        radiusM:partRadius,center:p.toArray()});
+    });
+    const tyres=parts.filter(p=>p.kind==="tyre"),rims=parts.filter(p=>p.kind==="rim");
+    const maxOffsetM=parts.length?Math.max(...parts.map(p=>p.radialOffsetM)):null;
+    const pairOffsetM=tyres.length&&rims.length?Math.max(...tyres.flatMap(t=>rims.map(r=>Math.hypot(t.center[1]-r.center[1],t.center[2]-r.center[2])))):null;
+    return {corner:wheel.steer.name,radiusM:radius,parts,maxOffsetM,pairOffsetM,
+      toleranceM:Math.min(.025,radius*.075),explicitPair:tyres.length>0&&rims.length>0};
+  });
+  root.userData.wheelAlignment=wheelAlignment;
   // Per-vehicle materials; changing one car must never recolor other racers.
   const paint=new THREE.MeshPhysicalMaterial({
     name:"paint",color:d.paint,metalness:.18,roughness:.32,
