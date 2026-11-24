@@ -3,7 +3,7 @@ export function visibleWheelSteer(physicsAngle: number, front: boolean): number 
   if (!front || !Number.isFinite(physicsAngle)) return 0;
   // Do not exaggerate steering by 45%: the rendered tyre must share its
   // contact patch direction with the physics wheel on every circuit.
-  return Math.max(-0.48, Math.min(0.48, physicsAngle));
+  return Math.max(-0.60, Math.min(0.60, physicsAngle));
 }
 
 /** Integrate wheel travel after each physics step, never once per render frame.
