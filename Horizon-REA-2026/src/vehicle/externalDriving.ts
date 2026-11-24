@@ -521,8 +521,16 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       // not expected to have a bounding box centered on the hub.
       if(partRadius<radius*.48||partRadius>radius*1.18||Math.abs(s.y-s.z)>partRadius*.28)return;
       const label=String(obj.userData.originalWheelLabel??wheelLabel(obj));
+      // Silverado source audit: each measured wheel has one NEUMA tyre,
+      // a DARK_GRAY inner assembly and an outer CHROME rim. Only the
+      // four observed outer rim primitives qualify; chrome trim elsewhere
+      // on the body is never classified by this rule.
+      const silveradoRim=id==="chevrolet-silverado-ev-alternative"&&
+        /^Object_(9001|21001|13001|27001)_CHROME_0$/i.test(obj.name)&&
+        partRadius>=radius*.65&&partRadius<=radius*.85&&
+        Math.hypot(p.y-center.y,p.z-center.z)<=.005;
       const kind=/tyre|tire|neumatico|pneu|rubber|caucho|sidewall|thread|tread|(?:^|_)NEUMA(?:_|$)/i.test(label)?"tyre":
-        /rim|rines?|llanta|LOD_A_WHEEL/i.test(label)?"rim":"unidentified";
+        silveradoRim||/rim|rines?|llanta|LOD_A_WHEEL/i.test(label)?"rim":"unidentified";
       parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
         radiusM:partRadius,center:p.toArray(),...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
     });
