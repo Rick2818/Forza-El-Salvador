@@ -587,6 +587,18 @@ export class Track {
     return 1 - 0.42 * smoothstep(0.35, 4.5, over);
   }
 
+  /** Sample the FOUR tyre footprints, not only the vehicle's centre.
+   * The wheel world-space Y coordinate selects the lower or upper road
+   * on Suzaka's figure-eight overpass; its X/Z selects asphalt vs shoulder.
+   * Used by players, AI rivals and reverse traffic on the current circuit.
+   */
+  gripAtFootprints(footprints: readonly THREE.Vector3[], hint = -1): number[] {
+    return footprints.map((point) => {
+      const hit = this.locate(point, hint);
+      return this.gripAt(hit.index, hit.lateral);
+    });
+  }
+
   sampleAt(index: number): THREE.Vector3 {
     const N = this.samples.length;
     return this.samples[((index % N) + N) % N];
