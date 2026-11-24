@@ -97,7 +97,8 @@ export class OncomingDriver {
   update(dt: number, traffic: readonly TrafficCar[] = []): void {
     const input = this.plan(traffic);
     const location = this.track.locate(this.vehicle.position, this.hint);
-    this.vehicle.update(dt, input, this.track.gripAt(location.index, location.lateral));
+    this.vehicle.update(dt, input, this.track.gripAt(location.index, location.lateral),
+      this.track.gripAtFootprints(this.vehicle.wheelContactPoints(), location.index));
     this.vehicle.setBrakeLights(input.brake > 0.05);
   }
 }
