@@ -314,6 +314,15 @@ export class Vehicle {
       const straightAssist = straightOnlyDragAssist(absSpeed,throttle,this.controls.steer,
         lateralSpeed,this.body.angvel().y,grip);
       engineForce += straightAssist * (this.electric ? 1.65 : 1);
+      // Arcade pickup high-speed assist: compensate the chassis's linear
+      // damping only on a straight with sound grip. The governor still
+      // enforces the configured 200 MPH cap; no assistance through bends.
+      if(this.supportsFourWheelDrive && speed>0 && grip>.85 &&
+        Math.abs(this.controls.steer)<.025 && Math.abs(lateralSpeed)<.8 &&
+        Math.abs(this.body.angvel().y)<.12){
+        const fade=THREE.MathUtils.smoothstep(absSpeed,18,48);
+        engineForce+=fade*throttle*(dragForce(absSpeed)*.65+this.body.mass()*.04*absSpeed);
+      }
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
     // S / FRENO becomes a powerful reverse gear after stopping.
