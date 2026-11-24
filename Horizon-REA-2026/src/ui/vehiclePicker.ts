@@ -8,11 +8,11 @@ function vehicleTile(car: SelectedVehicle, selectedId: string, external: boolean
   // A unique model identifier is more truthful than reusing an identical generic car icon.
   // Do not display render art from a different asset as though it were a GLB thumbnail.
   const identity: Record<string,string> = {
-    "ferrari-f430":"F430", "porsche-911-c4s":"911", "bugatti-chiron-profilee":"CHIRON",
-    "lamborghini-aventador":"AVENT.", "koenigsegg-jesko":"JESKO",
-    "mercedes-amg-gt-alternative":"AMG", "tesla-roadster-electric-alternative":"TESLA",
-    "ford-f150-raptor-police":"F-150", "ram-3500-alternative":"RAM",
-    "chevrolet-silverado-ev-alternative":"SILV."
+    "ferrari-f430":"F430", "porsche-911-c4s":"911", "bugatti-chiron-profilee":"BGT",
+    "lamborghini-aventador":"LMB", "koenigsegg-jesko":"JES",
+    "mercedes-amg-gt-alternative":"AMG", "tesla-roadster-electric-alternative":"TSL",
+    "ford-f150-raptor-police":"F150", "ram-3500-alternative":"RAM",
+    "chevrolet-silverado-ev-alternative":"SILV"
   };
   const thumbnail = `<span class="vehicle-pick-media">
     <img class="vehicle-pick-photo" src="${import.meta.env.BASE_URL}vehicles/generated/${car.id}.png"
