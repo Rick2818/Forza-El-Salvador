@@ -137,9 +137,14 @@ export class Game {
           : this.audio.playFireworkBurst(cue.distance,cue.pattern));
     }
     this.applyResolution();
+    const requestedVehicle = new URLSearchParams(window.location.search).get("vehicle");
+    const validRequestedVehicle = requestedVehicle !== null && isExternalVehicle(requestedVehicle);
+    if (validRequestedVehicle) this.selectedVehicleId = requestedVehicle;
     try {
       const saved = localStorage.getItem("horizon.selected-vehicle");
-      if (saved && isExternalVehicle(saved)) { vehicleDesign(saved); this.selectedVehicleId = saved; }
+      if (!validRequestedVehicle && saved && isExternalVehicle(saved)) {
+        vehicleDesign(saved); this.selectedVehicleId = saved;
+      }
       const savedQuality = localStorage.getItem("horizon.quality");
       if (savedQuality === "alta" || savedQuality === "equilibrada") this.quality=savedQuality;
       const savedTraffic = localStorage.getItem("horizon.oncoming-traffic");
@@ -196,6 +201,12 @@ export class Game {
         this.selectedVehicleId = id;
         this.replaceRace();
         try { localStorage.setItem("horizon.selected-vehicle", id); } catch { /* optional persistence */ }
+        // Preserve a new in-game selection when the race was opened with ?vehicle=.
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("vehicle")) {
+          url.searchParams.set("vehicle", id);
+          window.history.replaceState(null, "", url.toString());
+        }
       }
     });
 
