@@ -20,6 +20,8 @@ import { Menu } from "./ui/menu";
 import { Input } from "./core/input";
 import { ChaseCamera, CAMERA_LABELS, type CameraMode } from "./render/camera";
 import { SmokeSystem } from "./render/effects";
+import { MudSpray } from "./render/mudSpray";
+import { OFFROAD_CIRCUIT } from "./world/offroadPrototype";
 import { GameAudio } from "./audio/engine";
 import { shouldResumeFromFocusLoss } from "./core/focusPause";
 import { SETTINGS } from "./core/settings";
@@ -57,6 +59,7 @@ export class Game {
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
+  private mudSpray?: MudSpray;
   private clock = new THREE.Clock();
   private time = 0;
   private lastCompletedFrame = performance.now();
@@ -182,6 +185,7 @@ export class Game {
     };
     this.chase = new ChaseCamera(this.camera);
     this.smoke = new SmokeSystem(this.scene);
+    if (this.track.circuit.id === OFFROAD_CIRCUIT.id) this.mudSpray = new MudSpray(this.scene);
 
     this.hud = new HUD(uiRoot, this.track);
     this.openingOverlay = document.createElement("div");
@@ -914,7 +918,8 @@ export class Game {
       this.framePhase = "vehicle-visual-sync";
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
-      this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
+      if(this.mudSpray) this.mudSpray.update(dt,this.race.player.vehicle,this.track,this.race.player.hint);
+      else this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
       this.framePhase = "environment";
       this.environment.update(this.race.player.vehicle.position, dt);
       if (!this.captureMode) {
