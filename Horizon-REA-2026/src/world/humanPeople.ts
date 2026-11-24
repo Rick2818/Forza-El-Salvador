@@ -234,13 +234,16 @@ function addCrowdFlags(group:THREE.Group,people:readonly HumanPlacement[]):void{
       vFlagUV=uv;vFlag=iFlag;
       transformed.z+=uv.x*.11*sin(uv.x*9.0-flagTime*4.0+iFlag*2.0);
     `);
-    shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\\nvarying vec2 vFlagUV; varying float vFlag;")
+    shader.fragmentShader=shader.fragmentShader.replace("#include <common>",`#include <common>
+      varying vec2 vFlagUV; varying float vFlag;
+    `)
       .replace("#include <color_fragment>",`#include <color_fragment>
         if(vFlag<.5)diffuseColor.rgb*=vFlagUV.y>.333&&vFlagUV.y<.667?vec3(1.0):vec3(.025,.17,.56);
         else diffuseColor.rgb*=mod(floor(vFlagUV.x*8.0)+floor(vFlagUV.y*5.0),2.0)<.5?vec3(.035):vec3(.95);
       `);
   };
-  material.customProgramCacheKey=()=>"v29-flags";
+  material.name="v29-crowd-flag-cloth";
+  material.customProgramCacheKey=()=>"v29-flags-fixed";
   const mesh=new THREE.InstancedMesh(geometry,material,fans.length);
   const pole=new THREE.InstancedMesh(new THREE.CylinderGeometry(.012,.012,1.12,5),new THREE.MeshLambertMaterial({color:0x85878a}),fans.length);
   const m=new THREE.Matrix4(),q=new THREE.Quaternion(),axis=new THREE.Vector3(0,1,0),p=new THREE.Vector3(),s=new THREE.Vector3(1,1,1);
@@ -263,7 +266,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
   if(typeof document==="undefined")return group;
   group.userData.readyPromise=loadPeople().then(geometries=>{
     const material=humanMaterial();
-    const originals=geometries.map((source,lod)=>{
+    const originals:THREE.InstancedMesh[]=geometries.map((source,lod)=>{
       const geometry=source.clone();
       geometry.setAttribute("iSkin",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
       geometry.setAttribute("iShirt",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
@@ -281,7 +284,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
     });
     let mode:CrowdMode="3d";
     let impostors:THREE.InstancedMesh[]|undefined;
-    let batches=originals;
+    let batches:THREE.InstancedMesh[]=originals;
     group.userData.installImpostors=(atlas:THREE.Texture,night:boolean)=>{
       if(impostors)return;
       const mat=impostorMaterial(atlas,night);
