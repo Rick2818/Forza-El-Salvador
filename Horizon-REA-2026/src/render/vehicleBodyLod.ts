@@ -3,7 +3,7 @@ import { MeshoptSimplifier } from "three/addons/libs/meshopt_simplifier.module.j
 
 type Level=0|1|2|3;
 const budgets=[1,.70,.35,.10] as const;
-const distances=[30,75,150] as const;
+const distances:readonly number[]=[30,75,150];
 export function chooseVehicleLod(distance:number,previous:Level):Level{
   let level=previous;
   while(level<3&&distance>distances[level]*1.12)level=(level+1) as Level;
