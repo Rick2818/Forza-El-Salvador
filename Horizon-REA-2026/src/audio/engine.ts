@@ -144,6 +144,7 @@ export class GameAudio {
   private muted = false;
   private started = false;
   private electric = false;
+  private offroadProfile = false;
   private vehicleId="ferrari-california-t";
   private victoryFanfare: VictoryFanfare | null = null;
   private victoryLimiter: DynamicsCompressorNode | null = null;
@@ -175,6 +176,10 @@ export class GameAudio {
     this.rivals.clear();
   }
   private effectiveCylinders(id: string): number {
+    if(this.offroadProfile){
+      if(id==="chevrolet-silverado-ev-alternative")return 0;
+      if(id==="ford-f150-raptor-police"||id==="ram-3500-alternative")return 6;
+    }
     if (id === "yangwang-u9") return 0;
     return this.profile === "v10" ? 10 : (ENGINE_CYLINDERS[id] ?? 8);
   }
@@ -230,9 +235,10 @@ export class GameAudio {
     try { localStorage.setItem("horizon.audio",JSON.stringify(this.volumes)); } catch { /* optional */ }
   }
 
-  setVehicle(id: string, electric=false): void {
+  setVehicle(id: string, electric=false, offroad=false): void {
     const oldCylinders = this.effectiveCylinders(this.vehicleId);
     this.vehicleId = id;
+    this.offroadProfile = offroad;
     this.setElectric(electric);
     if (this.effectiveCylinders(id) !== oldCylinders) this.installCombustion();
   }
@@ -426,12 +432,12 @@ export class GameAudio {
     this.enginePresence?.gain.setTargetAtTime(this.electric ? 1 : .85 + rev * .10 + t * .09, now, .09);
     if (this.engineFilter) {
       this.engineFilter.frequency.setTargetAtTime(
-        this.electric ? 740 : 650 + rev * 1500 + t * 1450, now, .09);
+        this.electric ? 740 : this.offroadProfile ? 400 + rev * 950 + t * 1150 : 650 + rev * 1500 + t * 1450, now, .09);
     }
     if (this.combustionGain) this.combustionGain.gain.setTargetAtTime(
       this.electric ? .02 : .76 + t * .48, now, .1);
     if (this.crankGain) this.crankGain.gain.setTargetAtTime(
-      this.electric ? .08 : 2 * (.30 + (1 - rev) * .14), now, .1);
+      this.electric ? .08 : this.offroadProfile ? .80 + (1-rev)*.22 + t*.12 : 2 * (.30 + (1 - rev) * .14), now, .1);
     if (this.intakeGain) this.intakeGain.gain.setTargetAtTime(
       this.electric ? .01 : .06 + t * .16, now, .1);
     if (this.engineGain) {
