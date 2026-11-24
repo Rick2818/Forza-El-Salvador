@@ -68,7 +68,7 @@ export function externalWheelRadii(id:string,d:ExternalDimensions):readonly numb
   return fitted ? [...fitted.radii] : [d.wheelRadius,d.wheelRadius,d.wheelRadius,d.wheelRadius];
 }
 
-const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rim|rims|rin|rines|neumatico|pneu|tyrewall|llanta|rueda)([_:\s.0-9]|$)/i;
+const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rim|rims|rin|rines|neumatico|pneu|tyrewall|llanta|rueda|rubber|caucho)([_:\s.0-9]|$)/i;
 const IS_STEERING = /steering[_\s-]*wheel|steerwheel|volante|handwheel|steer_wheel|steeringcolumn/i;
 const PAINT_PART = /(^|[_\s:.])(body|bodyshell|paint|carrosserie)([_\s.0-9]|$)|exterior_mm_ext|color1mtl|vehicle_generic_smallspecmap__paint/i;
 const EXCLUDED_PAINT = /wheel|tyre|tire|rim|neumatico|glass|window|windscreen|windshield|light|badge|emblem|brake|caliper|mirror|steer|interior|seat|chassis|plastic|carbon/i;
@@ -145,6 +145,45 @@ function measureExternalTyres(model:THREE.Object3D,d:ExternalDimensions):Externa
      Math.abs(chosen[0].radius-chosen[1].radius)>.04||
      Math.abs(chosen[2].radius-chosen[3].radius)>.04)return undefined;
   return {centers:chosen.map(x=>x.center),radii:chosen.map(x=>x.radius)};
+}
+
+const isPickupAsset=(id:string)=>/^(ford-|ram-|chevrolet-)/.test(id);
+
+/** Unnamed pickup wheel primitives: use measured bounding geometry, not
+ * material names. Require four symmetric, ground-adjacent circular assemblies. */
+function measurePickupGeometry(model:THREE.Object3D,d:ExternalDimensions):ExternalTyreFit|undefined{
+  const mid=new THREE.Box3().setFromObject(model,true).getCenter(new THREE.Vector3());
+  const groups:Array<Array<{center:THREE.Vector3;radius:number}>>=[[],[],[],[]];
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh)||IS_STEERING.test(wheelLabel(obj))||
+       /spare|caliper|brake|wheel[_\s-]*(arch|well|house)/i.test(wheelLabel(obj)))return;
+    const b=new THREE.Box3().setFromObject(obj,true),s=b.getSize(new THREE.Vector3()),p=b.getCenter(new THREE.Vector3());
+    const radius=(s.y+s.z)/4;
+    if(!Number.isFinite(radius)||radius<d.wheelRadius*.60||radius>d.wheelRadius*1.45||
+       s.x>radius*1.9||s.x<.035||Math.abs(s.y-s.z)>radius*.25||
+       Math.abs(p.x-mid.x)<d.track*.25||Math.abs(p.z-mid.z)<d.wheelbase*.24||
+       b.min.y<-.08||b.min.y>.25)return;
+    groups[(p.z>=mid.z?0:2)+(p.x>=mid.x?0:1)].push({center:p,radius});
+  });
+  const selected=groups.map(g=>g.sort((a,b)=>b.radius-a.radius)[0]);
+  if(selected.some(x=>!x))return undefined;
+  if(Math.abs(selected[0].center.z-selected[1].center.z)>.15||
+     Math.abs(selected[2].center.z-selected[3].center.z)>.15||
+     Math.abs(selected[0].radius-selected[1].radius)>.06||
+     Math.abs(selected[2].radius-selected[3].radius)>.06)return undefined;
+  return {centers:selected.map(x=>x.center),radii:selected.map(x=>x.radius)};
+}
+
+/** Match individual rims, tyres and brake parts to the same measured hub.
+ * Never move a large body panel merely because a name contains "wheel". */
+function atMeasuredPickupHub(mesh:THREE.Mesh,hubs:readonly THREE.Vector3[],radii:readonly number[]):boolean{
+  const label=wheelLabel(mesh);
+  if(IS_STEERING.test(label)||/spare|wheel[_\s-]*(arch|well|house)/i.test(label))return false;
+  const box=new THREE.Box3().setFromObject(mesh,true),size=box.getSize(new THREE.Vector3()),p=box.getCenter(new THREE.Vector3());
+  const i=distanceToHub(p,hubs),r=radii[i],h=hubs[i];
+  return Math.abs(p.x-h.x)<=r*.65&&Math.abs(p.y-h.y)<=r*.36&&Math.abs(p.z-h.z)<=r*.36&&
+    size.x<=r*2.0&&size.y<=r*2.25&&size.z<=r*2.25&&
+    size.y>=r*.35&&size.z>=r*.35;
 }
 
 /** Measure tyres that share a single GLB mesh using their actual indexed
@@ -228,7 +267,7 @@ export async function loadExternalVehicle(
     if(after.length()<.01)throw Error(id+": modelo no renderizable");
     if(id==="ferrari-f430")measuredTyres.set(id,measureFerrariF430Tyres(scene));
     else {
-      const fit=measureExternalTyres(scene,d)??measureMergedTyres(scene,d);
+      const fit=measureExternalTyres(scene,d)??measureMergedTyres(scene,d)??(isPickupAsset(id)?measurePickupGeometry(scene,d):undefined);
       if(fit)measuredTyres.set(id,fit);
       else console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
     }
@@ -319,14 +358,14 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   imported.traverse(child=>{
     if(!(child instanceof THREE.Mesh))return;
     sourceMeshes++;sourceTriangles+=triangulationCount(child.geometry);
-    if(isWheel(child))wheelMeshes.push(child);
+    if(isWheel(child)||(isPickupAsset(id)&&measuredTyres.has(id)&&atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))))wheelMeshes.push(child);
   });
   const counts=[0,0,0,0];
   // Reattach wheel meshes from source GLB to live pivots; no substitute tyres.
   for(const mesh of wheelMeshes){
     if(!mesh.parent)continue;
     candidateCount++;
-    const box=new THREE.Box3().setFromObject(mesh),size=box.getSize(new THREE.Vector3());
+    const box=new THREE.Box3().setFromObject(mesh,true),size=box.getSize(new THREE.Vector3());
     const multi=size.x>d.width*.64||size.z>d.wheelbase*.52;
     const parts=multi?partitionWheelMesh(mesh,hubs,owned):
       [{mesh,hub:distanceToHub(box.getCenter(new THREE.Vector3()),hubs)}];
