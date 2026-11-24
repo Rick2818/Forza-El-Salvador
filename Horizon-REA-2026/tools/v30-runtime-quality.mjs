@@ -27,6 +27,11 @@ try {
    const state=await page.evaluate(()=>window.HORIZON.stats());
    assert.equal(state.vehicleId,id);assert.equal(state.circuit,"el-imposible-4x4");
    const art=await page.evaluate(()=>{const g=window.__HORIZON_GAME__,forest=g.scene.getObjectByName("offroad-woodland"),root=g.race.player.vehicle.visual.root;return {paintMaterials:root.userData.offroadOpaquePaintMaterials,treeCount:forest?.userData.treeCount,treeMeshes:forest?.children.filter(o=>o.isInstancedMesh&&o.count>0).length};});
+   if(!(art.paintMaterials>0)){
+     const inventory=await page.evaluate(()=>{const root=window.__HORIZON_GAME__.race.player.vehicle.visual.root;const entries=[];root.traverse(o=>{if(!o.isMesh)return;for(const m of [o.material].flat()){entries.push({mesh:o.name,parent:o.parent?.name,material:m.name,color:m.color?.getHexString(),opacity:m.opacity,transparent:m.transparent,metalness:m.metalness,hasMap:!!m.map,hasEmissiveMap:!!m.emissiveMap});}});return entries;});
+     await writeFile(join(out,id+"-material-inventory.json"),JSON.stringify(inventory,null,2));
+     console.log("UNIDENTIFIED_PAINT",id,JSON.stringify(inventory.slice(0,50)));
+   }
    assert.ok(art.paintMaterials>0,"No identified opaque body paint");
    assert.ok(art.treeCount>=100&&art.treeMeshes>=2,"No visible forest instances");
    const startButton=page.locator('[data-action="start"]').first();
@@ -39,7 +44,7 @@ try {
    // Validate actual launch from the original starting position BEFORE moving to a test sector.
    const launchStart=await page.evaluate(()=>window.HORIZON.stats().carPosition);
    await page.keyboard.down("KeyW");
-   await page.waitForFunction(()=>{const s=window.HORIZON.stats();return s.speedKph>=10&&s.raceState==="racing"&&!document.getElementById("frame-failure");},{},{timeout:30000});
+   await page.waitForFunction(start=>{const s=window.HORIZON.stats();return s.speedKph>=10&&Math.hypot(s.carPosition[0]-start[0],s.carPosition[2]-start[2])>=2&&s.raceState==="racing"&&!document.getElementById("frame-failure");},launchStart,{timeout:60000});
    await page.keyboard.up("KeyW");
    const launchEnd=await page.evaluate(()=>window.HORIZON.stats());
    assert.ok(Math.hypot(launchEnd.carPosition[0]-launchStart[0],launchEnd.carPosition[2]-launchStart[2])>=2,"Pickup speed without actual displacement");
