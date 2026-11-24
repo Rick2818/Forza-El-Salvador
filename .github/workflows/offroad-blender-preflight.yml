@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/offroad-blender-preflight.yml'
       - 'Horizon-REA-2026/tools/blender/offroad_preflight.py'
+      - 'Horizon-REA-2026/src/world/offroadPrototype*.ts'
   workflow_dispatch:
 permissions:
   contents: read
@@ -42,4 +43,4 @@ jobs:
         run: |
           npm ci
           npm exec -- tsc --noEmit
-          npm exec -- vitest run src/sim/fourWheelDrive.test.ts src/world/circuits.test.ts src/sim/wheelMotion.test.ts
+          npm exec -- vitest run src/sim/fourWheelDrive.test.ts src/world/circuits.test.ts src/sim/wheelMotion.test.ts src/world/offroadPrototype.test.ts
