@@ -615,7 +615,7 @@ export class Game {
     this.scaleTimer += dt;
     if (this.scaleTimer < 1) return;
     this.scaleTimer = 0;
-    if (this.fps <= 0 || document.hidden) return;
+    if (document.hidden || (this.fps <= 0 && !(this.track.circuit.id===OFFROAD_CIRCUIT.id && performance.now()-this.lastDrawAt>250))) return;
     // A background or unfocused tab throttles requestAnimationFrame, so its
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.
@@ -868,7 +868,7 @@ export class Game {
     if (!this.captureMode) {
       this.input.update(dt);
       this.handleHotkeys();
-      this.adaptResolution(dt);
+      this.adaptResolution(this.track.circuit.id===OFFROAD_CIRCUIT.id ? Math.min(rawDt,1) : dt);
     }
 
     if (this.state === "menu" && !this.menu.isGarageOpen) {
@@ -888,6 +888,7 @@ export class Game {
       // controller integrates wheel forces for exactly the step it is given,
       // so world.step() and updateVehicle() must always share the same dt.
       const rescuesBefore = this.race.rescues;
+      const offroadCountdown=this.track.circuit.id===OFFROAD_CIRCUIT.id && this.race.state==="countdown";
       this.physicsAccum = Math.min(this.physicsAccum + dt, this.fixedStep * 4);
       let steps = 0;
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
@@ -918,6 +919,14 @@ export class Game {
         steps++;
       }
       if (steps === 0) this.physicsAccum = Math.min(this.physicsAccum, this.fixedStep);
+      // The starting signal is a presentation clock, not a physics clock.
+      // Keep the existing fixed-step handbrake until Race.update releases it.
+      // Slow graphics must not stretch 5.2 seconds of red lights to a minute.
+      if(offroadCountdown && this.race.state==="countdown" && !this.captureMode &&
+         !document.hidden && document.hasFocus() && steps>0){
+        const realSeconds=Math.min(rawDt,1);
+        this.race.countdown=Math.max(0,this.race.countdown-Math.max(0,realSeconds-steps*this.fixedStep));
+      }
       if (this.race.rescues > rescuesBefore) {
         this.chase.snap();
         this.hud.toast("✅ Auto enderezado y recuperado en la pista", 2600);
