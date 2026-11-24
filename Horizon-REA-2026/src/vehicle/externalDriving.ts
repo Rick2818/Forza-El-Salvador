@@ -473,6 +473,17 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       (atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))||
        (id==='mercedes-amg-gt-alternative'&&isMergedHubAssembly(child,hubs,externalWheelRadii(id,d))))))wheelMeshes.push(child);
   });
+  // A pose integrity audit must detect shifted panels even when triangle
+  // counts remain identical. Compare original body meshes and transforms.
+  const silveradoBody=new Map<THREE.Mesh,{world:THREE.Matrix4;geometry:THREE.BufferGeometry}>();
+  if(id==="chevrolet-silverado-ev-alternative"){
+    const selected=new Set(wheelMeshes);
+    imported.traverse(o=>{
+      if(o instanceof THREE.Mesh&&!selected.has(o))
+        silveradoBody.set(o,{world:o.matrixWorld.clone(),geometry:o.geometry});
+    });
+    if(wheelMeshes.length!==12)throw Error("Silverado: expected twelve original wheel primitives");
+  }
   const counts=[0,0,0,0];
   // Reattach wheel meshes from source GLB to live pivots; no substitute tyres.
   for(const mesh of wheelMeshes){
@@ -605,6 +616,19 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   // destructive geometry merge until source-pose fidelity is verified.
   // Applies to all ten imported models, not only the reported pickup.
   root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesAfter++;});
+  if(silveradoBody.size){
+    root.updateMatrixWorld(true);
+    let maxMatrixError=0,unchanged=0;
+    for(const [mesh,original] of silveradoBody){
+      let parent:THREE.Object3D|null=mesh.parent;
+      while(parent&&parent!==bodyRoot)parent=parent.parent;
+      if(parent!==bodyRoot||mesh.geometry!==original.geometry)throw Error("Silverado: body mesh detached "+mesh.name);
+      for(let k=0;k<16;k++)maxMatrixError=Math.max(maxMatrixError,Math.abs(mesh.matrixWorld.elements[k]-original.world.elements[k]));
+      unchanged++;
+    }
+    if(maxMatrixError>1e-6||counts.some(n=>n!==3))throw Error("Silverado: source pose changed");
+    root.userData.bodyPoseAudit={unchanged,maxMatrixError,wheelParts:counts};
+  }
   root.userData.renderMeshBudget={before:renderMeshesBefore,after:renderMeshesAfter};
   root.userData.ownedBatchGeometry=owned;
   const dimensions=new THREE.Box3().setFromObject(imported).getSize(new THREE.Vector3());
