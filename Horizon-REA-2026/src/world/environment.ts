@@ -137,8 +137,7 @@ export class Environment {
     if (isMonzon) {
       // Four unshadowed lights cover the player's vicinity; poles remain instanced.
       for (let i = 0; i < 4; i++) {
-        const light = new THREE.PointLight(0xffefd6, 850, 70, 2);
-        light.visible = false;
+        const light = new THREE.PointLight(0xffefd6, 0, 70, 2);
         this.trackLights.push(light);
         scene.add(light);
       }
@@ -214,7 +213,7 @@ export class Environment {
       })).sort((a, b) => a.distance - b.distance).slice(0, this.trackLights.length);
       this.trackLights.forEach((light, index) => {
         const lamp = nearest[index];
-        light.visible = !!lamp;
+        light.intensity = lamp ? 850 : 0;
         if (lamp) light.position.copy(lamp.position);
       });
     }
