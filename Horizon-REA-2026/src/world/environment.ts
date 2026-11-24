@@ -58,7 +58,7 @@ export class Environment {
     const isSparda = track.circuit.id === "sparda";
     const isSakhir = track.circuit.id === "sakhir-horizon";
     this.elevatedTerrain = isSparda;
-    const isDaylight = isSuzaka || isSparda;
+    const isDaylight = isSuzaka || isSparda || track.circuit.id === "el-imposible-4x4";
     this.moonDirection.setFromSphericalCoords(1, deg(isDaylight ? 90 - 53 : 90 - 25), deg(208));
 
     if (isDaylight) {
