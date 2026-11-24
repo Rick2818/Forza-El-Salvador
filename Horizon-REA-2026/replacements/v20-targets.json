@@ -11,11 +11,13 @@
       "claimed_license": "CC-BY-4.0",
       "creator": "Ddiaz Design",
       "asset_path": "replacements/assets/ferrari-f430.glb",
-      "assetImported": false,
+      "assetImported": true,
       "rightsReviewed": false,
       "geometryApproved": false,
       "physicsApproved": false,
-      "runtimeFpsApproved": false
+      "runtimeFpsApproved": false,
+      "sha256": "673886905d2e1f1117681ee1ddf809738fba942c1f71ab1d3d090f9a202aef16",
+      "importEvidence": "GitHub Actions v20-f430-geometria run 45304183795; GLB header and checksum verified, 100 meshes, 204 nodes; visual/rights/physics not approved"
     },
     {
       "id": "porsche-911",
