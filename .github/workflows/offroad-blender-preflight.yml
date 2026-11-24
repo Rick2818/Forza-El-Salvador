@@ -1,0 +1,46 @@
+name: Offroad Blender 5 - private asset pipeline smoke
+on:
+  push:
+    branches: [feature/offroad-asset-preflight]
+    paths:
+      - '.github/workflows/offroad-blender-preflight.yml'
+      - 'Horizon-REA-2026/tools/blender/offroad_preflight.py'
+      - 'Horizon-REA-2026/src/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: offroad-blender-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install official Blender 5.0.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base=https://download.blender.org/release/Blender5.0
+          archive=blender-5.0.1-linux-x64.tar.xz
+          curl --fail --location --retry 3 "$base/$archive" -o "$archive"
+          curl --fail --location --retry 3 "$base/blender-5.0.1.sha256" -o blender.sha256
+          grep -E "[[:space:]]\\*?$archive$" blender.sha256 > archive.sha256
+          sha256sum --check archive.sha256
+          tar -xf "$archive"
+          "$RUNNER_TEMP/blender-5.0.1-linux-x64/blender" --version
+      - name: Verify Blender GLB exporter and importer with synthetic mesh
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/blender-5.0.1-linux-x64/blender" -b --factory-startup --disable-autoexec --python-exit-code 1 --python Horizon-REA-2026/tools/blender/offroad_preflight.py -- --smoke --out "$RUNNER_TEMP/offroad-smoke"
+          python -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["triangles"] == d["expected_triangles"] == 12; assert not d["publication_approved"]' "$RUNNER_TEMP/offroad-smoke/export-audit.json"
+      - name: Check regression tests without modifying production
+        working-directory: Horizon-REA-2026
+        run: |
+          npm ci
+          npm run build
+          npm exec -- vitest run src/sim/fourWheelDrive.test.ts src/world/circuits.test.ts src/sim/wheelMotion.test.ts src/world/offroadPrototype.test.ts src/world/offroadTrack.test.ts src/render/pickupMud.test.ts src/world/tireTrackSync.test.ts

@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { accumulateMud, PickupMudCoating } from "../render/pickupMud";
+import type { OffroadSector } from "../world/offroadPrototype";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { createCarVisual, type CarVisual, BODY_CENTER_Y } from "./carModel";
 import { SETTINGS } from "../core/settings";
@@ -61,6 +63,9 @@ export class Vehicle {
   readonly isPlayer: boolean;
   controls: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
   private wheelFriction: number[] = [];
+  private mudCoverage = 0;
+  private mudCoating?: PickupMudCoating;
+  private offroadSector?: OffroadSector;
   private smoothedGrip = 1;
   readonly vehicleId: string | undefined;
   readonly electric: boolean;
@@ -352,7 +357,7 @@ export class Vehicle {
       for (let i = 0; i < 4; i++) this.contactScratch[i] = this.controller.wheelIsInContact(i);
       contactTraction = pickupContactTraction(this.fourWheelDriveMode, this.contactScratch, grip);
     }
-    const drive = (engineForce + nitro - reverseForce) * contactTraction;
+    const drive = (engineForce + (this.offroadSector ? 0 : nitro) - reverseForce) * contactTraction;
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
     }
@@ -385,7 +390,8 @@ export class Vehicle {
     const vel = this.body.linvel();
     const planar = Math.hypot(vel.x, vel.z);
     if (planar > 0.5) {
-      const d = dragForce(planar);
+      const terrainDrag = this.offroadSector && this.supportsFourWheelDrive ? this.body.mass() * 9.81 * this.offroadSector.resistance * .22 * Math.min(1,planar/3) : 0;
+      const d = dragForce(planar) + terrainDrag;
       this.body.addForce({ x: (-vel.x / planar) * d, y: 0, z: (-vel.z / planar) * d }, true);
     }
     // At 350–504 MPH the raw v² downforce exceeds suspension capacity
@@ -406,10 +412,17 @@ export class Vehicle {
     this.controller.updateVehicle(dt);
   }
 
-  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[]): void {
+  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
     input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake };
     this.controls = input;
+    this.offroadSector = offroadSector;
+    if (offroadSector && this.supportsFourWheelDrive) {
+      let contacts = 0;
+      for(let i=0;i<4;i++) contacts += Number(this.controller.wheelIsInContact(i));
+      this.mudCoverage = accumulateMud(this.mudCoverage,offroadSector.surface,this.speed,dt,contacts/4);
+      this.mudCoating ??= new PickupMudCoating();
+    }
     // The chassis may still be on asphalt while one outside wheel is on
     // Suzaka's kerb or Monzon's gravel: calculate grip per contact patch.
     let meanGrip = 0;
@@ -501,7 +514,8 @@ export class Vehicle {
       wheel.steer.rotation.y = visibleWheelSteer(this.steerAngle, this.wheelMounts[i].front);
       wheel.spin.rotation.x = this.wheelRoll[i];
     }
-    this.turboFlames?.update(dt, this.turboActive);
+    this.mudCoating?.update(this.visual.root,this.mudCoverage,dt);
+    this.turboFlames?.update(dt, this.turboActive && !this.offroadSector);
   }
 
   wheelVisualDebug(): { steer: number; roll: number }[] {
@@ -533,6 +547,7 @@ export class Vehicle {
   }
 
   dispose(world: RAPIER.World): void {
+    this.mudCoating?.dispose();
     this.turboFlames?.dispose();
     world.removeVehicleController(this.controller);
     world.removeRigidBody(this.body);
