@@ -10,7 +10,11 @@ permissions:
 jobs:
   pickup:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [baseline, physics-only, constant-tunnel-lights, no-rival-audio]
     defaults:
       run:
         working-directory: Horizon-REA-2026
@@ -31,5 +35,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:5173/race.html > /dev/null
-          node tools/pickup-v24-probe.mjs
-          node tools/pickup-v24-continuity.mjs ram-3500-alternative
+          if [ "${{ matrix.mode }}" = "baseline" ]; then
+            node tools/pickup-v24-probe.mjs
+          fi
+          node tools/pickup-v24-continuity.mjs ram-3500-alternative "${{ matrix.mode }}"
