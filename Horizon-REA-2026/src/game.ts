@@ -278,6 +278,7 @@ export class Game {
         lastFrameGapMs: this.lastFrameGapMs,
         maxFrameGapMs: this.maxFrameGapMs,
         rivalLods: this.race.rivalLodStats(),
+        culledRivals: this.race.culledRivalCount,
         submittedDraws: this.gpuBackpressure.submitted,
         skippedDraws: this.gpuBackpressure.skipped,
         drawAgeMs: Math.round(performance.now() - this.lastDrawAt),
