@@ -1,0 +1,57 @@
+name: Horizon V31 - evidencia de calidad 4x4
+on:
+  pull_request:
+    branches: [main]
+    paths: ['Horizon-REA-2026/**', '.github/workflows/horizon-v30-quality.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: horizon-offroad-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: node tools/audit-car-glbs.mjs
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          npm run dev > /tmp/horizon-v30.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          physics_status=0
+          node tools/v31-offroad-physics.mjs || physics_status=$?
+          render_status=0
+          node tools/v30-runtime-quality.mjs || render_status=$?
+          test "$physics_status" -eq 0 && test "$render_status" -eq 0
+      - name: Auditar diez vehículos
+        if: success() || failure()
+        run: |
+          mkdir -p quality-evidence
+          set -o pipefail
+          if [ ! -d node_modules/playwright ]; then echo "Browser setup not reached; audit unavailable" | tee quality-evidence/fleet-audit.log; exit 1; fi
+          node tools/v25-fleet-audit.mjs | tee quality-evidence/fleet-audit.log
+      - name: Preservar evidencia incluso si falla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-v31-quality-evidence
+          path: Horizon-REA-2026/quality-evidence/
+          if-no-files-found: warn

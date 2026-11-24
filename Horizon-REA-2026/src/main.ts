@@ -57,11 +57,11 @@ async function boot(): Promise<void> {
   let circuitId = DEFAULT_CIRCUIT_ID;
   try { circuitId = localStorage.getItem("horizon.circuit") ?? DEFAULT_CIRCUIT_ID; } catch { /* default */ }
   const preview = circuitId === OFFROAD_CIRCUIT.id;
-  const initialModels = VEHICLE_DESIGNS.filter((d, i) => i < 4 || d.id === savedVehicle);
+  const initialModels = VEHICLE_DESIGNS.filter((d, i) => preview ? false : i < 4 || d.id === savedVehicle);
   await Promise.all(initialModels.map((d) => loadSelectedVehicle(d.id)));
   // Prime four authentic third-party models for player selection and rival AI.
   // A failed external GLB must not prevent the legacy game from starting.
-  const externalWarm = EXTERNAL_VEHICLE_DESIGNS.filter((d,i)=>i<4 || d.id===savedVehicle || (preview && ["chevrolet-silverado-ev-alternative","ram-3500-alternative","ford-f150-raptor-police"].includes(d.id)));
+  const externalWarm = EXTERNAL_VEHICLE_DESIGNS.filter((d,i)=>preview ? ["chevrolet-silverado-ev-alternative","ram-3500-alternative","ford-f150-raptor-police"].includes(d.id) : i<4 || d.id===savedVehicle);
   const results = await Promise.allSettled(externalWarm.map(d=>loadSelectedVehicle(d.id)));
   for(let i=0;i<results.length;i++)if(results[i].status==="rejected")
     console.warn("[Horizon] Modelo GLB nuevo no disponible",externalWarm[i].id,(results[i] as PromiseRejectedResult).reason);

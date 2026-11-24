@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { chooseVehicleLod, VehicleBodyLod } from "./vehicleBodyLod";
+import { chooseVehicleLod, pressureLodDistance, VehicleBodyLod } from "./vehicleBodyLod";
 describe("V28 vehicle body LOD",()=>{
   it("keeps a hysteresis band at each distance transition",()=>{
     expect(chooseVehicleLod(31,0)).toBe(0);
@@ -9,6 +9,12 @@ describe("V28 vehicle body LOD",()=>{
     expect(chooseVehicleLod(25,1)).toBe(0);
     expect(chooseVehicleLod(200,0)).toBe(3);
     expect(chooseVehicleLod(10,3)).toBe(0);
+  });
+  it("preserves close rivals and increases LOD distance only under pressure",()=>{
+    expect(pressureLodDistance(10,true)).toBe(10);
+    expect(pressureLodDistance(40,false)).toBe(40);
+    expect(chooseVehicleLod(pressureLodDistance(25,true),0)).toBe(1);
+    expect(chooseVehicleLod(pressureLodDistance(25,false),1)).toBe(0);
   });
   it("simplifies eligible opaque geometry and restores the original",async()=>{
     const root=new THREE.Group(),body=new THREE.Group(),wheel=new THREE.Group();
