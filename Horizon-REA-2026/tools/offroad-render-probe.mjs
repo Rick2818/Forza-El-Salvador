@@ -21,6 +21,8 @@ try {
     assert.equal(r.state,"racing",r.id);
     assert.ok(r.before>0&&r.after>0&&r.dirty>0,r.id+": missing rendered mesh before/after green or mud");
     assert.ok(r.coverage>.01,r.id+": no mud exposure");
+    assert.ok(r.stableSilhouette.cleanPixels>100,r.id+": missing baseline silhouette");
+    assert.ok(r.stableSilhouette.minOverlap>=.995,r.id+": silhouette deteriorated under mud");
     assert.ok(r.visible&&r.parented&&r.finite,r.id+": invalid visibility or pose");
   }
 }finally{await browser.close();}
