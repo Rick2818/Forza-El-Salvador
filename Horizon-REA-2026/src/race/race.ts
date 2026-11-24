@@ -170,7 +170,7 @@ export class Race {
       ? EXTERNAL_VEHICLE_DESIGNS.filter(d=>d.id!==vehicleId && hasSelectedAsset(d.id))
       : [];
     const rivals=[...newRivals,...VEHICLE_DESIGNS.filter(d=>d.id!==vehicleId && hasSelectedAsset(d.id))]
-      .filter(d=>this.track.circuit.id!==OFFROAD_CIRCUIT.id || isOffroadEligible(d.id))
+      .filter(d=>this.track.circuit?.id!==OFFROAD_CIRCUIT.id || isOffroadEligible(d.id))
       .slice(0, SETTINGS.race.rivals).map((opponent, i) => {
       const cfg = ROSTER[i];
       const vehicle = new Vehicle(this.world, scene, {
@@ -291,8 +291,8 @@ export class Race {
       const p = racer.vehicle.body.translation();
       const v = racer.vehicle.body.linvel();
       const finite = [p.x,p.y,p.z,v.x,v.y,v.z].every(Number.isFinite);
-      const isSuzaka = this.track.circuit.id === "suzaka";
-      const offroad = this.track.circuit.id === OFFROAD_CIRCUIT.id;
+      const isSuzaka = this.track.circuit?.id === "suzaka";
+      const offroad = this.track.circuit?.id === OFFROAD_CIRCUIT.id;
       const closest = finite && (isSuzaka || offroad)
         ? this.track.locate(new THREE.Vector3(p.x,p.y,p.z),racer.hint) : null;
       const anchorIndex = closest?.index ?? racer.hint;
@@ -398,14 +398,14 @@ export class Race {
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
           const tyreGrip = this.track.gripAtFootprints(racer.vehicle.wheelContactPoints(), locate.index, racer.vehicle.wheelGripBuffer());
-          racer.vehicle.update(dt, driving, grip, tyreGrip, this.track.circuit.id === OFFROAD_CIRCUIT.id ? offroadSectorAt(this.track.progress(locate.index)) : undefined);
+          racer.vehicle.update(dt, driving, grip, tyreGrip, this.track.circuit?.id === OFFROAD_CIRCUIT.id ? offroadSectorAt(this.track.progress(locate.index)) : undefined);
           racer.vehicle.setBrakeLights(driving.brake > 0.05 || this.state === "finished");
         } else if (racer.ai) {
           const locate = this.track.locate(racer.vehicle.position, racer.hint);
           const grip = this.track.gripAt(locate.index, locate.lateral);
           const tyreGrip = this.track.gripAtFootprints(racer.vehicle.wheelContactPoints(), locate.index, racer.vehicle.wheelGripBuffer());
           racer.ai.update(dt, this.elapsed + 1, traffic.filter(o => o.racerId !== racer.id &&
-            Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5), grip, tyreGrip, this.track.circuit.id === OFFROAD_CIRCUIT.id ? offroadSectorAt(this.track.progress(locate.index)) : undefined);
+            Math.abs(o.position.y - racer.vehicle.body.translation().y) < 5), grip, tyreGrip, this.track.circuit?.id === OFFROAD_CIRCUIT.id ? offroadSectorAt(this.track.progress(locate.index)) : undefined);
         }
       }
       for (const car of this.oncoming) car.ai.update(dt, traffic.filter(o => o.racerId !== car.id));
