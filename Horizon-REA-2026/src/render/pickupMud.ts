@@ -33,23 +33,26 @@ export class PickupMudCoating {
       const map = (m:THREE.Material):THREE.Material => {
         if (!(m instanceof THREE.MeshStandardMaterial) || /lamp|light|emissive|headlight|taillight/i.test(m.name) || m.emissiveMap) return m;
         if (this.copies.has(m)) return this.copies.get(m)!;
+        // Keep windows, lights and interior materials intact.
+        if (m.transparent || m.opacity < .99 || /glass|window|windscreen|windshield|interior|dashboard|seat|mirror|chrome/i.test(m.name) || (m instanceof THREE.MeshPhysicalMaterial && m.transmission > 0)) return m;
         const clone=m.clone();
-        const glass=m.transparent || (m instanceof THREE.MeshPhysicalMaterial && m.transmission > 0);
-        const max=glass ? .50 : .94;
+        const max=.58;
         clone.onBeforeCompile=shader=>{
           shader.uniforms.horizonMud=this.amount;
           shader.vertexShader="varying vec3 vMudLocal;\n"+shader.vertexShader;
           shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nvMudLocal=position;");
           shader.fragmentShader="uniform float horizonMud; varying vec3 vMudLocal;\n"+shader.fragmentShader;
           shader.fragmentShader=shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
-            float fleck = fract(sin(dot(floor(vMudLocal*57.0),vec3(12.9898,78.233,39.425)))*43758.5453);
-            float mudPattern = 0.5+0.5*sin(vMudLocal.x*17.0+sin(vMudLocal.z*11.0)*3.0+vMudLocal.y*13.0);
-            float smear = smoothstep(0.12,0.65,horizonMud*(0.65+mudPattern*0.55+fleck*0.35));
+            // Continuous, low-frequency streaks: no hash/floor speckle or hard pixels.
+            vec3 mudPos = vMudLocal;
+            float mudPattern = .5 + .5*sin(dot(mudPos,vec3(2.8,1.4,2.2)) + .65*sin(dot(mudPos,vec3(4.1,-.9,3.0))));
+            float mudStreak = .5 + .5*sin(dot(mudPos,vec3(7.0,1.2,-4.0)));
+            float smear = smoothstep(.25,.82,horizonMud*(.65+.38*mudPattern+.16*mudStreak));
             float mudMix = smear * horizonMud * ${max.toFixed(2)};
-            diffuseColor.rgb = mix(diffuseColor.rgb,mix(vec3(.055,.027,.012),vec3(.22,.12,.055),fleck),mudMix);
+            diffuseColor.rgb = mix(diffuseColor.rgb,mix(vec3(.065,.032,.015),vec3(.15,.075,.032),mudPattern),mudMix);
           `);
         };
-        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v2-"+max;
+        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v3-"+max;
         this.copies.set(m,clone);
         return clone;
       };
