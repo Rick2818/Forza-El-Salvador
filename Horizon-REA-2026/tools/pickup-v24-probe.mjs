@@ -19,6 +19,13 @@ try{
     if(!r.measured)errors.push(r.id+": tyre fit unresolved");
     if(r.wheelMeshes.length!==4||r.wheelMeshes.some(n=>n<1))errors.push(r.id+": incomplete wheel assembly");
     if(r.contactSamples<10)errors.push(r.id+": insufficient four-wheel contact");
+    if(!Array.isArray(r.motion)||r.motion.length!==4||r.maxRollError!==0)errors.push(r.id+": invalid wheel motion samples");
+    else for(const [i,w] of r.motion.entries()){
+      if(w.samples<5||!w.parts.length||w.parts.some(p=>!Number.isFinite(p.vertexTravelM)||p.vertexTravelM<.02))
+        errors.push(r.id+" wheel "+i+": original geometry did not move relative to hub");
+      if(r.id==="chevrolet-silverado-ev-alternative"&&(!w.parts.some(p=>/NEUMA/i.test(p.name))||!w.parts.some(p=>/CHROME/i.test(p.name))))
+        errors.push(r.id+" wheel "+i+": original tyre/chrome rim missing from moving assembly");
+    }
   }
   assert.equal(results.length,3);
   assert.deepEqual(errors,[]);
