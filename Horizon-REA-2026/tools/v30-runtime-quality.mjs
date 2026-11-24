@@ -26,6 +26,9 @@ try {
    await page.bringToFront();
    const state=await page.evaluate(()=>window.HORIZON.stats());
    assert.equal(state.vehicleId,id);assert.equal(state.circuit,"el-imposible-4x4");
+   const art=await page.evaluate(()=>{const g=window.__HORIZON_GAME__,forest=g.scene.getObjectByName("offroad-woodland"),root=g.race.player.vehicle.visual.root;return {paintMaterials:root.userData.offroadOpaquePaintMaterials,treeCount:forest?.userData.treeCount,treeMeshes:forest?.children.filter(o=>o.isInstancedMesh&&o.count>0).length};});
+   assert.ok(art.paintMaterials>0,"No identified opaque body paint");
+   assert.ok(art.treeCount>=100&&art.treeMeshes>=2,"No visible forest instances");
    const startButton=page.locator('[data-action="start"]').first();
    if(!(await startButton.isVisible())) await page.locator('[data-action="tab-circuitos"]').click();
    await startButton.click({timeout:30000});
@@ -62,7 +65,7 @@ try {
    await page.screenshot({path:join(out,id+"-mud.png")});
    const performance=await page.evaluate(()=>window.HORIZON.performanceReport());
    const renderer=String(performance.renderer??"unknown");
-   const report={id,softwareRenderer:/swiftshader|llvmpipe|software|unknown/i.test(renderer),renderer,viewport:[1280,720],controlledWetSector:true,launchStart,launchEnd,samples,performance,errors};
+   const report={id,softwareRenderer:/swiftshader|llvmpipe|software|unknown/i.test(renderer),renderer,viewport:[1280,720],controlledWetSector:true,art,launchStart,launchEnd,samples,performance,errors};
    reports.push(report);
    assert.deepEqual(errors,[]);
    assert.ok(samples.every(x=>x.visible&&!x.recovery&&x.stats.carPosition.every(Number.isFinite)&&x.stats.drawCalls>0&&x.stats.drawAgeMs<5000));

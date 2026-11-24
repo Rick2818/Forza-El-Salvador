@@ -137,7 +137,11 @@ export class Vehicle {
     this.visual = opts.vehicleId ? createSelectedVisual(opts.vehicleId) : createCarVisual(opts);
     if(this.supportsFourWheelDrive && scene.userData.offroadVehicleFinish===true){
       this.fourWheelDriveMode="4H";
-      applyOffroadPickupFinish(this.visual.root);
+      let paint=design?.paint??"#26333f";
+      try{const selected=JSON.parse(localStorage.getItem("horizon.gallery.custom."+opts.vehicleId)??"null")?.paint;
+        if(typeof selected==="string"&&/^#[0-9a-f]{6}$/i.test(selected))paint=selected;
+      }catch{/* use authored roster colour */}
+      applyOffroadPickupFinish(this.visual.root,new THREE.Color(paint));
     }
     if (opts.vehicleId === "ferrari-california-t" && this.visual.paint instanceof THREE.MeshPhysicalMaterial &&
         scene.userData.vehicleReflectionEnvironment instanceof THREE.Texture) {
