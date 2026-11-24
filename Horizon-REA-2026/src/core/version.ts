@@ -1,1 +1,1 @@
-export const RELEASE_LABEL = "V25";
+export const RELEASE_LABEL = "V26";
