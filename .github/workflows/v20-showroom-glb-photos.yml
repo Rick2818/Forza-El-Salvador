@@ -1,0 +1,63 @@
+name: V20 - Fotos showroom de los GLB ejecutables
+on:
+  push:
+    branches: [fix/v20-model-integrity-20261123]
+    paths:
+      - '.github/workflows/v20-showroom-glb-photos.yml'
+      - 'Horizon-REA-2026/tools/generate-glb-showroom-photos.mjs'
+      - 'Horizon-REA-2026/src/preview/gallery.ts'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: v20-glb-photos
+  cancel-in-progress: false
+jobs:
+  build-photos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Instalar dependencias del videojuego
+        run: npm ci
+      - name: Preparar Draco y verificar TypeScript
+        run: npm run build
+      - name: Instalar navegador y Puppeteer
+        run: |
+          npm install --no-save --no-package-lock puppeteer-core
+          (which google-chrome || which chromium) | tee /tmp/chrome-bin
+          echo "CHROME_PATH=$(cat /tmp/chrome-bin)" >> "$GITHUB_ENV"
+      - name: Generar fotos de los 10 GLB desde el mismo WebGL
+        run: node tools/generate-glb-showroom-photos.mjs
+      - name: Verificar 10 imágenes y hashes con modelos de origen
+        run: node tools/verify-glb-showroom-photos.mjs
+      - name: Guardar en rama V20 sin alterar main ni producción
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/public/vehicles/generated/
+          if ! git diff --cached --quiet; then
+            git commit -m "review(v20): generate ten exact GLB showroom screenshots [skip ci]"
+            git fetch origin fix/v20-model-integrity-20261123
+            git rebase origin/fix/v20-model-integrity-20261123
+            git push origin HEAD:fix/v20-model-integrity-20261123
+          fi
+      - name: Conservar fotos como evidencia visual
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v20-ten-photos-from-real-glb
+          path: Horizon-REA-2026/public/vehicles/generated/
+          if-no-files-found: warn
+          retention-days: 7
