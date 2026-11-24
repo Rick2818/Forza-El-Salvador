@@ -70,6 +70,7 @@ export class Vehicle {
   private readonly wheelRadius: number;
   private readonly wheelRoll = [0, 0, 0, 0];
   private readonly surfaceGrip = [1, 1, 1, 1];
+  private readonly contactScratch = [false, false, false, false];
   private readonly wheelProbes = Array.from({length:4},()=>new THREE.Vector3());
   private turboState = createTurboState();
   private turboDelivery = 0;
@@ -313,10 +314,13 @@ export class Vehicle {
       speed < this.tuning.topSpeed ? TURBO_FORCE_N * this.turboDelivery : 0;
     // The 4x4 mode only affects future pickups; no alteration to the seven
     // racecar force curves or Rapier raycast stabilisation.
-    const contactTraction = this.supportsFourWheelDrive
-      ? pickupContactTraction(this.fourWheelDriveMode,
-          Array.from({ length: 4 }, (_, i) => this.controller.wheelIsInContact(i)), grip)
-      : 1;
+    // Pickup 4x4: reuse boolean wheel contacts instead of creating an array
+    // on every 60 Hz substep of every simulated race car.
+    let contactTraction = 1;
+    if (this.supportsFourWheelDrive) {
+      for (let i = 0; i < 4; i++) this.contactScratch[i] = this.controller.wheelIsInContact(i);
+      contactTraction = pickupContactTraction(this.fourWheelDriveMode, this.contactScratch, grip);
+    }
     const drive = (engineForce + nitro - reverseForce) * contactTraction;
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
