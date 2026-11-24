@@ -83,7 +83,8 @@ try{
       const g=window.__HORIZON_GAME__;
       const s=window.HORIZON.stats();
       return {state:s.state,raceState:s.raceState,elapsed:s.elapsed,frameAgeMs:s.frameAgeMs,fps:s.fps,
-        vehicle:s.vehicleId,version:s.version,drawCalls:s.drawCalls,
+        vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,
+        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
         positions:g.race.racers.map(r=>{const p=r.vehicle.body.translation();return {id:r.id,x:p.x,y:p.y,z:p.z,finished:r.finished};}),
@@ -95,7 +96,8 @@ try{
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
-    assert.equal(sample.version,"V24");
+    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V24","Unexpected running build");
+    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV24\b/);
     assert.equal(sample.contextLost,false);
     assert.equal(sample.recovery,false);
     assert.equal(errors.length,0);
