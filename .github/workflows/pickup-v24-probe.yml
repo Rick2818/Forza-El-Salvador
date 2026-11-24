@@ -1,4 +1,4 @@
-name: V24 Pickup browser probe (no deployment)
+name: V25 Graphics continuity and fleet audit (no deployment)
 on:
   pull_request:
     branches: [main]
@@ -21,6 +21,7 @@ jobs:
           - {mode: no-rival-audio, circuit: monzon}
           - {mode: no-gpu-timer, circuit: monzon}
           - {mode: adaptive-resolution, circuit: monzon}
+          - {mode: fleet, circuit: monzon}
     defaults:
       run:
         working-directory: Horizon-REA-2026
@@ -44,4 +45,8 @@ jobs:
           if [ "${{ matrix.mode }}" = "baseline" ] && [ "${{ matrix.circuit }}" = "monzon" ]; then
             node tools/pickup-v24-probe.mjs
           fi
-          node tools/pickup-v24-continuity.mjs ram-3500-alternative "${{ matrix.mode }}" "${{ matrix.circuit }}"
+          if [ "${{ matrix.mode }}" = "fleet" ]; then
+            node tools/v25-fleet-audit.mjs
+          else
+            node tools/pickup-v24-continuity.mjs ram-3500-alternative "${{ matrix.mode }}" "${{ matrix.circuit }}"
+          fi
