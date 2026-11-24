@@ -1,21 +1,114 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#08090c" />
-    <title>Horizon El Salvador</title>
-  </head>
-  <body>
-    <canvas id="game-canvas" tabindex="0"></canvas>
-    <div id="ui"></div>
-    <button
-      id="reload-btn"
-      class="reload-btn"
-      type="button"
-      title="Recargar el juego (no hace falta F5)"
-      onclick="location.href = location.pathname + '?r=' + Date.now();"
-    >⟳</button>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
-</html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d16">
+<meta name="description" content="Sala de inspección 3D: diez vehículos reales importados a Horizon El Salvador.">
+<title>Showroom · Horizon El Salvador</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,Segoe UI,Arial,sans-serif;background:#080d16;color:#f5f7fb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}button,a{font:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3px}
+.top{display:flex;gap:15px;align-items:center;justify-content:space-between;padding:14px 23px;background:#101725;border-bottom:1px solid #354154}
+.brand{font-size:clamp(16px,2vw,23px);font-weight:800;letter-spacing:.03em}
+.brand span{color:#ffad5e}.back{color:#dce8f5;text-decoration:none;border:1px solid #576376;padding:9px 14px;border-radius:9px}
+.back:hover,.choice:hover,.views button:hover{background:#26354a}
+.layout{display:grid;grid-template-columns:minmax(230px,290px) minmax(0,1fr);height:calc(100vh - 73px);min-height:590px}
+.sidebar{padding:18px;overflow:auto;border-right:1px solid #2e3a4c;background:#0e1521}
+.sidebar h1{font-size:17px;margin:0 0 7px}.intro{font-size:12px;color:#adb8c8;line-height:1.55;margin:0 0 18px}
+.group-title{color:#f0bc75;font-size:11px;letter-spacing:.13em;font-weight:800;margin:18px 0 9px;text-transform:uppercase}
+.choice{width:100%;text-align:left;display:block;color:#d6e2ee;background:#151e2c;border:1px solid #2d394b;border-radius:10px;padding:10px 12px;margin:6px 0;cursor:pointer}
+.choice strong{font-size:13px;display:block}.choice small{display:block;color:#99a8b9;font-size:10px;margin-top:4px}
+.choice[aria-pressed=true]{background:#344052;border-color:#ffa85c;box-shadow:inset 3px 0 #ffa85c}
+.viewer{display:flex;flex-direction:column;position:relative;min-height:0}
+.heading{padding:13px 20px 9px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.heading h2{font-size:clamp(17px,2vw,24px);margin:0}.heading p{color:#bac4d0;font-size:12px;line-height:1.5;margin:6px 0 0}
+#status{font-size:12px;color:#ffce85;min-height:17px;margin:0 20px 8px}
+.stage{position:relative;flex:1;min-height:260px;background:radial-gradient(ellipse at 50% 30%,#253548,#0e1825 70%);overflow:hidden}
+#model-canvas{width:100%;height:100%;display:block;touch-action:none}
+.stage-label{position:absolute;right:15px;top:13px;color:#dbe6f0;font-size:11px;opacity:.85;pointer-events:none}
+.controls{padding:14px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid #303f52;background:#101725}
+.views{display:flex;gap:7px;flex-wrap:wrap}
+.views button,.rotate,.capture{border:1px solid #546479;border-radius:9px;background:#182437;color:#f1f5fa;padding:8px 10px;cursor:pointer;font-size:12px}
+.views button.active{background:#a64f19;border-color:#f78a44}
+.capture{margin-left:auto}.rotate[aria-pressed=true]{border-color:#ffa85c}
+#drive-current{background:linear-gradient(110deg,#e97528,#b82835);color:white;border-color:#ffa968;font-weight:900}
+#drive-current:disabled{opacity:.48;cursor:wait}
+.details{padding:12px 20px 16px;color:#bfcbda;font-size:12px;line-height:1.6;background:#0d1420}
+.details strong{color:#fff}.details a{color:#ffbf74}
+#metrics{margin-top:5px;color:#dbe6ef}
+.warning{color:#f5c58b;font-size:11px;margin-top:7px}
+@media(max-width:700px){
+ .top{padding:12px 14px}.layout{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 56px)}
+ .sidebar{order:2;max-height:350px;overflow:auto;border-right:0;border-top:1px solid #354154}
+ .viewer{order:1;height:70vh;min-height:490px}.heading{padding:10px 13px}.controls{padding:9px 12px}
+ .details{padding:8px 12px}.capture{margin-left:0}
+}
+
+.customizer{padding:12px 20px 14px;background:#111b2a;border-top:1px solid #36475a;display:grid;gap:10px}
+.custom-group{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.custom-label{font-size:12px;font-weight:800;color:#f1d1a0;min-width:74px}
+.swatch{width:29px;height:29px;border-radius:50%;border:2px solid #657184;background:var(--swatch,#888);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.swatch.original{width:auto;min-width:75px;border-radius:8px;padding:4px 8px;background:#243145;font-size:11px}
+.swatch.selected,.wheel-option.selected{border-color:#ffba69;box-shadow:0 0 0 2px #ffba694f}
+.wheel-option{border-radius:9px;border:1px solid #566479;background:#1a2a3d;color:#fff;padding:9px 11px;font-size:12px;cursor:pointer}
+.custom-group input[type=color]{height:31px;width:43px;border:0;background:transparent;cursor:pointer}
+#finish-status{font-size:11px;color:#c8d3e0;min-height:15px}
+@media(max-width:700px){.customizer{padding:9px 12px}.custom-label{width:100%}.wheel-option{font-size:11px;padding:8px}}
+
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">HORIZON <span>EL SALVADOR</span> · SHOWROOM 3D</div><a class="back" href="race.html" aria-label="Entrar al circuito">🏁 Ir a carreras</a></header>
+<main class="layout">
+<aside class="sidebar" aria-label="Diez modelos 3D descargados">
+<h1>Elige tu próximo vehículo</h1>
+<p class="intro">Showroom oficial: 7 deportivos y 3 pickups 4×4. Inspecciona cada modelo, personaliza su pintura y llantas y entra a carreras. Los 7 anteriores están archivados, fuera de la selección.</p>
+<div class="group-title">7 deportivos</div><div id="sports"></div>
+<div class="group-title">3 pickups</div><div id="pickups"></div>
+</aside>
+<section class="viewer" aria-label="Visor tridimensional interactivo">
+<div class="heading"><div><h2 id="model-name">Ferrari F430</h2><p id="model-subtitle">Cargando modelo 3D original…</p></div></div>
+<div id="status" role="status" aria-live="polite">Preparando visualización…</div>
+<div class="stage" id="stage"><canvas id="model-canvas" aria-label="Visualizador 3D interactivo del automóvil"></canvas><span class="stage-label">Modelo GLB auténtico · sin renders comerciales</span></div>
+<div class="controls">
+<div class="views" role="group" aria-label="Ángulo de inspección">
+<button type="button" class="active" data-view="front">3/4 frontal*</button>
+<button type="button" data-view="rear">Posterior*</button>
+<button type="button" data-view="cabin">Cabina*</button>
+<button type="button" data-view="under">Bajos</button>
+</div>
+<button type="button" id="rotate" class="rotate" aria-pressed="false">↻ Girar</button>
+<button type="button" id="drive-current" class="rotate" disabled>🏁 Entrar a carreras con este auto</button>
+<button type="button" id="capture" class="capture">📷 Guardar captura real</button>
+</div>
+<div class="customizer" role="region" aria-label="Personalizar vehículo">
+<div class="custom-group">
+<span class="custom-label">🎨 Pintura</span>
+<button type="button" data-paint="original" class="swatch original" aria-label="Pintura original">Original</button>
+<button type="button" data-paint="#E5222D" class="swatch" style="--swatch:#E5222D" aria-label="Rojo" title="Rojo"></button>
+<button type="button" data-paint="#161B21" class="swatch" style="--swatch:#161B21" aria-label="Negro grafito" title="Negro grafito"></button>
+<button type="button" data-paint="#135BBD" class="swatch" style="--swatch:#135BBD" aria-label="Azul" title="Azul"></button>
+<button type="button" data-paint="#EFAB35" class="swatch" style="--swatch:#EFAB35" aria-label="Dorado" title="Dorado"></button>
+<button type="button" data-paint="#F5F7FA" class="swatch" style="--swatch:#F5F7FA" aria-label="Blanco" title="Blanco"></button>
+<button type="button" data-paint="#676C77" class="swatch" style="--swatch:#676C77" aria-label="Gris titanio" title="Gris titanio"></button>
+<button type="button" data-paint="#168A65" class="swatch" style="--swatch:#168A65" aria-label="Verde" title="Verde"></button>
+<label for="custom-paint" style="font-size:11px;color:#d2dce8">Color libre</label><input type="color" id="custom-paint" value="#e5222d" aria-label="Elegir color libre de carrocería"/>
+</div>
+<div class="custom-group">
+<span class="custom-label">🛞 Llantas</span>
+<button type="button" data-wheelset="original" class="wheel-option selected">De fábrica</button>
+<button type="button" data-wheelset="ferrari" class="wheel-option">Juego Ferrari F430 (3D)</button>
+<button type="button" data-wheelset="jesko" class="wheel-option">Juego Jesko (3D)</button>
+</div>
+<div id="finish-status" role="status" aria-live="polite">Los cambios de color y llantas se guardan para este vehículo en este navegador. La pintura se conserva para el modelo elegido; las llantas nuevas aún solo se visualizan aquí.</div>
+</div>
+<div class="details">
+<div><strong>Autor y procedencia:</strong> <span id="credits"></span></div>
+<div id="metrics">Geometría: pendiente.</div>
+<div class="warning">* Los ejes y la posición de la cabina son estimados según cada archivo; se deben homologar antes de usarlos en carrera. Las licencias declaradas por terceros no equivalen a una autorización comercial verificada.</div>
+</div>
+</section></main>
+<script type="module" src="/src/preview/gallery.ts"></script>
+</body></html>

@@ -9,7 +9,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 4096,
     rollupOptions: {
       input: {
-        game: "index.html",
+        showroom: "index.html",
+        game: "race.html",
         gallery: "model-gallery.html"
       }
     }

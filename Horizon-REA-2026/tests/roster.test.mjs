@@ -1,23 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { EXTERNAL_VEHICLES } from "../src/vehicle/externalRoster";
 import { SELECTED_VEHICLES } from "../src/vehicle/roster";
 import { garageMarkup } from "../src/ui/garage";
-
-describe("playable vehicles", () => {
-  it("offers the seven game models without displaying reference photos", () => {
-    const html = garageMarkup("ferrari-california-t");
-    expect(SELECTED_VEHICLES.map((car) => car.id)).toEqual([
-      "ferrari-california-t", "porsche-911", "bugatti-chiron", "mercedes-amg-gt-black-series",
-      "lamborghini-aventador-roadster", "yangwang-u9", "koenigsegg-jesko-odin"
-    ]);
-    for (const car of SELECTED_VEHICLES) {
+describe("showroom y archivos históricos", () => {
+  it("muestra diez vehículos en el garaje y conserva los siete anteriores fuera del menú", () => {
+    const html=garageMarkup("ferrari-f430");
+    expect(EXTERNAL_VEHICLES).toHaveLength(10);
+    expect(SELECTED_VEHICLES).toHaveLength(7);
+    expect((html.match(/data-action="select-vehicle"/g)??[])).toHaveLength(10);
+    for(const car of EXTERNAL_VEHICLES) {
       expect(html).toContain(`data-vehicle-id="${car.id}"`);
-      expect(existsSync(new URL(`../public/${car.modelUrl}`, import.meta.url))).toBe(true);
+      expect(existsSync(new URL(`../public/${car.modelUrl}`,import.meta.url))).toBe(true);
     }
-    expect(html.match(/Modelo aprobado/g)).toHaveLength(7);
-    expect(html.match(/data-action="select-vehicle"/g)).toHaveLength(7);
-    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain('data-action="start"');
+    for(const car of SELECTED_VEHICLES) {
+      expect(html).not.toContain(`data-vehicle-id="${car.id}"`);
+      expect(existsSync(new URL(`../archive/legacy-7-20261123/public/${car.modelUrl}`,import.meta.url))).toBe(true);
+    }
+  });
+  it("guarda la documentación de restauración",()=>{
+    const doc=readFileSync(new URL("../archive/legacy-7-20261123/README.md",import.meta.url),"utf8");
+    expect(doc).toContain("7 vehículos anteriores");
   });
 });
