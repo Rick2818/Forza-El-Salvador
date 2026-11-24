@@ -270,8 +270,8 @@ export class Vehicle {
     this.rpm = clamp(this.rpm, ENGINE_IDLE_RPM, ENGINE_REDLINE_RPM);
 
     const p = SETTINGS.physics;
-    const throttle = this.controls.throttle;
     const brake = this.controls.brake;
+    const throttle = brake > .05 ? 0 : this.controls.throttle;
     const lateralSpeed = velocity.x * forward.z - velocity.z * forward.x;
     const wheelbase = Math.abs(this.wheelMounts[0].z - this.wheelMounts[2].z);
     const requestedSteer = steeringAngleAt(speed, this.controls.steer, this.tuning.steer);
@@ -284,7 +284,7 @@ export class Vehicle {
       this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01);
     // Ease boost in on a straight. Reduce it immediately when tyre capacity
     // is needed for a turn; never push through braking, countersteer or a slide.
-    const delivery = this.turboState.active > 0 ? traction : 0;
+    const delivery = this.turboState.active > 0 && brake <= .05 && throttle > .05 && !this.controls.handbrake ? traction : 0;
     this.turboDelivery = delivery < this.turboDelivery ? delivery :
       damp(this.turboDelivery, delivery, 12, dt);
 
@@ -349,7 +349,7 @@ export class Vehicle {
       this.controller.setWheelEngineForce(i, 0);
 
       let braking = 0;
-      if (brake > 0.05 && speed > 0.4) {
+      if (brake > 0.05 && speed >= 0.6) {
         braking = brake * p.maxBrakeForce * (w.front ? 1.12 : 0.9);
       }
       if (this.controls.handbrake && !w.front) {
@@ -390,6 +390,8 @@ export class Vehicle {
   }
 
   update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[]): void {
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake };
     this.controls = input;
     // The chassis may still be on asphalt while one outside wheel is on
     // Suzaka's kerb or Monzon's gravel: calculate grip per contact patch.
