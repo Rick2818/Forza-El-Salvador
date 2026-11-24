@@ -25,6 +25,20 @@ describe("Heavy offroad mud",()=>{
   mud.dispose();expect(mesh.material).toBe(material);
   mesh.geometry.dispose();material.dispose();
  });
+ it("applies heavier mud below the cabin with bounded material variants",()=>{
+  const root=new THREE.Group(),geometry=new THREE.BoxGeometry(1,1,1),material=new THREE.MeshStandardMaterial({color:0xffffff});
+  const lower=new THREE.Mesh(geometry,material),upper=new THREE.Mesh(geometry,material);
+  lower.position.y=0;upper.position.y=2;root.add(lower,upper);
+  const coating=new PickupMudCoating();coating.update(root,1,1/60);
+  const low=lower.material as THREE.MeshStandardMaterial,high=upper.material as THREE.MeshStandardMaterial;
+  expect(low).not.toBe(high);
+  expect(low.color.r).toBeLessThan(high.color.r);
+  expect(low.opacity).toBe(1);expect(high.opacity).toBe(1);
+  for(let i=0;i<7200;i++)coating.update(root,1,1/60);
+  expect(lower.material).toBe(low);expect(upper.material).toBe(high);
+  coating.dispose();expect(lower.material).toBe(material);expect(upper.material).toBe(material);
+  geometry.dispose();material.dispose();
+ });
  it("never coats glass, lamps or alpha masked surfaces",()=>{
   const root=new THREE.Group(),geometry=new THREE.BoxGeometry();
   const materials=[new THREE.MeshPhysicalMaterial({name:"windscreen",transmission:.9}),new THREE.MeshStandardMaterial({name:"taillight",emissive:0xff0000}),new THREE.MeshStandardMaterial({transparent:true,opacity:.2}),new THREE.MeshStandardMaterial({alphaTest:.5})];
