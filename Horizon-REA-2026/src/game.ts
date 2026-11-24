@@ -925,7 +925,7 @@ export class Game {
       if(offroadCountdown && this.race.state==="countdown" && !this.captureMode &&
          !document.hidden && document.hasFocus() && steps>0){
         const realSeconds=Math.min(rawDt,1);
-        this.race.countdown=Math.max(0,this.race.countdown-Math.max(0,realSeconds-steps*this.fixedStep));
+        this.race.countdown-=Math.min(this.race.countdown,Math.max(0,realSeconds-steps*this.fixedStep));
       }
       if (this.race.rescues > rescuesBefore) {
         this.chase.snap();
