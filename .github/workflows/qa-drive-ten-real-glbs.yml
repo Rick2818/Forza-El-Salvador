@@ -11,6 +11,8 @@ on:
       - "Horizon-REA-2026/src/ui/vehiclePicker.ts"
       - "Horizon-REA-2026/src/race/race.ts"
       - "Horizon-REA-2026/src/main.ts"
+      - "Horizon-REA-2026/src/vehicle/speedCaps.test.ts"
+      - "Horizon-REA-2026/src/sim/driveContinuity.test.ts"
   workflow_dispatch:
 permissions:
   contents: read
