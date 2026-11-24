@@ -69,6 +69,9 @@ export class Game {
   private physicsAccum = 0;
   private readonly fixedStep = 1 / 60;
   private fpsFrames = 0;
+  private fpsDraws = 0;
+  private callbackFps = 0;
+  private renderedFps = 0;
   private fpsTimer = 0;
   private goFlash = 0;
   private goShown = false;
@@ -281,6 +284,8 @@ export class Game {
         graphicsPreparationMs: Math.round(this.graphicsPreparationMs),
         frameAgeMs: Math.round(performance.now() - this.lastCompletedFrame),
         fps: Number(this.fps.toFixed(1)),
+        callbackFps: Number(this.callbackFps.toFixed(1)),
+        renderedFps: Number(this.renderedFps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
         gear: this.race.player.vehicle.gear + 1,
         rpm: Math.round(this.race.player.vehicle.rpm),
@@ -783,8 +788,11 @@ export class Game {
     this.fpsTimer += rawDt;
     this.fpsFrames++;
     if (this.fpsTimer >= 0.5) {
-      this.fps = this.fpsFrames / this.fpsTimer;
+      this.callbackFps = this.fpsFrames / this.fpsTimer;
+      this.renderedFps = this.fpsDraws / this.fpsTimer;
+      this.fps = this.skipRender ? this.callbackFps : this.renderedFps;
       this.fpsFrames = 0;
+      this.fpsDraws = 0;
       this.fpsTimer = 0;
     }
 
@@ -933,16 +941,18 @@ export class Game {
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
       this.framePhase = "gpu-query-begin";
+      const previousDraw = this.lastDrawAt;
       if (measured) this.gpuTimer.begin();
       this.framePhase = "webgl-render";
       this.renderer.render(this.scene, this.camera);
+      this.fpsDraws++;
       if (!this.captureMode) { this.gpuBackpressure.submit(); this.lastDrawAt = performance.now(); }
       if (measured) {
         this.framePhase = "gpu-query-end";
         this.gpuTimer.end();
         this.framePhase = "gpu-query-collect";
         for (const ms of this.gpuTimer.collect()) this.performanceLog.recordGPU(ms);
-        if (!document.hidden && document.hasFocus()) this.performanceLog.record(rawDt*1000,performance.now()-workStarted,{
+        if (!document.hidden && document.hasFocus()) this.performanceLog.record(Math.max(0.01,this.lastDrawAt-previousDraw),performance.now()-workStarted,{
           width:this.renderer.domElement.width,height:this.renderer.domElement.height,quality:this.quality,circuit:this.track.circuit.id
         });
         else this.performanceLog.interrupt("La pestaña perdió el foco durante la medición.");
