@@ -2,9 +2,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
+import { TerrainField } from "./terrain";
 import { OFFROAD_CIRCUIT } from "./offroadPrototype";
 beforeAll(async()=>{await RAPIER.init()});
 describe("Offroad engineering track",()=>{
+ it("keeps graded landscape below the driving surface at every sample",()=>{
+  const track=new Track(OFFROAD_CIRCUIT);track.build();const terrain=new TerrainField(track);
+  for(const p of track.samples)expect(terrain.heightAt(p.x,p.z)).toBeLessThan(p.y-.15);
+ });
  it("builds a graded closed mesh with matching physical support and differentiated grip",()=>{
   const t=new Track(OFFROAD_CIRCUIT);t.build();
   expect(t.samples.length).toBe(1500);
