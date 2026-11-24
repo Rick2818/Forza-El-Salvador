@@ -17,7 +17,7 @@ export function accumulateMud(current: number, surface: OffroadSurface | undefin
  */
 export class PickupMudCoating {
   private amount=0;
-  private readonly copies=new Map<THREE.MeshStandardMaterial,THREE.MeshStandardMaterial>();
+  private readonly copies=new Map<THREE.MeshStandardMaterial,Map<number,THREE.MeshStandardMaterial>>();
   private readonly assigned=new Map<THREE.Mesh,{original:THREE.Material|THREE.Material[],coating:THREE.Material|THREE.Material[]}>();
   private readonly tint=new THREE.Color(0x715035);
   private nextScan=0;
@@ -29,8 +29,26 @@ export class PickupMudCoating {
     this.nextScan-=Math.max(0,Number.isFinite(dt)?dt:0);
     if(this.nextScan<=0){
       this.nextScan=2;
+      root.updateWorldMatrix(true,true);
+      const inverse=root.matrixWorld.clone().invert();
+      const rootBounds=new THREE.Box3();
+      const bounds=new Map<THREE.Mesh,THREE.Box3>();
+      root.traverse(o=>{
+        if(!(o instanceof THREE.Mesh))return;
+        if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+        if(!o.geometry.boundingBox)return;
+        const box=o.geometry.boundingBox.clone().applyMatrix4(inverse.clone().multiply(o.matrixWorld));
+        if(box.isEmpty())return;
+        bounds.set(o,box);rootBounds.union(box);
+      });
+      const height=Math.max(.1,rootBounds.max.y-rootBounds.min.y);
       root.traverse(o=>{
         if(!(o instanceof THREE.Mesh)||this.assigned.has(o))return;
+        const box=bounds.get(o);
+        const relative=box?THREE.MathUtils.clamp((box.getCenter(new THREE.Vector3()).y-rootBounds.min.y)/height,0,1):.5;
+        // Wheels, lower panels, middle and upper surfaces collect different amounts.
+        // Quantize to three weights to limit material variants per original.
+        const zone=relative<.38?1:relative<.68?.76:.42;
         const original=o.material as THREE.Material|THREE.Material[];
         const map=(m:THREE.Material):THREE.Material=>{
           // Never touch windows, lamps, transparent surfaces or emissive details.
@@ -38,8 +56,9 @@ export class PickupMudCoating {
             /glass|window|windscreen|windshield|lamp|light|emissive|headlight|taillight|interior|cabin/i.test(m.name)||
             m.emissiveMap||m.emissiveIntensity*m.emissive.getHex()>0||
             (m instanceof THREE.MeshPhysicalMaterial&&m.transmission>0))return m;
-          const existing=this.copies.get(m);if(existing)return existing;
-          const clone=m.clone();this.copies.set(m,clone);return clone;
+          let zones=this.copies.get(m);if(!zones){zones=new Map();this.copies.set(m,zones);}
+          const existing=zones.get(zone);if(existing)return existing;
+          const clone=m.clone();zones.set(zone,clone);return clone;
         };
         const coating=Array.isArray(original)?original.map(map):map(original);
         if(Array.isArray(original)?original.every((m,i)=>m===(coating as THREE.Material[])[i]):coating===original)return;
@@ -48,8 +67,9 @@ export class PickupMudCoating {
     }
     // Only standard material uniforms change. Never change alpha, map, normalMap,
     // material side, depth flags, shader definitions or geometry.
-    const mix=THREE.MathUtils.smoothstep(this.amount,0,1)*.78;
-    for(const [original,clone] of this.copies){
+    const intensity=THREE.MathUtils.smoothstep(this.amount,0,1)*.88;
+    for(const [original,zones] of this.copies)for(const [zone,clone] of zones){
+      const mix=intensity*zone;
       clone.color.copy(original.color).lerp(this.tint,mix);
       clone.roughness=THREE.MathUtils.lerp(original.roughness,.83,mix);
       clone.metalness=THREE.MathUtils.lerp(original.metalness,0,mix);
@@ -62,7 +82,7 @@ export class PickupMudCoating {
   }
   dispose():void{
     for(const [mesh,{original,coating}] of this.assigned)if(mesh.material===coating)mesh.material=original;
-    for(const mat of this.copies.values())mat.dispose();
+    for(const zones of this.copies.values())for(const mat of zones.values())mat.dispose();
     this.assigned.clear();this.copies.clear();
   }
 }
