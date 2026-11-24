@@ -48,7 +48,7 @@ try{
     if(mode==="no-rival-audio")game.audio.updateRivals=()=>{};
     if(mode==="no-gpu-timer"){game.gpuTimer.begin=()=>{};game.gpuTimer.end=()=>{};game.gpuTimer.collect=()=>[];}
     if(mode==="adaptive-resolution")game.autoScale=true;
-    if(mode==="no-lod"){for(const lod of game.race.rivalLods.values())lod.setLevel(0);game.race.updateRivalLods=()=>{};}
+    if(mode==="no-lod"){game.race.lodEnabled=false;for(const lod of game.race.rivalLods.values())lod.setLevel(0);}
     if(mode==="constant-tunnel-lights"){
       const lighting=game.environment.tunnelLighting;
       const update=lighting.update.bind(lighting);
@@ -94,7 +94,7 @@ try{
       const s=window.HORIZON.stats();
       return {state:s.state,raceState:s.raceState,elapsed:s.elapsed,frameAgeMs:s.frameAgeMs,fps:s.fps,
         vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,graphicsPreparationMs:s.graphicsPreparationMs,framePhase:s.framePhase,frameSource:s.frameSource,animationFrames:s.animationFrames,fallbackFrames:s.fallbackFrames,maxFrameGapMs:s.maxFrameGapMs,submittedDraws:s.submittedDraws,skippedDraws:s.skippedDraws,drawAgeMs:s.drawAgeMs,
-        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,triangles:g.renderer.info.render.triangles,rivalLods:s.rivalLods,callbackFps:s.callbackFps,renderedFps:s.renderedFps,
+        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,triangles:g.renderer.info.render.triangles,rivalLods:s.rivalLods,culledRivals:s.culledRivals,callbackFps:s.callbackFps,renderedFps:s.renderedFps,
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
         positions:g.race.racers.map(r=>{const p=r.vehicle.body.translation();return {id:r.id,x:p.x,y:p.y,z:p.z,finished:r.finished};}),
