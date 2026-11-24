@@ -69,6 +69,9 @@ export class Vehicle {
   private readonly wheelMounts: typeof WHEELS;
   private readonly wheelRadius: number;
   private readonly wheelRoll = [0, 0, 0, 0];
+  private readonly surfaceGrip = [1, 1, 1, 1];
+  private readonly contactScratch = [false, false, false, false];
+  private readonly wheelProbes = Array.from({length:4},()=>new THREE.Vector3());
   private turboState = createTurboState();
   private turboDelivery = 0;
   private readonly turboFlames: TurboFlames | null;
@@ -171,6 +174,32 @@ export class Vehicle {
     return _v.set(t.x, t.y, t.z);
   }
 
+  /** Four world-space tyre contact estimates, based on the ACTUAL body pose and
+   * wheel locations. At Suzaka the Y coordinate identifies the overpass deck
+   * independently from the road running below it.
+   * Reuses vectors to avoid allocations during fixed-step championship races.
+   */
+  /** Mutable scratch buffer shared with Track.gripAtFootprints. Each vehicle
+   * owns a separate four-tyre buffer to avoid allocating on every physics step.
+   */
+  wheelGripBuffer(): number[] { return this.surfaceGrip; }
+
+  wheelContactPoints(): readonly THREE.Vector3[] {
+    const t = this.body.translation();
+    const r = this.body.rotation();
+    const quat = _q.set(r.x, r.y, r.z, r.w);
+    for (let i=0;i<this.wheelMounts.length;i++) {
+      const w = this.wheelMounts[i];
+      const suspension = this.controller.wheelSuspensionLength(i);
+      const length = typeof suspension === "number" && Number.isFinite(suspension)
+        ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + SETTINGS.physics.maxSuspensionTravel)
+        : SETTINGS.physics.suspensionRest;
+      const point = this.wheelProbes[i].set(w.x, w.y - length - this.wheelRadius, w.z).applyQuaternion(quat);
+      point.x += t.x; point.y += t.y; point.z += t.z;
+    }
+    return this.wheelProbes;
+  }
+
   place(position: THREE.Vector3, heading: number): void {
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), heading);
     this.body.setTranslation({ x: position.x, y: position.y + BODY_CENTER_Y - 0.1, z: position.z }, true);
@@ -187,6 +216,7 @@ export class Vehicle {
     this.turboState = createTurboState();
     this.turboDelivery = 0;
     this.wheelRoll.fill(0);
+    this.surfaceGrip.fill(1);
     this.syncVisual();
   }
 
@@ -284,10 +314,13 @@ export class Vehicle {
       speed < this.tuning.topSpeed ? TURBO_FORCE_N * this.turboDelivery : 0;
     // The 4x4 mode only affects future pickups; no alteration to the seven
     // racecar force curves or Rapier raycast stabilisation.
-    const contactTraction = this.supportsFourWheelDrive
-      ? pickupContactTraction(this.fourWheelDriveMode,
-          Array.from({ length: 4 }, (_, i) => this.controller.wheelIsInContact(i)), grip)
-      : 1;
+    // Pickup 4x4: reuse boolean wheel contacts instead of creating an array
+    // on every 60 Hz substep of every simulated race car.
+    let contactTraction = 1;
+    if (this.supportsFourWheelDrive) {
+      for (let i = 0; i < 4; i++) this.contactScratch[i] = this.controller.wheelIsInContact(i);
+      contactTraction = pickupContactTraction(this.fourWheelDriveMode, this.contactScratch, grip);
+    }
     const drive = (engineForce + nitro - reverseForce) * contactTraction;
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
@@ -308,11 +341,11 @@ export class Vehicle {
 
       if (w.front) {
         this.controller.setWheelSteering(i, this.steerAngle);
-        this.controller.setWheelFrictionSlip(i, this.wheelFriction[i] * grip);
+        this.controller.setWheelFrictionSlip(i, this.wheelFriction[i] * this.surfaceGrip[i]);
       } else {
         this.controller.setWheelFrictionSlip(
           i,
-          this.wheelFriction[i] * grip * (this.controls.handbrake ? 0.52 : 1)
+          this.wheelFriction[i] * this.surfaceGrip[i] * (this.controls.handbrake ? 0.52 : 1)
         );
       }
     }
@@ -338,21 +371,21 @@ export class Vehicle {
     this.controller.updateVehicle(dt);
   }
 
-  update(dt: number, input: DriveInput, grip: number): void {
+  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[]): void {
     this.controls = input;
-    this.smoothedGrip = damp(this.smoothedGrip, grip, 6, dt);
-    this.onTrack = grip > 0.72;
+    // The chassis may still be on asphalt while one outside wheel is on
+    // Suzaka's kerb or Monzon's gravel: calculate grip per contact patch.
+    let meanGrip = 0;
+    for (let i=0;i<4;i++) {
+      const sampled = wheelGrips?.[i] ?? grip;
+      this.surfaceGrip[i] = Number.isFinite(sampled) ? clamp(sampled, .15, 1.2) : 1;
+      meanGrip += this.surfaceGrip[i] / 4;
+    }
+    this.smoothedGrip = damp(this.smoothedGrip, meanGrip, 6, dt);
+    this.onTrack = this.surfaceGrip.every(tyre => tyre > 0.72);
 
     this.steerAngle = damp(this.steerAngle, steeringAngleAt(this.speed, input.steer, this.tuning.steer), 11, dt);
     this.applyForces(dt, this.smoothedGrip);
-
-    // Render wheel rolling from travelled distance, not the raycast wheel
-    // controller, which does not spin reliably with body-centre propulsion.
-    const yawRate = this.body.angvel().y;
-    for (let i = 0; i < this.wheelMounts.length; i++) {
-      this.wheelRoll[i] = nextWheelRoll(this.wheelRoll[i], this.speed, yawRate,
-        this.wheelMounts[i].x, this.wheelRadius, dt);
-    }
 
     // Stability guard: a kerb strike or a hard landing must not send the car
     // spinning at 40 rad/s and then flying across the map.
@@ -375,8 +408,10 @@ export class Vehicle {
     this.slip = Math.max(0, Math.abs(local.x) - 0.6);
   }
 
-  /** Must run after EVERY fixed world.step(), even when no frame is rendered. */
-  afterPhysicsStep(): void {
+  /** Keep wheel rotations, speed governor and contact state on the SAME
+   * Rapier 60Hz fixed timestep, independently of rendering frame rate.
+   */
+  afterPhysicsStep(dt = 0): void {
     const vel = this.body.linvel();
     const rot = this.body.rotation();
     const q = _q.set(rot.x, rot.y, rot.z, rot.w);
@@ -386,20 +421,30 @@ export class Vehicle {
     fwd.normalize();
     const forwardSpeed = vel.x * fwd.x + vel.z * fwd.z;
     const planarSpeed = Math.hypot(vel.x, vel.z);
-    // The high forward-speed governor must not make reverse unrestricted.
-    // Retain lateral velocity direction while capping backward travel.
     if (forwardSpeed < -REVERSE_LIMIT_MS) {
       const scale = REVERSE_LIMIT_MS / Math.abs(forwardSpeed);
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
       this.speed = -REVERSE_LIMIT_MS;
-      return;
-    }
-    if (planarSpeed > this.tuning.topSpeed) {
+    } else if (planarSpeed > this.tuning.topSpeed) {
       const scale = this.tuning.topSpeed / planarSpeed;
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
       this.speed = forwardSpeed * scale;
     } else {
       this.speed = forwardSpeed;
+    }
+    // The old wheel animation ran before world.step() and could rotate tyres
+    // mid-air, while stationary, or multiple times on a slow 30FPS frame.
+    // Contact is available only AFTER controller.updateVehicle + world.step.
+    if (dt > 0 && this.controller && this.wheelMounts && this.wheelRoll) {
+      const yawRate = this.body.angvel().y;
+      for (let i=0;i<this.wheelMounts.length;i++) {
+        const wheel = this.wheelMounts[i];
+        this.wheelRoll[i] = nextWheelRoll(
+          this.wheelRoll[i], this.speed, yawRate, wheel.x, this.wheelRadius,
+          dt, this.controller.wheelIsInContact(i),
+          this.controls.handbrake && !wheel.front
+        );
+      }
     }
   }
 

@@ -696,8 +696,8 @@ export class Game {
           setSuzakaPitGatesOpen(this.world,allowEntry||parkedInPits);
         }
         this.world.step();
-        for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep();
-        for (const car of this.race.oncoming) car.vehicle.afterPhysicsStep();
+        for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep(this.fixedStep);
+        for (const car of this.race.oncoming) car.vehicle.afterPhysicsStep(this.fixedStep);
         const collision = this.race.detectPlayerCarImpact();
         if (collision > 0) this.audio.playCollision(collision);
         this.physicsAccum -= this.fixedStep;

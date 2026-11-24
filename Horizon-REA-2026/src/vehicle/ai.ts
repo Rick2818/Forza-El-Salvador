@@ -79,9 +79,10 @@ export class AIDriver {
     this.currentLane = this.baseLane;
   }
 
-  update(dt: number, time: number, traffic: readonly TrafficCar[] = [], grip = 1): void {
+  update(dt: number, time: number, traffic: readonly TrafficCar[] = [], grip = 1,
+    wheelGrips?: readonly number[]): void {
     const driving = this.plan(dt, time, traffic);
-    this.vehicle.update(dt, driving, grip);
+    this.vehicle.update(dt, driving, grip, wheelGrips);
     this.vehicle.setBrakeLights(driving.brake > 0.05);
   }
 
