@@ -376,7 +376,7 @@ export class Track {
     geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
     geo.setIndex(indices); geo.computeVertexNormals();
     // Lightweight repeating earth detail. Temporary procedural map, not the external 8K asset.
-    const size=256, data=new Uint8Array(size*size*4);
+    const size=512, data=new Uint8Array(size*size*4), heights=new Float32Array(size*size);
     for(let y=0;y<size;y++)for(let x=0;x<size;x++){
       // Periodic multiscale variation with restrained fine detail, stable under mipmaps.
       const hash=(ix:number,iy:number)=>{let h=Math.imul(ix,374761393)+Math.imul(iy,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;};
@@ -384,13 +384,35 @@ export class Track {
         const fx=px-ix,fy=py-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
         const n=(dx:number,dy:number)=>hash((ix+dx)%cells,(iy+dy)%cells);
         return (n(0,0)*(1-u)+n(1,0)*u)*(1-v)+(n(0,1)*(1-u)+n(1,1)*u)*v;};
-      const v=Math.round(120+48*noise(5)+32*noise(17)+24*noise(49)+15*hash(x,y));
+      const broad=noise(5), aggregate=noise(17), micro=noise(49), grain=hash(x,y);
+      const v=Math.round(120+48*broad+32*aggregate+24*micro+15*grain);
+      heights[y*size+x]=.18*broad+.39*aggregate+.32*micro+.11*grain;
       const i=(y*size+x)*4;data[i]=v;data[i+1]=Math.round(v*.91);data[i+2]=Math.round(v*.78);data[i+3]=255;
     }
     const map=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
     map.wrapS=map.wrapT=THREE.RepeatWrapping;map.colorSpace=THREE.SRGBColorSpace;
     map.generateMipmaps=true;map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.needsUpdate=true;
-    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map,vertexColors:true,roughness:.98,metalness:0,envMapIntensity:.06,side:THREE.DoubleSide}));
+    // Packed surface detail generated locally. Separate non-colour data textures
+    // retain actual light response rather than painting highlights into albedo.
+    const normals=new Uint8Array(size*size*4), roughness=new Uint8Array(size*size*4);
+    const height=(x:number,y:number)=>heights[((y+size)%size)*size+(x+size)%size];
+    for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+      const dx=(height(x+1,y)-height(x-1,y))*2.1,dy=(height(x,y+1)-height(x,y-1))*2.1;
+      const len=Math.hypot(dx,dy,1),i=(y*size+x)*4;
+      normals[i]=Math.round((.5-dx/len*.5)*255);normals[i+1]=Math.round((.5-dy/len*.5)*255);
+      normals[i+2]=Math.round((.5+.5/len)*255);normals[i+3]=255;
+      const rough=Math.round(172+73*(1-height(x,y)));
+      roughness[i]=roughness[i+1]=roughness[i+2]=rough;roughness[i+3]=255;
+    }
+    const dataMap=(pixels:Uint8Array)=>{
+      const texture=new THREE.DataTexture(pixels,size,size,THREE.RGBAFormat);
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.generateMipmaps=true;
+      texture.minFilter=THREE.LinearMipmapLinearFilter;texture.magFilter=THREE.LinearFilter;
+      texture.needsUpdate=true;return texture;
+    };
+    const normalMap=dataMap(normals),roughnessMap=dataMap(roughness);
+    map.anisotropy=4;normalMap.anisotropy=4;roughnessMap.anisotropy=4;
+    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map,normalMap,roughnessMap,normalScale:new THREE.Vector2(.85,.85),vertexColors:true,roughness:.96,metalness:0,envMapIntensity:.10,side:THREE.DoubleSide}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
     // Irregular shallow wet patches: visual-only, no separate wheel collider.
