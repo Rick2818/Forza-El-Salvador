@@ -73,6 +73,7 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const customizer = new GalleryCustomizer(scene, loader);
 
 let currentModel: THREE.Group | null = null;
+let thumbnailCamera: THREE.OrthographicCamera | null = null;
 let currentCar = MODELS[0];
 try {
   const saved = localStorage.getItem("horizon.selected-vehicle");
@@ -121,6 +122,36 @@ function chooseAngle(angle: string): void {
 }
 
 /** Keep the selected showroom card's photograph synchronized with its live GLB. */
+/**
+ * Render previews of the imported GLB using its measured full bounds,
+ * rather than cropping the car with an over-close perspective camera.
+ * Does not change geometry or the interactive 3D view.
+ */
+function frameGLBForThumbnail(model: THREE.Object3D): void {
+  const bounds = new THREE.Box3().setFromObject(model);
+  const middle = bounds.getCenter(new THREE.Vector3());
+  const stageAspect = Math.max(stage.clientWidth,100)/Math.max(stage.clientHeight,100);
+  const inspectionCamera = new THREE.OrthographicCamera(-3,3,3,-3,0.1,100);
+  inspectionCamera.position.copy(middle).add(new THREE.Vector3(1.5,1.0,2.1).normalize().multiplyScalar(25));
+  inspectionCamera.lookAt(middle);
+  inspectionCamera.updateMatrixWorld(true);
+  const min=new THREE.Vector2(Infinity,Infinity);
+  const max=new THREE.Vector2(-Infinity,-Infinity);
+  for(const x of [bounds.min.x,bounds.max.x])
+    for(const y of [bounds.min.y,bounds.max.y])
+      for(const z of [bounds.min.z,bounds.max.z]){
+        const p=new THREE.Vector3(x,y,z).applyMatrix4(inspectionCamera.matrixWorldInverse);
+        min.min(new THREE.Vector2(p.x,p.y));max.max(new THREE.Vector2(p.x,p.y));
+      }
+  const halfY=Math.max((max.y-min.y)/2/.80,(max.x-min.x)/2/(stageAspect*.80),.2);
+  inspectionCamera.left=-halfY*stageAspect;
+  inspectionCamera.right=halfY*stageAspect;
+  inspectionCamera.top=halfY;
+  inspectionCamera.bottom=-halfY;
+  inspectionCamera.updateProjectionMatrix();
+  thumbnailCamera=inspectionCamera;
+}
+
 function captureCurrentModelPhoto(): void {
   if (!currentModel) return;
   const photo = Array.from(document.querySelectorAll<HTMLImageElement>("img.glb-photo"))
@@ -230,8 +261,7 @@ async function showModel(car: GalleryCar): Promise<void> {
       floor.visible=false;
       grid.visible=false;
       scene.background = new THREE.Color("#172434");
-      camera.position.sub(controls.target).multiplyScalar(0.55).add(controls.target);
-      controls.update();
+      frameGLBForThumbnail(group);
     }
     if (!new URLSearchParams(window.location.search).has("render-thumbnails"))
       requestAnimationFrame(captureCurrentModelPhoto);
@@ -330,7 +360,7 @@ $("capture").addEventListener("click", () => {
 renderer.setAnimationLoop(() => {
   if (!document.hidden) {
     controls.update();
-    renderer.render(scene,camera);
+    renderer.render(scene,thumbnailCamera ?? camera);
   }
 });
 void showModel(currentCar);
