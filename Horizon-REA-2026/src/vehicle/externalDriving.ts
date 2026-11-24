@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { batchRigidPart } from "../render/rigidVehicleBatch";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
@@ -419,6 +420,13 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     obj.material=Array.isArray(obj.material)?obj.material.map(mapMaterial):mapMaterial(obj.material);
     obj.castShadow=false;obj.receiveShadow=false;
   });
+  // Preserve original wheel assignment diagnostics; batch only inside each
+  // rigid motion group after material adaptation.
+  let renderMeshesBefore=0,renderMeshesAfter=0;
+  root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesBefore++;});
+  for(const part of [bodyRoot,...wheels.map(wheel=>wheel.spin)])owned.push(...batchRigidPart(part));
+  root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesAfter++;});
+  root.userData.renderMeshBudget={before:renderMeshesBefore,after:renderMeshesAfter};
   root.userData.ownedBatchGeometry=owned;
   const dimensions=new THREE.Box3().setFromObject(imported).getSize(new THREE.Vector3());
   diagnostics.set(id,{
