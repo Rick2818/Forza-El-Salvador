@@ -1,10 +1,13 @@
-name: V25 Graphics continuity and fleet audit (no deployment)
+name: V26 Graphics continuity and fleet audit (no deployment)
 on:
   pull_request:
     branches: [main]
     paths:
       - 'Horizon-REA-2026/**'
       - '.github/workflows/pickup-v24-probe.yml'
+concurrency:
+  group: v26-graphics-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
