@@ -90,6 +90,7 @@ export class Race {
   private readonly rivalBounds=new THREE.Sphere();
   private readonly rivalRadius=new Map<Vehicle,number>();
   private culledRivals=0;
+  lodEnabled=true;
   /** Prepare body variants for rivals and preallocated traffic only. */
   async prepareRivalLods():Promise<void>{
     const rivals=[...this.racers.filter(r=>!r.isPlayer),...this.oncoming,...this.standbyOncoming];
@@ -119,7 +120,7 @@ export class Race {
       this.rivalBounds.center.copy(root.position);
       this.rivalBounds.radius=this.rivalRadius.get(vehicle)??10;
       root.visible=distance<30||this.rivalFrustum.intersectsSphere(this.rivalBounds);
-      if(root.visible)lod.update(distance);else this.culledRivals++;
+      if(root.visible){if(this.lodEnabled)lod.update(distance);else lod.setLevel(0);}else this.culledRivals++;
     }
   }
   get culledRivalCount(){return this.culledRivals;}
