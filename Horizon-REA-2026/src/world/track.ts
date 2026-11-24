@@ -375,6 +375,32 @@ export class Track {
     const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
+    // Irregular shallow wet patches: visual-only, no separate wheel collider.
+    const wetPos:number[] = [], wetIdx:number[] = [];
+    for(let i=0;i<n;i++){
+      const next=(i+1)%n;
+      if(offroadSectorAt(this.progress(i)).surface!=="puddle" ||
+         offroadSectorAt(this.progress(next)).surface!=="puddle") continue;
+      const offset=wetPos.length/3;
+      for(const k of [i,next]){
+        const p=this.samples[k], r=this.rights[k];
+        const t=k/n*2*Math.PI;
+        const width=1.5+.65*Math.sin(t*13)+.3*Math.cos(t*27);
+        for(const side of [-1,1]){
+          const d=side*width+.4*Math.sin(t*19);
+          wetPos.push(p.x+r.x*d,p.y+.095,p.z+r.z*d);
+        }
+      }
+      wetIdx.push(offset,offset+1,offset+2,offset+2,offset+1,offset+3);
+    }
+    const wetGeo=new THREE.BufferGeometry();
+    wetGeo.setAttribute("position",new THREE.Float32BufferAttribute(wetPos,3));
+    wetGeo.setIndex(wetIdx);wetGeo.computeVertexNormals();
+    const wet=new THREE.Mesh(wetGeo,new THREE.MeshPhysicalMaterial({
+      color:0x493a29,roughness:.17,metalness:0,clearcoat:1,clearcoatRoughness:.14,
+      envMapIntensity:.7,side:THREE.DoubleSide
+    }));
+    wet.name="offroad-muddy-puddles";wet.receiveShadow=true;this.group.add(wet);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
