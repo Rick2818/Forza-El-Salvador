@@ -685,3 +685,22 @@ button.difficulty-btn.is-active {
 @media (max-width: 720px) {
   .fourbyfour-btn { right: 14px; top: 160px; min-height: 42px; min-width: 122px; }
 }
+
+/* Landing selection: all 10 GLBs are directly visible on the first page. */
+.overlay:has(.setup-tabs) { overflow-y: auto; align-items: start; padding: 18px 0; }
+.menu-card:has(.setup-tabs) { width: min(1020px, 96vw); margin: auto; padding: 22px 30px; }
+.vehicle-group-heading { display:flex; justify-content:space-between; gap:12px; align-items:center; margin:16px 0 8px; color:#ffce96; font-size:14px; }
+.vehicle-group-heading span { font-size:11px; color:#a6b8ca; font-weight:500; }
+.vehicle-legacy { margin:17px 0; padding:11px 13px; background:#101e2c; border:1px solid #49586b; border-radius:12px; }
+.vehicle-legacy summary { cursor:pointer; font-size:13px; font-weight:750; color:#dbe6f1; }
+.vehicle-legacy .vehicle-pick-grid { margin-top:12px; }
+.vehicle-pick-no-photo { background:linear-gradient(145deg,#182b3c,#34445a); font-size:28px; }
+.vehicle-launch-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:14px 0 10px; }
+.vehicle-launch-actions a { color:#ffd1a8; font-size:13px; font-weight:800; text-underline-offset:3px; }
+@media(max-width:600px) {
+  .menu-card:has(.setup-tabs) { width:98vw; padding:15px; }
+  .vehicle-group-heading { align-items:flex-start; flex-direction:column; gap:3px; }
+  .vehicle-pick-no-photo { flex-basis:56px; width:56px; height:48px; font-size:24px; }
+  .vehicle-launch-actions .btn { width:100%; padding:13px 11px; font-size:11px; }
+  .vehicle-launch-actions a { font-size:12px; }
+}

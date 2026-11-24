@@ -62,7 +62,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 <main class="layout">
 <aside class="sidebar" aria-label="Diez modelos 3D descargados">
 <h1>10 archivos GLB reales</h1>
-<p class="intro">Selecciona cualquier vehículo. Gira el modelo con el mouse, acerca con la rueda o pellizca en pantalla. Son modelos externos en evaluación; aún no reemplazan los autos jugables.</p>
+<p class="intro">Selecciona cualquier vehículo. Gira el modelo con el mouse, acerca con la rueda o pellizca en pantalla. Puedes inspeccionar los 10 modelos 3D y elegir uno para volver al juego. Los 7 anteriores siguen disponibles.</p>
 <div class="group-title">7 deportivos</div><div id="sports"></div>
 <div class="group-title">3 pickups</div><div id="pickups"></div>
 </aside>
@@ -78,6 +78,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 <button type="button" data-view="under">Bajos</button>
 </div>
 <button type="button" id="rotate" class="rotate" aria-pressed="false">↻ Girar</button>
+<button type="button" id="drive-current" class="rotate" disabled>🏁 Elegir para correr</button>
 <button type="button" id="capture" class="capture">📷 Guardar captura real</button>
 </div>
 <div class="customizer" role="region" aria-label="Personalizar vehículo">
@@ -99,7 +100,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #f7c76b;outline-offset:3p
 <button type="button" data-wheelset="ferrari" class="wheel-option">Juego Ferrari F430 (3D)</button>
 <button type="button" data-wheelset="jesko" class="wheel-option">Juego Jesko (3D)</button>
 </div>
-<div id="finish-status" role="status" aria-live="polite">Los cambios de color y llantas se guardan para este vehículo en este navegador. Vista previa, no carrera.</div>
+<div id="finish-status" role="status" aria-live="polite">Los cambios de color y llantas se guardan para este vehículo en este navegador. La pintura se conserva para el modelo elegido; las llantas nuevas aún solo se visualizan aquí.</div>
 </div>
 <div class="details">
 <div><strong>Autor y procedencia:</strong> <span id="credits"></span></div>

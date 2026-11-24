@@ -119,7 +119,7 @@ export class Menu {
     const target = (event.target as HTMLElement).closest("[data-action]") as HTMLElement | null;
     if (!target) return;
     const action = target.dataset.action;
-    if (action === "start") this.callbacks.onStart();
+    if (action === "start" && !this.selecting) this.callbacks.onStart();
     if (action === "resume") this.callbacks.onResume();
     if (action === "restart") this.callbacks.onRestart();
     if (action === "quit") this.callbacks.onQuit();
@@ -156,7 +156,8 @@ export class Menu {
     if (this.selecting) return;
     this.selecting = true;
     const status = this.overlay.querySelector<HTMLElement>("#garage-status");
-    if (status) status.textContent = "Cargando modelo…";
+    if (status) status.textContent = "Cargando el modelo 3D elegido…";
+    for (const button of this.overlay.querySelectorAll<HTMLButtonElement>('[data-action="start"]')) button.disabled = true;
     for (const button of this.overlay.querySelectorAll<HTMLButtonElement>(".vehicle-select")) button.disabled = true;
     try {
       await this.callbacks.onSelectVehicle(id);
@@ -179,6 +180,7 @@ export class Menu {
     } finally {
       this.selecting = false;
       for (const button of this.overlay.querySelectorAll<HTMLButtonElement>(".vehicle-select")) button.disabled = false;
+      for (const button of this.overlay.querySelectorAll<HTMLButtonElement>('[data-action="start"]')) button.disabled = false;
     }
   }
 
@@ -258,7 +260,7 @@ export class Menu {
         </fieldset>
         ${this.audioPanel()}
         <div class="menu-actions">
-          <button class="btn primary" data-action="start">Iniciar carrera</button>
+          ${this.activeSetupTab === "autos" ? "" : '<button class="btn primary" data-action="start">Iniciar carrera</button>'}
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
           <button class="btn ghost" data-action="garage">Ver modelos y detalles del garaje</button>
         </div>
