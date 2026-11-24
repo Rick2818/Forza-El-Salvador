@@ -11,12 +11,27 @@ describe("Heavy offroad mud",()=>{
   expect(mesh.material).toBe(material);
   mud.update(root,.8,1/60);
   expect(mesh.material).not.toBe(material);
-  const shader={uniforms:{},vertexShader:"#include <begin_vertex>",fragmentShader:"#include <map_fragment>"};
-  (mesh.material as THREE.Material).onBeforeCompile(shader as never,null as never);
-  expect(shader.fragmentShader).toContain("float mudPattern");
-  expect(shader.fragmentShader).not.toMatch(/float\s+patch\b/);
+  const coated=mesh.material as THREE.MeshStandardMaterial;
+  expect(coated.color.equals(material.color)).toBe(false);
+  expect(coated.map).toBe(material.map);
+  expect(coated.opacity).toBe(material.opacity);
+  expect(coated.onBeforeCompile).toBe(material.onBeforeCompile);
+  const geom=mesh.geometry;
+  for(let i=0;i<7200;i++)mud.update(root,.8+.2*i/7200,1/60);
+  expect(mesh.material).toBe(coated);
+  expect(mesh.geometry).toBe(geom);
+  expect(coated.opacity).toBe(1);
+  expect(coated.transparent).toBe(false);
   mud.dispose();expect(mesh.material).toBe(material);
   mesh.geometry.dispose();material.dispose();
+ });
+ it("never coats glass, lamps or alpha masked surfaces",()=>{
+  const root=new THREE.Group(),geometry=new THREE.BoxGeometry();
+  const materials=[new THREE.MeshPhysicalMaterial({name:"windscreen",transmission:.9}),new THREE.MeshStandardMaterial({name:"taillight",emissive:0xff0000}),new THREE.MeshStandardMaterial({transparent:true,opacity:.2}),new THREE.MeshStandardMaterial({alphaTest:.5})];
+  const meshes=materials.map(m=>new THREE.Mesh(geometry,m));root.add(...meshes);
+  const mud=new PickupMudCoating();mud.update(root,1,1/60);
+  meshes.forEach((m,i)=>expect(m.material).toBe(materials[i]));
+  mud.dispose();geometry.dispose();materials.forEach(m=>m.dispose());
  });
  it("covers 80 percent of the planned lap",()=>{
   expect(OFFROAD_SECTORS.filter(s=>s.surface!=="dirt").reduce((n,s)=>n+s.end-s.start,0)).toBeCloseTo(.8);
