@@ -1008,7 +1008,7 @@ export class Game {
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender && !this.captureMode) {
       const now=performance.now();
-      const active=this.state==="racing"||this.state==="opening";
+      const active=this.track.circuit.id===OFFROAD_CIRCUIT.id && (this.state==="racing"||this.state==="opening");
       if(active && !document.hidden && document.hasFocus() && now-this.lastDrawAt>250)
         this.geometryPressureUntil=now+5000;
       this.race.updateRivalLods(this.camera,active&&now<this.geometryPressureUntil);
