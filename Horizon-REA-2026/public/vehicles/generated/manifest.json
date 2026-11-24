@@ -1,0 +1,117 @@
+{
+  "status": "3D_CAPTURED_NOT_APPROVED_FOR_COMMERCIAL_RELEASE",
+  "source": "Actual GLBs used by Horizon showroom and race",
+  "verifiedCount": 10,
+  "photos": [
+    {
+      "id": "ferrari-f430",
+      "model": "models/external-candidates/ferrari-f430.glb",
+      "modelSha256": "673886905d2e1f1117681ee1ddf809738fba942c1f71ab1d3d090f9a202aef16",
+      "thumbnail": "vehicles/generated/ferrari-f430.png",
+      "thumbnailSha256": "9fa8054cc5bc62d058f2d8bf8a03e1a06a8bad6e0a2a1250b8459dbd9fcbca22",
+      "meshes": 100,
+      "triangles": 54936,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "lamborghini-aventador",
+      "model": "models/external-candidates/lamborghini-aventador.glb",
+      "modelSha256": "78bb593ae50bf4b26dcf1e6524a84f62f18d7be86e4243de25e36d2930d59760",
+      "thumbnail": "vehicles/generated/lamborghini-aventador.png",
+      "thumbnailSha256": "02c980e172f7b12927c8697d5abbe681598543269649a37892d3fad5c5608523",
+      "meshes": 32,
+      "triangles": 401890,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "porsche-911-c4s",
+      "model": "models/external-candidates/porsche-911-c4s.glb",
+      "modelSha256": "d5261b30a2c8d11d1f4ed1a2c9d8e8166980acfce1d89255f0818721ecaf11bf",
+      "thumbnail": "vehicles/generated/porsche-911-c4s.png",
+      "thumbnailSha256": "80f40fdc149b79e5bd0d30adb9cb9cdfd09f6a8b600465ea9fca0e8baed1fa38",
+      "meshes": 15,
+      "triangles": 102295,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "bugatti-chiron-profilee",
+      "model": "models/external-candidates/bugatti-chiron-profilee.glb",
+      "modelSha256": "2d73cf6197a785367076d02aef5bf8e1ebc583d6e9085e83887f32c2765ba508",
+      "thumbnail": "vehicles/generated/bugatti-chiron-profilee.png",
+      "thumbnailSha256": "8f0ff2952cc112620d2cb687be09f84fd9d7945b1d5e6bbaff82169996568f12",
+      "meshes": 47,
+      "triangles": 99747,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "koenigsegg-jesko",
+      "model": "models/external-candidates/koenigsegg-jesko.glb",
+      "modelSha256": "c7db7e5240a970b0da5910553e44fb931068c6189530e905003c358125a2a122",
+      "thumbnail": "vehicles/generated/koenigsegg-jesko.png",
+      "thumbnailSha256": "4bc40f849a79ebe7dfa11c79e18c1071a226e882e40a099516da7dac78d9b12b",
+      "meshes": 121,
+      "triangles": 50487,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "mercedes-amg-gt-alternative",
+      "model": "models/external-candidates/mercedes-amg-gt-alternative.glb",
+      "modelSha256": "fe15897ad73d7c87b4e864a4724ae90b8377f382be5b462b40a0d3fb0a787422",
+      "thumbnail": "vehicles/generated/mercedes-amg-gt-alternative.png",
+      "thumbnailSha256": "0c69f1a6e3deb8c7133735e88cf859399fbef5c12d839e0a6d53cefc6870f173",
+      "meshes": 33,
+      "triangles": 166321,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "tesla-roadster-electric-alternative",
+      "model": "models/external-candidates/tesla-roadster-electric-alternative.glb",
+      "modelSha256": "08517168cec7142eafddff26ff9c90913b8d129e21140ea576e9dc40e5c18987",
+      "thumbnail": "vehicles/generated/tesla-roadster-electric-alternative.png",
+      "thumbnailSha256": "686a2809300d34b8986407b73027df5fcde32f418c9fc5366201ad82065e0d2b",
+      "meshes": 105,
+      "triangles": 230114,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "ford-f150-raptor-police",
+      "model": "models/external-candidates/ford-f150-raptor-police.glb",
+      "modelSha256": "45f0b6198a6dfd197a503f03a69b4eaf9d6618f774d2351a6908820637abfb46",
+      "thumbnail": "vehicles/generated/ford-f150-raptor-police.png",
+      "thumbnailSha256": "033c91709f7141803fa21d15bc7b6a27057b436f79efca117c57fa98be89698a",
+      "meshes": 187,
+      "triangles": 286057,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "ram-3500-alternative",
+      "model": "models/external-candidates/ram-3500-alternative.glb",
+      "modelSha256": "62291c8491cdba22abc2e05f7bb3556909c5d7c39751b616e49932202adc261a",
+      "thumbnail": "vehicles/generated/ram-3500-alternative.png",
+      "thumbnailSha256": "dd6fd7266543314eccd87280464ee581032870d0be38e35ed24a75ef8fd570f3",
+      "meshes": 15,
+      "triangles": 15495,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    },
+    {
+      "id": "chevrolet-silverado-ev-alternative",
+      "model": "models/external-candidates/chevrolet-silverado-ev-alternative.glb",
+      "modelSha256": "bb9031248135c533aab88fdb7ed0551a5720100548845cee790d5842c723eeed",
+      "thumbnail": "vehicles/generated/chevrolet-silverado-ev-alternative.png",
+      "thumbnailSha256": "d26e92e98f1fbeca55a51bfa13ae9ef2b068cf42d226e90e941135734930b372",
+      "meshes": 256,
+      "triangles": 137705,
+      "source": "Live Three.js GLB WebGL canvas",
+      "approved": false
+    }
+  ]
+}
