@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GalleryCustomizer, type WheelSet } from "./customizer";
 import { removeExternalStage } from "../vehicle/externalBackdrop";
+import { EXTERNAL_VEHICLES } from "../vehicle/externalRoster";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -210,7 +211,9 @@ async function showModel(car: GalleryCar): Promise<void> {
   }
   try {
     await MeshoptDecoder.ready;
-    const file = import.meta.env.BASE_URL + "models/external-candidates/" + car.id + ".glb";
+    const rosterVehicle = EXTERNAL_VEHICLES.find(vehicle => vehicle.id === car.id);
+    if (!rosterVehicle?.modelUrl) throw new Error("El modelo no está en la misma lista usada en carrera: " + car.id);
+    const file = import.meta.env.BASE_URL + rosterVehicle.modelUrl;
     const gltf = await loader.loadAsync(file, event => {
       if (token !== generation) return;
       if (event.total) status.textContent = "Descargando GLB: " + Math.round(100*event.loaded/event.total) + "%";
