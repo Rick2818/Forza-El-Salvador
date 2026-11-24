@@ -485,7 +485,7 @@ export class Game {
     this.lastEnteredPitGarage = null;
     this.audio.silence();
     this.audio.ensure();
-    this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
+    this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric",this.track.circuit.id===OFFROAD_CIRCUIT.id);
     this.race.state = this.fireworks ? "idle" : "countdown";
     this.race.countdown = SETTINGS.race.countdown;
     this.maxFrameGapMs = 0;
@@ -951,7 +951,7 @@ export class Game {
         this.lastEnteredPitGarage = garage;
       }
       this.framePhase = "audio";
-      this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
+      this.audio.update(player.rpm, this.track.circuit.id===OFFROAD_CIRCUIT.id && this.race.state!=="racing" ? 0 : drive.throttle, player.speedKph, player.slip);
       const listener = player.body.translation();
       const velocity = player.body.linvel();
       const cameraRight = this.camera.matrixWorld.elements;
