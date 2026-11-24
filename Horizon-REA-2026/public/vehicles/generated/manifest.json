@@ -63,9 +63,9 @@
       "model": "models/external-candidates/mercedes-amg-gt-alternative.glb",
       "modelSha256": "fe15897ad73d7c87b4e864a4724ae90b8377f382be5b462b40a0d3fb0a787422",
       "thumbnail": "vehicles/generated/mercedes-amg-gt-alternative.png",
-      "thumbnailSha256": "0c69f1a6e3deb8c7133735e88cf859399fbef5c12d839e0a6d53cefc6870f173",
-      "meshes": 33,
-      "triangles": 166321,
+      "thumbnailSha256": "fc66187ff9eb314d12c45d1645a4eafc3cab93ca2551b59aa37da7eae1d90a6f",
+      "meshes": 32,
+      "triangles": 166319,
       "source": "Live Three.js GLB WebGL canvas",
       "approved": false
     },
