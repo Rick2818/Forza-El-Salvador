@@ -203,6 +203,23 @@ export async function prepareHumanImpostors(renderer:THREE.WebGLRenderer,scene:T
   const night=scene.background instanceof THREE.Color&&scene.background.getHex()<0x222222;
   for(const g of groups){g.userData.installImpostors(atlas,night);g.userData.setCrowdMode(mode);}
 }
+/** Test-only readback: reject empty, solid, or clipped atlas tiles. This
+ * synchronous readback is never used in the playable frame loop. */
+export function inspectCrowdAtlas(renderer:THREE.WebGLRenderer){
+  const target=atlases.get(renderer);if(!target)return null;
+  const pixels=new Uint8Array(ATLAS_COLS*TILE*ATLAS_ROWS*TILE*4);
+  renderer.readRenderTargetPixels(target,0,0,ATLAS_COLS*TILE,ATLAS_ROWS*TILE,pixels);
+  const tiles=[];
+  for(let row=0;row<ATLAS_ROWS;row++)for(let column=0;column<ATLAS_COLS;column++){
+    let opaque=0,edge=0;
+    for(let y=0;y<TILE;y++)for(let x=0;x<TILE;x++){
+      const alpha=pixels[((row*TILE+y)*ATLAS_COLS*TILE+column*TILE+x)*4+3];
+      if(alpha>=128){opaque++;if(x===0||y===0||x===TILE-1||y===TILE-1)edge++;}
+    }
+    tiles.push({column,row,opaqueFraction:opaque/(TILE*TILE),edge});
+  }
+  return {width:target.width,height:target.height,tiles};
+}
 export function crowdStats(scene:THREE.Scene){
   let visible=0,triangles=0,draws=0;const counts=[0,0,0];
   scene.traverseVisible(o=>{
@@ -337,7 +354,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
         const viewYaw=Math.atan2(-dx,-dz);
         rotation.setFromAxisAngle(axis,billboard?viewYaw:p.yaw);
         if(billboard){
-          const angle=((Math.round((viewYaw-p.yaw)/(Math.PI/2))%4)+4)%4;
+          const angle=((Math.round((p.yaw-viewYaw)/(Math.PI/2))%4)+4)%4;
           (mesh.geometry.getAttribute("iAtlas") as THREE.InstancedBufferAttribute).setXYZ(index,angle,i%4,(i*7)%13);
         }
         matrix.compose(position,rotation,scale);mesh.setMatrixAt(index,matrix);
