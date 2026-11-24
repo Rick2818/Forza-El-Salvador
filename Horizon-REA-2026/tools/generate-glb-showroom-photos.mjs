@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
 
@@ -16,7 +16,8 @@ const entries=[
   "ford-f150-raptor-police","ram-3500-alternative",
   "chevrolet-silverado-ev-alternative"
 ];
-const out="public/vehicles/generated";
+// Write outside Vite public/ until screenshots complete to prevent HMR reloads.
+const out="../v20-temporary-screenshots";
 await mkdir(out,{recursive:true});
 const server=spawn(process.execPath,["node_modules/vite/bin/vite.js","--port","5178","--strictPort","--host","127.0.0.1"],{stdio:"inherit"});
 let browser=null;
@@ -66,6 +67,10 @@ try {
     verifiedCount:photos.length,photos
   },null,2)+"\n");
   assert.equal(photos.length,10);
+  const published="public/vehicles/generated";
+  await mkdir(published,{recursive:true});
+  for(const photo of photos)await copyFile(path.join(out,photo.id+".png"),path.join(published,photo.id+".png"));
+  await copyFile(path.join(out,"manifest.json"),path.join(published,"manifest.json"));
 }finally{
   if(browser)await browser.close();
   server.kill("SIGTERM");
