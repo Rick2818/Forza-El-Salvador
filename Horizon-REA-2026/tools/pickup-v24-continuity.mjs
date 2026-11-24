@@ -4,6 +4,7 @@ import { mkdir } from "node:fs/promises";
 
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
+const circuit=process.argv[4]??"monzon";
 assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
@@ -11,12 +12,13 @@ const errors=[];
 page.on("pageerror",e=>{errors.push(String(e));console.error("[pageerror]",e);});
 page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());});
 try{
-  await page.addInitScript(()=>{localStorage.setItem("horizon.circuit","monzon");localStorage.setItem("horizon.quality","equilibrada");});
+  await page.addInitScript((circuit)=>{localStorage.setItem("horizon.circuit",circuit);localStorage.setItem("horizon.quality","equilibrada");localStorage.setItem("horizon.oncoming-traffic","true");},circuit);
   await page.goto("http://127.0.0.1:5173/race.html?vehicle="+encodeURIComponent(id),{timeout:120000});
   await page.bringToFront();
   await page.waitForFunction(()=>window.__HORIZON_GAME__&&window.HORIZON,{},{timeout:120000});
   await page.evaluate(()=>{window.HORIZON.setQuality("equilibrada");window.HORIZON.autoScale(false);window.HORIZON.setScale(.5);});
   await page.locator('#autos-panel button[data-action="start"]').click({timeout:60000});
+  await page.waitForFunction(()=>!window.__HORIZON_GAME__.preparingGraphics&&["opening","racing"].includes(window.__HORIZON_GAME__.state),{},{timeout:180000});
   await page.evaluate(async(mode)=>{
     const game=window.__HORIZON_GAME__;
     game.skipOpening();
@@ -83,7 +85,7 @@ try{
       const g=window.__HORIZON_GAME__;
       const s=window.HORIZON.stats();
       return {state:s.state,raceState:s.raceState,elapsed:s.elapsed,frameAgeMs:s.frameAgeMs,fps:s.fps,
-        vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,
+        vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,graphicsPreparationMs:s.graphicsPreparationMs,
         hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
@@ -96,8 +98,8 @@ try{
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
-    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V24","Unexpected running build");
-    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV24\b/);
+    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V25","Unexpected running build");
+    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV25\b/);
     assert.equal(sample.contextLost,false);
     assert.equal(sample.recovery,false);
     assert.equal(errors.length,0);
