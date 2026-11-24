@@ -55,6 +55,8 @@ export class Game {
   private clock = new THREE.Clock();
   private time = 0;
   private lastCompletedFrame = performance.now();
+  private preparingGraphics = false;
+  private graphicsPreparationMs = 0;
   private framePhase = "init";
   private physicsAccum = 0;
   private readonly fixedStep = 1 / 60;
@@ -258,6 +260,8 @@ export class Game {
         raceState: this.race.state,
         openingTime: this.openingTime,
         framePhase: this.framePhase,
+        preparingGraphics: this.preparingGraphics,
+        graphicsPreparationMs: Math.round(this.graphicsPreparationMs),
         frameAgeMs: Math.round(performance.now() - this.lastCompletedFrame),
         fps: Number(this.fps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
@@ -310,7 +314,81 @@ export class Game {
   }
 
   startRace(): void {
-    this.replaceRace();
+    if (this.preparingGraphics) return;
+    if (this.captureMode) { this.replaceRace(); this.beginPreparedRace(); return; }
+    // Unlock audio within the user's gesture, before awaiting GPU preparation.
+    this.audio.ensure();
+    this.audio.silence();
+    this.preparingGraphics = true;
+    const notice = document.createElement("div");
+    notice.id = "race-graphics-preparation";
+    notice.setAttribute("role", "status");
+    notice.style.cssText = "position:fixed;inset:0;z-index:9998;display:grid;place-items:center;background:#080f1d;color:white;font:600 16px system-ui;text-align:center;padding:24px";
+    notice.textContent = "Preparando modelos, texturas e iluminación para la carrera…";
+    document.body.append(notice);
+    void (async () => {
+      try {
+        // Paint the loading state before doing expensive scene work.
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        this.replaceRace();
+        await this.prepareRaceGraphics();
+        this.lastCompletedFrame = performance.now();
+        this.clock.getDelta();
+        this.beginPreparedRace();
+        // If the player left the tab during preparation, keep pause semantics.
+        if (document.hidden || !document.hasFocus()) this.pauseForFocusLoss();
+      } catch (error) {
+        console.error("[Horizon] Error preparando gráficos", error);
+        this.audio.silence();
+        this.showRecovery("frame-failure", "No se pudo preparar la carrera", String(error));
+      } finally {
+        this.preparingGraphics = false;
+        notice.remove();
+        this.lastCompletedFrame = performance.now();
+      }
+    })();
+  }
+
+  private async prepareRaceGraphics(): Promise<void> {
+    const started = performance.now();
+    this.framePhase = "graphics-preparation";
+    await this.environment.whenReady(this.scene);
+    const hiddenCars = this.race.standbyVisuals();
+    const saved = hiddenCars.map(root => root.visible);
+    const fireworks = this.fireworks?.group;
+    const wasFireworksVisible = fireworks?.visible;
+    const textures = new Set<THREE.Texture>();
+    try {
+      // Compile both the parade and race light configurations while the clock is stopped.
+      hiddenCars.forEach(root => { root.visible = true; });
+      this.scene.updateMatrixWorld(true);
+      this.scene.traverse(object => {
+        if (!(object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.Line)) return;
+        for (const material of [object.material].flat()) {
+          for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+        }
+      });
+      for (const texture of textures) this.renderer.initTexture(texture);
+      if (fireworks) {
+        fireworks.visible = true;
+        await this.renderer.compileAsync(this.scene, this.camera);
+        fireworks.visible = false;
+      }
+      await this.renderer.compileAsync(this.scene, this.camera);
+      // Submit a real representative race frame before the clock starts.
+      hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
+      this.chase.snap();
+      this.chase.update(1 / 60, this.race.player.vehicle, this.time);
+      this.renderer.render(this.scene, this.camera);
+      if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
+    } finally {
+      hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
+      if (fireworks) fireworks.visible = wasFireworksVisible ?? false;
+      this.graphicsPreparationMs = performance.now() - started;
+    }
+  }
+
+  private beginPreparedRace(): void {
     this.performanceLog.reset();
     this.lastEnteredPitGarage = null;
     this.audio.silence();
@@ -599,7 +677,7 @@ export class Game {
   // independent watchdog provides a recovery path when the JS event loop is
   // responsive. A completely blocked GPU/JS process still requires a reload.
   private checkFrameContinuity = (): void => {
-    if (this.captureMode || document.hidden || !document.hasFocus() ||
+    if (this.preparingGraphics || this.captureMode || document.hidden || !document.hasFocus() ||
         (this.state !== "racing" && this.state !== "opening")) {
       this.lastCompletedFrame = performance.now();
       return;
@@ -619,6 +697,7 @@ export class Game {
 
   private frame = (): void => {
     const rawDt = this.clock.getDelta();
+    if (this.preparingGraphics) { this.lastCompletedFrame = performance.now(); return; }
     try {
       this.framePhase = "tick";
       this.tick(Math.min(rawDt, 0.05), rawDt);
