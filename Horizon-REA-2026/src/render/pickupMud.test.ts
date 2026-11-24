@@ -15,8 +15,18 @@ describe("Heavy offroad mud",()=>{
   (mesh.material as THREE.Material).onBeforeCompile(shader as never,null as never);
   expect(shader.fragmentShader).toContain("float mudPattern");
   expect(shader.fragmentShader).not.toMatch(/float\s+patch\b/);
+  expect(shader.fragmentShader).not.toContain("floor(vMudLocal");
+  expect(shader.fragmentShader).not.toContain("43758.5453");
   mud.dispose();expect(mesh.material).toBe(material);
   mesh.geometry.dispose();material.dispose();
+ });
+ it("preserves glass and lights even at full mud coverage",()=>{
+  const root=new THREE.Group(), glass=new THREE.MeshPhysicalMaterial({transmission:.8}), lamp=new THREE.MeshStandardMaterial({name:"headlight"});
+  const geo=new THREE.BoxGeometry(1,1,1);
+  const a=new THREE.Mesh(geo,glass),b=new THREE.Mesh(geo,lamp);root.add(a,b);
+  const mud=new PickupMudCoating();mud.update(root,1,1/60);
+  expect(a.material).toBe(glass);expect(b.material).toBe(lamp);
+  mud.dispose();geo.dispose();glass.dispose();lamp.dispose();
  });
  it("covers 80 percent of the planned lap",()=>{
   expect(OFFROAD_SECTORS.filter(s=>s.surface!=="dirt").reduce((n,s)=>n+s.end-s.start,0)).toBeCloseTo(.8);
