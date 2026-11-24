@@ -460,7 +460,11 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   imported.traverse(child=>{
     if(!(child instanceof THREE.Mesh))return;
     sourceMeshes++;sourceTriangles+=triangulationCount(child.geometry);
-    if(isWheel(child)||(needsGeometricFit(id)&&measuredTyres.has(id)&&(atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))||(id==='mercedes-amg-gt-alternative'&&isMergedHubAssembly(child,hubs,externalWheelRadii(id,d))))))wheelMeshes.push(child);
+    // Mercedes wheel material primitives are merged across all corners.
+    // Only admit them if their referenced vertices fit measured hub envelopes.
+    if(isWheel(child)||(needsGeometricFit(id)&&measuredTyres.has(id)&&
+      (atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))||
+       (id==='mercedes-amg-gt-alternative'&&isMergedHubAssembly(child,hubs,externalWheelRadii(id,d))))))wheelMeshes.push(child);
   });
   const counts=[0,0,0,0];
   // Reattach wheel meshes from source GLB to live pivots; no substitute tyres.
@@ -489,7 +493,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
         const bound=indexedWorldBounds(item.mesh),s=bound.getSize(new THREE.Vector3());
         const p=bound.getCenter(new THREE.Vector3()),h=hubs[item.hub],r=externalWheelRadii(id,d)[item.hub];
         const partR=(s.y+s.z)/4,offset=Math.hypot(p.y-h.y,p.z-h.z);
-        if(partR>=r*.48&&partR<=r*1.18&&Math.abs(s.y-s.z)<=partR*(ramRearCandidate?.28:.20)&&
+        if(partR>=r*.48&&partR<=r*1.18&&Math.abs(s.y-s.z)<=partR*(ramRearCandidate ? .28 : .20)&&
            s.x<=r*2&&offset>Math.min(.025,r*.075)&&offset<=r*.32){
           const worldOrigin=item.mesh.getWorldPosition(new THREE.Vector3());
           worldOrigin.y+=h.y-p.y;worldOrigin.z+=h.z-p.z;
