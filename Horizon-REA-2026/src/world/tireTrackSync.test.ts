@@ -35,6 +35,21 @@ describe("Torneo: cada rueda interactúa con su circuito real",()=>{
     expect(t.gripAt(t.nearestIndex(center,0),0)).toBe(1);
   });
 
+  it("reutiliza el mismo búfer de las cuatro ruedas para evitar pausas por memoria",()=>{
+    const t=straightTrack("monzon");
+    const points=[
+      new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,5),
+      new THREE.Vector3(1,0,0),new THREE.Vector3(1,0,5)
+    ];
+    const buffer=[0,0,0,0];
+    const first=t.gripAtFootprints(points,0,buffer);
+    expect(first).toBe(buffer);
+    expect(first).toHaveLength(4);
+    const second=t.gripAtFootprints(points,0,buffer);
+    expect(second).toBe(first);
+    expect(second.every(Number.isFinite)).toBe(true);
+  });
+
   it("Suzaka: una rueda sobre el puente no se confunde con la vía inferior",()=>{
     const t=new Track(getCircuit("suzaka")!);
     t.samples=[
