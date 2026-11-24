@@ -1,3 +1,4 @@
+import { preloadOffroadPbr } from "./world/offroadPbr";
 import { OFFROAD_CIRCUIT } from "./world/offroadPrototype";
 import RAPIER from "@dimforge/rapier3d-compat";
 import "./styles.css";
@@ -74,6 +75,7 @@ async function boot(): Promise<void> {
   await nextFrame();
 
   const selectedCircuit = (preview ? OFFROAD_CIRCUIT : undefined) ?? availableCircuits().find((circuit) => circuit.id === circuitId) ?? getCircuit(DEFAULT_CIRCUIT_ID)!;
+  if(preview)await preloadOffroadPbr().catch(e=>console.warn("[Horizon] Photographic offroad maps unavailable",e));
   const track = new Track(selectedCircuit);
   track.build();
 

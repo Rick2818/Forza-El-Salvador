@@ -1,3 +1,4 @@
+import { offroadPbr } from "./offroadPbr";
 // Minimal Track class for Horizon El Salvador.
 // Provides procedural circuit generation + MCP Pitstop integration.
 // MCP data can be loaded via pitstop.getCircuits() from src/integrations/pitstop.ts.
@@ -426,6 +427,17 @@ export class Track {
     const normalMap=dataMap(normals),roughnessMap=dataMap(roughness);
     map.anisotropy=4;normalMap.anisotropy=4;roughnessMap.anisotropy=4;
     const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map,normalMap,roughnessMap,normalScale:new THREE.Vector2(.85,.85),vertexColors:true,roughness:.96,metalness:0,envMapIntensity:.10,side:THREE.DoubleSide}));
+    const photo=offroadPbr("road");
+    if(photo){
+      map.dispose();normalMap.dispose();roughnessMap.dispose();
+      Object.assign(mesh.material,photo);
+      mesh.material.roughness=.95;mesh.material.normalScale.set(.85,.85);
+      // Retain sector variation without multiplying the photographic soil by dark brown twice.
+      const c=geo.getAttribute("color") as THREE.BufferAttribute;
+      for(let i=0;i<c.count;i++){const v=.66+.34*THREE.MathUtils.clamp(c.getX(i)*3,0,1);c.setXYZ(i,v,v,v);}
+      c.needsUpdate=true;
+      mesh.userData.photographicPbr=true;
+    }
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
     // Irregular shallow wet patches: visual-only, no separate wheel collider.

@@ -1,3 +1,4 @@
+import { offroadPbr } from "./offroadPbr";
 import * as THREE from "three";
 import { createGrassTexture } from "./textures";
 import { clamp, smoothstep } from "../core/mathx";
@@ -233,7 +234,10 @@ export class TerrainField {
       map: grassTex,
       vertexColors: true
     });
-    const mesh = new THREE.Mesh(geo, material);
+    const photo=this.isOffroad?offroadPbr("forest"):undefined;
+    if(photo){for(const t of Object.values(photo))t.repeat.set(160,160);grassTex.dispose();material.dispose();}
+    const mesh = new THREE.Mesh(geo, photo?new THREE.MeshStandardMaterial({...photo,vertexColors:true,roughness:1,normalScale:new THREE.Vector2(.5,.5),envMapIntensity:.05}):material);
+    if(photo)mesh.userData.photographicPbr=true;
     mesh.name = "terrain";
     mesh.receiveShadow = true;
     return mesh;

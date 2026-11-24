@@ -25,6 +25,8 @@ try {
    await page.waitForFunction(()=>document.querySelector("#loading")?.classList.contains("done"),{},{timeout:30000});
    await page.bringToFront();
    const state=await page.evaluate(()=>window.HORIZON.stats());
+   const photo=await page.evaluate(()=>{const s=window.__HORIZON_GAME__.scene;return [s.getObjectByName("offroad-surface")?.userData.photographicPbr,s.getObjectByName("terrain")?.userData.photographicPbr];});
+   assert.deepEqual(photo,[true,true],"Photographic PBR not actually installed");
    assert.equal(state.vehicleId,id);assert.equal(state.circuit,"el-imposible-4x4");
    const art=await page.evaluate(()=>{const g=window.__HORIZON_GAME__,forest=g.scene.getObjectByName("offroad-woodland"),root=g.race.player.vehicle.visual.root;return {paintMaterials:root.userData.offroadOpaquePaintMaterials,treeCount:forest?.userData.treeCount,treeMeshes:forest?.children.filter(o=>o.isInstancedMesh&&o.count>0).length};});
    assert.ok(art.paintMaterials>0,"No identified opaque body paint");
