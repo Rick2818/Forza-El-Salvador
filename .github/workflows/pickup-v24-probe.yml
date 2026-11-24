@@ -1,4 +1,4 @@
-name: V26 Graphics continuity and fleet audit (no deployment)
+name: V28 Graphics LOD and continuity (no deployment)
 on:
   pull_request:
     branches: [main]
@@ -6,7 +6,7 @@ on:
       - 'Horizon-REA-2026/**'
       - '.github/workflows/pickup-v24-probe.yml'
 concurrency:
-  group: v26-graphics-pr-${{ github.event.pull_request.number }}
+  group: v28-graphics-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 permissions:
   contents: read
@@ -21,8 +21,7 @@ jobs:
           - {mode: baseline, circuit: monzon}
           - {mode: baseline, circuit: suzaka}
           - {mode: physics-only, circuit: monzon}
-          - {mode: no-rival-audio, circuit: monzon}
-          - {mode: no-gpu-timer, circuit: monzon}
+          - {mode: no-lod, circuit: monzon}
           - {mode: adaptive-resolution, circuit: monzon}
           - {mode: fleet, circuit: monzon}
     defaults:
