@@ -178,6 +178,11 @@ export class Vehicle {
    * independently from the road running below it.
    * Reuses vectors to avoid allocations during fixed-step championship races.
    */
+  /** Mutable scratch buffer shared with Track.gripAtFootprints. Each vehicle
+   * owns a separate four-tyre buffer to avoid allocating on every physics step.
+   */
+  wheelGripBuffer(): number[] { return this.surfaceGrip; }
+
   wheelContactPoints(): readonly THREE.Vector3[] {
     const t = this.body.translation();
     const r = this.body.rotation();
