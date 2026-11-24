@@ -94,16 +94,16 @@ jobs:
             echo "GLB importado para revisión: $id"
             echo "::endgroup::"
           done <<'MODEL_IDS'
-porsche-911|877b1bc1739f4a2bb65d62fd7ffd9f75
-bugatti-chiron|374890e62c5a44e9a739ca638b6e0a18
-mercedes-amg-gt-black-series|95259133d4214461bb076512f2dac978
-lamborghini-aventador-roadster|36eb1fa54a0d4be695d4cd90c30f4ff1
-yangwang-u9|c14e3511bb9143acb3fe2aaf8e1b4346
-koenigsegg-jesko-odin|408bed6ddca14a1a9c9eeaa5437f62f0
-ram-1500-trx|d6d548c5fe9f4749813f0a386edfd42c
-chevrolet-silverado-z71|2ad964f59a774e199d9caf143f21e614
-ford-f150-raptor|5acc96d65a374f7280ddbd1c2d5bf12e
-MODEL_IDS
+          porsche-911|877b1bc1739f4a2bb65d62fd7ffd9f75
+          bugatti-chiron|374890e62c5a44e9a739ca638b6e0a18
+          mercedes-amg-gt-black-series|95259133d4214461bb076512f2dac978
+          lamborghini-aventador-roadster|36eb1fa54a0d4be695d4cd90c30f4ff1
+          yangwang-u9|c14e3511bb9143acb3fe2aaf8e1b4346
+          koenigsegg-jesko-odin|408bed6ddca14a1a9c9eeaa5437f62f0
+          ram-1500-trx|d6d548c5fe9f4749813f0a386edfd42c
+          chevrolet-silverado-z71|2ad964f59a774e199d9caf143f21e614
+          ford-f150-raptor|5acc96d65a374f7280ddbd1c2d5bf12e
+          MODEL_IDS
           if [ -f Horizon-REA-2026/public/models/external-candidates/ferrari-f430.glb ]; then
             cp Horizon-REA-2026/public/models/external-candidates/ferrari-f430.glb "$target/ferrari-f430.glb"
             cp Horizon-REA-2026/public/models/external-candidates/ferrari-f430-LICENSE.txt "$target/ferrari-f430-SOURCE.txt"
