@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GalleryCustomizer, type WheelSet } from "./customizer";
+import { removeExternalStage } from "../vehicle/externalBackdrop";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -221,6 +222,7 @@ async function showModel(car: GalleryCar): Promise<void> {
       return;
     }
     const group = gltf.scene;
+    removeExternalStage(car.id, group);
     scene.add(group);
     group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(group);
