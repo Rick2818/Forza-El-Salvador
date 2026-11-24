@@ -620,7 +620,7 @@ export class Track {
     let bestDist = Infinity;
     if (hint >= 0) {
       for (let d = -45; d <= 45; d++) {
-        const i = (hint + d + N) % N;
+        const i = ((hint + d) % N + N) % N;
         const p = this.samples[i];
         const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 +
         (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 :
