@@ -1,0 +1,26 @@
+name: Horizon CC0 terrain preflight (no deployment)
+on:
+  push:
+    branches: [quality/v31-cc0-terrain]
+    paths: ['Horizon-REA-2026/tools/stage-cc0-offroad.mjs','.github/workflows/horizon-cc0-terrain-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/stage-cc0-offroad.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cc0-offroad-maps
+          path: Horizon-REA-2026/quality-evidence/cc0-pbr/
+          if-no-files-found: error
