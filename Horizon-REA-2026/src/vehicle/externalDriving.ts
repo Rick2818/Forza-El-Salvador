@@ -28,6 +28,46 @@ const loaded = new Map<string,THREE.Group>();
 const pending = new Map<string,Promise<void>>();
 const diagnostics = new Map<string,ExternalVisualAudit>();
 
+/** Measured from the transformed GLB tyre meshes, not from body dimensions. */
+interface ExternalTyreFit {
+  centers: readonly THREE.Vector3[];
+  radii: readonly number[];
+}
+const measuredTyres = new Map<string,ExternalTyreFit>();
+
+/** F430's front/rear sidewalls and axle positions differ from arcade defaults. */
+export function measureFerrariF430Tyres(model:THREE.Object3D):ExternalTyreFit {
+  model.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(model);
+  const middle=box.getCenter(new THREE.Vector3());
+  const candidates:{center:THREE.Vector3;radius:number}[]=[];
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh) || !/lod_a_tyre_mm_/i.test(obj.name))return;
+    const b=new THREE.Box3().setFromObject(obj);
+    const size=b.getSize(new THREE.Vector3());
+    const radius=Math.max(size.y,size.z)/2;
+    const center=b.getCenter(new THREE.Vector3());
+    if(!Number.isFinite(radius)||radius<.16||radius>.65)return;
+    candidates.push({center,radius});
+  });
+  // Positive Z is the Ferrari's front axle after model orientation is normalized.
+  const positions:[[number,number],[number,number],[number,number],[number,number]]=
+    [[1,1],[-1,1],[1,-1],[-1,-1]];
+  const ordered=positions.map(([side,axle])=>candidates.find(({center})=>
+    Math.sign(center.x-middle.x)===side && Math.sign(center.z-middle.z)===axle));
+  if(candidates.length!==4 || ordered.some(value=>!value))
+    throw new Error("Ferrari F430: faltan las cuatro mallas de neumático independientes del GLB");
+  return {
+    centers:ordered.map(x=>x!.center),
+    radii:ordered.map(x=>x!.radius)
+  };
+}
+
+export function externalWheelRadii(id:string,d:ExternalDimensions):readonly number[]{
+  const fitted=measuredTyres.get(id);
+  return fitted ? [...fitted.radii] : [d.wheelRadius,d.wheelRadius,d.wheelRadius,d.wheelRadius];
+}
+
 const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rin|neumatico|pneu|tyrewall|llanta|rueda)([_:\s.0-9]|$)/i;
 const IS_STEERING = /steering[_\s-]*wheel|steerwheel|volante|handwheel|steer_wheel|steeringcolumn/i;
 const PAINT_PART = /(^|[_\s:.])(body|bodyshell|paint|carrosserie)([_\s.0-9]|$)|exterior_mm_ext|color1mtl|vehicle_generic_smallspecmap__paint/i;
@@ -53,7 +93,11 @@ function distanceToHub(point:THREE.Vector3,hubs:readonly THREE.Vector3[]):number
   }
   return best;
 }
-export function externalWheelMounts(d:ExternalDimensions):{x:number;y:number;z:number;front:boolean}[]{
+export function externalWheelMounts(d:ExternalDimensions,id?:string):{x:number;y:number;z:number;front:boolean}[]{
+  const fitted=id?measuredTyres.get(id):undefined;
+  if(fitted)return fitted.centers.map((hub,i)=>({
+    x:hub.x,y:hub.y-BODY_CENTER_Y+.235,z:hub.z,front:i<2
+  }));
   return [
     {x:d.track/2, y:d.wheelRadius-BODY_CENTER_Y+.235,z:d.wheelbase/2,front:true},
     {x:-d.track/2,y:d.wheelRadius-BODY_CENTER_Y+.235,z:d.wheelbase/2,front:true},
@@ -61,8 +105,8 @@ export function externalWheelMounts(d:ExternalDimensions):{x:number;y:number;z:n
     {x:-d.track/2,y:d.wheelRadius-BODY_CENTER_Y+.235,z:-d.wheelbase/2,front:false}
   ];
 }
-function hubsFor(d:ExternalDimensions):THREE.Vector3[]{
-  return externalWheelMounts(d).map(p=>new THREE.Vector3(p.x,p.y-.235,p.z));
+function hubsFor(d:ExternalDimensions,id?:string):THREE.Vector3[]{
+  return externalWheelMounts(d,id).map(p=>new THREE.Vector3(p.x,p.y-.235,p.z));
 }
 function wheelLabel(mesh:THREE.Mesh):string{
   const names=[mesh.name,mesh.parent?.name??"",mesh.parent?.parent?.name??""];
@@ -113,6 +157,7 @@ export async function loadExternalVehicle(
     scene.updateMatrixWorld(true);
     const after=new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3());
     if(after.length()<.01)throw Error(id+": modelo no renderizable");
+    if(id==="ferrari-f430")measuredTyres.set(id,measureFerrariF430Tyres(scene));
     loaded.set(id,scene);
   }).finally(()=>pending.delete(id));
   pending.set(id,task);
@@ -185,7 +230,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   const imported=source.clone(true);
   bodyRoot.add(imported);
   root.updateMatrixWorld(true);
-  const hubs=hubsFor(d);
+  const hubs=hubsFor(d,id);
   const wheels=hubs.map((hub,i)=>{
     const steer=new THREE.Group();steer.name=["wheel_fr","wheel_fl","wheel_rr","wheel_rl"][i];
     steer.position.copy(hub);
