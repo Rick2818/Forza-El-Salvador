@@ -718,3 +718,9 @@ button.difficulty-btn.is-active {
   .vehicle-picker .vehicle-pick-photo { height: 38px; }
   .vehicle-picker .vehicle-pick-no-photo { font-size: 10px; height: 20px; }
 }
+
+/* V25 compact identifiers, independent of GLB model scale. */
+.vehicle-picker .vehicle-pick-media { width: 44px; flex: 0 0 44px; min-width: 0; gap: 2px; }
+.vehicle-picker .vehicle-pick-photo { height: 32px; }
+.vehicle-picker .vehicle-pick-no-photo { display: grid; place-items: center; font-size: 8px !important; height: 17px; padding: 0 1px; letter-spacing: 0; }
+@media(max-width:600px) { .vehicle-picker .vehicle-pick-media { width: 38px; flex-basis:38px; } .vehicle-picker .vehicle-pick-photo {height: 28px;} .vehicle-picker .vehicle-pick-no-photo {font-size:7px !important;} }
