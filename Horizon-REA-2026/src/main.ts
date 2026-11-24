@@ -54,7 +54,9 @@ async function boot(): Promise<void> {
   } else {
     try { savedVehicle = localStorage.getItem("horizon.selected-vehicle"); } catch { /* optional */ }
   }
-  const preview = new URLSearchParams(window.location.search).get("offroadPreview") === "1";
+  let circuitId = DEFAULT_CIRCUIT_ID;
+  try { circuitId = localStorage.getItem("horizon.circuit") ?? DEFAULT_CIRCUIT_ID; } catch { /* default */ }
+  const preview = circuitId === OFFROAD_CIRCUIT.id;
   const initialModels = VEHICLE_DESIGNS.filter((d, i) => i < 4 || d.id === savedVehicle);
   await Promise.all(initialModels.map((d) => loadSelectedVehicle(d.id)));
   // Prime four authentic third-party models for player selection and rival AI.
@@ -71,9 +73,7 @@ async function boot(): Promise<void> {
   progress(42, "Construyendo circuito procedural…");
   await nextFrame();
 
-  let circuitId = DEFAULT_CIRCUIT_ID;
-  try { circuitId = localStorage.getItem("horizon.circuit") ?? DEFAULT_CIRCUIT_ID; } catch { /* default */ }
-  const selectedCircuit = (preview && circuitId === OFFROAD_CIRCUIT.id ? OFFROAD_CIRCUIT : undefined) ?? availableCircuits().find((circuit) => circuit.id === circuitId) ?? getCircuit(DEFAULT_CIRCUIT_ID)!;
+  const selectedCircuit = (preview ? OFFROAD_CIRCUIT : undefined) ?? availableCircuits().find((circuit) => circuit.id === circuitId) ?? getCircuit(DEFAULT_CIRCUIT_ID)!;
   const track = new Track(selectedCircuit);
   track.build();
 
