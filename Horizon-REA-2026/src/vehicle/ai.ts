@@ -1,3 +1,4 @@
+import type { OffroadSector } from "../world/offroadPrototype";
 import * as THREE from "three";
 import { Vehicle, type DriveInput } from "./vehicle";
 import { Track } from "../world/track";
@@ -80,9 +81,9 @@ export class AIDriver {
   }
 
   update(dt: number, time: number, traffic: readonly TrafficCar[] = [], grip = 1,
-    wheelGrips?: readonly number[]): void {
+    wheelGrips?: readonly number[], offroadSector?: OffroadSector): void {
     const driving = this.plan(dt, time, traffic);
-    this.vehicle.update(dt, driving, grip, wheelGrips);
+    this.vehicle.update(dt, driving, grip, wheelGrips, offroadSector);
     this.vehicle.setBrakeLights(driving.brake > 0.05);
   }
 
