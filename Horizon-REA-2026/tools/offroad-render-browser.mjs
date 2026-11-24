@@ -9,13 +9,13 @@ export async function runOffroadRenderProbe(){
     await RAPIER.init();
     const ids=["chevrolet-silverado-ev-alternative","ram-3500-alternative","ford-f150-raptor-police"];
     for(const id of ids)await loadSelectedVehicle(id);
-    const renderer=new THREE.WebGLRenderer({antialias:false});
+    const renderer=new THREE.WebGLRenderer({antialias:false,alpha:true,preserveDrawingBuffer:true});
     renderer.setSize(400,300);renderer.debug.checkShaderErrors=true;
     const shaderErrors=[];
     renderer.debug.onShaderError=(gl,program,vs,fs)=>{
       shaderErrors.push([gl.getProgramInfoLog(program),gl.getShaderInfoLog(vs),gl.getShaderInfoLog(fs)].join("\n"));
     };
-    const results=[];
+    const results=[],captures=[];
     for(const id of ids){
       const track=new Track(OFFROAD_CIRCUIT);track.build();
       const world=new RAPIER.World({x:0,y:-13.5,z:0});world.timestep=1/60;track.addPhysics(world);
@@ -71,6 +71,9 @@ export async function runOffroadRenderProbe(){
         coating.update(root,Math.min(1,second/30),1);
         if(second%30!==0)continue;
         const dirtyMask=snapshot();let intersection=0,union=0;
+        renderer.setRenderTarget(null);renderer.clear();renderer.render(scene,camera);
+        captures.push({id,second,png:renderer.domElement.toDataURL('image/png').split(',')[1]});
+        renderer.setRenderTarget(target);
         for(let i=0;i<clean.length;i++){intersection+=clean[i]&dirtyMask[i];union+=clean[i]|dirtyMask[i];}
         minOverlap=Math.min(minOverlap,union?intersection/union:0);
         maxGrowth=Math.max(maxGrowth,renderer.info.programs?.length??0);
@@ -85,5 +88,5 @@ export async function runOffroadRenderProbe(){
       renderer.renderLists.dispose();
     }
     renderer.dispose();
-    return {results,shaderErrors};
+    return {results,shaderErrors,captures};
 }
