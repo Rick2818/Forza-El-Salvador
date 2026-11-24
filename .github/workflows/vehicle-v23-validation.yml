@@ -1,0 +1,27 @@
+name: V23 Vehicle validation (no deployment)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/vehicle-v23-validation.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
+      - run: npm run build

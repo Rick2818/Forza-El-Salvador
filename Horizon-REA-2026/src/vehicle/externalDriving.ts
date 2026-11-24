@@ -118,6 +118,35 @@ function isWheel(mesh:THREE.Mesh):boolean{
   const n=wheelLabel(mesh);
   return !IS_STEERING.test(n)&&HAS_WHEEL.test(n);
 }
+/** Fit independently named tyre meshes; reject ambiguous geometry instead of
+ * silently treating a rim or a merged axle as a measured tyre. */
+function measureExternalTyres(model:THREE.Object3D,d:ExternalDimensions):ExternalTyreFit|undefined{
+  const bounds=new THREE.Box3().setFromObject(model);
+  const mid=bounds.getCenter(new THREE.Vector3());
+  const groups:Array<Array<{center:THREE.Vector3;radius:number}>>=[[],[],[],[]];
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh))return;
+    const label=wheelLabel(obj);
+    if(IS_STEERING.test(label)||! /tyre|tire|neumatico|pneu|caucho|rubber/i.test(label))return;
+    const box=new THREE.Box3().setFromObject(obj,true);
+    const size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+    const radius=(size.y+size.z)/4;
+    if(!Number.isFinite(radius)||radius<d.wheelRadius*.65||radius>d.wheelRadius*1.5||
+       size.x>radius*1.6||Math.abs(size.y-size.z)>radius*.22||
+       Math.abs(center.x-mid.x)<d.track*.25||Math.abs(center.z-mid.z)<d.wheelbase*.25||
+       box.min.y<-.08||box.min.y>.2)return;
+    const i=(center.z>=mid.z?0:2)+(center.x>=mid.x?0:1);
+    groups[i].push({center,radius});
+  });
+  const chosen=groups.map(g=>g.sort((a,b)=>b.radius-a.radius)[0]);
+  if(chosen.some(x=>!x))return undefined;
+  if(Math.abs(chosen[0].center.z-chosen[1].center.z)>.12||
+     Math.abs(chosen[2].center.z-chosen[3].center.z)>.12||
+     Math.abs(chosen[0].radius-chosen[1].radius)>.04||
+     Math.abs(chosen[2].radius-chosen[3].radius)>.04)return undefined;
+  return {centers:chosen.map(x=>x.center),radii:chosen.map(x=>x.radius)};
+}
+
 function triangulationCount(geo:THREE.BufferGeometry):number{
   return (geo.index?.count??geo.attributes.position?.count??0)/3;
 }
@@ -145,6 +174,13 @@ export async function loadExternalVehicle(
       scene.updateMatrixWorld(true);box.setFromObject(scene);
       dim=box.getSize(new THREE.Vector3());
     }
+    // Ford's imported nose points opposite the +Z physics forward axis,
+    // as reported in the V21 road test. Rotate the asset, never the inputs.
+    if(id==="ford-f150-raptor-police"){
+      scene.rotation.y+=Math.PI;
+      scene.updateMatrixWorld(true);box.setFromObject(scene);
+      dim=box.getSize(new THREE.Vector3());
+    }
     if(dim.x<.0001||dim.y<.0001||dim.z<.0001)throw Error(id+": geometría degenerada");
     // Preserve proportions. Allow mirror/bumper overhang; avoid height stretching.
     const factor=Math.min(d.length/dim.z,d.width*1.20/dim.x,d.height*1.20/dim.y);
@@ -158,6 +194,11 @@ export async function loadExternalVehicle(
     const after=new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3());
     if(after.length()<.01)throw Error(id+": modelo no renderizable");
     if(id==="ferrari-f430")measuredTyres.set(id,measureFerrariF430Tyres(scene));
+    else {
+      const fit=measureExternalTyres(scene,d);
+      if(fit)measuredTyres.set(id,fit);
+      else console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
+    }
     loaded.set(id,scene);
   }).finally(()=>pending.delete(id));
   pending.set(id,task);

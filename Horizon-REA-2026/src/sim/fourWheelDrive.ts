@@ -25,7 +25,7 @@ export function isFourWheelDrivePickup(vehicleId: string | undefined): boolean {
 
 /** RAM TRX is full-time 4WD: there is no 2H setting on that model. */
 export function defaultFourWheelDriveMode(vehicleId: string | undefined): FourWheelDriveMode {
-  return vehicleId === "ram-1500-trx" ? "4A" : "2H";
+  return vehicleId === "ram-1500-trx" || vehicleId === "chevrolet-silverado-ev-alternative" ? "4A" : "2H";
 }
 
 /** Changes simulated transfer-case mode at a conservative low speed. */

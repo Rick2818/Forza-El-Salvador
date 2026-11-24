@@ -77,6 +77,7 @@ export class Vehicle {
   private turboDelivery = 0;
   private readonly turboFlames: TurboFlames | null;
   private readonly tuning;
+  private readonly suspension: { stiffness:number; compression:number; relaxation:number; travel:number; maxForce:number; lateral:number };
   private readonly forceForward = new THREE.Vector3();
   private readonly localVelocity = new THREE.Vector3();
 
@@ -108,6 +109,21 @@ export class Vehicle {
     this.supportsFourWheelDrive = isFourWheelDrivePickup(opts.vehicleId);
     this.fourWheelDriveMode = defaultFourWheelDriveMode(opts.vehicleId);
     this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
+    // Candidate arcade calibration; keep authored wheel mounts and rest length.
+    const profiles:Record<string,[number,number,number,number,number,number]>={
+      "ferrari-f430":[42,3.6,3.2,.23,16000,1.18],
+      "porsche-911-c4s":[41,3.7,3.3,.24,16000,1.18],
+      "bugatti-chiron-profilee":[46,4.0,3.6,.24,19000,1.20],
+      "lamborghini-aventador":[44,3.8,3.4,.23,17000,1.19],
+      "koenigsegg-jesko":[43,3.7,3.3,.22,16500,1.18],
+      "mercedes-amg-gt-alternative":[41,3.8,3.4,.25,17000,1.17],
+      "tesla-roadster-electric-alternative":[43,3.9,3.5,.25,18000,1.17],
+      "ford-f150-raptor-police":[34,4.1,3.7,.36,22000,1.08],
+      "ram-3500-alternative":[39,4.4,4.0,.35,26000,1.06],
+      "chevrolet-silverado-ev-alternative":[37,4.3,3.9,.34,25000,1.07]
+    };
+    const [stiffness,compression,relaxation,travel,maxForce,lateral]=profiles[opts.vehicleId??""]??[SETTINGS.physics.suspensionStiffness,SETTINGS.physics.suspensionCompression,SETTINGS.physics.suspensionRelaxation,SETTINGS.physics.maxSuspensionTravel,15000,SETTINGS.physics.sideFrictionStiffness];
+    this.suspension={stiffness,compression,relaxation,travel,maxForce,lateral};
     this.wheelMounts = opts.vehicleId ? wheelConnections(opts.vehicleId) : WHEELS;
     this.wheelRadius = design?.wheelRadius ?? .36;
     this.wheelRadii = opts.vehicleId ? wheelRadiiForVehicle(opts.vehicleId) : [.36,.36,.36,.36];
@@ -155,15 +171,15 @@ export class Vehicle {
         SETTINGS.physics.suspensionRest,
         this.wheelRadii[i]
       );
-      this.controller.setWheelSuspensionStiffness(i, SETTINGS.physics.suspensionStiffness);
-      this.controller.setWheelSuspensionCompression(i, SETTINGS.physics.suspensionCompression);
-      this.controller.setWheelSuspensionRelaxation(i, SETTINGS.physics.suspensionRelaxation);
-      this.controller.setWheelMaxSuspensionTravel(i, SETTINGS.physics.maxSuspensionTravel);
-      this.controller.setWheelMaxSuspensionForce(i, 15000);
+      this.controller.setWheelSuspensionStiffness(i, this.suspension.stiffness);
+      this.controller.setWheelSuspensionCompression(i, this.suspension.compression);
+      this.controller.setWheelSuspensionRelaxation(i, this.suspension.relaxation);
+      this.controller.setWheelMaxSuspensionTravel(i, this.suspension.travel);
+      this.controller.setWheelMaxSuspensionForce(i, this.suspension.maxForce);
       const slip = (w.front ? SETTINGS.physics.frictionSlipFront : SETTINGS.physics.frictionSlipRear) * this.tuning.grip;
       this.wheelFriction.push(slip);
       this.controller.setWheelFrictionSlip(i, slip);
-      this.controller.setWheelSideFrictionStiffness(i, SETTINGS.physics.sideFrictionStiffness);
+      this.controller.setWheelSideFrictionStiffness(i, this.suspension.lateral);
     }
   }
 
@@ -194,7 +210,7 @@ export class Vehicle {
       const w = this.wheelMounts[i];
       const suspension = this.controller.wheelSuspensionLength(i);
       const length = typeof suspension === "number" && Number.isFinite(suspension)
-        ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + SETTINGS.physics.maxSuspensionTravel)
+        ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + (this.suspension?.travel ?? SETTINGS.physics.maxSuspensionTravel))
         : SETTINGS.physics.suspensionRest;
       const point = this.wheelProbes[i].set(w.x, w.y - length - (this.wheelRadii?.[i] ?? this.wheelRadius), w.z).applyQuaternion(quat);
       point.x += t.x; point.y += t.y; point.z += t.z;
@@ -254,8 +270,8 @@ export class Vehicle {
     this.rpm = clamp(this.rpm, ENGINE_IDLE_RPM, ENGINE_REDLINE_RPM);
 
     const p = SETTINGS.physics;
-    const throttle = this.controls.throttle;
     const brake = this.controls.brake;
+    const throttle = brake > .05 ? 0 : this.controls.throttle;
     const lateralSpeed = velocity.x * forward.z - velocity.z * forward.x;
     const wheelbase = Math.abs(this.wheelMounts[0].z - this.wheelMounts[2].z);
     const requestedSteer = steeringAngleAt(speed, this.controls.steer, this.tuning.steer);
@@ -268,7 +284,7 @@ export class Vehicle {
       this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01);
     // Ease boost in on a straight. Reduce it immediately when tyre capacity
     // is needed for a turn; never push through braking, countersteer or a slide.
-    const delivery = this.turboState.active > 0 ? traction : 0;
+    const delivery = this.turboState.active > 0 && brake <= .05 && throttle > .05 && !this.controls.handbrake ? traction : 0;
     this.turboDelivery = delivery < this.turboDelivery ? delivery :
       damp(this.turboDelivery, delivery, 12, dt);
 
@@ -333,7 +349,7 @@ export class Vehicle {
       this.controller.setWheelEngineForce(i, 0);
 
       let braking = 0;
-      if (brake > 0.05 && speed > 0.4) {
+      if (brake > 0.05 && speed >= 0.6) {
         braking = brake * p.maxBrakeForce * (w.front ? 1.12 : 0.9);
       }
       if (this.controls.handbrake && !w.front) {
@@ -374,6 +390,8 @@ export class Vehicle {
   }
 
   update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[]): void {
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake };
     this.controls = input;
     // The chassis may still be on asphalt while one outside wheel is on
     // Suzaka's kerb or Monzon's gravel: calculate grip per contact patch.
@@ -462,7 +480,7 @@ export class Vehicle {
     for (let i = 0; i < this.visual.wheels.length; i++) {
       const wheel = this.visual.wheels[i];
       const suspension = this.controller.wheelSuspensionLength(i);
-      wheel.steer.position.y = this.wheelMounts[i].y - (suspension ?? SETTINGS.physics.suspensionRest);
+      wheel.steer.position.y = this.wheelMounts[i].y - (typeof suspension === "number" && Number.isFinite(suspension) ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + (this.suspension?.travel ?? SETTINGS.physics.maxSuspensionTravel)) : SETTINGS.physics.suspensionRest);
       wheel.steer.rotation.y = visibleWheelSteer(this.steerAngle, this.wheelMounts[i].front);
       wheel.spin.rotation.x = this.wheelRoll[i];
     }
