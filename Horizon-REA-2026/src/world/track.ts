@@ -592,11 +592,16 @@ export class Track {
    * on Suzaka's figure-eight overpass; its X/Z selects asphalt vs shoulder.
    * Used by players, AI rivals and reverse traffic on the current circuit.
    */
-  gripAtFootprints(footprints: readonly THREE.Vector3[], hint = -1): number[] {
-    return footprints.map((point) => {
-      const hit = this.locate(point, hint);
-      return this.gripAt(hit.index, hit.lateral);
-    });
+  gripAtFootprints(footprints: readonly THREE.Vector3[], hint = -1, target?: number[]): number[] {
+    // Reuse the receiving vehicle's buffer in the 60 Hz physics loop:
+    // allocating a temporary array per car per substep caused avoidable GC.
+    const grips = target ?? new Array<number>(footprints.length);
+    grips.length = footprints.length;
+    for (let i = 0; i < footprints.length; i++) {
+      const hit = this.locate(footprints[i], hint);
+      grips[i] = this.gripAt(hit.index, hit.lateral);
+    }
+    return grips;
   }
 
   sampleAt(index: number): THREE.Vector3 {
