@@ -1,0 +1,36 @@
+name: QA llantas sincronizadas con circuito del torneo
+on:
+  push:
+    branches: [fix/tire-track-tournament-sync-20261123]
+    paths:
+      - '.github/workflows/tire-track-tournament-qa.yml'
+      - 'Horizon-REA-2026/src/vehicle/vehicle.ts'
+      - 'Horizon-REA-2026/src/world/track.ts'
+      - 'Horizon-REA-2026/src/world/tireTrackSync.test.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  physics-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Instalar dependencias bloqueadas
+        run: npm ci
+      - name: Compilar Three.js y Rapier
+        run: npm run build
+      - name: Verificar huellas de Monzon, Suzaka y todos los circuitos
+        run: npx vitest run src/world/tireTrackSync.test.ts src/sim/wheelMotion.test.ts
+      - name: Probar juego completo con física y rivales
+        run: npm test
+      - name: Confirmar juego compilado
+        run: test -s dist/race.html && test -s dist/index.html
