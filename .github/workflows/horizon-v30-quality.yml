@@ -1,0 +1,49 @@
+name: Horizon V30 - evidencia de calidad
+on:
+  pull_request:
+    branches: [main]
+    paths: ['Horizon-REA-2026/**', '.github/workflows/horizon-v30-quality.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: node tools/audit-car-glbs.mjs
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          npm run dev > /tmp/horizon-v30.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          node tools/v30-runtime-quality.mjs
+      - name: Auditar diez vehículos
+        if: always()
+        run: |
+          mkdir -p quality-evidence
+          set -o pipefail
+          node tools/v25-fleet-audit.mjs | tee quality-evidence/fleet-audit.log
+      - name: Preservar evidencia incluso si falla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-v30-quality-evidence
+          path: Horizon-REA-2026/quality-evidence/
+          if-no-files-found: warn
