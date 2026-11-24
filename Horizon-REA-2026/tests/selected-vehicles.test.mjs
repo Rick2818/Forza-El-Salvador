@@ -126,8 +126,8 @@ describe("seven actual GLBs and live Rapier vehicles", () => {
       const scene = new THREE.Scene();
       const car = new Vehicle(world, scene, { vehicleId: design.id, paintColor: 0, accentColor: 0, number: 7 });
       car.place(new THREE.Vector3(0, 0, 0), 0);
-      for (let i = 0; i < 120; i++) { car.update(1 / 60, { throttle: 0, brake: 0, steer: 0, handbrake: false }, 1); world.step(); car.syncVisual(); }
-      for (let i = 0; i < 240; i++) { car.update(1 / 60, { throttle: 1, brake: 0, steer: i > 150 ? .12 : 0, handbrake: false }, 1); world.step(); car.syncVisual(); }
+      for (let i = 0; i < 120; i++) { car.update(1 / 60, { throttle: 0, brake: 0, steer: 0, handbrake: false }, 1); world.step(); car.afterPhysicsStep(1 / 60); car.syncVisual(); }
+      for (let i = 0; i < 240; i++) { car.update(1 / 60, { throttle: 1, brake: 0, steer: i > 150 ? .12 : 0, handbrake: false }, 1); world.step(); car.afterPhysicsStep(1 / 60); car.syncVisual(); }
       expect(car.body.translation().z).toBeGreaterThan(1);
       expect(car.speedKph).toBeGreaterThan(5);
       expect(car.steerAngle).toBeGreaterThan(0);
@@ -276,8 +276,10 @@ it.each(VEHICLE_DESIGNS)("enforces $id speed without rendering and cancels nitro
   car.update(1/60,{throttle:1,brake:0,steer:.5,handbrake:false},1);
   car.syncVisual(1/60);
   const wheels=car.wheelVisualDebug();
-  expect(wheels.slice(0,2).every(w=>w.steer>0 && Math.abs(w.roll)>.1)).toBe(true);
-  expect(wheels.slice(2).every(w=>w.steer===0 && Math.abs(w.roll)>.1)).toBe(true);
+  // No world.step(): steering responds to input, but airborne/unsimulated
+  // wheels MUST NOT visually roll merely because a car has velocity.
+  expect(wheels.slice(0,2).every(w=>w.steer>0 && w.roll===0)).toBe(true);
+  expect(wheels.slice(2).every(w=>w.steer===0 && w.roll===0)).toBe(true);
   car.dispose(world);world.free();
 });
 
