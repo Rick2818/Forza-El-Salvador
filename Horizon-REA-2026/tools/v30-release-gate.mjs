@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 const source=readFileSync(new URL("../src/core/version.ts",import.meta.url),"utf8");
 const version=source.match(/RELEASE_LABEL\s*=\s*["']([^"']+)/)?.[1];
 assert.ok(version,"Missing release label");
-if(/^V30\b|^V30-/.test(version)){
- assert.equal(version,"V30","Release candidates must not be deployed to production");
- const report=JSON.parse(readFileSync(new URL("../quality/v30-approval.json",import.meta.url),"utf8"));
+if(/^V(?:30|31)\b/.test(version)){
+ assert.ok(version==="V30"||version==="V31","Release candidates must not be deployed to production");
+ const report=JSON.parse(readFileSync(new URL("../quality/"+version.toLowerCase()+"-approval.json",import.meta.url),"utf8"));
  assert.equal(report.version,version);
  assert.match(report.candidateCommit,/^[0-9a-f]{40}$/);
  assert.ok(report.visualReviewer && report.visualEvidence && report.testRunUrl,"Independent visual evidence required");
@@ -17,5 +17,6 @@ if(/^V30\b|^V30-/.test(version)){
  assert.ok(!/swiftshader|llvmpipe|software|unknown/i.test(report.android.renderer));
  assert.ok(report.android.averageRenderedFps>=59 && report.android.p95FrameMs<=20,"Physical Android performance target not met");
  assert.ok(report.assetLicensesVerified===true,"Asset license review missing");
- console.log("V30 approval manifest passed structural checks; underlying evidence must be independently reviewed.");
+ if(version==="V31"){assert.ok(report.referenceVideoComparison && report.audioEvidence && report.pickupDrivingVideos?.length===3,"V31 visual/audio comparison missing");}
+ console.log("Approval manifest passed structural checks; underlying evidence must be independently reviewed.");
 }else console.log("V30 gate not applicable to",version);
