@@ -1,3 +1,4 @@
+import { createConvertibleVisual } from "./convertibleAsset";
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
@@ -16,6 +17,8 @@ import { cloneCarAsset, USE_BLENDER_SHELL, type CarVariant } from "./carAsset";
  * Forward is +Z, right is +X, up is +Y. The body group sits on y = 0 (ground)
  * and the chassis origin is BODY_CENTER_Y above it.
  */
+
+export type Silhouette = "coupe" | "muscle" | "rally";
 
 export const BODY_CENTER_Y = 0.62;
 export const WHEEL_VIS_RADIUS = 0.36;
@@ -584,6 +587,15 @@ export function createProceduralGlassMaterial(): THREE.MeshBasicMaterial {
 }
 
 export function createCarVisual(opts: CarOptions): CarVisual {
+  if (opts.isPlayer) {
+    try {
+      const convertible = createConvertibleVisual(BODY_CENTER_Y);
+      if (convertible) return convertible;
+    } catch (error) {
+      console.warn("[Horizon] Modelo rubi incompatible; se conserva el anterior.", error);
+    }
+  }
+
   const root = new THREE.Group();
   const bodyRoot = new THREE.Group();
   bodyRoot.position.y = -BODY_CENTER_Y;

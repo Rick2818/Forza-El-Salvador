@@ -1,3 +1,4 @@
+import { preloadConvertible } from "./vehicle/convertibleAsset";
 import RAPIER from "@dimforge/rapier3d-compat";
 import "./styles.css";
 import { Game } from "./game";
@@ -38,6 +39,7 @@ async function boot(): Promise<void> {
   await nextFrame();
 
   progress(34, "Cargando carrocerías de Blender…");
+  await preloadConvertible();
   if (USE_BLENDER_SHELL) {
     await Promise.all([preloadCarAsset("player"), preloadCarAsset("rival")]);
   }

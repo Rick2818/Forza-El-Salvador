@@ -1,3 +1,4 @@
+export type Difficulty = "facil" | "normal" | "dificil";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "../world/track";
