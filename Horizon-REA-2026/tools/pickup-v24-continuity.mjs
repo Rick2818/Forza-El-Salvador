@@ -1,6 +1,9 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
+const releaseSource=await readFile(new URL("../src/core/version.ts",import.meta.url),"utf8");
+const expectedVersion=releaseSource.match(/RELEASE_LABEL\s*=\s*"([^"]+)"/)?.[1];
+assert.ok(expectedVersion,"Missing release label in source");
 
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
@@ -115,8 +118,8 @@ try{
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
-    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V29","Unexpected running build");
-    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV29\b/);
+    assert.equal(sample.version,expectedVersion,"Unexpected running build");
+    if(sample.hudVersion)assert.ok(sample.hudVersion.includes(expectedVersion),"HUD release label mismatch");
     assert.equal(sample.contextLost,false);
     assert.equal(sample.recovery,false);
     assert.equal(errors.length,0);
