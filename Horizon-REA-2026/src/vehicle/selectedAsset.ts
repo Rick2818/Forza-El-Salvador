@@ -4,7 +4,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import designs from "./vehicle-designs.json";
 import { SELECTED_VEHICLES } from "./roster";
 import { EXTERNAL_VEHICLES, isExternalVehicle } from "./externalRoster";
-import { loadExternalVehicle, hasExternalVehicle, createExternalVisual, externalWheelMounts } from "./externalDriving";
+import { loadExternalVehicle, hasExternalVehicle, createExternalVisual, externalWheelMounts, externalWheelRadii } from "./externalDriving";
 import { BODY_CENTER_Y, type CarVisual } from "./carModel";
 import { RELEASE_LABEL } from "../core/version";
 
@@ -55,9 +55,16 @@ export function loadSelectedVehicle(id: string, url?: string): Promise<void> {
   return task;
 }
 
+export function wheelRadiiForVehicle(id:string):readonly number[]{
+  const d=vehicleDesign(id);
+  return isExternalVehicle(id)
+    ? externalWheelRadii(id,d)
+    : [d.wheelRadius,d.wheelRadius,d.wheelRadius,d.wheelRadius];
+}
+
 export function wheelConnections(id: string): { x: number; y: number; z: number; front: boolean }[] {
   const d = vehicleDesign(id);
-  if(isExternalVehicle(id))return externalWheelMounts(d);
+  if(isExternalVehicle(id))return externalWheelMounts(d,id);
   const scene = cache.get(id);
   if (scene) {
     return WHEEL_NAMES.map((name, index) => {
