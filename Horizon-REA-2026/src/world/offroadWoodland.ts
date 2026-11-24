@@ -23,8 +23,8 @@ export function createOffroadWoodland(track:Track,field:TerrainField):THREE.Grou
     if(distanceToTrack(x,z,track,1)<track.halfWidth+10||occupied.some(o=>Math.hypot(o.x-x,o.z-z)<8))continue;
     const v=variants[occupied.length%2],scale=(11+rng()*9)/v.height;
     v.matrices.push(new THREE.Matrix4().compose(new THREE.Vector3(x,field.heightAt(x,z),z),new THREE.Quaternion().setFromAxisAngle(up,rng()*Math.PI*2),new THREE.Vector3(scale,scale,scale)));
-    v.barkColors.push(new THREE.Color(0xb7a68b));
-    v.foliageColors.push(new THREE.Color().setHSL(.24+rng()*.08,.19+rng()*.12,.58+rng()*.17));
+    v.barkColors.push(new THREE.Color(0x89603f));
+    v.foliageColors.push(new THREE.Color().setHSL(.25+rng()*.08,.42+rng()*.12,.37+rng()*.12));
     occupied.push({x,z});
   }
   root.userData.treeCount=occupied.length;
