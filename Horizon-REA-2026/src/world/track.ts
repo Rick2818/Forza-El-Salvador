@@ -376,16 +376,17 @@ export class Track {
     geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
     geo.setIndex(indices); geo.computeVertexNormals();
     // Lightweight repeating earth detail. Temporary procedural map, not the external 8K asset.
-    const size=128, data=new Uint8Array(size*size*4);
+    const size=256, data=new Uint8Array(size*size*4);
     for(let y=0;y<size;y++)for(let x=0;x<size;x++){
       const a=x/size*Math.PI*2,b=y/size*Math.PI*2;
-      const v=Math.round(190+22*Math.sin(3*a+2*Math.sin(b))+14*Math.sin(7*b+Math.sin(5*a))+8*Math.sin(19*a+11*b));
+      // Periodic multiscale variation with restrained fine detail, stable under mipmaps.
+      const v=Math.round(185+17*Math.sin(3*a+2*Math.sin(b))+15*Math.cos(4*b-2*Math.sin(3*a))+9*Math.sin(7*b+Math.sin(5*a))+6*Math.sin(19*a+11*b));
       const i=(y*size+x)*4;data[i]=v;data[i+1]=Math.round(v*.91);data[i+2]=Math.round(v*.78);data[i+3]=255;
     }
     const map=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
     map.wrapS=map.wrapT=THREE.RepeatWrapping;map.colorSpace=THREE.SRGBColorSpace;
     map.generateMipmaps=true;map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.needsUpdate=true;
-    const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map,vertexColors:true,side:THREE.DoubleSide}));
+    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map,vertexColors:true,roughness:.94,metalness:0,envMapIntensity:.12,side:THREE.DoubleSide}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
     // Irregular shallow wet patches: visual-only, no separate wheel collider.
