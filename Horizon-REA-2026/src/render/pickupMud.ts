@@ -11,56 +11,58 @@ export function accumulateMud(current: number, surface: OffroadSurface | undefin
   return Math.min(1, old + (1-old)*(-Math.expm1(-exposure*Math.min(dt,.25))));
 }
 
-/** Per-vehicle material clones; original texture maps and geometry unchanged.
- * This procedural surface layer is an engineering candidate, not final art.
+/** Stable PBR-only coating. Preserve geometry, alpha, textures and shader programs.
+ * No procedural screen noise, no fragment discard and no per-frame material replacement.
+ * Heavy mud is approximated by a smooth dark earthy tint and wet roughness, pending original mud art.
  */
 export class PickupMudCoating {
-  private readonly amount = {value:0};
-  private readonly copies = new Map<THREE.Material, THREE.Material>();
-  private readonly assigned = new Map<THREE.Mesh, {original: THREE.Material | THREE.Material[], coating: THREE.Material | THREE.Material[]}>();
-  private nextScan = 0;
-  get coverage():number {return this.amount.value;}
-  update(root: THREE.Object3D, coverage:number, dt:number):void {
-    this.amount.value = THREE.MathUtils.clamp(coverage,0,1);
-    // Keep approved materials untouched until actual mud is accumulated.
-    if (this.amount.value <= .001 && this.assigned.size === 0) return;
-    this.nextScan -= dt;
-    if (this.nextScan > 0) return;
-    this.nextScan = .5;
-    root.traverse(o => {
-      if (!(o instanceof THREE.Mesh) || this.assigned.has(o)) return;
-      const original = o.material as THREE.Material | THREE.Material[];
-      const map = (m:THREE.Material):THREE.Material => {
-        if (!(m instanceof THREE.MeshStandardMaterial) || /lamp|light|emissive|headlight|taillight/i.test(m.name) || m.emissiveMap) return m;
-        if (this.copies.has(m)) return this.copies.get(m)!;
-        const clone=m.clone();
-        const glass=m.transparent || (m instanceof THREE.MeshPhysicalMaterial && m.transmission > 0);
-        const max=glass ? .50 : .94;
-        clone.onBeforeCompile=shader=>{
-          shader.uniforms.horizonMud=this.amount;
-          shader.vertexShader="varying vec3 vMudLocal;\n"+shader.vertexShader;
-          shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nvMudLocal=position;");
-          shader.fragmentShader="uniform float horizonMud; varying vec3 vMudLocal;\n"+shader.fragmentShader;
-          shader.fragmentShader=shader.fragmentShader.replace("#include <map_fragment>",`#include <map_fragment>
-            float fleck = fract(sin(dot(floor(vMudLocal*57.0),vec3(12.9898,78.233,39.425)))*43758.5453);
-            float mudPattern = 0.5+0.5*sin(vMudLocal.x*17.0+sin(vMudLocal.z*11.0)*3.0+vMudLocal.y*13.0);
-            float smear = smoothstep(0.12,0.65,horizonMud*(0.65+mudPattern*0.55+fleck*0.35));
-            float mudMix = smear * horizonMud * ${max.toFixed(2)};
-            diffuseColor.rgb = mix(diffuseColor.rgb,mix(vec3(.055,.027,.012),vec3(.22,.12,.055),fleck),mudMix);
-          `);
+  private amount=0;
+  private readonly copies=new Map<THREE.MeshStandardMaterial,THREE.MeshStandardMaterial>();
+  private readonly assigned=new Map<THREE.Mesh,{original:THREE.Material|THREE.Material[],coating:THREE.Material|THREE.Material[]}>();
+  private readonly tint=new THREE.Color(0x715035);
+  private nextScan=0;
+  get coverage():number{return this.amount;}
+  update(root:THREE.Object3D,coverage:number,dt:number):void{
+    if(!Number.isFinite(coverage))return;
+    this.amount=THREE.MathUtils.clamp(coverage,0,1);
+    if(this.amount<=.001&&this.assigned.size===0)return;
+    this.nextScan-=Math.max(0,Number.isFinite(dt)?dt:0);
+    if(this.nextScan<=0){
+      this.nextScan=2;
+      root.traverse(o=>{
+        if(!(o instanceof THREE.Mesh)||this.assigned.has(o))return;
+        const original=o.material as THREE.Material|THREE.Material[];
+        const map=(m:THREE.Material):THREE.Material=>{
+          // Never touch windows, lamps, transparent surfaces or emissive details.
+          if(!(m instanceof THREE.MeshStandardMaterial)||m.transparent||m.opacity<.99||m.alphaTest>0||
+            /glass|window|windscreen|windshield|lamp|light|emissive|headlight|taillight|interior|cabin/i.test(m.name)||
+            m.emissiveMap||m.emissiveIntensity*m.emissive.getHex()>0||
+            (m instanceof THREE.MeshPhysicalMaterial&&m.transmission>0))return m;
+          const existing=this.copies.get(m);if(existing)return existing;
+          const clone=m.clone();this.copies.set(m,clone);return clone;
         };
-        clone.customProgramCacheKey=()=> "horizon-offroad-mud-v2-"+max;
-        this.copies.set(m,clone);
-        return clone;
-      };
-      const coating=Array.isArray(original)?original.map(map):map(original);
-      o.material=coating;
-      this.assigned.set(o,{original,coating});
-    });
+        const coating=Array.isArray(original)?original.map(map):map(original);
+        if(Array.isArray(original)?original.every((m,i)=>m===(coating as THREE.Material[])[i]):coating===original)return;
+        o.material=coating;this.assigned.set(o,{original,coating});
+      });
+    }
+    // Only standard material uniforms change. Never change alpha, map, normalMap,
+    // material side, depth flags, shader definitions or geometry.
+    const mix=THREE.MathUtils.smoothstep(this.amount,0,1)*.78;
+    for(const [original,clone] of this.copies){
+      clone.color.copy(original.color).lerp(this.tint,mix);
+      clone.roughness=THREE.MathUtils.lerp(original.roughness,.83,mix);
+      clone.metalness=THREE.MathUtils.lerp(original.metalness,0,mix);
+      if(original instanceof THREE.MeshPhysicalMaterial&&clone instanceof THREE.MeshPhysicalMaterial){
+        // Keep clearcoat feature enabled when present; change only its weight.
+        clone.clearcoat=THREE.MathUtils.lerp(original.clearcoat,original.clearcoat*.28,mix);
+        clone.clearcoatRoughness=THREE.MathUtils.lerp(original.clearcoatRoughness,.68,mix);
+      }
+    }
   }
-  dispose():void {
-    for(const [mesh,{original,coating}] of this.assigned) if(mesh.material===coating) mesh.material=original;
-    for(const mat of this.copies.values()) mat.dispose();
+  dispose():void{
+    for(const [mesh,{original,coating}] of this.assigned)if(mesh.material===coating)mesh.material=original;
+    for(const mat of this.copies.values())mat.dispose();
     this.assigned.clear();this.copies.clear();
   }
 }
