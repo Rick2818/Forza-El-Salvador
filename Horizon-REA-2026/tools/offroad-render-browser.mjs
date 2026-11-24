@@ -48,8 +48,38 @@ export async function runOffroadRenderProbe(){
       }
       const dirty=render();
       const coverage=player.mudCoverage;
+      // Freeze pose, isolate the actual pickup and compare rendered alpha at
+      // identical camera/lighting, not moving-frame draw counts.
+      const {PickupMudCoating}=await import("../src/render/pickupMud.ts");
+      player.mudCoating?.dispose();
+      const coating=new PickupMudCoating();
+      const saved=scene.children.map(o=>[o,o.visible]);
+      for(const [o] of saved)if(o!==root&&!o.isLight)o.visible=false;
+      const target=new THREE.WebGLRenderTarget(400,300);
+      renderer.setRenderTarget(target);renderer.setClearColor(0,0);
+      const pixels=new Uint8Array(400*300*4);
+      const snapshot=()=>{
+        renderer.clear();renderer.render(scene,camera);
+        renderer.readRenderTargetPixels(target,0,0,400,300,pixels);
+        const mask=new Uint8Array(400*300);
+        for(let i=0;i<mask.length;i++)mask[i]=pixels[i*4+3]>128?1:0;
+        return mask;
+      };
+      const clean=snapshot(),cleanPixels=clean.reduce((a,b)=>a+b,0);
+      let minOverlap=1,maxGrowth=0;
+      for(let second=0;second<=120;second++){
+        coating.update(root,Math.min(1,second/30),1);
+        if(second%30!==0)continue;
+        const dirtyMask=snapshot();let intersection=0,union=0;
+        for(let i=0;i<clean.length;i++){intersection+=clean[i]&dirtyMask[i];union+=clean[i]|dirtyMask[i];}
+        minOverlap=Math.min(minOverlap,union?intersection/union:0);
+        maxGrowth=Math.max(maxGrowth,renderer.info.programs?.length??0);
+      }
+      coating.dispose();renderer.setRenderTarget(null);target.dispose();
+      for(const [o,visible] of saved)o.visible=visible;
+      const stableSilhouette={cleanPixels,minOverlap,maxGrowth};
       const pose=player.body.translation();
-      results.push({id,before,after,dirty,state,coverage,visible:root.visible,parented:root.parent===scene,finite:[pose.x,pose.y,pose.z].every(Number.isFinite)});
+      results.push({id,before,after,dirty,state,coverage,stableSilhouette,visible:root.visible,parented:root.parent===scene,finite:[pose.x,pose.y,pose.z].every(Number.isFinite)});
       race.dispose();world.free();
       track.group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});
       renderer.renderLists.dispose();
