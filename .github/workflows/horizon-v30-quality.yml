@@ -36,7 +36,11 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:5173/race.html > /dev/null
-          node tools/v30-runtime-quality.mjs
+          physics_status=0
+          node tools/v31-offroad-physics.mjs || physics_status=$?
+          render_status=0
+          node tools/v30-runtime-quality.mjs || render_status=$?
+          test "$physics_status" -eq 0 && test "$render_status" -eq 0
       - name: Auditar diez vehículos
         if: success() || failure()
         run: |
