@@ -3,6 +3,7 @@
 // MCP data can be loaded via pitstop.getCircuits() from src/integrations/pitstop.ts.
 
 import * as THREE from "three";
+import { OFFROAD_CIRCUIT, offroadElevation, offroadSectorAt } from "./offroadPrototype";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import { monzonPitBarrierGap } from "./monzonPitAccess";
 import { suzakaPitBarrierGap, suzakaPitViewingWall, SUZAKA_PIT_LOW_BARRIER_HEIGHT } from "./suzakaPitAccess";
@@ -74,7 +75,7 @@ export class Track {
   }
 
   constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {
-    this.width = this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain" ? 14
+    this.width = this.circuit.id === OFFROAD_CIRCUIT.id ? 12 : this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain" ? 14
       : this.circuit.layout === "desert" ? 16 : SETTINGS.track.width;
     this.halfWidth = this.width / 2;
   }
@@ -132,9 +133,21 @@ export class Track {
         ? internationalCenterline(this.circuit.id as InternationalCircuitId)
           .map(p => new THREE.Vector3(p.x, p.y, p.z))
         : buildCenterline();
+    const offroad = this.circuit.id === OFFROAD_CIRCUIT.id;
+    // Apply the grade to a closed planar curve using evenly spaced samples.
+    // All downstream vehicle spawns, recovery and colliders use the same path.
+    const planar = offroad ? new THREE.CatmullRomCurve3(centerline, true) : null;
+    if (planar) {
+      const count = 360;
+      centerline.splice(0, centerline.length, ...Array.from({length:count}, (_,i) => {
+        const p = planar.getPointAt(i / count);
+        p.y = .45 + offroadElevation(i / count);
+        return p;
+      }));
+    }
     const N = 1500;
     this.curve = new THREE.CatmullRomCurve3(centerline, true, "catmullrom", 0.5);
-    if (this.circuit.layout) this.curve.arcLengthDivisions = 4000;
+    if (this.circuit.layout || offroad) this.curve.arcLengthDivisions = 4000;
     this.length = this.curve.getLength();
     const spaced = this.curve.getSpacedPoints(N);
     this.samples = spaced.slice(0, N);
@@ -154,7 +167,7 @@ export class Track {
       const b = this.tangents[(i + 2) % N];
       const angle = clamp(a.dot(b), -1, 1);
       // Angular curvature provides meaningful braking targets for Monzon and 3D layouts.
-      const bend = this.circuit.layout || this.circuit.id === "monzon" ? Math.acos(angle) : angle;
+      const bend = this.circuit.layout || offroad || this.circuit.id === "monzon" ? Math.acos(angle) : angle;
       this.curvatures.push(bend / (4 * this.segmentLength));
     }
     // Light smoothing
@@ -182,7 +195,11 @@ export class Track {
         rawSpeed[i] = Math.min(rawSpeed[i], allowed);
       }
     }
-    this.targetSpeeds = rawSpeed;
+    this.targetSpeeds = offroad ? rawSpeed.map((speed,i) => {
+      const sector = offroadSectorAt(this.progress(i));
+      const cap = sector.surface === "puddle" ? 8 : sector.surface === "mud" ? 13 : 22;
+      return Math.min(speed, cap);
+    }) : rawSpeed;
 
     this.buildVisuals();
   }
@@ -196,6 +213,7 @@ export class Track {
     const N = this.samples.length;
     if (N === 0) return;
     this.group.name = "track-visuals";
+    if (this.circuit.id === OFFROAD_CIRCUIT.id) { this.buildOffroadSurface(); return; }
     const halfW = this.halfWidth;
     const barrierOffset = this.barrierLateralOffset;
     const surfaceY = 0.02;
@@ -324,6 +342,39 @@ export class Track {
 
     // ---- Trackside lamps: instanced poles with glowing heads.
     if (this.circuit.id !== "suzaka" && this.circuit.id !== "sparda") this.buildLamps(barrierOffset);
+  }
+
+  /** Temporary engineering mesh, not final photogrammetry art.
+   * Identical indexed triangles are used for the visible road and Rapier.
+   */
+  private buildOffroadSurface(): void {
+    const n = this.samples.length, cols = 12;
+    const pos: number[] = [], colors: number[] = [], indices: number[] = [];
+    for (let i=0;i<n;i++) {
+      const p = this.samples[i], r = this.rights[i];
+      const sector = offroadSectorAt(this.progress(i));
+      const color = new THREE.Color(sector.surface === "dirt" ? 0x8b6848 : sector.surface === "mud" ? 0x58402d : 0x46382d);
+      // Smooth continuous shallow ruts, independent of the surface boundary.
+      const t = i/n * 2*Math.PI;
+      for (let j=0;j<=cols;j++) {
+        const lateral = (j/cols*2-1)*this.halfWidth;
+        const rut = .11*Math.exp(-((Math.abs(lateral)-1.0)**2)/.45);
+        const ripple = .035*Math.sin(25*t + lateral*.7) + .025*Math.cos(17*t-lateral);
+        pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
+        colors.push(color.r,color.g,color.b);
+      }
+    }
+    for(let i=0;i<n;i++) for(let j=0;j<cols;j++){
+      const a=i*(cols+1)+j, b=((i+1)%n)*(cols+1)+j;
+      indices.push(a,a+1,b,b,a+1,b+1);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+    geo.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
+    geo.setIndex(indices); geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96}));
+    mesh.name="offroad-surface"; mesh.receiveShadow=true;
+    this.group.add(mesh);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
@@ -527,11 +578,12 @@ export class Track {
   /** Add physics colliders to the track. */
   addPhysics(world: RAPIER.World): void {
     // Fit the safety floor to the entire circuit, including long straights.
+    const offroad = this.circuit.id === OFFROAD_CIRCUIT.id;
     const bounds = new THREE.Box3().setFromPoints(this.samples);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
     const ground = world.createRigidBody(
-      RAPIER.RigidBodyDesc.fixed().setTranslation(center.x, -2.5, center.z)
+      RAPIER.RigidBodyDesc.fixed().setTranslation(center.x, offroad ? -3.5 : -2.5, center.z)
     );
     world.createCollider(
       RAPIER.ColliderDesc.cuboid(size.x / 2 + 300, 2.5, size.z / 2 + 300).setFriction(1.05),
@@ -541,19 +593,20 @@ export class Track {
     // Rapier's raycast-vehicle wheels need a solid drivable bridge surface,
     // not a visual-only mesh. Preserve the existing flat ground beneath the
     // flyover so vehicles on the lower branch have physical support too.
-    if (this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain") {
-      const road = this.group.getObjectByName("asphalt") as THREE.Mesh<THREE.BufferGeometry> | undefined;
+    if (offroad || this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain") {
+      const road = this.group.getObjectByName(offroad ? "offroad-surface" : "asphalt") as THREE.Mesh<THREE.BufferGeometry> | undefined;
       if (!road || !road.geometry.index) throw new Error("Suzaka bridge collider: road mesh missing");
       const pos = road.geometry.getAttribute("position") as THREE.BufferAttribute;
       const vertexArray = new Float32Array(pos.array as ArrayLike<number>);
       const triangleArray = new Uint32Array(road.geometry.index.array as ArrayLike<number>);
       const deck = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
       world.createCollider(
-        RAPIER.ColliderDesc.trimesh(vertexArray, triangleArray).setFriction(1.05),
+        RAPIER.ColliderDesc.trimesh(vertexArray, triangleArray).setFriction(offroad ? .8 : 1.05),
         deck
       );
     }
 
+    if (offroad) return; // no invisible race barriers in the engineering prototype
     if (this.circuit.id === "suzaka") {
       // Thick, overlapping CCD-compatible walls on the ENTIRE circuit.
       // The earlier zero-thickness trimesh could be crossed at high velocity,
@@ -583,6 +636,10 @@ export class Track {
 
   gripAt(_index: number, lateral: number): number {
     const over = Math.abs(lateral) - this.halfWidth;
+    if (this.circuit.id === OFFROAD_CIRCUIT.id) {
+      const grip = offroadSectorAt(this.progress(_index)).grip;
+      return grip * (1 - .42 * smoothstep(.35,4.5,over));
+    }
     if (over <= 0.35) return 1;
     return 1 - 0.42 * smoothstep(0.35, 4.5, over);
   }
