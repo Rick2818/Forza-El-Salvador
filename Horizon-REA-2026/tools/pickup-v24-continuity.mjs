@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 
 const id=process.argv[2]??"ram-3500-alternative";
+const mode=process.argv[3]??"baseline";
+assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
 const errors=[];
@@ -15,18 +17,63 @@ try{
   await page.waitForFunction(()=>window.__HORIZON_GAME__&&window.HORIZON,{},{timeout:120000});
   await page.evaluate(()=>{window.HORIZON.setQuality("equilibrada");window.HORIZON.autoScale(false);window.HORIZON.setScale(.5);});
   await page.locator('#autos-panel button[data-action="start"]').click({timeout:60000});
-  await page.evaluate(async()=>{
+  await page.evaluate(async(mode)=>{
     const game=window.__HORIZON_GAME__;
     game.skipOpening();
     const {AIDriver}=await import("/src/vehicle/ai.ts");
     const pilot=new AIDriver(game.race.player.vehicle,game.track,-2.7,.94,1,"estratega","medio");
+    // Runtime-only diagnostic wrappers: leave the shipping game untouched.
+    const metrics={phases:{},lastTransition:null,lightChanges:0};
+    window.__HORIZON_DIAG__=metrics;
+    function timeMethod(obj,key,label){
+      const original=obj[key];
+      if(typeof original!=="function")throw Error("Missing diagnostic hook "+label);
+      obj[key]=function(...args){
+        const started=performance.now();
+        try{return original.apply(this,args);}
+        finally{
+          const elapsed=performance.now()-started;
+          const m=metrics.phases[label]??={count:0,totalMs:0,maxMs:0,slow:0};
+          m.count++;m.totalMs+=elapsed;m.maxMs=Math.max(m.maxMs,elapsed);
+          if(elapsed>100){m.slow++;console.warn("SLOW_PHASE",label,elapsed.toFixed(1),game.race.elapsed.toFixed(3));}
+        }
+      };
+    }
+    const tunnelLights=[];
+    game.scene.traverse(o=>{if(o.name.startsWith("tunnel-driving-light-"))tunnelLights.push(o);});
+    if(mode==="physics-only")game.skipRender=true;
+    if(mode==="no-rival-audio")game.audio.updateRivals=()=>{};
+    if(mode==="constant-tunnel-lights"){
+      const lighting=game.environment.tunnelLighting;
+      const update=lighting.update.bind(lighting);
+      lighting.update=(...args)=>{update(...args);for(const light of tunnelLights)light.visible=true;};
+      for(const light of tunnelLights)light.visible=true;
+    }
+    let lastLightCount=-1,lastTraffic=-1;
+    const envUpdate=game.environment.update;
+    game.environment.update=function(...args){
+      const out=envUpdate.apply(this,args);
+      const lights=tunnelLights.filter(l=>l.visible).length,traffic=game.race.oncoming.length;
+      if(lights!==lastLightCount||traffic!==lastTraffic){
+        metrics.lastTransition={elapsed:game.race.elapsed,lights,traffic,segment:game.race.player.hint};
+        if(lights!==lastLightCount)metrics.lightChanges++;
+        console.log("TRANSITION",JSON.stringify(metrics.lastTransition));
+        lastLightCount=lights;lastTraffic=traffic;
+      }
+      return out;
+    };
+    timeMethod(game.race,"update","race");
+    timeMethod(game.world,"step","rapier");
+    timeMethod(game.environment,"update","environment");
+    timeMethod(game.audio,"updateRivals","rival-audio");
+    timeMethod(game.renderer,"render","webgl");
     window.setInterval(()=>{
       const traffic=game.race.racers.filter(r=>!r.isPlayer&&!r.finished).map(r=>({
         position:r.vehicle.position.clone(),speed:r.vehicle.speed,isPlayer:false,racerId:r.id
       }));
       game.overrideInput=pilot.plan(.05,game.race.elapsed,traffic);
     },50);
-  });
+  },mode);
   let previous=null, stagnant=0;
   const start=Date.now();
   const samples=[];
@@ -40,7 +87,11 @@ try{
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
         positions:g.race.racers.map(r=>{const p=r.vehicle.body.translation();return {id:r.id,x:p.x,y:p.y,z:p.z,finished:r.finished};}),
-        throttle:g.overrideInput?.throttle??0,oncoming:g.race.oncoming.length};
+        throttle:g.overrideInput?.throttle??0,oncoming:g.race.oncoming.length,
+        segment:g.race.player.hint,playerSpeedKph:s.speedKph,playerRescues:g.race.rescues,
+        programs:g.renderer.info.programs?.length??null,
+        geometries:g.renderer.info.memory.geometries,textures:g.renderer.info.memory.textures,
+        diagnostics:window.__HORIZON_DIAG__};
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
@@ -57,9 +108,9 @@ try{
       assert.ok(stagnant<3,"Entire field stopped moving");
     }
     if(sample.elapsed>=125&&sample.raceState==="racing"){
-      assert.ok(sample.drawCalls>0,"No rendering");
+      if(mode!=="physics-only")assert.ok(sample.drawCalls>0,"No rendering");
       assert.ok(samples.some(s=>s.elapsed>=48&&s.elapsed<60),"Did not sample original freeze window");
-      console.log("CONTINUITY_PASS",id,JSON.stringify({elapsed:sample.elapsed,samples:samples.length,wallSeconds:(Date.now()-start)/1000,minimumSampleFPS:Math.min(...samples.filter(s=>s.raceState==="racing").map(s=>s.fps))}));
+      console.log("CONTINUITY_PASS",id,mode,JSON.stringify({elapsed:sample.elapsed,samples:samples.length,wallSeconds:(Date.now()-start)/1000,minimumSampleFPS:Math.min(...samples.filter(s=>s.raceState==="racing").map(s=>s.fps))}));
       break;
     }
     previous=sample;
