@@ -1,4 +1,4 @@
-name: Horizon V30 - evidencia de calidad
+name: Horizon V31 - evidencia de calidad 4x4
 on:
   pull_request:
     branches: [main]
@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: horizon-offroad-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -35,15 +38,16 @@ jobs:
           curl -fsS http://127.0.0.1:5173/race.html > /dev/null
           node tools/v30-runtime-quality.mjs
       - name: Auditar diez vehículos
-        if: always()
+        if: success() || failure()
         run: |
           mkdir -p quality-evidence
           set -o pipefail
+          if [ ! -d node_modules/playwright ]; then echo "Browser setup not reached; audit unavailable" | tee quality-evidence/fleet-audit.log; exit 1; fi
           node tools/v25-fleet-audit.mjs | tee quality-evidence/fleet-audit.log
       - name: Preservar evidencia incluso si falla
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: horizon-v30-quality-evidence
+          name: horizon-v31-quality-evidence
           path: Horizon-REA-2026/quality-evidence/
           if-no-files-found: warn
