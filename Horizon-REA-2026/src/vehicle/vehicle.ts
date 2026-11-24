@@ -188,8 +188,8 @@ export class Vehicle {
       const length = Number.isFinite(suspension)
         ? clamp(suspension, 0, SETTINGS.physics.suspensionRest + SETTINGS.physics.maxSuspensionTravel)
         : SETTINGS.physics.suspensionRest;
-      this.wheelProbes[i].set(w.x, w.y - length - this.wheelRadius, w.z)
-        .applyQuaternion(quat).add(new THREE.Vector3(t.x,t.y,t.z));
+      const point = this.wheelProbes[i].set(w.x, w.y - length - this.wheelRadius, w.z).applyQuaternion(quat);
+      point.x += t.x; point.y += t.y; point.z += t.z;
     }
     return this.wheelProbes;
   }
