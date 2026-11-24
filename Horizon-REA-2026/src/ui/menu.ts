@@ -213,11 +213,11 @@ export class Menu {
         <div class="circuit-panel" id="circuitos-panel" role="tabpanel" aria-labelledby="tab-circuitos">
           <div class="brand">Selecciona el circuito</div>
           <div class="circuit-choices" role="group" aria-label="Circuito">
-            ${(new URLSearchParams(window.location.search).get("offroadPreview")==="1" ? [...availableCircuits(),OFFROAD_CIRCUIT] : availableCircuits()).map(circuit => {
+            ${[...availableCircuits(),OFFROAD_CIRCUIT].map(circuit => {
               const active = circuit.id === this.selectedCircuitId;
               const length = (analyzeCircuitDefinition(circuit).length / 1000).toFixed(2);
               return `<button class="circuit-choice ${active ? "is-active" : ""}" data-action="circuit" data-circuit-id="${circuit.id}" aria-pressed="${active}">
-                <strong>${circuit.name}</strong><span>${circuit.discipline} · ${length} km</span>
+                <strong>${circuit.name}${circuit.id===OFFROAD_CIRCUIT.id ? " · BETA" : ""}</strong><span>${circuit.discipline} · ${length} km</span>
               </button>`;
             }).join("")}
           </div>
