@@ -16,9 +16,12 @@ export function createOffroadWoodland(track:Track,field:TerrainField):THREE.Grou
   });
   const up=new THREE.Vector3(0,1,0);
   for(let attempt=0;attempt<1000&&occupied.length<180;attempt++){
-    const index=Math.floor(rng()*track.samples.length);
+    // First distribute a continuous roadside belt on both sides, then fill
+    // the deeper forest. Avoid a random distribution that leaves bare stretches.
+    const belt=attempt<140;
+    const index=belt?Math.floor((Math.floor(attempt/2)+rng()*.45)*track.samples.length/70)%track.samples.length:Math.floor(rng()*track.samples.length);
     const p=track.sampleAt(index),right=track.rightAt(index),t=track.tangentAt(index);
-    const offset=(12+Math.pow(rng(),1.5)*65)*(rng()<.5?-1:1),along=(rng()-.5)*18;
+    const offset=(belt?12+rng()*12:24+Math.pow(rng(),1.5)*53)*(belt?(attempt%2===0?-1:1):(rng()<.5?-1:1)),along=(rng()-.5)*10;
     const x=p.x+right.x*offset+t.x*along,z=p.z+right.z*offset+t.z*along;
     if(distanceToTrack(x,z,track,1)<track.halfWidth+5||occupied.some(o=>Math.hypot(o.x-x,o.z-z)<8))continue;
     const v=variants[occupied.length%2],scale=(11+rng()*9)/v.height;
