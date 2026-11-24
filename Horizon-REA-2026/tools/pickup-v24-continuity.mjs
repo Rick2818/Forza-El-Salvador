@@ -5,7 +5,7 @@ import { mkdir } from "node:fs/promises";
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
-assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution"].includes(mode));
+assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
 const errors=[];
@@ -48,6 +48,7 @@ try{
     if(mode==="no-rival-audio")game.audio.updateRivals=()=>{};
     if(mode==="no-gpu-timer"){game.gpuTimer.begin=()=>{};game.gpuTimer.end=()=>{};game.gpuTimer.collect=()=>[];}
     if(mode==="adaptive-resolution")game.autoScale=true;
+    if(mode==="no-lod"){for(const lod of game.race.rivalLods.values())lod.setLevel(0);game.race.updateRivalLods=()=>{};}
     if(mode==="constant-tunnel-lights"){
       const lighting=game.environment.tunnelLighting;
       const update=lighting.update.bind(lighting);
@@ -93,7 +94,7 @@ try{
       const s=window.HORIZON.stats();
       return {state:s.state,raceState:s.raceState,elapsed:s.elapsed,frameAgeMs:s.frameAgeMs,fps:s.fps,
         vehicle:s.vehicleId,version:window.HORIZON.version??s.version??null,graphicsPreparationMs:s.graphicsPreparationMs,framePhase:s.framePhase,frameSource:s.frameSource,animationFrames:s.animationFrames,fallbackFrames:s.fallbackFrames,maxFrameGapMs:s.maxFrameGapMs,submittedDraws:s.submittedDraws,skippedDraws:s.skippedDraws,drawAgeMs:s.drawAgeMs,
-        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,
+        hudVersion:document.getElementById("hud-fps")?.textContent??"",drawCalls:s.drawCalls,triangles:g.renderer.info.render.triangles,rivalLods:s.rivalLods,callbackFps:s.callbackFps,renderedFps:s.renderedFps,
         contextLost:g.renderer.getContext().isContextLost(),
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost"),
         positions:g.race.racers.map(r=>{const p=r.vehicle.body.translation();return {id:r.id,x:p.x,y:p.y,z:p.z,finished:r.finished};}),
@@ -106,8 +107,8 @@ try{
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     assert.equal(sample.vehicle,id);
-    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V26","Unexpected running build");
-    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV26\b/);
+    assert.equal(sample.version??sample.hudVersion.match(/\bV\d+\b/)?.[0],"V28","Unexpected running build");
+    if(sample.hudVersion)assert.match(sample.hudVersion,/\bV28\b/);
     assert.equal(sample.contextLost,false);
     assert.equal(sample.recovery,false);
     assert.equal(errors.length,0);
