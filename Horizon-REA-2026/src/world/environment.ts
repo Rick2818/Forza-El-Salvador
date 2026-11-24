@@ -1,4 +1,5 @@
 import { PineForest } from "./pineForest";
+import { createOffroadWoodland } from "./offroadWoodland";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
@@ -36,6 +37,7 @@ export class Environment {
   private readonly shadowSize = 34;
   private time = 0;
   private forest: PineForest | null = null;
+  private offroadWoodland: THREE.Group | null = null;
   private garages: MonzonGarages | null = null;
   private suzakaGarages: SuzakaGarages | null = null;
   private balloon: GoodyearBalloon | null = null;
@@ -176,7 +178,9 @@ export class Environment {
     } else if (track.circuit.id === "el-imposible-4x4") {
       // Use the existing natural mountain mesh instead of the blue night silhouettes.
       scene.add(createNaturalMountainRange(track,true));
-      scene.fog = new THREE.FogExp2(0xb7cddd,.0008);
+      scene.fog = new THREE.FogExp2(0xa4b7b1,.00038);
+      this.offroadWoodland=createOffroadWoodland(track,this.terrain);
+      scene.add(this.offroadWoodland);
     } else {
       this.buildRidges(scene);
     }
@@ -210,7 +214,7 @@ export class Environment {
     world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.92), fixed);
   }
 
-  updateVegetationView(center:THREE.Vector3,dt:number):void {this.forest?.update(center,dt);}
+  updateVegetationView(center:THREE.Vector3,dt:number):void {this.forest?.update(center,dt);this.offroadWoodland?.userData.updateTreeLods?.(center);}
 
   setPixelRatio(ratio: number): void {
     this.sky?.setPixelRatio(ratio);
