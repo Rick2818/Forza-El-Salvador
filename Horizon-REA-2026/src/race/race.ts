@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { VehicleBodyLod } from "../render/vehicleBodyLod";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "../world/track";
 import { Vehicle } from "../vehicle/vehicle";
@@ -81,6 +82,53 @@ export class Race {
   // while a GLB, rigid body and raycast controller are created mid-race.
   private readonly standbyOncoming: { id: number; vehicle: Vehicle; ai: OncomingDriver }[] = [];
   get standbyTrafficCount(): number { return this.standbyOncoming.length; }
+  /** Only the pre-race graphics preparation may temporarily reveal these roots. */
+  standbyVisuals(): THREE.Group[] { return this.standbyOncoming.map(car => car.vehicle.visual.root); }
+  private readonly rivalLods = new Map<Vehicle,VehicleBodyLod>();
+  private readonly rivalFrustum=new THREE.Frustum();
+  private readonly rivalViewProjection=new THREE.Matrix4();
+  private readonly rivalBounds=new THREE.Sphere();
+  private readonly rivalRadius=new Map<Vehicle,number>();
+  private culledRivals=0;
+  lodEnabled=true;
+  /** Prepare body variants for rivals and preallocated traffic only. */
+  async prepareRivalLods():Promise<void>{
+    const rivals=[...this.racers.filter(r=>!r.isPlayer),...this.oncoming,...this.standbyOncoming];
+    for(const {vehicle} of rivals){
+      if(this.rivalLods.has(vehicle))continue;
+      const lod=new VehicleBodyLod();
+      await lod.prepare(vehicle.visual.bodyRoot);
+      this.rivalLods.set(vehicle,lod);
+      const bounds=new THREE.Box3().setFromObject(vehicle.visual.root);
+      this.rivalRadius.set(vehicle,Math.max(8,bounds.getSize(new THREE.Vector3()).length())+2);
+      // Yield between cars while the race remains in its loading state.
+      await new Promise<void>(resolve=>setTimeout(resolve,0));
+    }
+  }
+  updateRivalLods(camera:THREE.Camera):void{
+    camera.updateMatrixWorld();
+    this.rivalViewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+    this.rivalFrustum.setFromProjectionMatrix(this.rivalViewProjection);
+    this.culledRivals=0;
+    // Only active vehicles, never reveal standby traffic. Physics and collision
+    // remain active irrespective of render visibility. Keep near cars visible
+    // and use a generous sphere to prevent clipping during steering/collisions.
+    for(const {vehicle} of [...this.racers.filter(r=>!r.isPlayer),...this.oncoming]){
+      const lod=this.rivalLods.get(vehicle);
+      if(!lod)continue;
+      const root=vehicle.visual.root,distance=camera.position.distanceTo(root.position);
+      this.rivalBounds.center.copy(root.position);
+      this.rivalBounds.radius=this.rivalRadius.get(vehicle)??10;
+      root.visible=distance<30||this.rivalFrustum.intersectsSphere(this.rivalBounds);
+      if(root.visible){if(this.lodEnabled)lod.update(distance);else lod.setLevel(0);}else this.culledRivals++;
+    }
+  }
+  get culledRivalCount(){return this.culledRivals;}
+  rivalLodStats(){
+    return [...this.rivalLods].map(([vehicle,lod])=>({id:vehicle.vehicleId,level:lod.level,
+      eligibleTriangles:lod.triangleCounts[0],currentTriangles:lod.triangleCounts[lod.level],
+      budgets:lod.triangleCounts}));
+  }
   readonly player: Racer;
   state: RaceState = "idle";
   countdown = SETTINGS.race.countdown;
@@ -200,6 +248,9 @@ export class Race {
   }
 
   dispose(): void {
+    for(const lod of this.rivalLods.values())lod.dispose();
+    this.rivalLods.clear();
+    this.rivalRadius.clear();
     for (const racer of this.racers) racer.vehicle.dispose(this.world);
     for (const car of this.oncoming) car.vehicle.dispose(this.world);
     for (const car of this.standbyOncoming) car.vehicle.dispose(this.world);

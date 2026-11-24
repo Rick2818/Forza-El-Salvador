@@ -70,7 +70,7 @@ describe("Velocidades exactas en la simulación y el velocímetro MPH",()=>{
       expect(car.tuning.topSpeed,car.id).toBeLessThanOrEqual(504*.44704);
       expect(car.productionApproved,car.id).toBe(false);
     }
-    for(const pickup of pickups)expect(pickup.tuning.topSpeed,pickup.id).toBeLessThan(160*.44704);
+    for(const pickup of pickups)expect(pickup.tuning.topSpeed,pickup.id).toBeCloseTo(200*.44704,5);
   });
   it("recupera coches que atraviesan el muro o quedan parados fuera del piano",()=>{
     expect(escapedSuzakaBarrier(9.8,8.75)).toBe(true);

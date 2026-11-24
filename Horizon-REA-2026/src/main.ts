@@ -80,13 +80,9 @@ async function boot(): Promise<void> {
 
   const game = new Game(canvas, ui, track);
 
-  // Later traffic slots can use the rest of the roster as models become ready.
-  for (const design of VEHICLE_DESIGNS) {
-    if (initialModels.includes(design)) continue;
-    void loadSelectedVehicle(design.id).catch((error: unknown) => {
-      console.warn("[Horizon] modelo de tráfico no disponible", design.id, error);
-    });
-  }
+  // Do not parse/decode additional archived GLBs after the race UI is active.
+  // Race.prepareOncomingCars already reuses the ready pool for standby traffic.
+  // Selected external GLBs are loaded on demand before replacing the race.
 
   progress(96, "Calibrando cámara, HUD y sonido…");
   await nextFrame();

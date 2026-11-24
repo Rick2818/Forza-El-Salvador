@@ -6,7 +6,7 @@ import {
   MONZON_BURST_COUNT,MONZON_FIREWORK_DURATION,MONZON_SPARK_TRAILS,
   MONZON_FIREWORK_PATTERNS,MONZON_SPARKS_PER_BURST,
   fireworkVisibility,fireworkSoundDelay,MONZON_OPENING_DURATION,
-  monzonFireworkBurstTime,MonzonLaunchFireworks
+  monzonFireworkBurstTime,MonzonLaunchFireworks,activeBurstRange
 } from "./monzonFireworks";
 
 describe("V16 GPU fireworks choreography",()=>{
@@ -30,6 +30,14 @@ describe("V16 GPU fireworks choreography",()=>{
     expect(fireworkVisibility(4)).toBe(0);
     expect(fireworkSoundDelay(343)).toBeCloseTo(1);
     expect(fireworkSoundDelay(686)).toBe(1.5);
+  });
+  it("submits only active chronological bursts",()=>{
+    expect(activeBurstRange(0,0,4.05)).toEqual([0,0]);
+    const [start,end]=activeBurstRange(10,0,4.05);
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeLessThan(MONZON_BURST_COUNT);
+    expect(end-start).toBeGreaterThan(0);
+    expect(activeBurstRange(25,0,4.05)).toEqual([MONZON_BURST_COUNT,MONZON_BURST_COUNT]);
   });
   it("reuses four GPU-rendered particle buffers without CPU vertex streaming",()=>{
     const track=new Track(getCircuit("monzon")!);

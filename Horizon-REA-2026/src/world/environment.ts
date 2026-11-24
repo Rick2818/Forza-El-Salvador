@@ -43,6 +43,7 @@ export class Environment {
   private readonly tunnelLighting: TunnelLighting;
   private readonly lampPositions: readonly THREE.Vector3[];
   private lightRefresh = 1;
+  private readonly pendingAssets: Promise<unknown>[] = [];
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, track: Track) {
     // One shared neutral PMREM for coachwork. Keep the outdoor sky/lighting
@@ -137,8 +138,7 @@ export class Environment {
     if (isMonzon) {
       // Four unshadowed lights cover the player's vicinity; poles remain instanced.
       for (let i = 0; i < 4; i++) {
-        const light = new THREE.PointLight(0xffefd6, 850, 70, 2);
-        light.visible = false;
+        const light = new THREE.PointLight(0xffefd6, 0, 70, 2);
         this.trackLights.push(light);
         scene.add(light);
       }
@@ -148,19 +148,19 @@ export class Environment {
       scene.add(monzonMountains);
       this.garages = new MonzonGarages(scene);
       this.balloon = new GoodyearBalloon(scene, track);
-      void this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error));
+      this.pendingAssets.push(this.garages.ready.catch(error => console.warn("[Horizon] Garage equipment failed to load", error)));
     } else if (isSuzaka) {
       this.suzakaGarages = new SuzakaGarages(scene, track);
       this.balloon = new GoodyearBalloon(scene, track);
       scene.add(createSuzakaMountain(track));
       scene.add(createSuzakaPublicStands(track, this.terrain));
       this.forest=new PineForest(scene,track,this.terrain);
-      void this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error));
+      this.pendingAssets.push(this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error)));
       // Load only editable Blender landmarks. The driveable surface and all
       // physical guardrails are generated in Track so physics always matches.
-      void installSuzakaScenery(scene, track).catch(error => {
+      this.pendingAssets.push(installSuzakaScenery(scene, track).catch(error => {
         console.warn("[Horizon] Suzaka scenery could not load; track remains playable", error);
-      });
+      }));
     } else if (isSparda || isSakhir) {
       installInternationalScenery(scene, track, this.terrain);
       if (isSakhir) {
@@ -176,6 +176,18 @@ export class Environment {
     } else {
       this.buildRidges(scene);
     }
+  }
+
+  /** Complete known asynchronous scenery downloads before preparing shaders. */
+  async whenReady(scene: THREE.Scene): Promise<void> {
+    await Promise.all(this.pendingAssets);
+    const people: Promise<unknown>[] = [];
+    scene.traverse(object => {
+      const pending = object.userData.readyPromise;
+      if (pending && typeof pending.then === "function") people.push(pending);
+    });
+    const results = await Promise.allSettled(people);
+    for (const result of results) if(result.status === "rejected") console.warn("[Horizon] Scenery preparation failed", result.reason);
   }
 
   /** Add a static, lower-resolution terrain collision mesh only where the
@@ -194,6 +206,8 @@ export class Environment {
     world.createCollider(RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.92), fixed);
   }
 
+  updateVegetationView(center:THREE.Vector3,dt:number):void {this.forest?.update(center,dt);}
+
   setPixelRatio(ratio: number): void {
     this.sky?.setPixelRatio(ratio);
   }
@@ -204,7 +218,7 @@ export class Environment {
     this.garages?.update(center);
     this.balloon?.update(dt);
     advanceAudienceAnimation(dt);
-    this.forest?.update(center,dt);
+    // Forest LOD is driven by the actual camera immediately before rendering.
     this.tunnelLighting.update(center, dt);
     this.lightRefresh += dt;
     if (this.trackLights.length && this.lightRefresh >= .25) {
@@ -214,7 +228,7 @@ export class Environment {
       })).sort((a, b) => a.distance - b.distance).slice(0, this.trackLights.length);
       this.trackLights.forEach((light, index) => {
         const lamp = nearest[index];
-        light.visible = !!lamp;
+        light.intensity = lamp ? 850 : 0;
         if (lamp) light.position.copy(lamp.position);
       });
     }

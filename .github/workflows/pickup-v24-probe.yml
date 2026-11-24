@@ -1,0 +1,54 @@
+name: V28 Graphics LOD and continuity (no deployment)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/pickup-v24-probe.yml'
+concurrency:
+  group: v28-graphics-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  pickup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {mode: baseline, circuit: monzon}
+          - {mode: baseline, circuit: suzaka}
+          - {mode: physics-only, circuit: monzon}
+          - {mode: no-lod, circuit: monzon}
+          - {mode: adaptive-resolution, circuit: monzon}
+          - {mode: fleet, circuit: monzon}
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          npm run dev > /tmp/horizon-v24-vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          if [ "${{ matrix.mode }}" = "baseline" ] && [ "${{ matrix.circuit }}" = "monzon" ]; then
+            node tools/pickup-v24-probe.mjs
+          fi
+          if [ "${{ matrix.mode }}" = "fleet" ]; then
+            node tools/v25-fleet-audit.mjs
+          else
+            node tools/pickup-v24-continuity.mjs ram-3500-alternative "${{ matrix.mode }}" "${{ matrix.circuit }}"
+          fi

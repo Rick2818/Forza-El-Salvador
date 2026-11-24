@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { batchRigidPart } from "../render/rigidVehicleBatch";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
@@ -68,7 +69,7 @@ export function externalWheelRadii(id:string,d:ExternalDimensions):readonly numb
   return fitted ? [...fitted.radii] : [d.wheelRadius,d.wheelRadius,d.wheelRadius,d.wheelRadius];
 }
 
-const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rin|neumatico|pneu|tyrewall|llanta|rueda)([_:\s.0-9]|$)/i;
+const HAS_WHEEL = /(^|[_:\s.])(wheel|wheels|tyre|tyres|tire|tires|rim|rims|rin|rines|neumatico|pneu|tyrewall|llanta|rueda|rubber|caucho)([_:\s.0-9]|$)/i;
 const IS_STEERING = /steering[_\s-]*wheel|steerwheel|volante|handwheel|steer_wheel|steeringcolumn/i;
 const PAINT_PART = /(^|[_\s:.])(body|bodyshell|paint|carrosserie)([_\s.0-9]|$)|exterior_mm_ext|color1mtl|vehicle_generic_smallspecmap__paint/i;
 const EXCLUDED_PAINT = /wheel|tyre|tire|rim|neumatico|glass|window|windscreen|windshield|light|badge|emblem|brake|caliper|mirror|steer|interior|seat|chassis|plastic|carbon/i;
@@ -116,7 +117,7 @@ function wheelLabel(mesh:THREE.Mesh):string{
 }
 function isWheel(mesh:THREE.Mesh):boolean{
   const n=wheelLabel(mesh);
-  return !IS_STEERING.test(n)&&HAS_WHEEL.test(n);
+  return !IS_STEERING.test(n)&&! /wheel[_\s-]*(arch|well|house)|spare[_\s-]*(wheel|tyre|tire)/i.test(n)&&HAS_WHEEL.test(n);
 }
 /** Fit independently named tyre meshes; reject ambiguous geometry instead of
  * silently treating a rim or a merged axle as a measured tyre. */
@@ -145,6 +146,135 @@ function measureExternalTyres(model:THREE.Object3D,d:ExternalDimensions):Externa
      Math.abs(chosen[0].radius-chosen[1].radius)>.04||
      Math.abs(chosen[2].radius-chosen[3].radius)>.04)return undefined;
   return {centers:chosen.map(x=>x.center),radii:chosen.map(x=>x.radius)};
+}
+
+const isPickupAsset=(id:string)=>/^(ford-|ram-|chevrolet-)/.test(id);
+const needsGeometricFit=(id:string)=>isPickupAsset(id)||id==="mercedes-amg-gt-alternative"||id==="tesla-roadster-electric-alternative";
+
+/** Unnamed pickup wheel primitives: use measured bounding geometry, not
+ * material names. Require four symmetric, ground-adjacent circular assemblies. */
+function measurePickupGeometry(model:THREE.Object3D,d:ExternalDimensions):ExternalTyreFit|undefined{
+  const mid=new THREE.Box3().setFromObject(model,true).getCenter(new THREE.Vector3());
+  const groups:Array<Array<{center:THREE.Vector3;radius:number}>>=[[],[],[],[]];
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh)||IS_STEERING.test(wheelLabel(obj))||
+       /spare|caliper|brake|wheel[_\s-]*(arch|well|house)/i.test(wheelLabel(obj)))return;
+    const b=new THREE.Box3().setFromObject(obj,true),s=b.getSize(new THREE.Vector3()),p=b.getCenter(new THREE.Vector3());
+    const radius=(s.y+s.z)/4;
+    if(!Number.isFinite(radius)||radius<d.wheelRadius*.60||radius>d.wheelRadius*1.45||
+       s.x>radius*1.9||s.x<.035||Math.abs(s.y-s.z)>radius*.25||
+       Math.abs(p.x-mid.x)<d.track*.25||Math.abs(p.z-mid.z)<d.wheelbase*.24||
+       b.min.y<-.08||b.min.y>.25)return;
+    groups[(p.z>=mid.z?0:2)+(p.x>=mid.x?0:1)].push({center:p,radius});
+  });
+  const selected=groups.map(g=>g.sort((a,b)=>b.radius-a.radius)[0]);
+  if(selected.some(x=>!x))return undefined;
+  if(Math.abs(selected[0].center.z-selected[1].center.z)>.15||
+     Math.abs(selected[2].center.z-selected[3].center.z)>.15||
+     Math.abs(selected[0].radius-selected[1].radius)>.06||
+     Math.abs(selected[2].radius-selected[3].radius)>.06)return undefined;
+  return {centers:selected.map(x=>x.center),radii:selected.map(x=>x.radius)};
+}
+
+/** Match individual rims, tyres and brake parts to the same measured hub.
+ * Never move a large body panel merely because a name contains "wheel". */
+function atMeasuredPickupHub(mesh:THREE.Mesh,hubs:readonly THREE.Vector3[],radii:readonly number[]):boolean{
+  const label=wheelLabel(mesh);
+  if(IS_STEERING.test(label)||/spare|wheel[_\s-]*(arch|well|house)/i.test(label))return false;
+  const box=indexedWorldBounds(mesh),size=box.getSize(new THREE.Vector3()),p=box.getCenter(new THREE.Vector3());
+  const i=distanceToHub(p,hubs),r=radii[i],h=hubs[i];
+  return Math.abs(p.x-h.x)<=r*.65&&Math.abs(p.y-h.y)<=r*.36&&Math.abs(p.z-h.z)<=r*.36&&
+    size.x<=r*2.0&&size.y<=r*2.25&&size.z<=r*2.25&&
+    size.y>=r*.35&&size.z>=r*.35;
+}
+
+/** Measure tyres that share a single GLB mesh using their actual indexed
+ * vertices in each quadrant, rather than guessing the wheelbase. */
+function measureMergedTyres(model:THREE.Object3D,d:ExternalDimensions):ExternalTyreFit|undefined{
+  const center=new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3());
+  const bounds=Array.from({length:4},()=>new THREE.Box3());
+  const point=new THREE.Vector3();
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh))return;
+    const label=wheelLabel(obj);
+    if(IS_STEERING.test(label)||/spare|wheel[_\s-]*(arch|well|house)/i.test(label)||
+       !/tyre|tire|neumatico|pneu|caucho|rubber/i.test(label))return;
+    const pos=obj.geometry.getAttribute("position"),idx=obj.geometry.index;
+    if(!pos)return;
+    for(let i=0;i<(idx?.count??pos.count);i++){
+      point.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(obj.matrixWorld);
+      if(Math.abs(point.x-center.x)<d.track*.22||
+         Math.abs(point.z-center.z)<d.wheelbase*.18||
+         point.y<-.08||point.y>d.wheelRadius*2.8)continue;
+      const quadrant=(point.z>=center.z?0:2)+(point.x>=center.x?0:1);
+      bounds[quadrant].expandByPoint(point);
+    }
+  });
+  if(bounds.some(b=>b.isEmpty()))return undefined;
+  const sizes=bounds.map(b=>b.getSize(new THREE.Vector3()));
+  const centers=bounds.map(b=>b.getCenter(new THREE.Vector3()));
+  const radii=sizes.map(s=>(s.y+s.z)/4);
+  if(sizes.some((s,i)=>radii[i]<d.wheelRadius*.60||radii[i]>d.wheelRadius*1.45||
+    Math.abs(s.y-s.z)>radii[i]*.25||s.x>radii[i]*2.2||bounds[i].min.y>.20)||
+    Math.abs(centers[0].z-centers[1].z)>.12||Math.abs(centers[2].z-centers[3].z)>.12||
+    Math.abs(radii[0]-radii[1])>.05||Math.abs(radii[2]-radii[3])>.05)return undefined;
+  return {centers,radii};
+}
+
+/** Bounds of referenced vertices only: GLB primitives can share a larger
+ * attribute buffer. Reading all vertices makes a split wheel look like an axle. */
+export function indexedWorldBounds(mesh:THREE.Mesh):THREE.Box3{
+  mesh.updateWorldMatrix(true,false);
+  const pos=mesh.geometry.getAttribute("position"),idx=mesh.geometry.index;
+  const box=new THREE.Box3(),p=new THREE.Vector3();
+  if(pos)for(let i=0;i<(idx?.count??pos.count);i++)
+    box.expandByPoint(p.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(mesh.matrixWorld));
+  return box;
+}
+function quadrantWheelBounds(mesh:THREE.Mesh,mid:THREE.Vector3):THREE.Box3[]{
+  const boxes=Array.from({length:4},()=>new THREE.Box3());
+  const pos=mesh.geometry.getAttribute("position"),idx=mesh.geometry.index,p=new THREE.Vector3();
+  if(pos)for(let i=0;i<(idx?.count??pos.count);i++){
+    p.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(mesh.matrixWorld);
+    boxes[(p.z>=mid.z?0:2)+(p.x>=mid.x?0:1)].expandByPoint(p);
+  }
+  return boxes;
+}
+/** The Mercedes source names are generic. Object_28 is a candidate from the
+ * observed bounds, not assumed to be rubber until four circular clusters fit. */
+function measureMercedesMerged(model:THREE.Object3D,d:ExternalDimensions):ExternalTyreFit|undefined{
+  const mid=new THREE.Box3().setFromObject(model,true).getCenter(new THREE.Vector3());
+  let fit:ExternalTyreFit|undefined;
+  model.traverse(obj=>{
+    if(!(obj instanceof THREE.Mesh)||!/^Object_28(?:$|[_.])/i.test(obj.name))return;
+    const boxes=quadrantWheelBounds(obj,mid);
+    if(boxes.some(b=>b.isEmpty()))return;
+    const centers=boxes.map(b=>b.getCenter(new THREE.Vector3()));
+    const sizes=boxes.map(b=>b.getSize(new THREE.Vector3()));
+    const radii=sizes.map(s=>(s.y+s.z)/4);
+    console.info("[Horizon] MERCEDES_WHEEL_CLUSTERS",JSON.stringify({centers:centers.map(p=>p.toArray()),sizes:sizes.map(p=>p.toArray())}));
+    if(sizes.some((s,i)=>radii[i]<d.wheelRadius*.55||radii[i]>d.wheelRadius*1.5||
+      Math.abs(s.y-s.z)>radii[i]*.30||s.x>radii[i]*2.1||boxes[i].min.y>.08||
+      Math.abs(centers[i].x-mid.x)<d.track*.25||Math.abs(centers[i].z-mid.z)<d.wheelbase*.20))return;
+    if(Math.abs(centers[0].z-centers[1].z)>.12||Math.abs(centers[2].z-centers[3].z)>.12||
+       Math.abs(radii[0]-radii[1])>.05||Math.abs(radii[2]-radii[3])>.05)return;
+    fit={centers,radii};
+  });
+  return fit;
+}
+/** Only classify anonymous merged meshes when EVERY referenced vertex belongs
+ * to one measured hub envelope. This avoids detaching chassis triangles. */
+function isMergedHubAssembly(mesh:THREE.Mesh,hubs:readonly THREE.Vector3[],radii:readonly number[]):boolean{
+  const pos=mesh.geometry.getAttribute("position"),idx=mesh.geometry.index,p=new THREE.Vector3();
+  if(!pos)return false;
+  const seen=new Set<number>();
+  for(let i=0;i<(idx?.count??pos.count);i++){
+    p.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(mesh.matrixWorld);
+    const k=distanceToHub(p,hubs),h=hubs[k],r=radii[k];
+    if(Math.abs(p.x-h.x)>r*.95||Math.hypot(p.y-h.y,p.z-h.z)>r*1.15)return false;
+    seen.add(k);
+  }
+  return seen.size>=2;
 }
 
 function triangulationCount(geo:THREE.BufferGeometry):number{
@@ -181,6 +311,34 @@ export async function loadExternalVehicle(
       scene.updateMatrixWorld(true);box.setFromObject(scene);
       dim=box.getSize(new THREE.Vector3());
     }
+    // Mercedes Object_28 has four measured circular tyre clusters on a
+    // rotated rectangle. Recover its actual longitudinal axis, not a guess
+    // from the overall body bounds. Rotate the complete source before fitting.
+    if(id==="mercedes-amg-gt-alternative"){
+      const middle=new THREE.Box3().setFromObject(scene,true).getCenter(new THREE.Vector3());
+      let yaw:number|undefined;
+      scene.traverse(obj=>{
+        if(!(obj instanceof THREE.Mesh)||obj.name!=="Object_28")return;
+        const b=quadrantWheelBounds(obj,middle);
+        if(b.some(x=>x.isEmpty()))return;
+        const p=b.map(x=>x.getCenter(new THREE.Vector3()));
+        const front=p[0].clone().add(p[1]).multiplyScalar(.5);
+        const rear=p[2].clone().add(p[3]).multiplyScalar(.5);
+        const axis=front.sub(rear);
+        const frontWidth=p[0].clone().sub(p[1]),rearWidth=p[2].clone().sub(p[3]);
+        // Both axles must agree and be perpendicular to the longitudinal axis.
+        if(axis.length()<.001||frontWidth.length()<.001||rearWidth.length()<.001)return;
+        if(Math.abs(axis.clone().normalize().dot(frontWidth.clone().normalize()))>.12||
+          Math.abs(axis.clone().normalize().dot(rearWidth.clone().normalize()))>.12)return;
+        yaw=Math.atan2(axis.x,axis.z);
+      });
+      if(yaw!==undefined&&Math.abs(yaw)<Math.PI/4){
+        scene.rotation.y-=yaw;
+        scene.updateMatrixWorld(true);
+        box.setFromObject(scene);dim=box.getSize(new THREE.Vector3());
+        console.info("[Horizon] MERCEDES_AXLE_YAW_DEG",yaw*180/Math.PI);
+      }
+    }
     if(dim.x<.0001||dim.y<.0001||dim.z<.0001)throw Error(id+": geometría degenerada");
     // Preserve proportions. Allow mirror/bumper overhang; avoid height stretching.
     const factor=Math.min(d.length/dim.z,d.width*1.20/dim.x,d.height*1.20/dim.y);
@@ -195,9 +353,20 @@ export async function loadExternalVehicle(
     if(after.length()<.01)throw Error(id+": modelo no renderizable");
     if(id==="ferrari-f430")measuredTyres.set(id,measureFerrariF430Tyres(scene));
     else {
-      const fit=measureExternalTyres(scene,d);
+      const fit=measureExternalTyres(scene,d)??measureMergedTyres(scene,d)??(needsGeometricFit(id)?measurePickupGeometry(scene,d):undefined)??(id==='mercedes-amg-gt-alternative'?measureMercedesMerged(scene,d):undefined);
       if(fit)measuredTyres.set(id,fit);
-      else console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
+      else {
+        console.warn("[Horizon] Geometría de neumáticos pendiente de calibración:",id);
+        if(needsGeometricFit(id)){
+          const candidates:unknown[]=[];
+          scene.traverse(obj=>{
+            if(!(obj instanceof THREE.Mesh))return;
+            const b=new THREE.Box3().setFromObject(obj,true),s=b.getSize(new THREE.Vector3()),p=b.getCenter(new THREE.Vector3());
+            candidates.push({name:wheelLabel(obj),size:s.toArray(),center:p.toArray(),minY:b.min.y});
+          });
+          console.warn("[Horizon] WHEEL_GEOMETRY_DIAG",id,JSON.stringify(candidates));
+        }
+      }
     }
     loaded.set(id,scene);
   }).finally(()=>pending.delete(id));
@@ -205,6 +374,7 @@ export async function loadExternalVehicle(
   return task;
 }
 export function hasExternalVehicle(id:string):boolean{return loaded.has(id);}
+export function hasMeasuredExternalTyres(id:string):boolean{return measuredTyres.has(id);}
 export function externalAudit(id:string):ExternalVisualAudit|undefined{return diagnostics.get(id);}
 
 /**
@@ -240,9 +410,14 @@ function partitionWheelMesh(
     Object.assign(divided.morphAttributes,geo.morphAttributes);
     divided.setIndex(indices);
     divided.addGroup(0,indices.length,0);
-    divided.computeBoundingSphere();
-    owned.push(divided);
-    const part=new THREE.Mesh(divided,mesh.material);
+    // Expand only this corner's referenced triangles. Sharing the full axle's
+    // position buffer gave each wheel an invalid full-axle bounding box.
+    const compact=divided.toNonIndexed();
+    divided.dispose();
+    compact.computeBoundingBox();
+    compact.computeBoundingSphere();
+    owned.push(compact);
+    const part=new THREE.Mesh(compact,mesh.material);
     part.name=mesh.name+"_original_wheel_"+hub;
     part.position.copy(mesh.position);
     part.quaternion.copy(mesh.quaternion);
@@ -285,14 +460,19 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   imported.traverse(child=>{
     if(!(child instanceof THREE.Mesh))return;
     sourceMeshes++;sourceTriangles+=triangulationCount(child.geometry);
-    if(isWheel(child))wheelMeshes.push(child);
+    // Mercedes wheel material primitives are merged across all corners.
+    // Only admit them if their referenced vertices fit measured hub envelopes.
+    if(isWheel(child)||(needsGeometricFit(id)&&measuredTyres.has(id)&&
+      (atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))||
+       (id==='mercedes-amg-gt-alternative'&&isMergedHubAssembly(child,hubs,externalWheelRadii(id,d))))))wheelMeshes.push(child);
   });
   const counts=[0,0,0,0];
   // Reattach wheel meshes from source GLB to live pivots; no substitute tyres.
   for(const mesh of wheelMeshes){
     if(!mesh.parent)continue;
     candidateCount++;
-    const box=new THREE.Box3().setFromObject(mesh),size=box.getSize(new THREE.Vector3());
+    const sourceLabel=wheelLabel(mesh);
+    const box=indexedWorldBounds(mesh),size=box.getSize(new THREE.Vector3());
     const multi=size.x>d.width*.64||size.z>d.wheelbase*.52;
     const parts=multi?partitionWheelMesh(mesh,hubs,owned):
       [{mesh,hub:distanceToHub(box.getCenter(new THREE.Vector3()),hubs)}];
@@ -300,11 +480,67 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     for(const item of parts){
       // The wheel is moved, not duplicated; GLB material and geometry survive.
       root.updateMatrixWorld(true);
-      wheels[item.hub].spin.attach(item.mesh);
+      // Brake calipers steer with the hub but must never rotate with the rim.
+      const fixedBrake=/caliper|étrier|etrier|pinza/i.test(sourceLabel);
+      item.mesh.userData.originalWheelLabel=sourceLabel;
+      const pivot=fixedBrake?wheels[item.hub].steer:wheels[item.hub].spin;
+      pivot.attach(item.mesh);
+      // For an explicitly named complete rim/tyre ring, align its radial
+      // centre with the measured tyre axle. Preserve X (rim dish/offset),
+      // radius, mesh shape and the original authored material.
+      const ramRearCandidate=id==="ram-3500-alternative"&&item.hub===2&&item.mesh.name==="Object_4";
+      if(!fixedBrake&&measuredTyres.has(id)&&(/tyre|tire|neumatico|pneu|rubber|caucho|rim|rines?|sidewall|thread|tread|LOD_A_WHEEL/i.test(sourceLabel)||ramRearCandidate)){
+        const bound=indexedWorldBounds(item.mesh),s=bound.getSize(new THREE.Vector3());
+        const p=bound.getCenter(new THREE.Vector3()),h=hubs[item.hub],r=externalWheelRadii(id,d)[item.hub];
+        const partR=(s.y+s.z)/4,offset=Math.hypot(p.y-h.y,p.z-h.z);
+        if(partR>=r*.48&&partR<=r*1.18&&Math.abs(s.y-s.z)<=partR*(ramRearCandidate ? .28 : .20)&&
+           s.x<=r*2&&offset>Math.min(.025,r*.075)&&offset<=r*.32){
+          const worldOrigin=item.mesh.getWorldPosition(new THREE.Vector3());
+          worldOrigin.y+=h.y-p.y;worldOrigin.z+=h.z-p.z;
+          item.mesh.position.copy(pivot.worldToLocal(worldOrigin));
+          item.mesh.userData.radialCorrectionM=offset;
+          item.mesh.updateWorldMatrix(true,false);
+        }
+      }
       counts[item.hub]++;
       copied+=triangulationCount(item.mesh.geometry);
     }
   }
+  // Audit actual wheel-local geometry after attachment. Axial X offsets are
+  // intentional (rim dish); radial Y/Z eccentricity is not.
+  root.updateMatrixWorld(true);
+  const wheelAlignment=wheels.map((wheel,i)=>{
+    const center=wheel.steer.getWorldPosition(new THREE.Vector3());
+    const radius=externalWheelRadii(id,d)[i];
+    const parts:Array<{name:string;kind:string;radialOffsetM:number;radiusM:number;center:number[]}>= [];
+    wheel.spin.traverse(obj=>{
+      if(!(obj instanceof THREE.Mesh))return;
+      const bounds=indexedWorldBounds(obj),s=bounds.getSize(new THREE.Vector3()),p=bounds.getCenter(new THREE.Vector3());
+      const partRadius=(s.y+s.z)/4;
+      // Full circular surfaces only: spokes, balance weights and lugs are
+      // not expected to have a bounding box centered on the hub.
+      if(partRadius<radius*.48||partRadius>radius*1.18||Math.abs(s.y-s.z)>partRadius*.28)return;
+      const label=String(obj.userData.originalWheelLabel??wheelLabel(obj));
+      // Silverado source audit: each measured wheel has one NEUMA tyre,
+      // a DARK_GRAY inner assembly and an outer CHROME rim. Only the
+      // four observed outer rim primitives qualify; chrome trim elsewhere
+      // on the body is never classified by this rule.
+      const silveradoRim=id==="chevrolet-silverado-ev-alternative"&&
+        /^Object_(9001|21001|13001|27001)_CHROME_0$/i.test(obj.name)&&
+        partRadius>=radius*.65&&partRadius<=radius*.85&&
+        Math.hypot(p.y-center.y,p.z-center.z)<=.005;
+      const kind=/tyre|tire|neumatico|pneu|rubber|caucho|sidewall|thread|tread|(?:^|_)NEUMA(?:_|$)/i.test(label)?"tyre":
+        silveradoRim||/rim|rines?|llanta|LOD_A_WHEEL/i.test(label)?"rim":"unidentified";
+      parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
+        radiusM:partRadius,center:p.toArray(),...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
+    });
+    const tyres=parts.filter(p=>p.kind==="tyre"),rims=parts.filter(p=>p.kind==="rim");
+    const maxOffsetM=parts.length?Math.max(...parts.map(p=>p.radialOffsetM)):null;
+    const pairOffsetM=tyres.length&&rims.length?Math.max(...tyres.flatMap(t=>rims.map(r=>Math.hypot(t.center[1]-r.center[1],t.center[2]-r.center[2])))):null;
+    return {corner:wheel.steer.name,radiusM:radius,parts,maxOffsetM,pairOffsetM,
+      toleranceM:Math.min(.025,radius*.075),explicitPair:tyres.length>0&&rims.length>0};
+  });
+  root.userData.wheelAlignment=wheelAlignment;
   // Per-vehicle materials; changing one car must never recolor other racers.
   const paint=new THREE.MeshPhysicalMaterial({
     name:"paint",color:d.paint,metalness:.18,roughness:.32,
@@ -344,6 +580,14 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     obj.material=Array.isArray(obj.material)?obj.material.map(mapMaterial):mapMaterial(obj.material);
     obj.castShadow=false;obj.receiveShadow=false;
   });
+  // Preserve original wheel assignment diagnostics; batch only inside each
+  // rigid motion group after material adaptation.
+  let renderMeshesBefore=0,renderMeshesAfter=0;
+  root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesBefore++;});
+  // Keep tyre/rim/caliper meshes independently inspectable until visual acceptance.
+  owned.push(...batchRigidPart(bodyRoot));
+  root.traverse(obj=>{if(obj instanceof THREE.Mesh)renderMeshesAfter++;});
+  root.userData.renderMeshBudget={before:renderMeshesBefore,after:renderMeshesAfter};
   root.userData.ownedBatchGeometry=owned;
   const dimensions=new THREE.Box3().setFromObject(imported).getSize(new THREE.Vector3());
   diagnostics.set(id,{

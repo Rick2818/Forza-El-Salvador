@@ -365,7 +365,7 @@
     "tuning": {
       "power": 6.5,
       "mass": 1.45,
-      "topSpeed": 67.056,
+      "topSpeed": 89.408,
       "grip": 0.97,
       "steer": 0.42
     },
@@ -390,7 +390,7 @@
     "tuning": {
       "power": 6.5,
       "mass": 1.6,
-      "topSpeed": 64.8208,
+      "topSpeed": 89.408,
       "grip": 0.97,
       "steer": 0.42
     },
@@ -415,7 +415,7 @@
     "tuning": {
       "power": 6.5,
       "mass": 1.53,
-      "topSpeed": 62.5856,
+      "topSpeed": 89.408,
       "grip": 0.97,
       "steer": 0.42
     },

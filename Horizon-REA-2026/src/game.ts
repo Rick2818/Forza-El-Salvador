@@ -1,4 +1,6 @@
 import { RacePerformance, GPUFrameTimer } from "./render/performance";
+import { FrameScheduler } from "./core/frameScheduler";
+import { RenderBackpressure } from "./render/renderBackpressure";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import { RELEASE_LABEL } from "./core/version";
@@ -8,7 +10,8 @@ import { Track } from "./world/track";
 import { inMonzonPitArea, monzonGarageAt } from "./world/monzonPitAccess";
 import { inSuzakaPitArea, suzakaGarageAt, SUZAKA_PIT_ENTRY, SUZAKA_PIT_EXIT } from "./world/suzakaPitAccess";
 import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
-import { updateHumanPeople } from "./world/humanPeople";
+import { updateHumanPeople, prepareHumanImpostors, crowdStats, type CrowdMode } from "./world/humanPeople";
+import { prepareMonzonTreeLods, updateMonzonTreeLods } from "./world/monzonBlenderTrees";
 import { Environment } from "./world/environment";
 import { MonzonLaunchFireworks, MONZON_OPENING_DURATION } from "./world/monzonFireworks";
 import { Race, type Difficulty } from "./race/race";
@@ -49,18 +52,32 @@ export class Game {
   fps = 0;
   readonly performanceLog = new RacePerformance();
   private readonly gpuTimer: GPUFrameTimer;
+  private readonly gpuBackpressure: RenderBackpressure;
+  private lastDrawAt = performance.now();
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
   private clock = new THREE.Clock();
   private time = 0;
+  private lastCompletedFrame = performance.now();
+  private readonly scheduler = new FrameScheduler(source => this.frame(source));
+  private lastFrameSource: "raf" | "timer" = "raf";
+  private lastFrameGapMs = 0;
+  private maxFrameGapMs = 0;
+  private preparingGraphics = false;
+  private graphicsPreparationMs = 0;
+  private framePhase = "init";
   private physicsAccum = 0;
   private readonly fixedStep = 1 / 60;
   private fpsFrames = 0;
+  private fpsDraws = 0;
+  private callbackFps = 0;
+  private renderedFps = 0;
   private fpsTimer = 0;
   private goFlash = 0;
   private goShown = false;
   private fireworks: MonzonLaunchFireworks | null = null;
+  private crowdMode:CrowdMode="hybrid";
   private openingTime = 0;
   private pausedOpening = false;
   private automaticallyPausedForFocusLoss = false;
@@ -100,6 +117,7 @@ export class Game {
     this.renderer.toneMappingExposure = 1.12;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.gpuTimer = new GPUFrameTimer(this.renderer.getContext());
+    this.gpuBackpressure = new RenderBackpressure(this.renderer.getContext());
 
     this.camera = new THREE.PerspectiveCamera(
       SETTINGS.camera.fov,
@@ -130,13 +148,15 @@ export class Game {
     // Never add debug helpers or a second directional light in production.
     this.environment = new Environment(this.scene, this.renderer, this.track);
     this.environment.installTerrainPhysics(this.world);
-    if (this.track.circuit.id === "monzon") {
+    if (this.track.circuit.id === "monzon" || this.track.circuit.id === "suzaka") {
       this.fireworks = new MonzonLaunchFireworks(this.scene, this.track,
         cue => cue.kind === "launch"
           ? this.audio.playFireworkLaunch(cue.distance)
           : this.audio.playFireworkBurst(cue.distance,cue.pattern));
     }
     this.applyResolution();
+    const requestedCrowd=new URLSearchParams(window.location.search).get("crowd");
+    if(requestedCrowd==="3d"||requestedCrowd==="hybrid"||requestedCrowd==="impostors")this.crowdMode=requestedCrowd;
     const requestedVehicle = new URLSearchParams(window.location.search).get("vehicle");
     const validRequestedVehicle = requestedVehicle !== null && isExternalVehicle(requestedVehicle);
     if (validRequestedVehicle) this.selectedVehicleId = requestedVehicle;
@@ -167,7 +187,7 @@ export class Game {
     this.openingOverlay = document.createElement("div");
     this.openingOverlay.id = "event-opening";
     this.openingOverlay.hidden = true;
-    this.openingOverlay.innerHTML = `<div class="event-caption"><span>HORIZON EL SALVADOR</span><strong>La noche nos reúne</strong><small>MONZÓN · APERTURA DEL EVENTO</small></div><button type="button" class="btn" id="skip-opening">Omitir presentación <small>Enter</small></button>`;
+    this.openingOverlay.innerHTML = `<div class="event-caption"><span>HORIZON EL SALVADOR</span><strong>${this.track.circuit.id==="monzon"?"La noche nos reúne":"El día de la velocidad"}</strong><small>${this.track.circuit.id==="monzon"?"MONZÓN":"SUZAKA"} · APERTURA DEL EVENTO</small></div><button type="button" class="btn" id="skip-opening">Omitir presentación <small>Enter</small></button>`;
     uiRoot.append(this.openingOverlay);
     this.openingOverlay.querySelector("button")!.addEventListener("click", () => this.skipOpening());
     this.menu = new Menu(uiRoot, {
@@ -237,7 +257,8 @@ export class Game {
     this.menu.showStart(this.track.length / 1000);
     this.hud.show(false);
     this.installDebugApi();
-    this.renderer.setAnimationLoop(this.frame);
+    this.scheduler.start();
+    window.setInterval(this.checkFrameContinuity, 1000);
   }
 
   private muteButton(): HTMLElement | null {
@@ -254,7 +275,27 @@ export class Game {
         difficulty: this.difficulty,
         raceState: this.race.state,
         openingTime: this.openingTime,
+        framePhase: this.framePhase,
+        frameSource: this.lastFrameSource,
+        animationFrames: this.scheduler.animationFrames,
+        fallbackFrames: this.scheduler.fallbackFrames,
+        lastFrameGapMs: this.lastFrameGapMs,
+        maxFrameGapMs: this.maxFrameGapMs,
+        crowdMode:this.crowdMode,
+        crowd:crowdStats(this.scene),
+        fireworksActiveVertices:this.fireworks?.group.userData.activeParticleVertices??0,
+        fireworksAllocatedVertices:this.fireworks?.group.userData.particleCount??0,
+        rivalLods: this.race.rivalLodStats(),
+        culledRivals: this.race.culledRivalCount,
+        submittedDraws: this.gpuBackpressure.submitted,
+        skippedDraws: this.gpuBackpressure.skipped,
+        drawAgeMs: Math.round(performance.now() - this.lastDrawAt),
+        preparingGraphics: this.preparingGraphics,
+        graphicsPreparationMs: Math.round(this.graphicsPreparationMs),
+        frameAgeMs: Math.round(performance.now() - this.lastCompletedFrame),
         fps: Number(this.fps.toFixed(1)),
+        callbackFps: Number(this.callbackFps.toFixed(1)),
+        renderedFps: Number(this.renderedFps.toFixed(1)),
         speedKph: Number(this.race.player.vehicle.speedKph.toFixed(1)),
         gear: this.race.player.vehicle.gear + 1,
         rpm: Math.round(this.race.player.vehicle.rpm),
@@ -305,7 +346,129 @@ export class Game {
   }
 
   startRace(): void {
-    this.replaceRace();
+    if (this.preparingGraphics) return;
+    if (this.captureMode) { this.replaceRace(); this.beginPreparedRace(); return; }
+    // Unlock audio within the user's gesture, before awaiting GPU preparation.
+    this.audio.ensure();
+    this.audio.silence();
+    this.preparingGraphics = true;
+    const notice = document.createElement("div");
+    notice.id = "race-graphics-preparation";
+    notice.setAttribute("role", "status");
+    notice.style.cssText = "position:fixed;inset:0;z-index:9998;display:grid;place-items:center;background:#080f1d;color:white;font:600 16px system-ui;text-align:center;padding:24px";
+    notice.textContent = "Preparando modelos, texturas e iluminación para la carrera…";
+    document.body.append(notice);
+    void (async () => {
+      try {
+        // Paint the loading state before doing expensive scene work.
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        this.replaceRace();
+        if (!this.skipRender) await this.prepareRaceGraphics();
+        this.lastCompletedFrame = performance.now();
+        this.lastDrawAt = performance.now();
+        this.gpuBackpressure.reset();
+        this.clock.getDelta();
+        this.beginPreparedRace();
+        // If the player left the tab during preparation, keep pause semantics.
+        if (document.hidden || !document.hasFocus()) this.pauseForFocusLoss();
+      } catch (error) {
+        console.error("[Horizon] Error preparando gráficos", error);
+        this.audio.silence();
+        this.showRecovery("frame-failure", "No se pudo preparar la carrera", String(error));
+      } finally {
+        this.preparingGraphics = false;
+        notice.remove();
+        this.lastCompletedFrame = performance.now();
+      }
+    })();
+  }
+
+  /** A bounded asynchronous fence between expensive preparation stages.
+   * Do not discard an in-flight gameplay fence and immediately submit more
+   * work. Never use gl.finish or a blocking clientWaitSync timeout. */
+  private async drainPreparationGpu(stage:string):Promise<void>{
+    const gl=this.renderer.getContext() as WebGL2RenderingContext;
+    if(gl.isContextLost())throw Error(stage+": WebGL context lost");
+    const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
+    if(!fence)throw Error(stage+": could not create GPU preparation fence");
+    const started=performance.now();gl.flush();
+    try{
+      for(;;){
+        if(gl.isContextLost())throw Error(stage+": WebGL context lost");
+        const status=gl.clientWaitSync(fence,0,0);
+        if(status===gl.ALREADY_SIGNALED||status===gl.CONDITION_SATISFIED)break;
+        if(status===gl.WAIT_FAILED)throw Error(stage+": GPU wait failed");
+        if(performance.now()-started>=30000)throw Error(stage+": GPU preparation exceeded 30 seconds");
+        await new Promise<void>(resolve=>setTimeout(resolve,8));
+      }
+    }finally{
+      if(!gl.isContextLost())gl.deleteSync(fence);
+      console.info("[Horizon] GPU_PREPARATION",stage,Math.round(performance.now()-started));
+    }
+  }
+
+  private async prepareRaceGraphics(): Promise<void> {
+    const started = performance.now();
+    this.framePhase = "graphics-preparation";
+    await this.drainPreparationGpu("previous-menu-frame");
+    this.gpuBackpressure.reset();
+    await this.environment.whenReady(this.scene);
+    await prepareHumanImpostors(this.renderer,this.scene,this.crowdMode);
+    await this.drainPreparationGpu("audience-atlas");
+    prepareMonzonTreeLods(this.scene,this.renderer);
+    await this.drainPreparationGpu("vegetation-atlas");
+    updateMonzonTreeLods(this.scene,this.camera.position);
+    this.environment.updateVegetationView(this.camera.position,1);
+    await this.race.prepareRivalLods();
+    this.fireworks?.prepareGpu(this.renderer);
+    await this.drainPreparationGpu("fireworks-buffers");
+    const hiddenCars = this.race.standbyVisuals();
+    const saved = hiddenCars.map(root => root.visible);
+    const fireworks = this.fireworks?.group;
+    const wasFireworksVisible = fireworks?.visible;
+    const textures = new Set<THREE.Texture>();
+    try {
+      // Compile both the parade and race light configurations while the clock is stopped.
+      hiddenCars.forEach(root => { root.visible = true; });
+      this.scene.updateMatrixWorld(true);
+      this.scene.traverse(object => {
+        if (!(object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.Line)) return;
+        for (const material of [object.material].flat()) {
+          for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+          if(material instanceof THREE.ShaderMaterial)for(const uniform of Object.values(material.uniforms))if(uniform.value instanceof THREE.Texture)textures.add(uniform.value);
+        }
+      });
+      let uploads=0;
+      for (const texture of textures) if(!texture.isRenderTargetTexture){
+        this.renderer.initTexture(texture);
+        if(++uploads%12===0)await this.drainPreparationGpu("textures-"+uploads);
+      }
+      await this.drainPreparationGpu("textures-complete");
+      updateHumanPeople(this.scene,this.camera);
+      if (fireworks) {
+        fireworks.visible = true;
+        await this.renderer.compileAsync(this.scene, this.camera);
+        fireworks.visible = false;
+      }
+      await this.renderer.compileAsync(this.scene, this.camera);
+      // Submit a real representative race frame before the clock starts.
+      hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
+      this.chase.snap();
+      this.chase.update(1 / 60, this.race.player.vehicle, this.time);
+      this.race.updateRivalLods(this.camera);
+      updateMonzonTreeLods(this.scene,this.camera.position);
+      this.environment.updateVegetationView(this.camera.position,1);
+      this.renderer.render(this.scene, this.camera);
+      await this.drainPreparationGpu("representative-race-frame");
+      if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
+    } finally {
+      hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
+      if (fireworks) fireworks.visible = wasFireworksVisible ?? false;
+      this.graphicsPreparationMs = performance.now() - started;
+    }
+  }
+
+  private beginPreparedRace(): void {
     this.performanceLog.reset();
     this.lastEnteredPitGarage = null;
     this.audio.silence();
@@ -313,6 +476,8 @@ export class Game {
     this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
     this.race.state = this.fireworks ? "idle" : "countdown";
     this.race.countdown = SETTINGS.race.countdown;
+    this.maxFrameGapMs = 0;
+    this.lastFrameGapMs = 0;
     this.state = this.fireworks ? "opening" : "racing";
     this.goFlash = 0;
     this.goShown = false;
@@ -590,10 +755,41 @@ export class Game {
     if (document.getElementById("context-lost")) window.location.reload();
   };
 
-  private frame = (): void => {
+  // A running Web Audio graph may outlive a stopped animation loop. This
+  // independent watchdog provides a recovery path when the JS event loop is
+  // responsive. A completely blocked GPU/JS process still requires a reload.
+  private checkFrameContinuity = (): void => {
+    if (this.preparingGraphics || this.captureMode || document.hidden || !document.hasFocus() ||
+        (this.state !== "racing" && this.state !== "opening")) {
+      this.lastCompletedFrame = performance.now();
+      return;
+    }
+    if ((performance.now() - this.lastCompletedFrame < 5000 &&
+         (this.skipRender || performance.now() - this.lastDrawAt < 5000)) ||
+        document.getElementById("frame-failure") || document.getElementById("context-lost")) return;
+    const context = { version: RELEASE_LABEL, circuit: this.track.circuit.id,
+      vehicle: this.selectedVehicleId, phase: this.framePhase,
+      elapsed: this.race.elapsed, fps: this.fps, source: this.lastFrameSource,
+      drawAgeMs: performance.now() - this.lastDrawAt, skippedDraws: this.gpuBackpressure.skipped };
+    console.error("[Horizon] fotogramas interrumpidos", context);
+    try { localStorage.setItem("horizon.last-frame-failure", JSON.stringify(context)); } catch { /* optional */ }
+    this.audio.silence();
+    this.showRecovery("frame-failure", "Carrera interrumpida",
+      "El juego dejó de completar fotogramas. Recarga para reiniciar la carrera. Fase: " + this.framePhase);
+    this.scheduler.stop();
+  };
+
+  private frame = (source: "raf" | "timer" = "raf"): void => {
     const rawDt = this.clock.getDelta();
+    this.lastFrameSource = source;
+    if (this.preparingGraphics) { this.lastCompletedFrame = performance.now(); return; }
     try {
+      this.lastFrameGapMs = Math.round(performance.now() - this.lastCompletedFrame);
+      this.maxFrameGapMs = Math.max(this.maxFrameGapMs, this.lastFrameGapMs);
+      this.framePhase = "tick";
       this.tick(Math.min(rawDt, 0.05), rawDt);
+      this.lastCompletedFrame = performance.now();
+      this.framePhase = "completed";
     } catch (error) {
       const context = {
         version: RELEASE_LABEL,
@@ -610,7 +806,7 @@ export class Game {
         "La carrera se interrumpió",
         `Circuito: ${this.track.circuit.name} · ${RELEASE_LABEL}. Recarga el juego para iniciar una nueva carrera.`
       );
-      this.renderer.setAnimationLoop(null);
+      this.scheduler.stop();
       this.audio.silence();
     }
   };
@@ -637,7 +833,8 @@ export class Game {
     canvas.style.width = "100%";
     canvas.style.height = "auto";
     canvas.style.maxHeight = "100%";
-    this.renderer.setAnimationLoop(null);
+    this.scheduler.stop();
+    this.gpuBackpressure.reset();
   }
 
   private tick(dt: number, rawDt: number): void {
@@ -647,8 +844,11 @@ export class Game {
     this.fpsTimer += rawDt;
     this.fpsFrames++;
     if (this.fpsTimer >= 0.5) {
-      this.fps = this.fpsFrames / this.fpsTimer;
+      this.callbackFps = this.fpsFrames / this.fpsTimer;
+      this.renderedFps = this.fpsDraws / this.fpsTimer;
+      this.fps = this.skipRender ? this.callbackFps : this.renderedFps;
       this.fpsFrames = 0;
+      this.fpsDraws = 0;
       this.fpsTimer = 0;
     }
 
@@ -679,6 +879,7 @@ export class Game {
       this.physicsAccum = Math.min(this.physicsAccum + dt, this.fixedStep * 4);
       let steps = 0;
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
+        this.framePhase = "race-update";
         this.race.update(this.fixedStep, drive as Input);
         if(this.track.circuit.id==="suzaka"){
           const p=this.race.player.vehicle.body.translation();
@@ -695,6 +896,7 @@ export class Game {
           const allowEntry=nearOpening && closeToBarrier && this.race.player.vehicle.speedKph<55;
           setSuzakaPitGatesOpen(this.world,allowEntry||parkedInPits);
         }
+        this.framePhase = "rapier-step";
         this.world.step();
         for (const racer of this.race.racers) racer.vehicle.afterPhysicsStep(this.fixedStep);
         for (const car of this.race.oncoming) car.vehicle.afterPhysicsStep(this.fixedStep);
@@ -709,9 +911,11 @@ export class Game {
         this.hud.toast("✅ Auto enderezado y recuperado en la pista", 2600);
       }
 
+      this.framePhase = "vehicle-visual-sync";
       for (const racer of this.race.racers) racer.vehicle.syncVisual(dt);
       for (const car of this.race.oncoming) car.vehicle.syncVisual(dt);
       this.smoke.update(dt, this.race.player.vehicle, drive.throttle);
+      this.framePhase = "environment";
       this.environment.update(this.race.player.vehicle.position, dt);
       if (!this.captureMode) {
         this.chase.update(dt, this.race.player.vehicle, this.time, this.keepCameraInsideWall,
@@ -733,6 +937,7 @@ export class Game {
           this.hud.toast("🏁 Garage "+garage+": área de servicio",2400);
         this.lastEnteredPitGarage = garage;
       }
+      this.framePhase = "audio";
       this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
       const listener = player.body.translation();
       const velocity = player.body.linvel();
@@ -788,19 +993,33 @@ export class Game {
     }
 
     if (this.onBeforeRender) this.onBeforeRender();
-    if (!this.skipRender) {
+    if (!this.skipRender && !this.captureMode) {
+      this.race.updateRivalLods(this.camera);
+      updateMonzonTreeLods(this.scene,this.camera.position);
+      this.environment.updateVegetationView(this.camera.position,dt);
+    }
+    this.framePhase = "gpu-backpressure";
+    if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
+      this.framePhase = "gpu-query-begin";
+      const previousDraw = this.lastDrawAt;
       if (measured) this.gpuTimer.begin();
+      this.framePhase = "webgl-render";
       this.renderer.render(this.scene, this.camera);
+      this.fpsDraws++;
+      if (!this.captureMode) { this.gpuBackpressure.submit(); this.lastDrawAt = performance.now(); }
       if (measured) {
+        this.framePhase = "gpu-query-end";
         this.gpuTimer.end();
+        this.framePhase = "gpu-query-collect";
         for (const ms of this.gpuTimer.collect()) this.performanceLog.recordGPU(ms);
-        if (!document.hidden && document.hasFocus()) this.performanceLog.record(rawDt*1000,performance.now()-workStarted,{
+        if (!document.hidden && document.hasFocus()) this.performanceLog.record(Math.max(0.01,this.lastDrawAt-previousDraw),performance.now()-workStarted,{
           width:this.renderer.domElement.width,height:this.renderer.domElement.height,quality:this.quality,circuit:this.track.circuit.id
         });
         else this.performanceLog.interrupt("La pestaña perdió el foco durante la medición.");
       }
     }
+    this.framePhase = "input-end";
     this.input.endFrame();
   };
 

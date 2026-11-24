@@ -101,7 +101,7 @@ export function createMonzonOrganicTrees(track: Track, ground: TerrainField): TH
   root.userData.source = "procedural-safe";
   // Load Blender outputs only after generation; preserve all the original
   // safe placements and never block the physics startup on an art download.
-  void upgradeMonzonTreesFromBlender(root, matrices.map((entries, i) => ({
+  root.userData.readyPromise=upgradeMonzonTreesFromBlender(root, matrices.map((entries, i) => ({
     matrices: entries, barkColors: barkColors[i], foliageColors: foliageColors[i]
   }))).catch(error => {
     root.userData.blenderLoadError = String(error);

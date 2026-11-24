@@ -291,7 +291,11 @@ export class Vehicle {
     let engineForce = 0;
     if (throttle > 0.01 && absSpeed < this.tuning.topSpeed) {
       // Preserve controllable launches; reserve the extra power for high-speed drag.
-      const highway = THREE.MathUtils.smoothstep(absSpeed, 40, 80);
+      // Pickups have a heavier chassis and lower gearing. Begin the arcade
+      // torque ramp earlier, otherwise drag can balance drive below the ramp.
+      const highway = this.supportsFourWheelDrive
+        ? THREE.MathUtils.smoothstep(absSpeed, 12, 50)
+        : THREE.MathUtils.smoothstep(absSpeed, 40, 80);
       const launchPower = this.vehicleId === "bugatti-chiron" ? 1.2 : this.vehicleId === "mercedes-amg-gt-black-series" ? 1.08 : this.vehicleId === "porsche-911" ? 1.02 : 1;
       const power = THREE.MathUtils.lerp(launchPower, this.tuning.power, highway);
       const total = this.electric
@@ -310,6 +314,15 @@ export class Vehicle {
       const straightAssist = straightOnlyDragAssist(absSpeed,throttle,this.controls.steer,
         lateralSpeed,this.body.angvel().y,grip);
       engineForce += straightAssist * (this.electric ? 1.65 : 1);
+      // Arcade pickup high-speed assist: compensate the chassis's linear
+      // damping only on a straight with sound grip. The governor still
+      // enforces the configured 200 MPH cap; no assistance through bends.
+      if(this.supportsFourWheelDrive && speed>0 && grip>.85 &&
+        Math.abs(this.controls.steer)<.025 && Math.abs(lateralSpeed)<.8 &&
+        Math.abs(this.body.angvel().y)<.12){
+        const fade=THREE.MathUtils.smoothstep(absSpeed,18,48);
+        engineForce+=fade*throttle*(dragForce(absSpeed)*.65+this.body.mass()*.04*absSpeed);
+      }
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
     }
     // S / FRENO becomes a powerful reverse gear after stopping.
@@ -378,7 +391,11 @@ export class Vehicle {
     // At 350–504 MPH the raw v² downforce exceeds suspension capacity
     // (four wheels × 15kN), crushing cars into the asphalt/kerbs.
     // Saturate the arcade aero load to retain physical wheel clearance.
-    const df = Math.min(downforceN(planar), 24000);
+    // Trucks do not have race-car wings; avoid crushing the suspension
+    // under a simulated supercar aero load.
+    const df = this.supportsFourWheelDrive
+      ? Math.min(downforceN(planar, .42), 4500)
+      : Math.min(downforceN(planar), 24000);
     // Downforce must be a pure force at the centre of mass. addForceAtPoint
     // takes a WORLD-space point: passing {0, 0.1, 0} here applied the load at
     // the world origin and produced a huge pitch torque (the car took off).

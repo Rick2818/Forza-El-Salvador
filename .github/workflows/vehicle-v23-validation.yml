@@ -1,4 +1,4 @@
-name: V23 Vehicle validation (no deployment)
+name: V28 Vehicle and rendering validation (no deployment)
 on:
   pull_request:
     branches: [main]
@@ -22,6 +22,7 @@ jobs:
           cache: npm
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - run: npm ci
+      - run: node tools/v28-texture-inventory.mjs
       - run: npm test
       - run: npx tsc --noEmit
       - run: npm run build
