@@ -58,7 +58,7 @@ try {
    assert.ok(samples.every(x=>x.visible&&x.stats.carPosition.every(Number.isFinite)&&x.stats.drawCalls>0));
    assert.ok(samples.some(x=>x.mud>.01),"No mud exposure in full game");
    assert.ok(samples.at(-1).stats.elapsed>samples[0].stats.elapsed,"Race clock stopped");
-  }catch(e){failures.push({id,error:String(e),errors});await page.screenshot({path:join(out,id+"-failure.png")}).catch(()=>{});}
+  }catch(e){const diagnostic=await page.evaluate(()=>({stats:window.HORIZON?.stats(),performance:window.HORIZON?.performanceReport(),recovery:!!document.getElementById("frame-failure"),hidden:document.hidden,focus:document.hasFocus()})).catch(()=>null);failures.push({id,error:String(e),errors,diagnostic});await page.screenshot({path:join(out,id+"-failure.png")}).catch(()=>{});}
   finally{await page.close();}
  }
 }finally{
