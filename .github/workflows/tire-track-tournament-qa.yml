@@ -7,6 +7,7 @@ on:
       - 'Horizon-REA-2026/src/vehicle/vehicle.ts'
       - 'Horizon-REA-2026/src/world/track.ts'
       - 'Horizon-REA-2026/src/world/tireTrackSync.test.ts'
+      - 'Horizon-REA-2026/tests/selected-vehicles.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
