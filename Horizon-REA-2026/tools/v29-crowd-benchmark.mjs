@@ -18,6 +18,10 @@ try{
     await page.screenshot({path:"review/quality/v29-crowd-"+mode+".png",timeout:15000});
     assert.equal(data.contextLost,false);
     assert.ok(data.visible>0);
+    if(mode!=="3d"){
+      assert.equal(data.atlas?.tiles.length,32,"Missing atlas tiles");
+      assert.ok(data.atlas.tiles.every(t=>t.opaqueFraction>.015&&t.opaqueFraction<.8&&t.edge===0),"Atlas has empty, solid or clipped tiles");
+    }
   }
   const [a,b,c]=results;
   assert.equal(b.visible,a.visible);assert.equal(c.visible,a.visible);
