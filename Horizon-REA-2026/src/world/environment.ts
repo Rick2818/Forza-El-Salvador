@@ -161,6 +161,11 @@ export class Environment {
       this.pendingAssets.push(installSuzakaScenery(scene, track).catch(error => {
         console.warn("[Horizon] Suzaka scenery could not load; track remains playable", error);
       }));
+    } else if (track.circuit.id === "el-imposible-4x4") {
+      // Daylight terrain needs volumetric mountains, not the night ridge curtains.
+      const mountains=createNaturalMountainRange(track);
+      mountains.name="offroad-natural-mountain-background";
+      scene.add(mountains);
     } else if (isSparda || isSakhir) {
       installInternationalScenery(scene, track, this.terrain);
       if (isSakhir) {
