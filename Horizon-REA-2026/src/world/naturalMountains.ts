@@ -81,8 +81,8 @@ export function mountainHeight(layout:NaturalMountainLayout,angle:number,f:numbe
   return -38+Math.max(0,envelope*(base+erosion-gullies));
 }
 
-export function mountainGeometry(layout:NaturalMountainLayout):THREE.BufferGeometry {
-  const sides=MOUNTAIN_ANGULAR_DIVISIONS,rows=MOUNTAIN_RADIAL_DIVISIONS;
+export function mountainGeometry(layout:NaturalMountainLayout, mobile=false):THREE.BufferGeometry {
+  const sides=mobile?96:MOUNTAIN_ANGULAR_DIVISIONS,rows=mobile?8:MOUNTAIN_RADIAL_DIVISIONS;
   const vertices:number[]=[],uvs:number[]=[],indices:number[]=[],colors:number[]=[];
   const green=new THREE.Color([0x435e48,0x536f60,0x708078][layout.layer]);
   const brown=new THREE.Color([0x69705c,0x758073,0x889390][layout.layer]);
@@ -149,7 +149,7 @@ function naturalRockAlbedo():THREE.CanvasTexture {
   return t;
 }
 
-export function createNaturalMountainRange(track:Pick<Track,"samples">):THREE.Group {
+export function createNaturalMountainRange(track:Pick<Track,"samples">, mobile=false):THREE.Group {
   const group=new THREE.Group();
   group.name="natural-mountain-background";
   const layouts=mountainLayouts(track);
@@ -158,7 +158,7 @@ export function createNaturalMountainRange(track:Pick<Track,"samples">):THREE.Gr
     map:texture,vertexColors:true,side:THREE.DoubleSide
   });
   for(const layout of layouts){
-    const mesh=new THREE.Mesh(mountainGeometry(layout),material);
+    const mesh=new THREE.Mesh(mountainGeometry(layout,mobile),material);
     mesh.name=`organic-volcanic-ridge-${layout.layer+1}`;
     mesh.castShadow=false;mesh.receiveShadow=false;
     // Broad rings cross the view frustum; their bounds are not the foreground.

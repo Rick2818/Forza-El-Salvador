@@ -173,6 +173,10 @@ export class Environment {
           scene.add(light);
         }
       }
+    } else if (track.circuit.id === "el-imposible-4x4") {
+      // Use the existing natural mountain mesh instead of the blue night silhouettes.
+      scene.add(createNaturalMountainRange(track,true));
+      scene.fog = new THREE.FogExp2(0xb7cddd,.0008);
     } else {
       this.buildRidges(scene);
     }
