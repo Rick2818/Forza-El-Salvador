@@ -1,5 +1,6 @@
 import { RacePerformance, GPUFrameTimer } from "./render/performance";
 import { FrameScheduler } from "./core/frameScheduler";
+import { RenderBackpressure } from "./render/renderBackpressure";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import { RELEASE_LABEL } from "./core/version";
@@ -50,6 +51,8 @@ export class Game {
   fps = 0;
   readonly performanceLog = new RacePerformance();
   private readonly gpuTimer: GPUFrameTimer;
+  private readonly gpuBackpressure: RenderBackpressure;
+  private lastDrawAt = performance.now();
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -109,6 +112,7 @@ export class Game {
     this.renderer.toneMappingExposure = 1.12;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.gpuTimer = new GPUFrameTimer(this.renderer.getContext());
+    this.gpuBackpressure = new RenderBackpressure(this.renderer.getContext());
 
     this.camera = new THREE.PerspectiveCamera(
       SETTINGS.camera.fov,
@@ -270,6 +274,9 @@ export class Game {
         fallbackFrames: this.scheduler.fallbackFrames,
         lastFrameGapMs: this.lastFrameGapMs,
         maxFrameGapMs: this.maxFrameGapMs,
+        submittedDraws: this.gpuBackpressure.submitted,
+        skippedDraws: this.gpuBackpressure.skipped,
+        drawAgeMs: Math.round(performance.now() - this.lastDrawAt),
         preparingGraphics: this.preparingGraphics,
         graphicsPreparationMs: Math.round(this.graphicsPreparationMs),
         frameAgeMs: Math.round(performance.now() - this.lastCompletedFrame),
@@ -343,6 +350,8 @@ export class Game {
         this.replaceRace();
         if (!this.skipRender) await this.prepareRaceGraphics();
         this.lastCompletedFrame = performance.now();
+        this.lastDrawAt = performance.now();
+        this.gpuBackpressure.reset();
         this.clock.getDelta();
         this.beginPreparedRace();
         // If the player left the tab during preparation, keep pause semantics.
@@ -694,11 +703,13 @@ export class Game {
       this.lastCompletedFrame = performance.now();
       return;
     }
-    if (performance.now() - this.lastCompletedFrame < 5000 ||
+    if ((performance.now() - this.lastCompletedFrame < 5000 &&
+         (this.skipRender || performance.now() - this.lastDrawAt < 5000)) ||
         document.getElementById("frame-failure") || document.getElementById("context-lost")) return;
     const context = { version: RELEASE_LABEL, circuit: this.track.circuit.id,
       vehicle: this.selectedVehicleId, phase: this.framePhase,
-      elapsed: this.race.elapsed, fps: this.fps };
+      elapsed: this.race.elapsed, fps: this.fps, source: this.lastFrameSource,
+      drawAgeMs: performance.now() - this.lastDrawAt, skippedDraws: this.gpuBackpressure.skipped };
     console.error("[Horizon] fotogramas interrumpidos", context);
     try { localStorage.setItem("horizon.last-frame-failure", JSON.stringify(context)); } catch { /* optional */ }
     this.audio.silence();
@@ -762,6 +773,7 @@ export class Game {
     canvas.style.height = "auto";
     canvas.style.maxHeight = "100%";
     this.scheduler.stop();
+    this.gpuBackpressure.reset();
   }
 
   private tick(dt: number, rawDt: number): void {
@@ -917,12 +929,14 @@ export class Game {
     }
 
     if (this.onBeforeRender) this.onBeforeRender();
-    if (!this.skipRender) {
+    this.framePhase = "gpu-backpressure";
+    if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
       this.framePhase = "gpu-query-begin";
       if (measured) this.gpuTimer.begin();
       this.framePhase = "webgl-render";
       this.renderer.render(this.scene, this.camera);
+      if (!this.captureMode) { this.gpuBackpressure.submit(); this.lastDrawAt = performance.now(); }
       if (measured) {
         this.framePhase = "gpu-query-end";
         this.gpuTimer.end();
