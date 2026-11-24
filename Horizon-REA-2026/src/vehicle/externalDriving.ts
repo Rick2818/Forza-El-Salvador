@@ -238,6 +238,7 @@ export async function loadExternalVehicle(
   return task;
 }
 export function hasExternalVehicle(id:string):boolean{return loaded.has(id);}
+export function hasMeasuredExternalTyres(id:string):boolean{return measuredTyres.has(id);}
 export function externalAudit(id:string):ExternalVisualAudit|undefined{return diagnostics.get(id);}
 
 /**
