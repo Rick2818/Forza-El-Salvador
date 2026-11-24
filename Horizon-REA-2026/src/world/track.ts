@@ -349,7 +349,7 @@ export class Track {
    */
   private buildOffroadSurface(): void {
     const n = this.samples.length, cols = 12;
-    const pos: number[] = [], colors: number[] = [], indices: number[] = [];
+    const pos: number[] = [], colors: number[] = [], indices: number[] = [], uv: number[] = [];
     for (let i=0;i<n;i++) {
       const p = this.samples[i], r = this.rights[i];
       const sector = offroadSectorAt(this.progress(i));
@@ -361,7 +361,9 @@ export class Track {
         const rut = .11*Math.exp(-((Math.abs(lateral)-1.0)**2)/.45);
         const ripple = .035*Math.sin(25*t + lateral*.7) + .025*Math.cos(17*t-lateral);
         pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
-        colors.push(color.r,color.g,color.b);
+        const shade=1-.32*Math.exp(-((Math.abs(lateral)-1.0)**2)/.32);
+        colors.push(color.r*shade,color.g*shade,color.b*shade);
+        uv.push((p.x+r.x*lateral)/5,(p.z+r.z*lateral)/5);
       }
     }
     for(let i=0;i<n;i++) for(let j=0;j<cols;j++){
@@ -371,8 +373,19 @@ export class Track {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
     geo.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
+    geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
     geo.setIndex(indices); geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96}));
+    // Lightweight repeating earth detail. Temporary procedural map, not the external 8K asset.
+    const size=128, data=new Uint8Array(size*size*4);
+    for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+      const a=x/size*Math.PI*2,b=y/size*Math.PI*2;
+      const v=Math.round(190+22*Math.sin(3*a+2*Math.sin(b))+14*Math.sin(7*b+Math.sin(5*a))+8*Math.sin(19*a+11*b));
+      const i=(y*size+x)*4;data[i]=v;data[i+1]=Math.round(v*.91);data[i+2]=Math.round(v*.78);data[i+3]=255;
+    }
+    const map=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
+    map.wrapS=map.wrapT=THREE.RepeatWrapping;map.colorSpace=THREE.SRGBColorSpace;
+    map.generateMipmaps=true;map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.needsUpdate=true;
+    const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map,vertexColors:true,side:THREE.DoubleSide}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
     // Irregular shallow wet patches: visual-only, no separate wheel collider.
@@ -396,9 +409,9 @@ export class Track {
     const wetGeo=new THREE.BufferGeometry();
     wetGeo.setAttribute("position",new THREE.Float32BufferAttribute(wetPos,3));
     wetGeo.setIndex(wetIdx);wetGeo.computeVertexNormals();
-    const wet=new THREE.Mesh(wetGeo,new THREE.MeshPhysicalMaterial({
-      color:0x493a29,roughness:.17,metalness:0,clearcoat:1,clearcoatRoughness:.14,
-      envMapIntensity:.7,side:THREE.DoubleSide
+    const wet=new THREE.Mesh(wetGeo,new THREE.MeshStandardMaterial({
+      color:0x493a29,roughness:.38,metalness:0,
+      envMapIntensity:.35,side:THREE.DoubleSide
     }));
     wet.name="offroad-muddy-puddles";wet.receiveShadow=true;this.group.add(wet);
   }
