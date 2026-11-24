@@ -19,6 +19,8 @@ jobs:
           - {mode: baseline, circuit: suzaka}
           - {mode: physics-only, circuit: monzon}
           - {mode: no-rival-audio, circuit: monzon}
+          - {mode: no-gpu-timer, circuit: monzon}
+          - {mode: adaptive-resolution, circuit: monzon}
     defaults:
       run:
         working-directory: Horizon-REA-2026
