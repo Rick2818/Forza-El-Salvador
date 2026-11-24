@@ -5,7 +5,7 @@ export interface SelectedVehicle {
   finish: string;
   variantNote: string;
   features: readonly string[];
-  modelStatus: "approved";
+  modelStatus: "approved" | "candidate";
   modelUrl: string;
 }
 

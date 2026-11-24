@@ -5,6 +5,8 @@ import { pitstop, toolText } from "../integrations/pitstop";
 import { garageMarkup } from "./garage";
 import { vehiclePickerMarkup } from "./vehiclePicker";
 import { SELECTED_VEHICLES } from "../vehicle/roster";
+import { EXTERNAL_VEHICLES } from "../vehicle/externalRoster";
+const ALL_MENU_VEHICLES = [...EXTERNAL_VEHICLES,...SELECTED_VEHICLES];
 import { analyzeCircuitDefinition, availableCircuits, DEFAULT_CIRCUIT_ID } from "../world/circuits";
 
 export interface MenuCallbacks {
@@ -117,7 +119,7 @@ export class Menu {
     const target = (event.target as HTMLElement).closest("[data-action]") as HTMLElement | null;
     if (!target) return;
     const action = target.dataset.action;
-    if (action === "start") this.callbacks.onStart();
+    if (action === "start" && !this.selecting) this.callbacks.onStart();
     if (action === "resume") this.callbacks.onResume();
     if (action === "restart") this.callbacks.onRestart();
     if (action === "quit") this.callbacks.onQuit();
@@ -154,7 +156,8 @@ export class Menu {
     if (this.selecting) return;
     this.selecting = true;
     const status = this.overlay.querySelector<HTMLElement>("#garage-status");
-    if (status) status.textContent = "Cargando modelo…";
+    if (status) status.textContent = "Cargando el modelo 3D elegido…";
+    for (const button of this.overlay.querySelectorAll<HTMLButtonElement>('[data-action="start"]')) button.disabled = true;
     for (const button of this.overlay.querySelectorAll<HTMLButtonElement>(".vehicle-select")) button.disabled = true;
     try {
       await this.callbacks.onSelectVehicle(id);
@@ -177,6 +180,7 @@ export class Menu {
     } finally {
       this.selecting = false;
       for (const button of this.overlay.querySelectorAll<HTMLButtonElement>(".vehicle-select")) button.disabled = false;
+      for (const button of this.overlay.querySelectorAll<HTMLButtonElement>('[data-action="start"]')) button.disabled = false;
     }
   }
 
@@ -231,13 +235,13 @@ export class Menu {
         <div class="setup-tabs" role="tablist" aria-label="Configurar la carrera">
           <button id="tab-autos" class="setup-tab ${this.activeSetupTab === "autos" ? "is-active" : ""}"
             type="button" role="tab" data-action="tab-autos" aria-selected="${this.activeSetupTab === "autos"}"
-            aria-controls="autos-panel">🚗 Autos · ${SELECTED_VEHICLES.length}</button>
+            aria-controls="autos-panel">🚗 Autos · ${EXTERNAL_VEHICLES.length}</button>
           <button id="tab-circuitos" class="setup-tab ${this.activeSetupTab === "circuitos" ? "is-active" : ""}"
             type="button" role="tab" data-action="tab-circuitos" aria-selected="${this.activeSetupTab === "circuitos"}"
             aria-controls="circuitos-panel">🏁 Circuitos</button>
         </div>
         ${this.activeSetupTab === "autos" ? vehiclePickerMarkup(this.selectedId) : circuitPanelMarkup}
-        <p class="sub">Auto elegido: <strong>${SELECTED_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong></p>
+        <p class="sub">Auto elegido: <strong>${ALL_MENU_VEHICLES.find((car) => car.id === this.selectedId)?.name ?? "Ferrari California T"}</strong></p>
         <div class="difficulty-panel">
           <div class="brand">Dificultad de los rivales</div>
           <div class="difficulty-choices" role="group" aria-label="Dificultad de carrera">
@@ -256,7 +260,7 @@ export class Menu {
         </fieldset>
         ${this.audioPanel()}
         <div class="menu-actions">
-          <button class="btn primary" data-action="start">Iniciar carrera</button>
+          ${this.activeSetupTab === "autos" ? "" : '<button class="btn primary" data-action="start">Iniciar carrera</button>'}
           <button class="btn ghost" data-action="quality">Calidad: ${this.qualityLabel}</button>
           <button class="btn ghost" data-action="garage">Ver modelos y detalles del garaje</button>
         </div>

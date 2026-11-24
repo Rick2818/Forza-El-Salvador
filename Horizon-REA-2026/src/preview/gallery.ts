@@ -138,6 +138,7 @@ function releaseOld(): void {
 async function showModel(car: GalleryCar): Promise<void> {
   const token = ++generation;
   currentCar = car;
+  ($("drive-current") as HTMLButtonElement).disabled = true;
   modelName.textContent = car.title;
   subtitle.textContent = car.note;
   status.textContent = "Cargando archivo GLB real…";
@@ -198,6 +199,7 @@ async function showModel(car: GalleryCar): Promise<void> {
       if (/underbody|chassis|suspension|axle|diffuser|exhaust|floorpan/.test(label)) underNames++;
     });
     currentModel = group;
+    ($("drive-current") as HTMLButtonElement).disabled = false;
     customizer.attach(group,car.id,car.type);
     chooseAngle(activeView);
     status.textContent = "✓ Archivo original cargado y renderizado. Arrastra para inspeccionarlo.";
@@ -243,6 +245,15 @@ customPaint.addEventListener("input", () => customizer.setPaint(customPaint.valu
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-wheelset]")) {
   button.addEventListener("click", () => { void customizer.setWheels((button.dataset.wheelset ?? "original") as WheelSet); });
 }
+$("drive-current").addEventListener("click", () => {
+  if (!currentModel) return;
+  try {
+    localStorage.setItem("horizon.selected-vehicle", currentCar.id);
+    window.location.assign("./");
+  } catch {
+    status.textContent = "No se puede guardar la elección. Habilita el almacenamiento local.";
+  }
+});
 const rotateButton = $("rotate") as HTMLButtonElement;
 rotateButton.addEventListener("click", () => {
   controls.autoRotate = !controls.autoRotate;
