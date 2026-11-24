@@ -704,3 +704,17 @@ button.difficulty-btn.is-active {
   .vehicle-launch-actions .btn { width:100%; padding:13px 11px; font-size:11px; }
   .vehicle-launch-actions a { font-size:12px; }
 }
+
+/* Compact, bounded vehicle identity thumbnails in the race selector. */
+.vehicle-picker .vehicle-pick { min-width: 0; overflow: hidden; }
+.vehicle-picker .vehicle-pick-media { display: grid; flex: 0 0 64px; width: 64px; min-width: 0; gap: 3px; overflow: hidden; }
+.vehicle-picker .vehicle-pick-photo { display: block; box-sizing: border-box; width: 100%; height: 44px; object-fit: contain; }
+.vehicle-picker .vehicle-pick-no-photo { box-sizing: border-box; width: 100%; height: 22px; min-width: 0; padding: 2px 3px; font-size: 11px; font-weight: 700; line-height: 1; white-space: nowrap; overflow: hidden; }
+.vehicle-picker .vehicle-pick-info { min-width: 0; overflow-wrap: anywhere; }
+.vehicle-picker .vehicle-pick-mark { flex: 0 0 16px; font-size: 16px; text-align: center; }
+@media (max-width: 600px) {
+  .vehicle-picker .vehicle-pick-grid { grid-template-columns: repeat(auto-fit, minmax(min(215px, 100%), 1fr)); }
+  .vehicle-picker .vehicle-pick-media { width: 56px; flex-basis: 56px; }
+  .vehicle-picker .vehicle-pick-photo { height: 38px; }
+  .vehicle-picker .vehicle-pick-no-photo { font-size: 10px; height: 20px; }
+}
