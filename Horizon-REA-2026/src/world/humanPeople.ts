@@ -34,10 +34,10 @@ export function updateHumanPeople(scene:THREE.Scene,camera:THREE.Camera):void {
   scene.traverseVisible(object=>{object.userData.updatePeople?.(camera);});
 }
 
-function humanMaterial():THREE.MeshStandardMaterial {
+function humanMaterial(clock=time):THREE.MeshStandardMaterial {
   const mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.86,metalness:0});
   mat.onBeforeCompile=shader=>{
-    shader.uniforms.humanTime=time;
+    shader.uniforms.humanTime=clock;
     shader.vertexShader=shader.vertexShader.replace("#include <common>",`#include <common>
       uniform float humanTime;
       attribute vec3 iSkin;
@@ -117,6 +117,103 @@ function humanMaterial():THREE.MeshStandardMaterial {
   return mat;
 }
 
+export type CrowdMode="3d"|"hybrid"|"impostors";
+const ATLAS_COLS=8,ATLAS_ROWS=4,TILE=128;
+const atlases=new WeakMap<THREE.WebGLRenderer,THREE.WebGLRenderTarget>();
+/** Bake original project anatomy into a shared RGBA atlas:
+ * four directions, four clothing/skin combinations, two animation phases.
+ * One offscreen render per renderer, before the race clock starts. */
+async function bakeCrowdAtlas(renderer:THREE.WebGLRenderer):Promise<THREE.Texture>{
+  const cached=atlases.get(renderer);if(cached)return cached.texture;
+  const [source]=await loadPeople();
+  const target=new THREE.WebGLRenderTarget(ATLAS_COLS*TILE,ATLAS_ROWS*TILE,{
+    minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:true,
+    generateMipmaps:false});
+  const stage=new THREE.Scene(),cell=2.4;
+  const camera=new THREE.OrthographicCamera(0,ATLAS_COLS*cell,ATLAS_ROWS*cell,0,.1,30);
+  camera.position.set(0,0,12);camera.lookAt(0,0,0);
+  stage.add(new THREE.HemisphereLight(0xffffff,0x777b83,2));
+  const key=new THREE.DirectionalLight(0xfff5df,2.1);key.position.set(-4,8,6);stage.add(key);
+  const matrix=new THREE.Matrix4(),position=new THREE.Vector3(),rotation=new THREE.Quaternion();
+  const scale=new THREE.Vector3(1,1,1),axis=new THREE.Vector3(0,1,0);
+  const shirts=[0x2465a8,0xe7dbc8,0xa22e31,0x18755b],skins=[0xe4b38d,0xb78360,0x80553b,0x60412f];
+  const batches:THREE.InstancedMesh[]=[];
+  for(let phase=0;phase<2;phase++){
+    const geometry=source.clone(),n=16;
+    const skin=new THREE.InstancedBufferAttribute(new Float32Array(n*3),3);
+    const shirt=new THREE.InstancedBufferAttribute(new Float32Array(n*3),3);
+    const person=new THREE.InstancedBufferAttribute(new Float32Array(n*4),4);
+    geometry.setAttribute("iSkin",skin);geometry.setAttribute("iShirt",shirt);geometry.setAttribute("iPerson",person);
+    const mesh=new THREE.InstancedMesh(geometry,humanMaterial({value:phase*.34}),n);
+    for(let variant=0;variant<4;variant++)for(let angle=0;angle<4;angle++){
+      const i=variant*4+angle;
+      position.set((angle+phase*4+.5)*cell,variant*cell+.25,0);
+      rotation.setFromAxisAngle(axis,angle*Math.PI/2);
+      matrix.compose(position,rotation,scale);mesh.setMatrixAt(i,matrix);
+      const a=new THREE.Color(skins[variant]),b=new THREE.Color(shirts[variant]);
+      skin.setXYZ(i,a.r,a.g,a.b);shirt.setXYZ(i,b.r,b.g,b.b);
+      person.setXYZW(i,.90+variant*.055,.97+variant*.02,0,.27+variant*.173);
+    }
+    mesh.frustumCulled=false;stage.add(mesh);batches.push(mesh);
+  }
+  const previous=renderer.getRenderTarget(),color=renderer.getClearColor(new THREE.Color());
+  const alpha=renderer.getClearAlpha(),viewport=renderer.getViewport(new THREE.Vector4());
+  const scissor=renderer.getScissor(new THREE.Vector4()),scissorTest=renderer.getScissorTest();
+  const shadow=renderer.shadowMap.enabled,tone=renderer.toneMapping;
+  try{
+    renderer.shadowMap.enabled=false;renderer.toneMapping=THREE.NoToneMapping;
+    renderer.setRenderTarget(target);renderer.setViewport(0,0,ATLAS_COLS*TILE,ATLAS_ROWS*TILE);
+    renderer.setScissorTest(false);renderer.setClearColor(0,0);renderer.clear(true,true,true);
+    renderer.render(stage,camera);
+    if(renderer.getContext().isContextLost())throw Error("Crowd atlas WebGL context lost");
+    atlases.set(renderer,target);return target.texture;
+  }catch(error){target.dispose();throw error;}
+  finally{
+    renderer.setRenderTarget(previous);renderer.setViewport(viewport);renderer.setScissor(scissor);
+    renderer.setScissorTest(scissorTest);renderer.setClearColor(color,alpha);
+    renderer.shadowMap.enabled=shadow;renderer.toneMapping=tone;
+    for(const mesh of batches){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();mesh.dispose();}
+  }
+}
+function impostorMaterial(atlas:THREE.Texture,night:boolean):THREE.MeshBasicMaterial{
+  const material=new THREE.MeshBasicMaterial({map:atlas,color:night?0x9ea8b8:0xffffff,
+    alphaTest:.42,transparent:false,side:THREE.DoubleSide,depthWrite:true});
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.crowdTime=time;
+    shader.vertexShader=shader.vertexShader.replace("#include <common>",`#include <common>
+      attribute vec3 iAtlas;
+      uniform float crowdTime;
+    `).replace("#include <uv_vertex>",`#include <uv_vertex>
+      #ifdef USE_MAP
+      float phase=mod(floor(crowdTime*3.0+iAtlas.z),2.0);
+      vec2 tile=vec2(iAtlas.x+phase*4.0,iAtlas.y);
+      vMapUv=(tile+vec2(.012)+vMapUv*.976)/vec2(8.0,4.0);
+      #endif
+    `);
+  };
+  material.customProgramCacheKey=()=>"v29-crowd-atlas";
+  return material;
+}
+export async function prepareHumanImpostors(renderer:THREE.WebGLRenderer,scene:THREE.Scene,mode:CrowdMode):Promise<void>{
+  const groups:THREE.Object3D[]=[];
+  scene.traverse(o=>{if(typeof o.userData.installImpostors==="function")groups.push(o);});
+  if(mode==="3d"){for(const g of groups)g.userData.setCrowdMode(mode);return;}
+  if(!groups.length)return;
+  const atlas=await bakeCrowdAtlas(renderer);
+  const night=scene.background instanceof THREE.Color&&scene.background.getHex()<0x222222;
+  for(const g of groups){g.userData.installImpostors(atlas,night);g.userData.setCrowdMode(mode);}
+}
+export function crowdStats(scene:THREE.Scene){
+  let visible=0,triangles=0,draws=0;const counts=[0,0,0];
+  scene.traverseVisible(o=>{
+    if(!o.userData.crowdBatch||!(o instanceof THREE.InstancedMesh)||o.count===0)return;
+    visible+=o.count;draws++;
+    triangles+=o.count*(o.geometry.index?.count??o.geometry.getAttribute("position").count)/3;
+    counts[o.userData.crowdTier as number]+=o.count;
+  });
+  return {visible,triangles,draws,counts};
+}
+
 /** Three LOD draw calls per audience sector, with geometry loaded once for the world.
  * All matrices and attribute buffers are allocated once. Camera-based repartitioning
  * runs only after camera movement or every half-second of animation. */
@@ -129,7 +226,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
   if(typeof document==="undefined")return group;
   group.userData.readyPromise=loadPeople().then(geometries=>{
     const material=humanMaterial();
-    const batches=geometries.map((source,lod)=>{
+    const originals=geometries.map((source,lod)=>{
       const geometry=source.clone();
       geometry.setAttribute("iSkin",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
       geometry.setAttribute("iShirt",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
@@ -137,6 +234,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
       const mesh=new THREE.InstancedMesh(geometry,material,people.length);
       mesh.name=name+"-anatomical-"+["near","mid","far"][lod];
       mesh.count=0;mesh.frustumCulled=frustumCulled;
+      mesh.userData.crowdBatch=true;mesh.userData.crowdTier=lod;
       // Bounds include arm motion and seated poses, and are independent of LOD count.
       const bounds=new THREE.Box3();
       for(const p of people)bounds.expandByPoint(new THREE.Vector3(p.x,p.y+1,p.z));
@@ -144,12 +242,40 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
       mesh.boundingBox=bounds;
       group.add(mesh);return mesh;
     });
+    let mode:CrowdMode="3d";
+    let impostors:THREE.InstancedMesh[]|undefined;
+    let batches=originals;
+    group.userData.installImpostors=(atlas:THREE.Texture,night:boolean)=>{
+      if(impostors)return;
+      const mat=impostorMaterial(atlas,night);
+      impostors=[0,1,2].map(lod=>{
+        const geometry=new THREE.PlaneGeometry(2.4,2.4);
+        geometry.translate(0,.95,0);
+        geometry.setAttribute("iSkin",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
+        geometry.setAttribute("iShirt",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
+        geometry.setAttribute("iPerson",new THREE.InstancedBufferAttribute(new Float32Array(people.length*4),4));
+        geometry.setAttribute("iAtlas",new THREE.InstancedBufferAttribute(new Float32Array(people.length*3),3));
+        const mesh=new THREE.InstancedMesh(geometry,mat,people.length);
+        mesh.name=name+"-v29-impostor-"+lod;mesh.count=0;mesh.visible=false;
+        mesh.frustumCulled=frustumCulled;
+        mesh.boundingBox=originals[lod].boundingBox?.clone()??null;
+        mesh.boundingSphere=originals[lod].boundingSphere?.clone()??null;
+        mesh.userData.crowdBatch=true;mesh.userData.crowdTier=lod;
+        group.add(mesh);return mesh;
+      });
+    };
     const cameraLocal=new THREE.Vector3(),last=new THREE.Vector3(Infinity,0,0),worldCamera=new THREE.Vector3();
     const worldForward=new THREE.Vector3(),localForward=new THREE.Vector3(),lastForward=new THREE.Vector3(0,0,0);
     const groupRotation=new THREE.Quaternion();
     const position=new THREE.Vector3(),scale=new THREE.Vector3(1,1,1),rotation=new THREE.Quaternion();
     const matrix=new THREE.Matrix4(),tint=new THREE.Color(),axis=new THREE.Vector3(0,1,0);
     let refreshed=-1;
+    group.userData.setCrowdMode=(next:CrowdMode)=>{
+      mode=next;
+      batches=mode==="3d"||!impostors?originals:mode==="hybrid"?[originals[0],impostors[1],impostors[2]]:impostors;
+      for(const mesh of [...originals,...(impostors??[])]){mesh.visible=batches.includes(mesh);mesh.count=0;}
+      last.set(Infinity,0,0);refreshed=-1;group.userData.crowdMode=mode;
+    };
     const refresh=(camera:THREE.Camera)=>{
       camera.getWorldPosition(worldCamera);cameraLocal.copy(worldCamera);group.worldToLocal(cameraLocal);
       camera.getWorldDirection(worldForward);
@@ -166,7 +292,14 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
         if(!audienceInView(distance,dx*localForward.x+dy*localForward.y+dz*localForward.z))continue;
         const lod=audienceLod(distance);
         const mesh=batches[lod],index=counts[lod]++;
-        position.set(p.x,p.y,p.z);rotation.setFromAxisAngle(axis,p.yaw);
+        position.set(p.x,p.y,p.z);
+        const billboard=mesh.geometry.hasAttribute("iAtlas");
+        const viewYaw=Math.atan2(-dx,-dz);
+        rotation.setFromAxisAngle(axis,billboard?viewYaw:p.yaw);
+        if(billboard){
+          const angle=((Math.round((viewYaw-p.yaw)/(Math.PI/2))%4)+4)%4;
+          (mesh.geometry.getAttribute("iAtlas") as THREE.InstancedBufferAttribute).setXYZ(index,angle,i%4,(i*7)%13);
+        }
         matrix.compose(position,rotation,scale);mesh.setMatrixAt(index,matrix);
         tint.setHex(p.skin);(mesh.geometry.getAttribute("iSkin") as THREE.InstancedBufferAttribute).setXYZ(index,tint.r,tint.g,tint.b);
         tint.setHex(p.shirt);(mesh.geometry.getAttribute("iShirt") as THREE.InstancedBufferAttribute).setXYZ(index,tint.r,tint.g,tint.b);
@@ -176,7 +309,7 @@ export function createHumanPeople(people:readonly HumanPlacement[],name:string,f
       }
       for(let lod=0;lod<3;lod++) {
         const mesh=batches[lod];mesh.count=counts[lod];mesh.instanceMatrix.needsUpdate=true;
-        for(const attr of ["iSkin","iShirt","iPerson"])mesh.geometry.getAttribute(attr).needsUpdate=true;
+        for(const attr of ["iSkin","iShirt","iPerson","iAtlas"])if(mesh.geometry.hasAttribute(attr))mesh.geometry.getAttribute(attr).needsUpdate=true;
       }
       group.userData.lodCounts=counts;
       group.userData.visibleAudience=counts[0]+counts[1]+counts[2];
