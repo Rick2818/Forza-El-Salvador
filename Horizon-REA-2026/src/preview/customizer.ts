@@ -98,7 +98,9 @@ function prepareWheelSource(gltf:THREE.Object3D): RimDonor {
   const first=rims[0], center=new THREE.Box3().setFromObject(first).getCenter(new THREE.Vector3());
   const box=new THREE.Box3().setFromObject(first);
   const size=box.getSize(new THREE.Vector3());
-  const radius=Math.max(size.y,size.z)/2;
+  // The F430's rim is smaller than its rubber tyre. Using rim diameter
+  // to scale an entire wheel set exaggerated both sidewall and diameter.
+  let radius=Math.max(size.y,size.z)/2;
   if(radius<0.001)throw Error("La llanta del donante tiene un tamaño inválido.");
   const candidates:THREE.Mesh[]=[];
   gltf.traverse(node=>{
@@ -107,7 +109,13 @@ function prepareWheelSource(gltf:THREE.Object3D): RimDonor {
     if(!/lod_a_(wheel|tyre)_mm_/i.test(name))return;
     const partBox=new THREE.Box3().setFromObject(node);
     const partCenter=partBox.getCenter(new THREE.Vector3());
-    if(partCenter.distanceTo(center) < radius*.65)candidates.push(node);
+    if(partCenter.distanceTo(center) < radius*.80){
+      candidates.push(node);
+      if(/lod_a_tyre_mm/i.test(name)){
+        const tyreSize=partBox.getSize(new THREE.Vector3());
+        radius=Math.max(radius,Math.max(tyreSize.y,tyreSize.z)/2);
+      }
+    }
   });
   return {parts:candidates.length?candidates:[first],center,radius};
 }
@@ -197,6 +205,13 @@ export class GalleryCustomizer{
     const result=document.getElementById("finish-status");
     if(style==="original"){
       if(result)result.textContent="Llantas originales del archivo GLB restauradas.";
+      return;
+    }
+    // The real F430 already ships with its factory four rims and four tyres.
+    // Transplanting scaled clones of its own wheels hid them and produced
+    // oversized, incorrectly positioned duplicates. Keep the actual GLB.
+    if(style==="ferrari" && this.id==="ferrari-f430"){
+      if(result)result.textContent="Juego Ferrari F430 original restaurado: cuatro llantas auténticas, sin copias ni escalado.";
       return;
     }
     if(result)result.textContent="Montando juego 3D real de llantas...";
