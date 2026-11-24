@@ -359,7 +359,7 @@ export class Track {
       for (let j=0;j<=cols;j++) {
         const lateral = (j/cols*2-1)*this.halfWidth;
         const rut = .11*Math.exp(-((Math.abs(lateral)-1.0)**2)/.45);
-        const ripple = .035*Math.sin(25*t + lateral*.7) + .025*Math.cos(17*t-lateral);
+        const ripple = .009*Math.sin(25*t + lateral*.7) + .006*Math.cos(17*t-lateral);
         pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
         const shade=1-.32*Math.exp(-((Math.abs(lateral)-1.0)**2)/.32);
         colors.push(color.r*shade,color.g*shade,color.b*shade);
@@ -378,15 +378,19 @@ export class Track {
     // Lightweight repeating earth detail. Temporary procedural map, not the external 8K asset.
     const size=256, data=new Uint8Array(size*size*4);
     for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-      const a=x/size*Math.PI*2,b=y/size*Math.PI*2;
       // Periodic multiscale variation with restrained fine detail, stable under mipmaps.
-      const v=Math.round(185+17*Math.sin(3*a+2*Math.sin(b))+15*Math.cos(4*b-2*Math.sin(3*a))+9*Math.sin(7*b+Math.sin(5*a))+6*Math.sin(19*a+11*b));
+      const hash=(ix:number,iy:number)=>{let h=Math.imul(ix,374761393)+Math.imul(iy,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;};
+      const noise=(cells:number)=>{const px=x/size*cells,py=y/size*cells,ix=Math.floor(px),iy=Math.floor(py);
+        const fx=px-ix,fy=py-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+        const n=(dx:number,dy:number)=>hash((ix+dx)%cells,(iy+dy)%cells);
+        return (n(0,0)*(1-u)+n(1,0)*u)*(1-v)+(n(0,1)*(1-u)+n(1,1)*u)*v;};
+      const v=Math.round(120+48*noise(5)+32*noise(17)+24*noise(49)+15*hash(x,y));
       const i=(y*size+x)*4;data[i]=v;data[i+1]=Math.round(v*.91);data[i+2]=Math.round(v*.78);data[i+3]=255;
     }
     const map=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
     map.wrapS=map.wrapT=THREE.RepeatWrapping;map.colorSpace=THREE.SRGBColorSpace;
     map.generateMipmaps=true;map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.needsUpdate=true;
-    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map,vertexColors:true,roughness:.94,metalness:0,envMapIntensity:.12,side:THREE.DoubleSide}));
+    const mesh = new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map,vertexColors:true,roughness:.98,metalness:0,envMapIntensity:.06,side:THREE.DoubleSide}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
     // Irregular shallow wet patches: visual-only, no separate wheel collider.
