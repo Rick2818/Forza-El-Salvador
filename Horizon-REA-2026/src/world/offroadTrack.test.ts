@@ -19,7 +19,11 @@ describe("Offroad engineering track",()=>{
   const relief=t.group.getObjectByName("offroad-surface")!.userData.reliefAudit;
   expect(relief.minRelief).toBeLessThan(-.40);
   expect(relief.maxUphill).toBeGreaterThan(.12);
-  expect(relief.maxDownhill).toBeLessThan(-.12);
+  expect(relief.maxDownhill).toBeLessThan(-.18);
+  expect(relief.maxUphill).toBeGreaterThan(.18);
+  const spawn=t.samples[t.startIndex];
+  const firstHill=t.samples[(t.startIndex+Math.round(22/t.segmentLength))%t.samples.length];
+  expect(firstHill.y-spawn.y).toBeGreaterThan(1.5);
   const water=t.group.getObjectByName("offroad-muddy-puddles")!.userData.waterAudit;
   expect(water.basins).toBeGreaterThan(8);
   expect(water.waterArea).toBeGreaterThan(30);

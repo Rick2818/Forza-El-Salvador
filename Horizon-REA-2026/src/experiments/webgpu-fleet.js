@@ -26,7 +26,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-physical-trail-v5-wet",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-forest-3x-curves-v7",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -85,13 +85,34 @@ async function boot(){
    }
    const geometry=mergeGeometries(planes,false);planes.forEach(g=>g.dispose());
    const locations=[];
-   for(let i=0;i<track.samples.length;i+=5)for(const side of [-1,1]){
-     const p=track.samples[i],r=track.rightAt(i),offset=11+23*(.5+.5*Math.sin(i*1.72+side));
-     const x=p.x+r.x*offset*side,z=p.z+r.z*offset*side;
-     if(track.samples.some(s=>Math.hypot(s.x-x,s.z-z)<10))continue;
-     if(locations.some(s=>Math.hypot(s.x-x,s.z-z)<6))continue;
-     let nearest=p,dist=Infinity;for(const sample of track.samples){const d=Math.hypot(sample.x-x,sample.z-z);if(d<dist){dist=d;nearest=sample;}}locations.push({x,z,y:offroadVergeHeight(nearest.y,Math.max(0,dist-track.halfWidth)),scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
+   // Six staggered belts on each side. Keep road clearance, then fill
+   // interior and exterior woodland uniformly across the complete lap.
+   const grid=new Map(),cell=4.0;
+   function placeTree(x,z,scale,yaw){
+     let nearest,dist=Infinity;
+     for(const s of track.samples){const dx=s.x-x,dz=s.z-z,d2=dx*dx+dz*dz;if(d2<dist){dist=d2;nearest=s;}}
+     dist=Math.sqrt(dist);if(dist<7.2)return;
+     const gx=Math.floor(x/cell),gz=Math.floor(z/cell);
+     for(let a=gx-1;a<=gx+1;a++)for(let b=gz-1;b<=gz+1;b++){
+       for(const p of grid.get(a+":"+b)??[])if(Math.hypot(x-p.x,z-p.z)<cell)return;
+     }
+     const item={x,z,y:offroadVergeHeight(nearest.y,Math.max(0,dist-track.halfWidth)),scale,yaw};
+     locations.push(item);const key=gx+":"+gz;
+     if(!grid.has(key))grid.set(key,[]);grid.get(key).push(item);
    }
+   for(let ring=0;ring<6;ring++)for(let i=ring%3;i<track.samples.length;i+=6)for(const side of [-1,1]){
+     const p=track.samples[i],r=track.rightAt(i);
+     const offset=8+ring*8.1+1.1*Math.sin(i*1.72+side+ring);
+     placeTree(p.x+r.x*offset*side,p.z+r.z*offset*side,
+       .67+.43*(.5+.5*Math.sin(i*2.19+ring)),i*.37+ring*1.3);
+   }
+   // Interior/exterior gaps receive extra trees, not on the road itself.
+   const baseCount=locations.length;
+   for(let i=0;i<track.samples.length&&locations.length<1572;i+=3)for(const side of [-1,1]){
+     const p=track.samples[i],r=track.rightAt(i),offset=56+12*(.5+.5*Math.sin(i*1.7));
+     placeTree(p.x+r.x*offset*side,p.z+r.z*offset*side,.85,i*.53);
+   }
+   info.forestBaseCount=524;info.forestBelts=6;info.forestInitialGrid=baseCount;
    const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0xd5ded0,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
    const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
    forest.instanceMatrix.needsUpdate=true;forest.name="el-imposible-blender-forest";scene.add(forest);info.treeCount=locations.length;
@@ -121,13 +142,14 @@ async function boot(){
      if(last.distanceToSquared(center)<64)return;last.copy(center);
      const sorted=locations.map((p,i)=>({i,d:Math.hypot(p.x-center.x,p.z-center.z)})).filter(p=>p.d<58).sort((a,b)=>a.d-b.d).slice(0,limit);
      const ids=new Set(sorted.map(p=>p.i));
-     let k=0;for(let i=0;i<locations.length;i++)if(!ids.has(i))forest.setMatrixAt(k++,transform(locations[i]));
+     let k=0;for(let i=0;i<locations.length;i++)if(!ids.has(i)&&Math.hypot(locations[i].x-center.x,locations[i].z-center.z)<165)forest.setMatrixAt(k++,transform(locations[i]));
+     info.visibleTreeCount=k+sorted.length;
      forest.count=k;forest.instanceMatrix.needsUpdate=true;forest.computeBoundingSphere();
      sorted.forEach(({i},n)=>{const matrix=transform(locations[i]);for(const m of near)m.setMatrixAt(n,matrix);});
      for(const m of near){m.count=sorted.length;m.visible=m.count>0;m.instanceMatrix.needsUpdate=true;if(m.count)m.computeBoundingSphere();}
-     info.nearTreeCount=sorted.length;info.maxNearTreeCount=Math.max(info.maxNearTreeCount??0,sorted.length);info.forestTriangles=sorted.length*trianglesPerTree;info.forestAsset="pine-medium.glb.gz";
+     info.nearTreeCount=sorted.length;info.maxNearTreeCount=Math.max(info.maxNearTreeCount??0,sorted.length);info.forestTriangles=sorted.length*trianglesPerTree+k*6;info.forestAsset="pine-medium.glb.gz";
    };
-   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,65,300);
+   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,55,165);
  }
  await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true});car.resetToTrack(track);
  if(offroad&&car.supportsFourWheelDrive&&car.fourWheelDriveMode!=="4H")car.toggleFourWheelDrive();
@@ -142,9 +164,18 @@ async function boot(){
  info.contactSteps=[0,0,0,0];info.totalSteps=0;info.maxOffroadDrop=0;info.sectors=[];
  let previous=car.position.clone(),hint=track.startIndex,acc=0,last=performance.now(),lastReport=last,lastCompleted=0,lastCompletionAt=last,lastCount=0,callbacks=0,physicsMs=0,renderMs=0,renderCount=0,physicsSteps=0,maxCallbackGap=0;
  const forward=new THREE.Vector3(),target=new THREE.Vector3(),pos=new THREE.Vector3(),quat=new THREE.Quaternion();
- function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;camera.lookAt(target);}
+ function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();if(offroad){
+   // Low chase camera follows the true grade rather than aiming at a
+   // constant horizontal horizon; keep the upcoming hill in view.
+   const at=track.locate(pos,hint).index,look=track.sampleAt(at+Math.round(10/track.segmentLength));
+   const behind=track.sampleAt(at-Math.round(6.5/track.segmentLength));
+   camera.position.copy(pos).addScaledVector(forward,-6.5);
+   camera.position.y=Math.max(pos.y+1.9,behind.y+2.35);
+   target.set(look.x,look.y+1.05,look.z);
+   info.currentGrade=(look.y-track.sampleAt(at).y)/10*100;
+ }else{camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;}camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=vehicleEntry.name+(offroad?" · Exploración todoterreno libre":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
  function tick(now){try{
   if(gpuError)throw Error(gpuError);
@@ -167,7 +198,7 @@ async function boot(){
   if(gate.ready()){if(resizePending||appliedScale!==resolution.scale)resize();const renderStart=performance.now();car.syncVisual(dt);updateForest(car.position);for(const [i,w] of car.wheelVisualDebug().entries())info.wheelRollMax[i]=Math.max(info.wheelRollMax[i],Math.abs(w.roll));scanMaterials();cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
   if(gate.completed!==lastCount){lastCount=gate.completed;lastCompletionAt=now;}
   if(now-lastCompletionAt>5000)throw Error("Sin fotogramas GPU completados durante 5 segundos");
-  if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.floor(car.speedKph)+" km/h"+(offroad?" · "+car.fourWheelDriveMode:car.turboActive?" · TURBO":car.turboArmed?" · Listo":" · Rearme <95");$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
+  if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.floor(car.speedKph)+" km/h"+(offroad?" · "+car.fourWheelDriveMode+" · Pendiente "+(info.currentGrade??0).toFixed(0)+"%":car.turboActive?" · TURBO":car.turboArmed?" · Listo":" · Rearme <95");$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
   requestAnimationFrame(tick);
  }catch(e){fail(e);}}
  requestAnimationFrame(tick);

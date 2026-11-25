@@ -8,6 +8,9 @@ describe("El Imposible 4x4 prototype", () => {
     expect(a.netTurn).toBeCloseTo(360);
     expect(a.closureGap).toBeLessThan(1);
     expect(a.selfIntersections).toBe(0);
+    expect(a.corners).toBe(16);
+    expect(OFFROAD_CIRCUIT.segments.filter(s=>s.dir===-1).length).toBe(4);
+    expect(a.minRadius).toBeGreaterThanOrEqual(35);
   });
   it("covers the whole lap and wraps at the seam", () => {
     expect(OFFROAD_SECTORS[0].start).toBe(0);

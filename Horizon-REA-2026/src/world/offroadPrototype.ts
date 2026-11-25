@@ -9,12 +9,14 @@ export const OFFROAD_CIRCUIT: CircuitDefinition = {
   discipline: "Todoterreno · El Salvador",
   blurb: "Exploración libre por tierra, lodo, piedras y pendientes; sin competición.",
   accent: "#8d7249",
-  segments: [
-    { straight: 280 }, { turn: 90, radius: 45, dir: 1 },
-    { straight: 180 }, { turn: 90, radius: 65, dir: 1 },
-    { straight: 280 }, { turn: 90, radius: 45, dir: 1 },
-    { straight: 180 }, { turn: 90, radius: 65, dir: 1 },
-  ],
+  // Four rotationally symmetric quarters: each contains a left-right
+  // S-bend, a short straight and a 90-degree bend. Closed by construction.
+  segments: Array.from({length:4},()=>[
+    { straight: 75 }, { turn: 30, radius: 38, dir: 1 as const },
+    { turn: 60, radius: 38, dir: -1 as const },
+    { turn: 30, radius: 38, dir: 1 as const },
+    { straight: 24 }, { turn: 90, radius: 42, dir: 1 as const },
+  ]).flat(),
 };
 
 export type OffroadSurface = "dirt" | "mud" | "puddle";
@@ -50,8 +52,8 @@ export function offroadSectorAt(progress: number): OffroadSector {
 export function offroadElevation(progress: number): number {
   if (!Number.isFinite(progress)) throw new Error("Invalid lap progress");
   const t = 2 * Math.PI * (((progress % 1) + 1) % 1);
-  return 6 * (1 - Math.cos(t)) + 2 * (1 - Math.cos(3 * t)) +
-    2.0 * (1 - Math.cos(12 * t)) + .85 * (1 - Math.cos(19 * t));
+  return 6 * (1 - Math.cos(t)) + 3.7 * (1 - Math.cos(8*t-.75)) +
+    .85 * (1 - Math.cos(15*t-.5));
 }
 /** Arcade force multiplier only, not a validated mud/tire physics simulation. */
 export function offroadDriveMultiplier(mode: FourWheelDriveMode, contacts: readonly boolean[], progress: number): number {
