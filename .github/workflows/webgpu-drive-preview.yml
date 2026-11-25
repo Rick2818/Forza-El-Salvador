@@ -1,7 +1,7 @@
-name: WebGPU Ferrari driving preview validation (no deployment)
+name: WebGPU bounded pipeline A/B (no deployment)
 on:
   push:
-    branches: [experiment/webgpu-drive]
+    branches: [experiment/webgpu-pipeline]
 permissions:
   contents: read
 jobs:
@@ -12,7 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [monzon, suzaka]
-        quality: [adaptive, fixed]
+        quality: [fixed]
+        depth: [1, 2]
     defaults:
       run:
         working-directory: Horizon-REA-2026
@@ -26,7 +27,7 @@ jobs:
           cache: npm
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - run: npm ci
-      - run: npm exec -- vitest run src/render/adaptiveGpuResolution.test.ts
+      - run: npm exec -- vitest run src/render/adaptiveGpuResolution.test.ts src/render/webgpuPipeline.test.ts
       - run: npm run build
       - run: |
           npm install --no-save --package-lock=false playwright
@@ -37,6 +38,7 @@ jobs:
         env:
           CIRCUIT: ${{ matrix.circuit }}
           QUALITY: ${{ matrix.quality }}
+          DEPTH: ${{ matrix.depth }}
         run: |
           set -euo pipefail
           mkdir -p review/quality
@@ -48,14 +50,14 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:5173/webgpu-drive.html >/dev/null
-          xvfb-run -a node tools/webgpu-drive-probe.mjs "$CIRCUIT" "$QUALITY" 2>&1 | tee review/quality/webgpu-drive-console.log
+          xvfb-run -a node tools/webgpu-drive-probe.mjs "$CIRCUIT" "$QUALITY" "$DEPTH" 2>&1 | tee review/quality/webgpu-drive-console.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: webgpu-driving-${{ matrix.circuit }}-${{ matrix.quality }}
+          name: webgpu-pipeline-${{ matrix.circuit }}-q${{ matrix.depth }}
           path: Horizon-REA-2026/review/quality/
       - uses: actions/upload-artifact@v4
-        if: success() && matrix.circuit == 'monzon' && matrix.quality == 'adaptive'
+        if: success() && matrix.circuit == 'monzon' && matrix.depth == 2
         with:
           name: webgpu-driving-preview
           path: Horizon-REA-2026/dist/

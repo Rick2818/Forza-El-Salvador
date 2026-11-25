@@ -13,8 +13,9 @@ const circuit=q.get("circuit")==="suzaka"?"suzaka":"monzon";
 const format=q.get("ferrariFormat")==="fbx"?"fbx":"glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
+const queueDepth=q.get("queue")==="2"?2:1;
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,build:"gpu-drive-perf-1",elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,queueDepth,build:"gpu-drive-pipeline-2",elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -27,8 +28,8 @@ for(const b of document.querySelectorAll("[data-control]")){
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d"," "].includes(e.key)){e.preventDefault();keys.add(e.key);auto=false;}});
 addEventListener("keyup",e=>keys.delete(e.key));addEventListener("blur",clear);document.addEventListener("visibilitychange",clear);
 $("reset").onclick=()=>{resetRequested=true;};
-$("switch").href="?"+new URLSearchParams({circuit:circuit==="monzon"?"suzaka":"monzon",ferrariFormat:format,quality:profile});$("switch").textContent=circuit==="monzon"?"Suzaka":"Monzón";
-$("quality").href="?"+new URLSearchParams({circuit,ferrariFormat:format,quality:profile==="adaptive"?"fixed":"adaptive"});$("quality").textContent=profile==="adaptive"?"Modo fijo":"Modo auto";
+$("switch").href="?"+new URLSearchParams({circuit:circuit==="monzon"?"suzaka":"monzon",ferrariFormat:format,quality:profile,queue:String(queueDepth)});$("switch").textContent=circuit==="monzon"?"Suzaka":"Monzón";
+$("quality").href="?"+new URLSearchParams({circuit,ferrariFormat:format,quality:profile==="adaptive"?"fixed":"adaptive",queue:String(queueDepth)});$("quality").textContent=profile==="adaptive"?"Modo fijo":"Modo auto";
 $("report").onclick=async()=>{const report=JSON.stringify(info,null,2);try{await navigator.clipboard.writeText(report);$("report").textContent="Copiado";}catch{const blob=new Blob([report],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="horizon-webgpu-report.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}};
 function fail(e){info.status="failed";info.error=String(e);$("error").hidden=false;$("error").textContent="Prueba interrumpida: "+info.error;console.error(e);}
 async function boot(){
@@ -37,7 +38,7 @@ async function boot(){
  if(!renderer.backend?.isWebGPUBackend)throw Error("Se detectó fallback; se requiere WebGPU nativo");
  const device=renderer.backend.device;if(!device?.queue)throw Error("Cola GPU no disponible");
  info.backend="webgpu";info.adapter={vendor:device.adapterInfo?.vendor,architecture:device.adapterInfo?.architecture};
- const gate=new WebGPUFrameGate(device.queue,device.lost);let gpuError;
+ const gate=new WebGPUFrameGate(device.queue,device.lost,()=>performance.now(),5000,queueDepth);let gpuError;
  device.addEventListener("uncapturederror",e=>{gpuError=String(e.error?.message||e.error);});
  renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.info.autoReset=false;
  const scene=new THREE.Scene();scene.background=new THREE.Color(0x7c9fc2);
@@ -57,7 +58,7 @@ async function boot(){
  const forward=new THREE.Vector3(),target=new THREE.Vector3(),pos=new THREE.Vector3(),quat=new THREE.Quaternion();
  function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;camera.lookAt(target);}
  cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=circuit+" · "+format.toUpperCase()+" · "+profile+" · P1";last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=circuit+" · "+format.toUpperCase()+" · "+profile+" · Q"+queueDepth;last=lastReport=lastCompletionAt=performance.now();
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
  function tick(now){try{
   if(gpuError)throw Error(gpuError);
@@ -72,7 +73,8 @@ async function boot(){
    const p=car.position;info.distance+=p.distanceTo(previous);previous.copy(p);info.elapsed+=1/60;acc-=1/60;steps++;
   }
   physicsMs+=performance.now()-physicsStart;physicsSteps+=steps;
-  if(gate.ready()){if(resizePending||appliedScale!==resolution.scale)resize();const renderStart=performance.now();car.syncVisual(dt);cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
+  const needsResize=resizePending||appliedScale!==resolution.scale;
+  if(gate.ready()&&(!needsResize||!gate.snapshot().pending)){if(needsResize)resize();const renderStart=performance.now();car.syncVisual(dt);cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
   if(gate.completed!==lastCount){lastCount=gate.completed;lastCompletionAt=now;}
   if(now-lastCompletionAt>5000)throw Error("Sin fotogramas GPU completados durante 5 segundos");
   if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.round(car.speedKph)+" km/h";$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
