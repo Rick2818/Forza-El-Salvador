@@ -376,10 +376,10 @@ export class Track {
     geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
     geo.setIndex(indices); geo.computeVertexNormals();
     // Lightweight repeating earth detail. Temporary procedural map, not the external 8K asset.
-    const size=128, data=new Uint8Array(size*size*4);
+    const size=256, data=new Uint8Array(size*size*4);
     for(let y=0;y<size;y++)for(let x=0;x<size;x++){
       const a=x/size*Math.PI*2,b=y/size*Math.PI*2;
-      const v=Math.round(190+22*Math.sin(3*a+2*Math.sin(b))+14*Math.sin(7*b+Math.sin(5*a))+8*Math.sin(19*a+11*b));
+      const v=Math.round(177+24*Math.sin(3*a+2*Math.sin(b))+17*Math.sin(7*b+Math.sin(5*a))+12*Math.sin(19*a+11*b)+7*Math.sin(41*a+53*b)*Math.sin(31*a-29*b));
       const i=(y*size+x)*4;data[i]=v;data[i+1]=Math.round(v*.91);data[i+2]=Math.round(v*.78);data[i+3]=255;
     }
     const map=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
