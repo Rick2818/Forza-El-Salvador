@@ -1,0 +1,68 @@
+name: Ferrari WebGPU vs WebGL laboratory (no deployment)
+on:
+  push:
+    branches: [experiment/webgpu-ferrari]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    if: github.ref == 'refs/heads/experiment/webgpu-ferrari'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [webgl, webgpu]
+        format: [glb, fbx]
+        circuit: [monzon, suzaka]
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Generate the same licensed Ferrari in FBX
+        if: matrix.format == 'fbx'
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/blender-fbx"
+          mkdir -p "$work"
+          base=https://download.blender.org/release/Blender5.0
+          archive=blender-5.0.1-linux-x64.tar.xz
+          curl -fsSL --retry 3 "$base/$archive" -o "$work/$archive"
+          curl -fsSL --retry 3 "$base/blender-5.0.1.sha256" -o "$work/blender.sha256"
+          (cd "$work"; grep -E "[[:space:]]\\*?$archive$" blender.sha256 > archive.sha256; sha256sum --check archive.sha256; tar -xf "$archive")
+          "$work/blender-5.0.1-linux-x64/blender" -b --factory-startup --disable-autoexec --python-exit-code 1 --python tools/blender/ferrari-fbx-experiment.py
+      - run: npm ci
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Measure real backend and GPU queue completion for 125 wall seconds
+        env:
+          BACKEND: ${{ matrix.backend }}
+          FORMAT: ${{ matrix.format }}
+          CIRCUIT: ${{ matrix.circuit }}
+        run: |
+          set -euo pipefail
+          mkdir -p review/quality
+          npm run dev > review/quality/webgpu-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/webgpu-lab.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/webgpu-lab.html > /dev/null
+          node tools/webgpu-ferrari-probe.mjs "$BACKEND" "$FORMAT" "$CIRCUIT" 2>&1 | tee review/quality/webgpu-console.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpu-${{ matrix.backend }}-${{ matrix.format }}-${{ matrix.circuit }}
+          path: Horizon-REA-2026/review/quality/
