@@ -613,7 +613,8 @@ export class Game {
     this.scaleTimer += dt;
     if (this.scaleTimer < 1) return;
     this.scaleTimer = 0;
-    if (this.fps <= 0 || document.hidden) return;
+    // Zero rendered FPS is real overload once callbacks have been sampled.
+    if (this.skipRender || this.callbackFps <= 0 || document.hidden) return;
     // A background or unfocused tab throttles requestAnimationFrame, so its
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.

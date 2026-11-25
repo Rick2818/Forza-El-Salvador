@@ -7,7 +7,7 @@ assert.ok(sourceVersion,"Missing source release label");
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
-assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod"].includes(mode));
+assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod","no-crowd","vehicle-only"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
 const errors=[];
@@ -25,6 +25,26 @@ try{
   await page.evaluate(async(mode)=>{
     const game=window.__HORIZON_GAME__;
     game.skipOpening();
+    // Diagnostic-only visibility changes: keep all physics, lights, and test gates.
+    // A pass in an isolation mode does not certify the full scene.
+    if(mode==="no-crowd"){
+      let hidden=0;
+      game.scene.traverse(o=>{if(typeof o.userData.installImpostors==="function"){o.visible=false;hidden++;}});
+      if(!hidden)throw Error("No spectator groups found for isolation");
+      console.log("V32_ISOLATION",mode,hidden);
+    }
+    if(mode==="vehicle-only"){
+      const roots=new Set(game.race.racers.map(r=>r.vehicle.visual.root));
+      let hidden=0;
+      game.scene.traverse(o=>{
+        if(!o.isMesh&&!o.isPoints&&!o.isLine&&!o.isSprite)return;
+        let parent=o;
+        while(parent&&!roots.has(parent))parent=parent.parent;
+        if(!parent){o.visible=false;hidden++;}
+      });
+      if(!hidden)throw Error("No scenery drawables found for isolation");
+      console.log("V32_ISOLATION",mode,hidden);
+    }
     const {AIDriver}=await import("/src/vehicle/ai.ts");
     const pilot=new AIDriver(game.race.player.vehicle,game.track,-2.7,.94,1,"estratega","medio");
     // Runtime-only diagnostic wrappers: leave the shipping game untouched.
@@ -75,6 +95,8 @@ try{
     timeMethod(game.environment,"update","environment");
     timeMethod(game.audio,"updateRivals","rival-audio");
     timeMethod(game.renderer,"render","webgl");
+    timeMethod(game.gpuBackpressure,"ready","gpu-fence-poll");
+    timeMethod(game.gpuBackpressure,"submit","gpu-fence-submit");
     timeMethod(game.gpuTimer,"begin","gpu-timer-begin");
     timeMethod(game.gpuTimer,"end","gpu-timer-end");
     timeMethod(game.gpuTimer,"collect","gpu-timer-collect");
