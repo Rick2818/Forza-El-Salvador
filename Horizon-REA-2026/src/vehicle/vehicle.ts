@@ -341,6 +341,13 @@ export class Vehicle {
         engineForce+=fade*throttle*(dragForce(absSpeed)*.65+this.body.mass()*.04*absSpeed);
       }
       engineForce *= highSpeedCornerDriveFactor(absSpeed,this.controls.steer);
+      // Low-range offroad torque, bounded by surface grip and wheel contacts.
+      // No launch boost or power change on Monzón/Suzaka.
+      if(this.offroadSector&&this.supportsFourWheelDrive){
+        const crawl=1-THREE.MathUtils.smoothstep(absSpeed,4,11);
+        const lowGear=this.fourWheelDriveMode==="4H"?.88:.58;
+        engineForce=Math.max(engineForce,this.body.mass()*9.81*grip*throttle*lowGear*crawl);
+      }
     }
     // S / FRENO becomes a powerful reverse gear after stopping.
     // Propulsion continues throughout reverse instead of creeping at 2.2 kN.

@@ -3,7 +3,7 @@
 // MCP data can be loaded via pitstop.getCircuits() from src/integrations/pitstop.ts.
 
 import * as THREE from "three";
-import { OFFROAD_CIRCUIT, offroadElevation, offroadSectorAt } from "./offroadPrototype";
+import { OFFROAD_CIRCUIT, offroadElevation, offroadSectorAt, offroadRelief } from "./offroadPrototype";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import { monzonPitBarrierGap } from "./monzonPitAccess";
 import { suzakaPitBarrierGap, suzakaPitViewingWall, SUZAKA_PIT_LOW_BARRIER_HEIGHT } from "./suzakaPitAccess";
@@ -348,7 +348,7 @@ export class Track {
    * Identical indexed triangles are used for the visible road and Rapier.
    */
   private buildOffroadSurface(): void {
-    const n = this.samples.length, cols = 12;
+    const n = this.samples.length, cols = 20;
     const pos: number[] = [], colors: number[] = [], indices: number[] = [], uv: number[] = [];
     for (let i=0;i<n;i++) {
       const p = this.samples[i], r = this.rights[i];
@@ -358,10 +358,9 @@ export class Track {
       const t = i/n * 2*Math.PI;
       for (let j=0;j<=cols;j++) {
         const lateral = (j/cols*2-1)*this.halfWidth;
-        const rut = .15*Math.exp(-((Math.abs(lateral)-1.0)**2)/.38);
-        const ripple = .05*Math.sin(25*t + lateral*.7) + .035*Math.cos(17*t-lateral);
-        pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
-        const shade=1-.32*Math.exp(-((Math.abs(lateral)-1.0)**2)/.32);
+        const relief=offroadRelief(this.progress(i)*this.length,lateral,this.length);
+        pos.push(p.x+r.x*lateral, p.y + .025 + relief, p.z+r.z*lateral);
+        const shade=THREE.MathUtils.clamp(1+relief*.85,.47,1.2);
         colors.push(color.r*shade,color.g*shade,color.b*shade);
         uv.push((p.x+r.x*lateral)/5,(p.z+r.z*lateral)/5);
       }
@@ -387,6 +386,14 @@ export class Track {
     map.generateMipmaps=true;map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.needsUpdate=true;
     const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map,vertexColors:true,side:THREE.DoubleSide}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
+    let minRelief=0,maxRelief=0,maxUphill=0,maxDownhill=0;
+    for(let i=0;i<n;i++){
+      const next=(i+1)%n,p=this.samples[i],q=this.samples[next];
+      const grade=(q.y-p.y)/Math.max(.01,Math.hypot(q.x-p.x,q.z-p.z));
+      maxUphill=Math.max(maxUphill,grade);maxDownhill=Math.min(maxDownhill,grade);
+      for(let j=0;j<=cols;j++){const h=pos[(i*(cols+1)+j)*3+1]-p.y-.025;minRelief=Math.min(minRelief,h);maxRelief=Math.max(maxRelief,h);}
+    }
+    mesh.userData.reliefAudit={minRelief,maxRelief,maxUphill,maxDownhill};
     this.group.add(mesh);
     // Solid graded verges meet the original road edge and the ground collider.
     // Use the same mesh for rendering and Rapier; do not leave an elevated ribbon.
@@ -413,23 +420,21 @@ export class Track {
     vergeGeo.setIndex(vergeIndices);vergeGeo.computeVertexNormals();
     const verge=new THREE.Mesh(vergeGeo,new THREE.MeshLambertMaterial({color:0x383f24,side:THREE.DoubleSide}));
     verge.name="offroad-solid-verges";this.group.add(verge);
-    // Irregular shallow wet patches: visual-only, no separate wheel collider.
+    // Water only inside individual depressions. Never cover the entire road
+    // with a flat visual ribbon which conceals the actual potholes.
     const wetPos:number[] = [], wetIdx:number[] = [];
     for(let i=0;i<n;i++){
       const next=(i+1)%n;
-      if(offroadSectorAt(this.progress(i)).surface!=="puddle" ||
-         offroadSectorAt(this.progress(next)).surface!=="puddle") continue;
-      const offset=wetPos.length/3;
-      for(const k of [i,next]){
-        const p=this.samples[k], r=this.rights[k];
-        const t=k/n*2*Math.PI;
-        const width=1.5+.65*Math.sin(t*13)+.3*Math.cos(t*27);
-        for(const side of [-1,1]){
-          const d=side*width+.4*Math.sin(t*19);
-          wetPos.push(p.x+r.x*d,p.y+.095,p.z+r.z*d);
-        }
+      if(offroadSectorAt(this.progress(i)).surface==="dirt")continue;
+      for(let j=0;j<cols;j++){
+        const a=i*(cols+1)+j,b=next*(cols+1)+j;
+        const corners=[a,a+1,b,b+1];
+        const ys=corners.map((k,idx)=>pos[k*3+1]-this.samples[idx<2?i:next].y);
+        if(ys.some(y=>y>-.24))continue;
+        const base=wetPos.length/3;
+        corners.forEach((k,idx)=>wetPos.push(pos[k*3],this.samples[idx<2?i:next].y-.18,pos[k*3+2]));
+        wetIdx.push(base,base+1,base+2,base+2,base+1,base+3);
       }
-      wetIdx.push(offset,offset+1,offset+2,offset+2,offset+1,offset+3);
     }
     const wetGeo=new THREE.BufferGeometry();
     wetGeo.setAttribute("position",new THREE.Float32BufferAttribute(wetPos,3));
@@ -448,8 +453,8 @@ export class Track {
     for(let i=20;i<n-20;i+=13){
       const p=this.samples[i],r=this.rights[i],side=i%2===0?1:-1;
       const radius=.19+.17*(.5+.5*Math.sin(i*1.73));
-      const lateral=side*(this.halfWidth-.27-.35*(.5+.5*Math.sin(i*.57)));
-      const height=.16+.15*(.5+.5*Math.cos(i*1.31));
+      const lateral=side*(i%3===0?1.42:this.halfWidth-.45-.35*(.5+.5*Math.sin(i*.57)));
+      const height=.20+.14*(.5+.5*Math.cos(i*1.31));
       const originX=p.x+r.x*lateral,originZ=p.z+r.z*lateral;
       const color=new THREE.Color().setHSL(.09+.02*Math.sin(i),.14,.20+.10*(.5+.5*Math.cos(i*.83)));
       const yaw=i*.67,c=Math.cos(yaw),s=Math.sin(yaw);
@@ -458,7 +463,7 @@ export class Track {
         // Same coordinate deformation for coincident vertices; no cracks.
         const variation=.86+.13*Math.sin(x*7+z*5+y*3+i);
         const xx=x*radius*variation,zz=z*radius*.82*variation;
-        rockPos.push(originX+xx*c-zz*s,p.y+.01+height*y,originZ+xx*s+zz*c);
+        rockPos.push(originX+xx*c-zz*s,p.y+.025+offroadRelief(this.progress(i)*this.length,lateral,this.length)+height*y,originZ+xx*s+zz*c);
         rockColors.push(color.r,color.g,color.b);rockIdx.push(rockIdx.length);
       }
       count++;

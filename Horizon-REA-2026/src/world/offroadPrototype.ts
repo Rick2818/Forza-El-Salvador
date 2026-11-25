@@ -50,10 +50,25 @@ export function offroadSectorAt(progress: number): OffroadSector {
 export function offroadElevation(progress: number): number {
   if (!Number.isFinite(progress)) throw new Error("Invalid lap progress");
   const t = 2 * Math.PI * (((progress % 1) + 1) % 1);
-  return 6 * (1 - Math.cos(t)) + 2 * (1 - Math.cos(3 * t));
+  return 6 * (1 - Math.cos(t)) + 2 * (1 - Math.cos(3 * t)) +
+    2.6 * (1 - Math.cos(12 * t)) + 1.3 * (1 - Math.cos(19 * t));
 }
 /** Arcade force multiplier only, not a validated mud/tire physics simulation. */
 export function offroadDriveMultiplier(mode: FourWheelDriveMode, contacts: readonly boolean[], progress: number): number {
   const s = offroadSectorAt(progress);
   return pickupContactTraction(mode, contacts, s.grip) * s.grip * (1 - s.resistance);
+}
+
+// Geometric obstacles are measured in metres, not a shader or a colour patch.
+// Circularly repeat over each lap with a clear launch and an optional bypass.
+export function offroadRelief(distance: number, lateral: number, length: number): number {
+  const d=((distance%length)+length)%length;
+  const fade=Math.min(1,d/16,(length-d)/16);
+  const local=((d+8)%26)-13;
+  const side=Math.floor((d+8)/26)%2===0?1:-1;
+  const basin=-.48*Math.exp(-(local*local)/5.2-((lateral-side*.86)**2)/.63);
+  const rut=-.22*Math.exp(-((Math.abs(lateral)-.98)**2)/.23);
+  const mound=.20*Math.exp(-(((d+11)%17-8.5)**2)/4.5-((lateral+side*.75)**2)/1.15);
+  const washboard=.06*Math.sin(d*1.65+lateral*.7)+.04*Math.sin(d*.88-lateral*2);
+  return fade*(basin+rut+mound+washboard);
 }
