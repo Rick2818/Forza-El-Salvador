@@ -82,24 +82,36 @@ async function start(){
   pose(0);
   stage("compile-scene");if(typeof renderer.compileAsync==="function")await timeout(renderer.compileAsync(scene,camera),60000,"Shader compilation timed out");
   stage("first-scene-frame");renderer.render(scene,camera);await complete();
+  // The common renderer resets Info from its own animation loop by default.
+  // Own the statistics reset and snapshot synchronously before awaiting GPU completion.
+  renderer.info.autoReset=false;
+  result.nonEmptyFrames=0;
   stage("continuity");result.status="running";status.textContent=backend+" · "+format+" · "+circuit;
   const start=performance.now();let last=start;const times=[];
   while(performance.now()-start<125000){
     await timeout(new Promise(requestAnimationFrame),5000,"Animation callback stalled");
     const seconds=(performance.now()-start)/1000;pose(seconds);
-    renderer.render(scene,camera);await complete();
+    renderer.info.reset();
+    renderer.render(scene,camera);
+    const info=renderer.info.render;
+    const frameDrawCalls=backend==="webgpu"?info.drawCalls:info.calls;
+    const frameTriangles=info.triangles;
+    await complete();
+    if(!(frameDrawCalls>0)||!(frameTriangles>0))throw Error("Empty draw counters immediately after render");
+    result.nonEmptyFrames++;
+    result.drawCalls=frameDrawCalls;result.triangles=frameTriangles;
+    result.maxDrawCalls=Math.max(result.maxDrawCalls||0,frameDrawCalls);
+    result.maxTriangles=Math.max(result.maxTriangles||0,frameTriangles);
     if(result.deviceLost||result.deviceError)throw Error(result.deviceLost||result.deviceError);
     const now=performance.now(),gap=now-last;last=now;times.push(gap);
     result.frames++;result.elapsedSeconds=(now-start)/1000;
     result.maxFrameGapMs=Math.max(result.maxFrameGapMs||0,gap);
-    result.drawCalls=renderer.info.render.drawCalls??renderer.info.render.calls;
-    result.triangles=renderer.info.render.triangles;
     if(gap>5000)throw Error("Completed GPU frame gap exceeded 5 seconds");
   }
   const sorted=times.slice().sort((a,b)=>a-b);
   result.completedFPS=result.frames/result.elapsedSeconds;
   result.p95FrameMs=sorted[Math.floor((sorted.length-1)*.95)];
-  if(result.frames<100||!(result.drawCalls>0)||!(result.triangles>0))throw Error("Insufficient completed rendering");
+  if(result.frames<100||result.nonEmptyFrames!==result.frames||!(result.drawCalls>0)||!(result.triangles>0))throw Error("Insufficient completed rendering");
   result.status="passed";status.textContent="Completed · "+result.completedFPS.toFixed(1)+" GPU-completed FPS";
 }
 start().catch(fail);

@@ -17,7 +17,20 @@ try{
  await page.waitForFunction(()=>["passed","failed"].includes(window.FERRARI_GPU?.status),{},{timeout:360000});
  const result=await page.evaluate(()=>window.FERRARI_GPU);
  console.log("GPU_LAB_RESULT",JSON.stringify(result));await writeFile(stem+".json",JSON.stringify({result,errors},null,2));
- await page.screenshot({path:stem+".png",timeout:10000});
+ const capture=await page.locator("canvas").screenshot({path:stem+".png",timeout:10000});
+ if(result.status==="passed"){
+   const pixels=await page.evaluate(async(data)=>{
+     const im=new Image();im.src="data:image/png;base64,"+data;await im.decode();
+     const c=document.createElement("canvas");c.width=im.width;c.height=im.height;
+     const ctx=c.getContext("2d");ctx.drawImage(im,0,0);
+     const a=ctx.getImageData(0,0,c.width,c.height).data,hist=new Map();
+     for(let i=0;i<a.length;i+=4){const k=((a[i]>>4)<<8)|((a[i+1]>>4)<<4)|(a[i+2]>>4);hist.set(k,(hist.get(k)||0)+1);}
+     return {colors:hist.size,dominantFraction:Math.max(...hist.values())/(a.length/4)};
+   },capture.toString("base64"));
+   result.pixelAudit=pixels;console.log("PIXEL_AUDIT",JSON.stringify(pixels));
+   await writeFile(stem+".json",JSON.stringify({result,errors},null,2));
+   assert.ok(pixels.colors>=8&&pixels.dominantFraction<.99,"Canvas blank or almost uniform");
+ }
  assert.equal(result.status,"passed",result.error);
  assert.equal(result.actualBackend,backend);assert.equal(result.format,format);assert.equal(result.circuit,circuit);
  assert.equal(errors.length,0,errors.join("\n"));
