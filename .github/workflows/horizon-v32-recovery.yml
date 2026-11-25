@@ -1,0 +1,61 @@
+name: Horizon Recovery V32 - baseline (no deployment)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/horizon-v32-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v32-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  baseline:
+    if: github.head_ref == 'recovery/v32-stability' || github.ref == 'refs/heads/recovery/v32-stability'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [monzon, suzaka]
+        mode: [physics-only, baseline]
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Compare physics and rendered race continuity
+        run: |
+          set -o pipefail
+          mkdir -p review/quality
+          git rev-parse HEAD | tee review/quality/v32-commit.txt
+          npm run dev > review/quality/v32-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          node tools/pickup-v24-continuity.mjs ram-3500-alternative "${{ matrix.mode }}" "${{ matrix.circuit }}" 2>&1 | tee review/quality/v32-continuity.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v32-${{ matrix.circuit }}-${{ matrix.mode }}
+          path: Horizon-REA-2026/review/quality/
+          if-no-files-found: warn
