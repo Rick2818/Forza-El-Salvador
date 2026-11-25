@@ -21,7 +21,7 @@ try{
           const wheels=visual.wheels.map(w=>({spinMeshes:w.spin.children.filter(o=>o.isMesh).length,pivot:w.steer.position.toArray()}));
           data.push({id:design.id,measured:hasMeasuredExternalTyres(design.id),wheelMeshes:audit?.assignedWheelMeshes??[],
             mounts:wheelConnections(design.id),radii:wheelRadiiForVehicle(design.id),wheels,
-            sourceTriangles:audit?.sourceTriangles,triangles,budget:visual.root.userData.renderMeshBudget,alignment:visual.root.userData.wheelAlignment});
+            sourceTriangles:audit?.sourceTriangles,triangles,budget:visual.root.userData.renderMeshBudget,alignment:visual.root.userData.wheelAlignment,components:visual.root.userData.wheelComponentEvidence});
         }finally{disposeSelectedVisual(visual);}
       }catch(e){data.push({id:design.id,error:String(e)});}
     }

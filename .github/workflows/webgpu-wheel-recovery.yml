@@ -1,0 +1,43 @@
+name: Six-model wheel component audit (no deployment)
+on:
+  push:
+    branches: [experiment/webgpu-wheel-recovery]
+permissions:
+  contents: read
+jobs:
+  wheels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - run: |
+          set -euo pipefail
+          mkdir -p review/quality
+          npm run dev > review/quality/wheel-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173 >/dev/null; then break; fi
+            sleep 1
+          done
+          node tools/v25-fleet-audit.mjs 2>&1 | tee review/quality/wheel-components.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: six-wheel-components
+          path: Horizon-REA-2026/review/quality/

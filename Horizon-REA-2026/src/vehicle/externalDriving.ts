@@ -277,6 +277,30 @@ function isMergedHubAssembly(mesh:THREE.Mesh,hubs:readonly THREE.Vector3[],radii
   return seen.size>=2;
 }
 
+
+// The six models below failed the original independent tyre/rim audit.
+// Search only measured wheel envelopes; never infer a rim from a name alone.
+const RIM_AUDIT_IDS=new Set(["porsche-911-c4s","bugatti-chiron-profilee","lamborghini-aventador","mercedes-amg-gt-alternative","ford-f150-raptor-police","ram-3500-alternative"]);
+function strictWheelEnvelope(mesh:THREE.Mesh,hubs:readonly THREE.Vector3[],radii:readonly number[]):boolean{
+  const label=wheelLabel(mesh);
+  if(IS_STEERING.test(label)||/spare|wheel[_\s-]*(arch|well|house)|body|door|bumper|caliper|chassis|lamp|light|brake/i.test(mesh.name+" "+(mesh.material instanceof THREE.Material?mesh.material.name:"")))return false;
+  const pos=mesh.geometry.getAttribute("position"),idx=mesh.geometry.index;
+  if(!pos)return false;
+  const boxes=Array.from({length:4},()=>new THREE.Box3()),p=new THREE.Vector3();
+  mesh.updateWorldMatrix(true,false);
+  for(let i=0;i<(idx?.count??pos.count);i++){
+    p.fromBufferAttribute(pos,idx?idx.getX(i):i).applyMatrix4(mesh.matrixWorld);
+    const k=distanceToHub(p,hubs),h=hubs[k],r=radii[k];
+    if(Math.abs(p.x-h.x)>r*.72||Math.hypot(p.y-h.y,p.z-h.z)>r*1.04)return false;
+    boxes[k].expandByPoint(p);
+  }
+  return boxes.some(b=>!b.isEmpty())&&boxes.every((b,i)=>{
+    if(b.isEmpty())return true;
+    const h=hubs[i],r=radii[i],d=b.getSize(new THREE.Vector3()),c=b.getCenter(new THREE.Vector3()),pr=(d.y+d.z)/4;
+    return pr>=r*.50&&pr<=r*.94&&Math.abs(d.y-d.z)<=pr*.20&&Math.hypot(c.y-h.y,c.z-h.z)<=Math.min(.025,r*.075)&&d.x<=r*1.44;
+  });
+}
+
 function triangulationCount(geo:THREE.BufferGeometry):number{
   return (geo.index?.count??geo.attributes.position?.count??0)/3;
 }
@@ -427,6 +451,7 @@ function partitionWheelMesh(
     owned.push(compact);
     const part=new THREE.Mesh(compact,mesh.material);
     part.name=mesh.name+"_original_wheel_"+hub;
+    if(mesh.userData.recoveredRimEvidence)part.userData.recoveredRimEvidence=mesh.userData.recoveredRimEvidence;
     part.position.copy(mesh.position);
     part.quaternion.copy(mesh.quaternion);
     part.scale.copy(mesh.scale);
@@ -465,6 +490,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   let sourceTriangles=0,sourceMeshes=0,candidateCount=0,splitSources=0,copied=0;
   const owned:THREE.BufferGeometry[]=[];
   const wheelMeshes:THREE.Mesh[]=[];
+  const recoveredRimCandidates:string[]=[];
   imported.traverse(child=>{
     if(!(child instanceof THREE.Mesh))return;
     sourceMeshes++;sourceTriangles+=triangulationCount(child.geometry);
@@ -477,6 +503,18 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
         /^Object_(9001|21001|13001|27001)_(DARK_GRAY|CHROME)_0$/i.test(child.name))
         wheelMeshes.push(child);
       return;
+    }
+    // Additional recovery is restricted to measured hub envelopes and
+    // source primitives with explicit rim/metal-wheel semantics. Anonymous
+    // circular geometry remains a candidate, never a passing rim assertion.
+    if(RIM_AUDIT_IDS.has(id)&&measuredTyres.has(id)&&strictWheelEnvelope(child,hubs,externalWheelRadii(id,d))){
+      const materialNames=(Array.isArray(child.material)?child.material:[child.material]).map(m=>m.name).join(" ");
+      const label=child.name+" "+materialNames;
+      if(/(?:^|[\s_.-])(rim|rims|rines?|jante|alloy[_ -]?wheel|wheel[_ -]?(metal|chrome|alloy))(?=[\s_.0-9-]|$)/i.test(label)){
+        recoveredRimCandidates.push(child.name);
+        child.userData.recoveredRimEvidence=label;
+        wheelMeshes.push(child);return;
+      }
     }
     if(isWheel(child)||(needsGeometricFit(id)&&measuredTyres.has(id)&&
       (atMeasuredPickupHub(child,hubs,externalWheelRadii(id,d))||
@@ -564,7 +602,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
         /^Object_(9001|21001|13001|27001)_CHROME_0$/i.test(obj.name)&&
         partRadius>=radius*.65&&partRadius<=radius*.85&&
         Math.hypot(p.y-center.y,p.z-center.z)<=.005;
-      const kind=/tyre|tire|neumatico|pneu|rubber|caucho|sidewall|thread|tread|(?:^|_)NEUMA(?:_|$)/i.test(label)?"tyre":
+      const kind=obj.userData.recoveredRimEvidence?"rim":/tyre|tire|neumatico|pneu|rubber|caucho|sidewall|thread|tread|(?:^|_)NEUMA(?:_|$)/i.test(label)?"tyre":
         silveradoRim||/rim|rines?|llanta|LOD_A_WHEEL/i.test(label)?"rim":"unidentified";
       parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
         radiusM:partRadius,center:p.toArray(),...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
@@ -576,6 +614,25 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       toleranceM:Math.min(.025,radius*.075),explicitPair:tyres.length>0&&rims.length>0};
   });
   root.userData.wheelAlignment=wheelAlignment;
+  if(RIM_AUDIT_IDS.has(id)){
+    // Report all actual spin meshes, including small discs and anonymous
+    // primitives excluded from the circular bounding-box test.
+    root.userData.wheelComponentEvidence={recoveredRimCandidates,wheels:wheels.map(w=>({
+      corner:w.steer.name,parts:w.spin.children.filter((o):o is THREE.Mesh=>o instanceof THREE.Mesh).map(o=>{
+        const b=indexedWorldBounds(o);return {name:o.name,label:o.userData.originalWheelLabel,
+          materials:(Array.isArray(o.material)?o.material:[o.material]).map(m=>({name:m.name,type:m.type,
+            color:(m as THREE.MeshStandardMaterial).color?.getHexString(),metalness:(m as THREE.MeshStandardMaterial).metalness,
+            roughness:(m as THREE.MeshStandardMaterial).roughness})),
+          size:b.getSize(new THREE.Vector3()).toArray(),center:b.getCenter(new THREE.Vector3()).toArray(),triangles:triangulationCount(o.geometry)};
+      })})),
+      remainingHubCandidates:[] as unknown[]};
+    imported.traverse(o=>{
+      if(!(o instanceof THREE.Mesh))return;
+      const b=indexedWorldBounds(o),p=b.getCenter(new THREE.Vector3()),size=b.getSize(new THREE.Vector3());
+      const candidate=strictWheelEnvelope(o,hubs,externalWheelRadii(id,d));
+      if(candidate)root.userData.wheelComponentEvidence.remainingHubCandidates.push({name:o.name,label:wheelLabel(o),size:size.toArray(),center:p.toArray(),triangles:triangulationCount(o.geometry)});
+    });
+  }
   // Per-vehicle materials; changing one car must never recolor other racers.
   const paint=new THREE.MeshPhysicalMaterial({
     name:"paint",color:d.paint,metalness:.18,roughness:.32,
