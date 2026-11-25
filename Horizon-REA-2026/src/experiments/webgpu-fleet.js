@@ -6,6 +6,7 @@ import { getCircuit } from "../world/circuits";
 import { loadSelectedVehicle, vehicleDesign } from "../vehicle/selectedAsset";
 import { EXTERNAL_VEHICLES, IS_EXTERNAL_PICKUP } from "../vehicle/externalRoster";
 import { OFFROAD_CIRCUIT, offroadSectorAt } from "../world/offroadPrototype";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver } from "../vehicle/ai";
 import { WebGPUFrameGate } from "../render/webgpuFrameGate";
@@ -14,7 +15,7 @@ import { GameAudio } from "../audio/engine";
 const TURBO_TRIGGER_KPH = 100;
 const q=new URLSearchParams(location.search);
 const circuit=["monzon","suzaka",OFFROAD_CIRCUIT.id].includes(q.get("circuit"))?q.get("circuit"):"monzon";
-const vehicleId=q.get("vehicle")||"ferrari-f430";
+const vehicleId=q.get("vehicle")||(circuit===OFFROAD_CIRCUIT.id?"chevrolet-silverado-ev-alternative":"ferrari-f430");
 const vehicleEntry=EXTERNAL_VEHICLES.find(v=>v.id===vehicleId);
 const offroad=circuit===OFFROAD_CIRCUIT.id;
 if(!vehicleEntry||offroad&&!IS_EXTERNAL_PICKUP(vehicleId))throw Error("Invalid fleet/circuit combination");
@@ -23,7 +24,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-fleet-audit",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-offroad-repair",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -40,9 +41,12 @@ for(const b of document.querySelectorAll("[data-control]")){
 }
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d"," "].includes(e.key)){e.preventDefault();keys.add(e.key);auto=false;}});
 addEventListener("keyup",e=>keys.delete(e.key));addEventListener("blur",()=>{clear();audio.silence();});document.addEventListener("visibilitychange",()=>{clear();if(document.hidden)audio.silence();});
+let changeDriveMode=()=>{};
+$("driveMode").hidden=!IS_EXTERNAL_PICKUP(vehicleId);$("driveMode").onclick=()=>changeDriveMode();
 $("reset").onclick=()=>{resetRequested=true;};
-$("switch").href="?"+new URLSearchParams({circuit:circuit==="monzon"?"suzaka":"monzon",ferrariFormat:format,quality:profile});$("switch").textContent=circuit==="monzon"?"Suzaka":"Monzón";
-$("quality").href="?"+new URLSearchParams({circuit,ferrariFormat:format,quality:profile==="adaptive"?"fixed":"adaptive"});$("quality").textContent=profile==="adaptive"?"Modo fijo":"Modo auto";
+const nextCircuit=offroad?"monzon":IS_EXTERNAL_PICKUP(vehicleId)?"el-imposible-4x4":circuit==="monzon"?"suzaka":"monzon";
+$("switch").href="?"+new URLSearchParams({circuit:nextCircuit,vehicle:vehicleId,quality:profile});$("switch").textContent=nextCircuit==="el-imposible-4x4"?"4x4":nextCircuit==="monzon"?"Monzón":"Suzaka";
+$("quality").href="?"+new URLSearchParams({circuit,vehicle:vehicleId,quality:profile==="adaptive"?"fixed":"adaptive"});$("quality").textContent=profile==="adaptive"?"Modo fijo":"Modo auto";
 $("report").onclick=async()=>{const report=JSON.stringify(info,null,2);try{await navigator.clipboard.writeText(report);$("report").textContent="Copiado";}catch{const blob=new Blob([report],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="horizon-webgpu-report.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}};
 function fail(e){audio.silence();info.status="failed";info.error=String(e);$("error").hidden=false;$("error").textContent="Prueba interrumpida: "+info.error;console.error(e);}
 async function boot(){
@@ -63,15 +67,43 @@ async function boot(){
  const definition=offroad?OFFROAD_CIRCUIT:getCircuit(circuit);if(!definition||definition.id!==circuit)throw Error("Circuito de velocidad no encontrado");
  const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);
  scene.add(new THREE.HemisphereLight(0xd8e9ff,0x555947,2));const sun=new THREE.DirectionalLight(0xfff3db,3);sun.position.set(70,100,20);scene.add(sun);
- const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:0x566748,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.1;scene.add(floor);
- await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH});car.resetToTrack(track);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:0x566748,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=offroad?-1:-.1;scene.add(floor);
+ if(offroad){
+   // Authored Blender-baked atlas already present in the project. No primitive
+   // cartoon trees or WebGL render targets. Keep all trunks outside verges.
+   const atlas=await new THREE.TextureLoader().loadAsync(import.meta.env.BASE_URL+"scenery/pine-far.png");
+   atlas.colorSpace=THREE.SRGBColorSpace;atlas.anisotropy=4;
+   const planes=[];
+   for(let k=0;k<3;k++){
+     const g=new THREE.PlaneGeometry(8.8,17.6).translate(0,8.8,0).rotateY(k*Math.PI/3),uv=g.getAttribute("uv");
+     for(let i=0;i<uv.count;i++)uv.setX(i,(uv.getX(i)+k)/3);
+     planes.push(g);
+   }
+   const geometry=mergeGeometries(planes,false);planes.forEach(g=>g.dispose());
+   const locations=[];
+   for(let i=0;i<track.samples.length;i+=8)for(const side of [-1,1]){
+     const p=track.samples[i],r=track.rightAt(i),offset=34+10*(.5+.5*Math.sin(i*1.72+side));
+     const x=p.x+r.x*offset*side,z=p.z+r.z*offset*side;
+     if(track.samples.some(s=>Math.hypot(s.x-x,s.z-z)<32))continue;
+     if(locations.some(s=>Math.hypot(s.x-x,s.z-z)<6))continue;
+     locations.push({x,z,scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
+   }
+   const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0x66745b,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
+   const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,-1,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
+   forest.instanceMatrix.needsUpdate=true;forest.name="el-imposible-blender-forest";scene.add(forest);info.treeCount=locations.length;
+   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,85,420);
+ }
+ await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true});car.resetToTrack(track);
+ if(offroad&&car.supportsFourWheelDrive&&car.fourWheelDriveMode!=="4H")car.toggleFourWheelDrive();
+ changeDriveMode=()=>{car.toggleFourWheelDrive();$("driveMode").textContent=car.fourWheelDriveMode;};$("driveMode").textContent=car.fourWheelDriveMode;
  const formats=[];car.visual.root.traverse(o=>{if(o.userData.ferrariExperimentFormat)formats.push(o.userData.ferrariExperimentFormat);});
  if(vehicleId==="ferrari-f430"&&!formats.includes(format))throw Error("Incorrect Ferrari asset");
  info.wheels=car.visual.root.userData.wheelAlignment;info.assetAudit=car.visual.root.userData.externalAudit;
  if(info.wheels?.length!==4||car.visual.wheels.length!==4)throw Error("Missing four wheel assemblies");
  info.independentTyreRim=info.wheels.every(w=>w.explicitPair);info.maxSpeedKph=0;info.wheelRollMax=[0,0,0,0];info.turboEvents=[];info.fourWheelDrive=car.fourWheelDriveMode;
  const incompatible=new Set();function scanMaterials(){scene.traverse(o=>{for(const m of [o.material].flat().filter(Boolean)){if(m.isShaderMaterial||m.isRawShaderMaterial||Object.hasOwn(m,"onBeforeCompile"))incompatible.add(m.name||m.type);}});info.incompatibleMaterials=[...incompatible];}scanMaterials();
- const pilot=new AIDriver(car,track,-2.7,.94,1,"estratega","medio");
+ const pilot=new AIDriver(car,track,offroad?0:-2.7,.94,1,"estratega","medio");
+ info.contactSteps=[0,0,0,0];info.totalSteps=0;info.maxOffroadDrop=0;info.sectors=[];
  let previous=car.position.clone(),hint=track.startIndex,acc=0,last=performance.now(),lastReport=last,lastCompleted=0,lastCompletionAt=last,lastCount=0,callbacks=0,physicsMs=0,renderMs=0,renderCount=0,physicsSteps=0,maxCallbackGap=0;
  const forward=new THREE.Vector3(),target=new THREE.Vector3(),pos=new THREE.Vector3(),quat=new THREE.Quaternion();
  function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;camera.lookAt(target);}
@@ -87,7 +119,10 @@ async function boot(){
   const physicsStart=performance.now();acc+=dt;let steps=0;
   while(acc>=1/60&&steps<6){const hit=track.locate(car.position,hint);hint=hit.index;const grip=track.gripAt(hint,hit.lateral);
    const input=auto?pilot.plan(1/60,info.elapsed,[]):{throttle:Number(down("gas","ArrowUp","w")),brake:Number(down("brake","ArrowDown","s")),steer:Number(down("left","ArrowLeft","a"))-Number(down("right","ArrowRight","d")),handbrake:keys.has(" ")};
-   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined);world.step();car.afterPhysicsStep(1/60);
+   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined);world.step();car.afterPhysicsStep(1/60);
+   info.totalSteps++;car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;});
+   if(offroad){const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);info.maxOffroadDrop=Math.max(info.maxOffroadDrop,track.samples[hint].y-car.position.y);}
+   info.fourWheelDrive=car.fourWheelDriveMode;
    info.maxSpeedKph=Math.max(info.maxSpeedKph,car.speedKph);if(!wasTurbo&&car.turboActive&&info.turboEvents.length<30)info.turboEvents.push({speed:car.speedKph,elapsed:info.elapsed});
    const p=car.position;info.distance+=p.distanceTo(previous);previous.copy(p);info.elapsed+=1/60;acc-=1/60;steps++;
   }

@@ -19,9 +19,13 @@ export class PickupMudCoating {
   private readonly copies = new Map<THREE.Material, THREE.Material>();
   private readonly assigned = new Map<THREE.Mesh, {original: THREE.Material | THREE.Material[], coating: THREE.Material | THREE.Material[]}>();
   private nextScan = 0;
+  constructor(private readonly webgpu=false){}
   get coverage():number {return this.amount.value;}
   update(root: THREE.Object3D, coverage:number, dt:number):void {
     this.amount.value = THREE.MathUtils.clamp(coverage,0,1);
+    if(this.webgpu)for(const [original,clone] of this.copies){
+      if(original instanceof THREE.MeshStandardMaterial && clone instanceof THREE.MeshStandardMaterial){clone.color.copy(original.color).lerp(new THREE.Color(0x4a301c),this.amount.value*.48);clone.roughness=THREE.MathUtils.lerp(original.roughness,.88,this.amount.value*.55);}
+    }
     // Keep approved materials untouched until actual mud is accumulated.
     if (this.amount.value <= .001 && this.assigned.size === 0) return;
     this.nextScan -= dt;
@@ -36,6 +40,7 @@ export class PickupMudCoating {
         // Keep windows, lights and interior materials intact.
         if (m.transparent || m.opacity < .99 || /glass|window|windscreen|windshield|interior|dashboard|seat|mirror|chrome/i.test(m.name) || (m instanceof THREE.MeshPhysicalMaterial && m.transmission > 0)) return m;
         const clone=m.clone();
+        if(this.webgpu){clone.color.lerp(new THREE.Color(0x4a301c),this.amount.value*.48);clone.roughness=THREE.MathUtils.lerp(m.roughness,.88,this.amount.value*.55);this.copies.set(m,clone);return clone;}
         const max=.58;
         clone.onBeforeCompile=shader=>{
           shader.uniforms.horizonMud=this.amount;

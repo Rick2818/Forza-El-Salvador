@@ -10,6 +10,7 @@ describe("Offroad engineering track",()=>{
   expect(t.samples.length).toBe(1500);
   expect(Math.max(...t.samples.map(p=>p.y))-Math.min(...t.samples.map(p=>p.y))).toBeGreaterThan(10);
   expect(t.group.getObjectByName("offroad-surface")).toBeInstanceOf(THREE.Mesh);
+  expect(t.group.getObjectByName("offroad-solid-verges")).toBeInstanceOf(THREE.Mesh);
   const idx=(fraction:number)=>Math.round(t.startIndex+t.samples.length*fraction)%t.samples.length;
   expect(t.gripAt(idx(.4),0)).toBeLessThan(t.gripAt(idx(.25),0));
   expect(t.gripAt(idx(.25),0)).toBeLessThan(t.gripAt(idx(.05),0));

@@ -388,6 +388,31 @@ export class Track {
     const mesh = new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map,vertexColors:true,side:THREE.DoubleSide}));
     mesh.name="offroad-surface"; mesh.receiveShadow=true;
     this.group.add(mesh);
+    // Solid graded verges meet the original road edge and the ground collider.
+    // Use the same mesh for rendering and Rapier; do not leave an elevated ribbon.
+    const vergePositions:number[]=[],vergeIndices:number[]=[];
+    for(const side of [-1,1]){
+      const base=vergePositions.length/3,segments=6;
+      for(let i=0;i<n;i++){
+        const edge=(i*(cols+1)+(side<0?0:cols))*3;
+        const x=pos[edge],y=pos[edge+1],z=pos[edge+2],right=this.rights[i];
+        for(let k=0;k<=segments;k++){
+          const t=k/segments,offset=24*t;
+          const blend=t*t*(3-2*t);
+          vergePositions.push(x+side*right.x*offset,y+(-1-y)*blend,z+side*right.z*offset);
+        }
+      }
+      for(let i=0;i<n;i++)for(let k=0;k<segments;k++){
+        const a=base+i*(segments+1)+k,b=base+((i+1)%n)*(segments+1)+k;
+        if(side>0)vergeIndices.push(a,a+1,b,b,a+1,b+1);
+        else vergeIndices.push(a,b,a+1,b,b+1,a+1);
+      }
+    }
+    const vergeGeo=new THREE.BufferGeometry();
+    vergeGeo.setAttribute("position",new THREE.Float32BufferAttribute(vergePositions,3));
+    vergeGeo.setIndex(vergeIndices);vergeGeo.computeVertexNormals();
+    const verge=new THREE.Mesh(vergeGeo,new THREE.MeshLambertMaterial({color:0x383f24,side:THREE.DoubleSide}));
+    verge.name="offroad-solid-verges";this.group.add(verge);
     // Irregular shallow wet patches: visual-only, no separate wheel collider.
     const wetPos:number[] = [], wetIdx:number[] = [];
     for(let i=0;i<n;i++){
@@ -645,7 +670,15 @@ export class Track {
       );
     }
 
-    if (offroad) return; // no invisible race barriers in the engineering prototype
+    if (offroad) {
+      const verge=this.group.getObjectByName("offroad-solid-verges") as THREE.Mesh<THREE.BufferGeometry>;
+      if(!verge?.geometry.index)throw Error("Offroad verge collider missing");
+      const body=world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+      world.createCollider(RAPIER.ColliderDesc.trimesh(
+        new Float32Array(verge.geometry.getAttribute("position").array),
+        new Uint32Array(verge.geometry.index.array)).setFriction(.65),body);
+      return;
+    }
     if (this.circuit.id === "suzaka") {
       // Thick, overlapping CCD-compatible walls on the ENTIRE circuit.
       // The earlier zero-thickness trimesh could be crossed at high velocity,

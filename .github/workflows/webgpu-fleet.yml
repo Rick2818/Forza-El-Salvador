@@ -1,7 +1,7 @@
-name: WebGPU individual fleet audit (no deployment)
+name: Silverado and El Imposible repair (no deployment)
 on:
   push:
-    branches: [experiment/webgpu-fleet]
+    branches: [experiment/webgpu-silverado-offroad]
 permissions:
   contents: read
 jobs:
@@ -13,52 +13,12 @@ jobs:
       max-parallel: 6
       matrix:
         include:
-          - vehicle: ferrari-f430
-            circuit: monzon
-          - vehicle: ferrari-f430
-            circuit: suzaka
-          - vehicle: porsche-911-c4s
-            circuit: monzon
-          - vehicle: porsche-911-c4s
-            circuit: suzaka
-          - vehicle: bugatti-chiron-profilee
-            circuit: monzon
-          - vehicle: bugatti-chiron-profilee
-            circuit: suzaka
-          - vehicle: lamborghini-aventador
-            circuit: monzon
-          - vehicle: lamborghini-aventador
-            circuit: suzaka
-          - vehicle: koenigsegg-jesko
-            circuit: monzon
-          - vehicle: koenigsegg-jesko
-            circuit: suzaka
-          - vehicle: mercedes-amg-gt-alternative
-            circuit: monzon
-          - vehicle: mercedes-amg-gt-alternative
-            circuit: suzaka
-          - vehicle: tesla-roadster-electric-alternative
-            circuit: monzon
-          - vehicle: tesla-roadster-electric-alternative
-            circuit: suzaka
-          - vehicle: ford-f150-raptor-police
-            circuit: monzon
-          - vehicle: ford-f150-raptor-police
-            circuit: suzaka
-          - vehicle: ford-f150-raptor-police
-            circuit: el-imposible-4x4
-          - vehicle: ram-3500-alternative
-            circuit: monzon
-          - vehicle: ram-3500-alternative
-            circuit: suzaka
-          - vehicle: ram-3500-alternative
+          - vehicle: chevrolet-silverado-ev-alternative
             circuit: el-imposible-4x4
           - vehicle: chevrolet-silverado-ev-alternative
             circuit: monzon
           - vehicle: chevrolet-silverado-ev-alternative
             circuit: suzaka
-          - vehicle: chevrolet-silverado-ev-alternative
-            circuit: el-imposible-4x4
     defaults:
       run:
         working-directory: Horizon-REA-2026
@@ -72,6 +32,7 @@ jobs:
           cache: npm
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - run: npm ci
+      - run: npm exec -- vitest run src/world/offroadTrack.test.ts src/world/offroadPrototype.test.ts src/render/pickupMud.test.ts
       - run: npm run build
       - run: |
           npm install --no-save --package-lock=false playwright

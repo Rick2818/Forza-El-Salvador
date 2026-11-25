@@ -49,6 +49,7 @@ export interface VehicleOptions {
   isPlayer?: boolean;
   vehicleId?: string;
   turboTriggerKph?: number;
+  webgpuMud?: boolean;
 }
 
 export class Vehicle {
@@ -66,6 +67,7 @@ export class Vehicle {
   private wheelFriction: number[] = [];
   private mudCoverage = 0;
   private mudCoating?: PickupMudCoating;
+  private readonly webgpuMud:boolean;
   private offroadSector?: OffroadSector;
   private smoothedGrip = 1;
   readonly vehicleId: string | undefined;
@@ -114,6 +116,7 @@ export class Vehicle {
   constructor(world: RAPIER.World, scene: THREE.Scene, opts: VehicleOptions) {
     this.vehicleId = opts.vehicleId;
     this.turboTriggerKph = opts.turboTriggerKph;
+    this.webgpuMud=opts.webgpuMud??false;
     const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
     this.electric = design?.powertrain === "electric";
     this.supportsFourWheelDrive = isFourWheelDrivePickup(opts.vehicleId);
@@ -291,7 +294,7 @@ export class Vehicle {
       lateralSpeed, this.body.angvel().y, grip);
     // Auto-activate a brief, cooldown-limited arcade nitro burst at 100 mph.
     // No turbo in reverse, in countdown, or during off-track excursions.
-    const turboAllowed = this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01;
+    const turboAllowed = !this.offroadSector && this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01;
     if(this.turboTriggerKph !== undefined){
       this.crossingTurboState=stepCrossingTurbo(this.crossingTurboState,dt,speed,throttle,this.onTrack,turboAllowed,this.turboTriggerKph);
       this.turboState=this.crossingTurboState;
@@ -421,7 +424,7 @@ export class Vehicle {
     this.controller.updateVehicle(dt);
   }
 
-  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector): void {
+  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector, offroadOnTrack?: boolean): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
     input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake };
     this.controls = input;
@@ -430,7 +433,7 @@ export class Vehicle {
       let contacts = 0;
       for(let i=0;i<4;i++) contacts += Number(this.controller.wheelIsInContact(i));
       this.mudCoverage = accumulateMud(this.mudCoverage,offroadSector.surface,this.speed,dt,contacts/4);
-      this.mudCoating ??= new PickupMudCoating();
+      this.mudCoating ??= new PickupMudCoating(this.webgpuMud);
     }
     // The chassis may still be on asphalt while one outside wheel is on
     // Suzaka's kerb or Monzon's gravel: calculate grip per contact patch.
@@ -441,7 +444,7 @@ export class Vehicle {
       meanGrip += this.surfaceGrip[i] / 4;
     }
     this.smoothedGrip = damp(this.smoothedGrip, meanGrip, 6, dt);
-    this.onTrack = this.surfaceGrip.every(tyre => tyre > 0.72);
+    this.onTrack = offroadSector && offroadOnTrack !== undefined ? offroadOnTrack : this.surfaceGrip.every(tyre => tyre > 0.72);
 
     this.steerAngle = damp(this.steerAngle, steeringAngleAt(this.speed, input.steer, this.tuning.steer), 11, dt);
     this.applyForces(dt, this.smoothedGrip);
