@@ -11,9 +11,9 @@ try{
  await page.waitForFunction(()=>["running","failed"].includes(window.HORIZON_GPU_DRIVE?.status),{},{timeout:180000});
  await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.status==="failed"||window.HORIZON_GPU_DRIVE.elapsed>=125,{},{timeout:420000});
  const result=await page.evaluate(()=>window.HORIZON_GPU_DRIVE);console.log("DRIVE_RESULT",JSON.stringify(result));await writeFile("review/quality/webgpu-drive-"+circuit+".json",JSON.stringify(result,null,2));
- assert.equal(result.status,"running",result.error);assert.equal(result.backend,"webgpu");assert.equal(result.profile,quality);assert.ok(result.windows.length>10);assert.ok(result.windows.every(w=>Number.isFinite(w.callbackFPS)&&Number.isFinite(w.renderMsPerSubmission)&&w.scale>=.5&&w.scale<=1));if(quality==="fixed")assert.ok(result.windows.every(w=>w.scale===1));assert.ok(result.elapsed>=125&&result.distance>200&&result.frames>100);assert.deepEqual(errors,[]);
+ assert.equal(result.status,"running",result.error);assert.equal(result.backend,"webgpu");assert.equal(result.trackId,circuit);assert.equal(result.surface,"asphalt");assert.equal(result.turboTriggerKph,100);assert.equal(result.profile,quality);assert.ok(result.windows.length>10);assert.ok(result.windows.every(w=>Number.isFinite(w.callbackFPS)&&Number.isFinite(w.renderMsPerSubmission)&&w.scale>=.5&&w.scale<=1));if(quality==="fixed")assert.ok(result.windows.every(w=>w.scale===1));assert.ok(result.elapsed>=125&&result.distance>200&&result.frames>100);assert.deepEqual(errors,[]);
  await page.screenshot({path:"review/quality/webgpu-drive-"+circuit+".png"});
  await page.locator("#reset").tap();await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.resets>0);
  await page.keyboard.down("ArrowUp");await page.waitForTimeout(2500);await page.keyboard.up("ArrowUp");
- assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.status),"running");
+ assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.status),"running");assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.audioGesture),true);
 }finally{await browser.close();}
