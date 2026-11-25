@@ -48,6 +48,7 @@ export interface VehicleOptions {
   number: number;
   isPlayer?: boolean;
   vehicleId?: string;
+  turboTriggerKph?: number;
 }
 
 export class Vehicle {
@@ -79,6 +80,7 @@ export class Vehicle {
   private readonly contactScratch = [false, false, false, false];
   private readonly wheelProbes = Array.from({length:4},()=>new THREE.Vector3());
   private turboState = createTurboState();
+  private readonly turboTriggerKph?: number;
   private turboDelivery = 0;
   private readonly turboFlames: TurboFlames | null;
   private readonly tuning;
@@ -109,6 +111,7 @@ export class Vehicle {
 
   constructor(world: RAPIER.World, scene: THREE.Scene, opts: VehicleOptions) {
     this.vehicleId = opts.vehicleId;
+    this.turboTriggerKph = opts.turboTriggerKph;
     const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
     this.electric = design?.powertrain === "electric";
     this.supportsFourWheelDrive = isFourWheelDrivePickup(opts.vehicleId);
@@ -286,7 +289,7 @@ export class Vehicle {
     // Auto-activate a brief, cooldown-limited arcade nitro burst at 100 mph.
     // No turbo in reverse, in countdown, or during off-track excursions.
     this.turboState = stepTurbo(this.turboState, dt, speed, throttle,
-      this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01);
+      this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01, this.turboTriggerKph);
     // Ease boost in on a straight. Reduce it immediately when tyre capacity
     // is needed for a turn; never push through braking, countersteer or a slide.
     const delivery = this.turboState.active > 0 && brake <= .05 && throttle > .05 && !this.controls.handbrake ? traction : 0;
