@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         circuit: [monzon, suzaka]
-        mode: [physics-only, baseline]
+        mode: [physics-only, baseline, no-gpu-timer, adaptive-resolution]
     defaults:
       run:
         working-directory: Horizon-REA-2026
