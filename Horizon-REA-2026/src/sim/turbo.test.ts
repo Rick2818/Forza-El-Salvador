@@ -11,6 +11,15 @@ describe("Automatic 100 mph nitro", () => {
     expect(stepTurbo(createTurboState(),1/60,44.704,1,true,true).active).toBe(TURBO_DURATION);
   });
 
+  it("supports the experimental 100 km/h threshold without changing the default", () => {
+    const trigger = 100 / 3.6;
+    expect(stepTurbo(createTurboState(), 1/60, trigger - .01, 1, true, true, 100).active).toBe(0);
+    expect(stepTurbo(createTurboState(), 1/60, trigger, 1, true, true, 100).active).toBe(TURBO_DURATION);
+    expect(stepTurbo(createTurboState(), 1/60, trigger, 1, true, true).active).toBe(0);
+    expect(stepTurbo(createTurboState(), 1/60, trigger, 1, false, true, 100).active).toBe(0);
+    expect(stepTurbo(createTurboState(), 1/60, trigger, 1, true, false, 100).active).toBe(0);
+  });
+
   it("cannot activate on AI, during launch, in reverse or off-road", () => {
     const s = createTurboState();
     for(const [speed,throttle,onTrack,enabled] of [
