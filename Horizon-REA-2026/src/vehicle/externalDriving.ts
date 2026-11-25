@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { BODY_CENTER_Y, type CarVisual } from "./carModel";
@@ -292,7 +293,15 @@ export async function loadExternalVehicle(
   const running=pending.get(id);if(running)return running;
   const rosterVehicle=EXTERNAL_VEHICLES.find(car=>car.id===id);
   if(!url && !rosterVehicle?.modelUrl)throw Error("El modelo no está en la lista de vehículos jugables: "+id);
-  const task=externalLoader().loadAsync(url??(import.meta.env.BASE_URL+rosterVehicle!.modelUrl)).then(({scene})=>{
+  const requestedUrl=url??(import.meta.env.BASE_URL+rosterVehicle!.modelUrl);
+  // Recovery experiment only. Explicit opt-in, no silent GLB fallback.
+  const fbx=id==="ferrari-f430" && typeof window!=="undefined" &&
+    new URLSearchParams(window.location.search).get("ferrariFormat")==="fbx";
+  const sceneTask:Promise<THREE.Group>=fbx
+    ? new FBXLoader().loadAsync(import.meta.env.BASE_URL+"models/experimental/ferrari-f430.fbx")
+    : externalLoader().loadAsync(requestedUrl).then(gltf=>gltf.scene);
+  const task=sceneTask.then(scene=>{
+    scene.userData.ferrariExperimentFormat=fbx?"fbx":"glb";
     removeExternalStage(id, scene);
     scene.updateMatrixWorld(true);
     let box=new THREE.Box3().setFromObject(scene);

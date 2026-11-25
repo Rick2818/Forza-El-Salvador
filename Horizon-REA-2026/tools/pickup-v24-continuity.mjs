@@ -7,6 +7,8 @@ assert.ok(sourceVersion,"Missing source release label");
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
+const ferrariFormat=process.env.FERRARI_FORMAT;
+if(ferrariFormat){assert.equal(id,"ferrari-f430");assert.ok(["fbx","glb"].includes(ferrariFormat));}
 assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
@@ -15,13 +17,24 @@ page.on("pageerror",e=>{errors.push(String(e));console.error("[pageerror]",e);})
 page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());});
 try{
   await page.addInitScript((circuit)=>{localStorage.setItem("horizon.circuit",circuit);localStorage.setItem("horizon.quality","equilibrada");localStorage.setItem("horizon.oncoming-traffic","true");},circuit);
-  await page.goto("http://127.0.0.1:5173/race.html?vehicle="+encodeURIComponent(id),{timeout:120000});
+  await page.goto("http://127.0.0.1:5173/race.html?vehicle="+encodeURIComponent(id)+(ferrariFormat?"&ferrariFormat="+ferrariFormat:""),{timeout:120000});
   await page.bringToFront();
   await page.waitForFunction(()=>window.__HORIZON_GAME__&&window.HORIZON,{},{timeout:120000});
   await page.evaluate(()=>{window.HORIZON.setQuality("equilibrada");window.HORIZON.autoScale(false);window.HORIZON.setScale(.5);});
   if(mode==="physics-only")await page.evaluate(()=>{window.__HORIZON_GAME__.skipRender=true;});
   await page.locator('#autos-panel button[data-action="start"]').click({timeout:60000});
   await page.waitForFunction(()=>!window.__HORIZON_GAME__.preparingGraphics&&["opening","racing"].includes(window.__HORIZON_GAME__.state),{},{timeout:180000});
+  if(ferrariFormat){
+    const audit=await page.evaluate(()=>{
+      const root=window.__HORIZON_GAME__.race.player.vehicle.visual.root;
+      const formats=[];root.traverse(o=>{if(o.userData.ferrariExperimentFormat)formats.push(o.userData.ferrariExperimentFormat);});
+      return {formats,audit:root.userData.externalAudit,wheels:root.userData.wheelAlignment};
+    });
+    console.log("FERRARI_FORMAT_AUDIT",JSON.stringify(audit));
+    assert.ok(audit.formats.includes(ferrariFormat),"Requested asset not actually used");
+    assert.ok(audit.audit?.assignedWheelMeshes?.length===4 && audit.audit.assignedWheelMeshes.every(n=>n>0),"Four wheel meshes not bound");
+    assert.ok(audit.wheels?.length===4 && audit.wheels.every(w=>w.explicitPair),"Tyre/rim geometry not independently verified");
+  }
   await page.evaluate(async(mode)=>{
     const game=window.__HORIZON_GAME__;
     game.skipOpening();
@@ -141,6 +154,7 @@ try{
     previous=sample;
   }
   assert.ok(samples.at(-1)?.elapsed>=125,"Did not reach 125 simulated seconds");
+  if(ferrariFormat)await Promise.race([page.screenshot({path:"review/quality/ferrari-"+ferrariFormat+"-"+circuit+".png"}),new Promise((_,reject)=>setTimeout(()=>reject(Error("Screenshot timed out")),10000))]);
 }catch(e){
   await mkdir("review/quality",{recursive:true});
   await Promise.race([page.screenshot({path:"review/quality/freeze-"+id+".png"}),new Promise(r=>setTimeout(r,5000))]).catch(()=>{});
