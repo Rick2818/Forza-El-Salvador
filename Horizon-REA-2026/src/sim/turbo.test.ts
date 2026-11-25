@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createTurboState, stepTurbo, TURBO_COOLDOWN, TURBO_DURATION,
-  TURBO_TRIGGER_KPH, TURBO_TRIGGER_MS, TURBO_FORCE_N } from "./turbo";
+  TURBO_TRIGGER_KPH, TURBO_TRIGGER_MS, TURBO_FORCE_N, createCrossingTurboState, stepCrossingTurbo } from "./turbo";
 
 describe("Automatic 100 mph nitro", () => {
   it("uses actual mph rather than kph as the trigger", () => {
@@ -43,4 +43,24 @@ describe("Automatic 100 mph nitro", () => {
     }
     expect(restarted).toBe(true);
   });
+});
+
+describe("100 km/h experimental crossing turbo",()=>{
+ it("fires at the crossing but never restarts just because time passed",()=>{
+  let s=createCrossingTurboState();
+  s=stepCrossingTurbo(s,1/60,99.99/3.6,1,true,true);expect(s.active).toBe(0);
+  s=stepCrossingTurbo(s,1/60,100/3.6,1,true,true);expect(s.active).toBe(TURBO_DURATION);
+  for(let i=0;i<1200;i++)s=stepCrossingTurbo(s,1/60,130/3.6,1,true,true);
+  expect(s.active).toBe(0);expect(s.armed).toBe(false);
+ });
+ it("rearms only below 95 and fires at the next 100 crossing",()=>{
+  let s=stepCrossingTurbo(createCrossingTurboState(),1/60,101/3.6,1,true,true);
+  s=stepCrossingTurbo(s,3,98/3.6,1,true,true);expect(s.armed).toBe(false);
+  s=stepCrossingTurbo(s,1/60,94/3.6,1,true,true);expect(s.armed).toBe(true);
+  s=stepCrossingTurbo(s,1/60,100/3.6,1,true,true);expect(s.active).toBe(TURBO_DURATION);
+ });
+ it("does not suddenly fire above the threshold after braking or a corner",()=>{
+  let s=stepCrossingTurbo(createCrossingTurboState(),1/60,101/3.6,1,true,false);expect(s.active).toBe(0);
+  s=stepCrossingTurbo(s,1/60,110/3.6,1,true,true);expect(s.active).toBe(0);
+ });
 });

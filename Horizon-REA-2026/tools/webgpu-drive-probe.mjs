@@ -16,4 +16,5 @@ try{
  await page.locator("#reset").tap();await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.resets>0);
  await page.keyboard.down("ArrowUp");await page.waitForTimeout(2500);await page.keyboard.up("ArrowUp");
  assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.status),"running");assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.audioGesture),true);
+ await page.locator("#sound").tap();await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.audioState==="running",{},{timeout:10000});
 }finally{await browser.close();}

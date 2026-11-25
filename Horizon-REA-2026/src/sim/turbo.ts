@@ -29,3 +29,19 @@ export function stepTurbo(
   if (cooldown > 0 || forwardSpeedMs < triggerMs) return { active: 0, cooldown };
   return { active: TURBO_DURATION, cooldown: TURBO_DURATION + TURBO_COOLDOWN };
 }
+
+/** Experimental threshold-crossing boost. Re-arm below 95 km/h, never start
+ * merely because a timer expired above the threshold. Consume the crossing
+ * even if traction is insufficient; keep corner/brake protection intact. */
+export interface CrossingTurboState extends TurboState { armed: boolean }
+export const createCrossingTurboState = (): CrossingTurboState => ({active:0,cooldown:0,armed:true});
+export function stepCrossingTurbo(state:CrossingTurboState,dt:number,forwardSpeedMs:number,
+ throttle:number,onTrack:boolean,enabled:boolean,triggerKph=100):CrossingTurboState {
+ if(!Number.isFinite(dt)||dt<=0||!Number.isFinite(forwardSpeedMs))return {...state};
+ const speed=forwardSpeedMs*3.6;
+ const armed=state.armed||speed<=triggerKph-5;
+ const crossing=armed&&speed>=triggerKph;
+ const safe=enabled&&onTrack&&throttle>=.12&&speed>=triggerKph-5;
+ const active=safe?(crossing?TURBO_DURATION:Math.max(0,state.active-dt)):0;
+ return {active,cooldown:0,armed:armed&&!crossing};
+}

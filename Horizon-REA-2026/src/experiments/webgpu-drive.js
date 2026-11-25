@@ -16,12 +16,13 @@ const format=q.get("ferrariFormat")==="fbx"?"fbx":"glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,build:"gpu-drive-perf-1-audio-turbo100",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,build:"gpu-drive-perf-1-audio-turbo-crossing",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
-const audio=new GameAudio();audio.setVehicle("ferrari-f430",false);
-function unlockAudio(){audio.ensure();info.audioGesture=true;}
+const audio=new GameAudio();audio.setVehicle("ferrari-f430",false);audio.setEngineProfile("vehiculo");
+function unlockAudio(){try{audio.ensure();info.audioGesture=true;}catch(e){info.audioError=String(e);}}
+$("sound").onclick=()=>{audio.setMuted(false);audio.setVolumes({engines:1});unlockAudio();};
 addEventListener("pointerdown",unlockAudio,{passive:true});
 addEventListener("keydown",unlockAudio);
 function clear(){held.clear();keys.clear();document.querySelectorAll("[data-control]").forEach(b=>delete b.dataset.active);}
@@ -79,11 +80,11 @@ async function boot(){
    const p=car.position;info.distance+=p.distanceTo(previous);previous.copy(p);info.elapsed+=1/60;acc-=1/60;steps++;
   }
   physicsMs+=performance.now()-physicsStart;physicsSteps+=steps;
-  if(info.audioGesture)audio.update(car.rpm,car.controls.throttle,car.speedKph,car.slip);info.turboActive=car.turboActive;
+  if(info.audioGesture)audio.update(car.rpm,car.controls.throttle,car.speedKph,car.slip);info.audioState=audio.getContextState();info.turboActive=car.turboActive;info.turboArmed=car.turboArmed;$("sound").textContent=info.audioState==="running"?"Sonido ✓":"Activar sonido";
   if(gate.ready()){if(resizePending||appliedScale!==resolution.scale)resize();const renderStart=performance.now();car.syncVisual(dt);cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
   if(gate.completed!==lastCount){lastCount=gate.completed;lastCompletionAt=now;}
   if(now-lastCompletionAt>5000)throw Error("Sin fotogramas GPU completados durante 5 segundos");
-  if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.round(car.speedKph)+" km/h"+(car.turboActive?" · TURBO":"");$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
+  if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.floor(car.speedKph)+" km/h"+(car.turboActive?" · TURBO":car.turboArmed?" · Listo":" · Rearme <95");$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
   requestAnimationFrame(tick);
  }catch(e){fail(e);}}
  requestAnimationFrame(tick);

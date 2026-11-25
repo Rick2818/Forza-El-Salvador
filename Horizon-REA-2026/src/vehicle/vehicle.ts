@@ -6,7 +6,7 @@ import { createCarVisual, type CarVisual, BODY_CENTER_Y } from "./carModel";
 import { SETTINGS } from "../core/settings";
 import { damp, clamp } from "../core/mathx";
 import { TurboFlames } from "../render/turboFlames";
-import { createTurboState, stepTurbo, TURBO_FORCE_N } from "../sim/turbo";
+import { createTurboState, stepTurbo, createCrossingTurboState, stepCrossingTurbo, TURBO_FORCE_N } from "../sim/turbo";
 import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
@@ -80,6 +80,7 @@ export class Vehicle {
   private readonly contactScratch = [false, false, false, false];
   private readonly wheelProbes = Array.from({length:4},()=>new THREE.Vector3());
   private turboState = createTurboState();
+  private crossingTurboState = createCrossingTurboState();
   private readonly turboTriggerKph?: number;
   private turboDelivery = 0;
   private readonly turboFlames: TurboFlames | null;
@@ -100,6 +101,7 @@ export class Vehicle {
   }
 
   get turboActive(): boolean { return this.turboState.active > 0 && this.turboDelivery > .01; }
+  get turboArmed(): boolean { return this.turboTriggerKph !== undefined ? this.crossingTurboState.armed : this.turboState.cooldown <= 0; }
   get turboStrength(): number { return this.turboActive ? this.turboDelivery : 0; }
   get speedLimitMph(): number { return this.tuning.topSpeed / 0.44704; }
 
@@ -240,6 +242,7 @@ export class Vehicle {
     this.speed = 0;
     this.steerAngle = 0;
     this.turboState = createTurboState();
+    this.crossingTurboState = createCrossingTurboState();
     this.turboDelivery = 0;
     this.wheelRoll.fill(0);
     this.surfaceGrip.fill(1);
@@ -288,8 +291,11 @@ export class Vehicle {
       lateralSpeed, this.body.angvel().y, grip);
     // Auto-activate a brief, cooldown-limited arcade nitro burst at 100 mph.
     // No turbo in reverse, in countdown, or during off-track excursions.
-    this.turboState = stepTurbo(this.turboState, dt, speed, throttle,
-      this.onTrack, this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01, this.turboTriggerKph);
+    const turboAllowed = this.isPlayer && brake <= .05 && !this.controls.handbrake && traction > .01;
+    if(this.turboTriggerKph !== undefined){
+      this.crossingTurboState=stepCrossingTurbo(this.crossingTurboState,dt,speed,throttle,this.onTrack,turboAllowed,this.turboTriggerKph);
+      this.turboState=this.crossingTurboState;
+    }else this.turboState=stepTurbo(this.turboState,dt,speed,throttle,this.onTrack,turboAllowed);
     // Ease boost in on a straight. Reduce it immediately when tyre capacity
     // is needed for a turn; never push through braking, countersteer or a slide.
     const delivery = this.turboState.active > 0 && brake <= .05 && throttle > .05 && !this.controls.handbrake ? traction : 0;

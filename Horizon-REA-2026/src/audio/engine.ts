@@ -256,9 +256,11 @@ export class GameAudio {
   }
 
   /** Create/resume the context. Safe to call on every user gesture. */
+  getContextState(): string { return this.ctx?.state ?? "not-initialized"; }
+
   ensure(): void {
     if (this.ctx) {
-      if (this.ctx.state === "suspended") void this.ctx.resume();
+      if (this.ctx.state !== "running" && this.ctx.state !== "closed") void this.ctx.resume().catch(() => {});
       return;
     }
     const Ctor =
