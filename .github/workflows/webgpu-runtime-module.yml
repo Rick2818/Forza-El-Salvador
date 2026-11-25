@@ -1,0 +1,28 @@
+name: WebGPU runtime module tests (no deployment)
+on:
+  push:
+    branches: [experiment/webgpu-runtime]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/experiment/webgpu-runtime'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - name: Verify native queue completion gate
+        run: npm exec -- vitest run src/render/webgpuFrameGate.test.ts
+      - run: npm run build
