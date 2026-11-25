@@ -26,7 +26,7 @@ jobs:
           cache: npm
           cache-dependency-path: Horizon-REA-2026/package-lock.json
       - run: npm ci
-      - run: npm exec -- vitest run src/render/adaptiveGpuResolution.test.ts
+      - run: npm exec -- vitest run src/render/adaptiveGpuResolution.test.ts src/sim/turbo.test.ts
       - run: npm run build
       - run: |
           npm install --no-save --package-lock=false playwright
