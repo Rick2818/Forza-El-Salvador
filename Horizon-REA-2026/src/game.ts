@@ -421,6 +421,7 @@ export class Game {
   private async prepareRaceGraphics(): Promise<void> {
     const started = performance.now();
     this.framePhase = "graphics-preparation";
+    this.geometryPressureUntil = 0;
     await this.drainPreparationGpu("previous-menu-frame");
     this.gpuBackpressure.reset();
     await this.environment.whenReady(this.scene);
@@ -469,8 +470,18 @@ export class Game {
       this.race.updateRivalLods(this.camera);
       updateMonzonTreeLods(this.scene,this.camera.position);
       this.environment.updateVegetationView(this.camera.position,1);
+      const representativeStarted = performance.now();
       this.renderer.render(this.scene, this.camera);
       await this.drainPreparationGpu("representative-race-frame");
+      // If the real warm-up draw is already slow, prepare the existing adaptive
+      // rival LOD before the countdown rather than uploading it during a stalled
+      // frame. Keep the player, wheels, physics and normal-device LOD unchanged.
+      if (performance.now() - representativeStarted >= 250) {
+        this.race.updateRivalLods(this.camera, true);
+        this.renderer.render(this.scene, this.camera);
+        await this.drainPreparationGpu("pressured-race-frame");
+        this.geometryPressureUntil = performance.now() + 5000;
+      }
       if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
     } finally {
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
@@ -481,7 +492,7 @@ export class Game {
 
   private beginPreparedRace(): void {
     this.performanceLog.reset();
-    this.geometryPressureUntil = 0;
+    if (this.captureMode) this.geometryPressureUntil = 0;
     this.lastEnteredPitGarage = null;
     this.audio.silence();
     this.audio.ensure();
