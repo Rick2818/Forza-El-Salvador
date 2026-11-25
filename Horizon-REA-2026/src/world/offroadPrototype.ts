@@ -27,10 +27,10 @@ export interface OffroadSector {
 }
 export const OFFROAD_SECTORS: readonly OffroadSector[] = [
   { start: 0, end: .10, surface: "dirt", grip: .78, resistance: .08 },
-  { start: .10, end: .35, surface: "mud", grip: .44, resistance: .28 },
+  { start: .10, end: .35, surface: "mud", grip: .44, resistance: .33 },
   { start: .35, end: .52, surface: "puddle", grip: .32, resistance: .38 },
   { start: .52, end: .62, surface: "dirt", grip: .78, resistance: .08 },
-  { start: .62, end: .94, surface: "mud", grip: .44, resistance: .28 },
+  { start: .62, end: .94, surface: "mud", grip: .44, resistance: .33 },
   { start: .94, end: 1, surface: "puddle", grip: .32, resistance: .38 },
 ];
 export const OFFROAD_PICKUP_IDS = [

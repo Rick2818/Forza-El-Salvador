@@ -66,6 +66,7 @@ export class Track {
   startIndex = 0;
   width: number;
   halfWidth: number;
+  private offroadWaterRows: {level:number; row:number[]}[] = [];
 
   get barrierLateralOffset(): number {
     // Suzaka's old wall left 7.5m of unprotected grass after the red/white
@@ -349,6 +350,19 @@ export class Track {
    */
   private buildOffroadSurface(): void {
     const n = this.samples.length, cols = 20;
+    // Broad waterlogged basins on gentle grades; levels remain horizontal.
+    const basins:{center:number;radius:number;level:number;side:number}[]=[];
+    for(let i=20;i<n-20;i+=28){
+      const p=this.samples[i],sector=offroadSectorAt(this.progress(i));
+      if(sector.surface==="dirt")continue;
+      const radius=4.5+1.5*(.5+.5*Math.sin(i*1.17));
+      const steps=Math.ceil(radius/this.segmentLength);
+      let low=p.y,high=p.y;
+      for(let k=-steps;k<=steps;k++){const y=this.sampleAt(i+k).y;low=Math.min(low,y);high=Math.max(high,y);}
+      if(high-low>.65)continue;
+      basins.push({center:i,radius,level:low-.045,side:Math.sin(i*.79)>.1?.35:-.35});
+    }
+    this.offroadWaterRows=Array.from({length:n},()=>({level:0,row:Array(cols+1).fill(0)}));
     const pos: number[] = [], colors: number[] = [], indices: number[] = [], uv: number[] = [];
     for (let i=0;i<n;i++) {
       const p = this.samples[i], r = this.rights[i];
@@ -357,7 +371,23 @@ export class Track {
       // Smooth continuous shallow ruts, independent of the surface boundary.
       for (let j=0;j<=cols;j++) {
         const lateral = (j/cols*2-1)*this.halfWidth;
-        const relief=offroadRelief(this.progress(i)*this.length,lateral,this.length);
+        let relief=offroadRelief(this.progress(i)*this.length,lateral,this.length);
+        const pool=basins.find(w=>Math.abs(i-w.center)*this.segmentLength<w.radius);
+        if(pool){
+          const along=(i-pool.center)*this.segmentLength/pool.radius;
+          const cross=(lateral-pool.side)/2.45;
+          const ellipse=along*along+cross*cross;
+          if(ellipse<1){
+            const shape=(1-ellipse)*(1-ellipse);
+            const baseY=p.y+.025+relief;
+            // Bowl bed with gradual sloped banks, 30–45 cm water at centre.
+            const bed=pool.level-(.32+.12*(.5+.5*Math.sin(pool.center)))*shape;
+            const carved=THREE.MathUtils.lerp(baseY,Math.min(baseY,bed),Math.min(1,shape*3));
+            relief=carved-p.y-.025;
+            this.offroadWaterRows[i].level=pool.level;
+            this.offroadWaterRows[i].row[j]=Math.max(0,pool.level-carved);
+          }
+        }
         pos.push(p.x+r.x*lateral, p.y + .025 + relief, p.z+r.z*lateral);
         const shade=THREE.MathUtils.clamp(1+relief*.85,.47,1.2);
         colors.push(color.r*shade,color.g*shade,color.b*shade);
@@ -418,30 +448,34 @@ export class Track {
     vergeGeo.setIndex(vergeIndices);vergeGeo.computeVertexNormals();
     const verge=new THREE.Mesh(vergeGeo,new THREE.MeshLambertMaterial({color:0x383f24,side:THREE.DoubleSide}));
     verge.name="offroad-solid-verges";this.group.add(verge);
-    // Water only inside individual depressions. Never cover the entire road
-    // with a flat visual ribbon which conceals the actual potholes.
-    const wetPos:number[] = [], wetIdx:number[] = [];
+    // Flat water inside each physically carved basin; clip the visible
+    // surface to submerged terrain cells (no collidable water ceiling).
+    const wetPos:number[]=[],wetIdx:number[]=[],wetUV:number[]=[];
+    let waterArea=0,maxWaterDepth=0;
     for(let i=0;i<n;i++){
-      const next=(i+1)%n;
-      if(offroadSectorAt(this.progress(i)).surface==="dirt")continue;
+      const next=(i+1)%n,aRow=this.offroadWaterRows[i],bRow=this.offroadWaterRows[next];
+      if(aRow.level!==bRow.level)continue;
       for(let j=0;j<cols;j++){
+        const depths=[aRow.row[j],aRow.row[j+1],bRow.row[j],bRow.row[j+1]];
+        maxWaterDepth=Math.max(maxWaterDepth,...depths);
+        if(depths.some(d=>d<.012))continue;
         const a=i*(cols+1)+j,b=next*(cols+1)+j;
-        const corners=[a,a+1,b,b+1];
-        const ys=corners.map((k,idx)=>pos[k*3+1]-this.samples[idx<2?i:next].y);
-        if(ys.some(y=>y>-.24))continue;
         const base=wetPos.length/3;
-        corners.forEach((k,idx)=>wetPos.push(pos[k*3],this.samples[idx<2?i:next].y-.18,pos[k*3+2]));
+        for(const k of [a,a+1,b,b+1]){
+          wetPos.push(pos[k*3],aRow.level,pos[k*3+2]);wetUV.push(pos[k*3]/1.7,pos[k*3+2]/1.7);
+        }
         wetIdx.push(base,base+1,base+2,base+2,base+1,base+3);
+        waterArea+=this.segmentLength*this.width/cols;
       }
     }
     const wetGeo=new THREE.BufferGeometry();
     wetGeo.setAttribute("position",new THREE.Float32BufferAttribute(wetPos,3));
-    wetGeo.setIndex(wetIdx);wetGeo.computeVertexNormals();
+    wetGeo.setAttribute("uv",new THREE.Float32BufferAttribute(wetUV,2));wetGeo.setIndex(wetIdx);wetGeo.computeVertexNormals();
     const wet=new THREE.Mesh(wetGeo,new THREE.MeshStandardMaterial({
-      color:0x493a29,roughness:.38,metalness:0,
-      envMapIntensity:.35,side:THREE.DoubleSide
+      color:0x574532,roughness:.19,metalness:0,
+      envMapIntensity:.35,side:THREE.DoubleSide,transparent:true,opacity:.88,depthWrite:false
     }));
-    wet.name="offroad-muddy-puddles";wet.receiveShadow=true;this.group.add(wet);
+    wet.name="offroad-muddy-puddles";wet.receiveShadow=true;wet.renderOrder=2;wet.userData.waterAudit={basins:basins.length,waterArea,maxWaterDepth};this.group.add(wet);
     // Compact natural obstacles: one indexed mesh, matching solid triangles.
     // Keep the central passage open and leave space for a full-size pickup.
     const rockPos:number[]=[],rockIdx:number[]=[],rockColors:number[]=[];
@@ -743,11 +777,17 @@ export class Track {
     return 0.02;
   }
 
+  waterDepthAt(index:number,lateral:number):number {
+    const row=this.offroadWaterRows[index]?.row;if(!row||Math.abs(lateral)>this.halfWidth)return 0;
+    const x=(lateral/this.halfWidth+1)*.5*(row.length-1),i=Math.floor(x);
+    return THREE.MathUtils.lerp(row[i]??0,row[Math.min(i+1,row.length-1)]??0,x-i);
+  }
+
   gripAt(_index: number, lateral: number): number {
     const over = Math.abs(lateral) - this.halfWidth;
     if (this.circuit.id === OFFROAD_CIRCUIT.id) {
       const grip = offroadSectorAt(this.progress(_index)).grip;
-      return grip * (1 - .42 * smoothstep(.35,4.5,over));
+      return grip * (1 - .42 * smoothstep(.35,4.5,over)) * (1-.16*Math.min(1,this.waterDepthAt(_index,lateral)/.25));
     }
     if (over <= 0.35) return 1;
     return 1 - 0.42 * smoothstep(0.35, 4.5, over);

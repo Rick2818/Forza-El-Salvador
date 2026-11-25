@@ -66,6 +66,8 @@ export class Vehicle {
   controls: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
   private wheelFriction: number[] = [];
   private mudCoverage = 0;
+  private waterDepth = 0;
+  get trailMudCoverage():number{return this.mudCoverage;}
   private mudCoating?: PickupMudCoating;
   private readonly webgpuMud:boolean;
   private offroadSector?: OffroadSector;
@@ -412,7 +414,7 @@ export class Vehicle {
     const vel = this.body.linvel();
     const planar = Math.hypot(vel.x, vel.z);
     if (planar > 0.5) {
-      const terrainDrag = this.offroadSector && this.supportsFourWheelDrive ? this.body.mass() * 9.81 * this.offroadSector.resistance * .22 * Math.min(1,planar/3) : 0;
+      const terrainDrag = this.offroadSector && this.supportsFourWheelDrive ? this.body.mass() * 9.81 * (this.offroadSector.resistance*.22 + this.waterDepth*.14) * Math.min(1,planar/3) : 0;
       const d = dragForce(planar) + terrainDrag;
       if(trail){
         const contacts=this.contactScratch.reduce((sum,c)=>sum+Number(c),0)/4;
@@ -440,15 +442,16 @@ export class Vehicle {
     this.controller.updateVehicle(dt);
   }
 
-  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector, offroadOnTrack?: boolean): void {
+  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector, offroadOnTrack?: boolean, waterDepth=0): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
     input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake };
     this.controls = input;
     this.offroadSector = offroadSector;
+    this.waterDepth=offroadSector&&Number.isFinite(waterDepth)?clamp(waterDepth,0,.55):0;
     if (offroadSector && this.supportsFourWheelDrive) {
       let contacts = 0;
       for(let i=0;i<4;i++) contacts += Number(this.controller.wheelIsInContact(i));
-      this.mudCoverage = accumulateMud(this.mudCoverage,offroadSector.surface,this.speed,dt,contacts/4);
+      this.mudCoverage = accumulateMud(this.mudCoverage,this.waterDepth>.06?"puddle":offroadSector.surface,this.speed,dt,contacts/4);
       this.mudCoating ??= new PickupMudCoating(this.webgpuMud);
     }
     // The chassis may still be on asphalt while one outside wheel is on
