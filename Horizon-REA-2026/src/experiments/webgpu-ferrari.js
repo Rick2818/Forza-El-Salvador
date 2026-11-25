@@ -12,7 +12,8 @@ window.FERRARI_GPU={status:"initializing",backend,format,circuit,frames:0};
 const result=window.FERRARI_GPU;
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const timeout=(promise,ms,label)=>{let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label)),ms)})]).finally(()=>clearTimeout(timer));};
-function fail(error){result.status="failed";result.error=String(error);status.textContent=result.error;console.error(error);}
+function stage(name){result.stage=name;console.info("GPU_STAGE",name);}
+function fail(error){result.status="failed";result.error=String(error);result.stack=error?.stack;status.textContent=result.error;console.error(result.stage,error);}
 async function start(){
   if(!["webgpu","webgl"].includes(backend)||!["glb","fbx"].includes(format)||!["monzon","suzaka"].includes(circuit))throw Error("Invalid experiment parameters");
   const renderer=backend==="webgpu"?new WebGPURenderer({antialias:false}):new THREE.WebGLRenderer({antialias:false});
@@ -20,13 +21,30 @@ async function start(){
   renderer.setClearColor(0x7c9fc2);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;
   let complete;
   if(backend==="webgpu"){
-    await timeout(renderer.init(),30000,"WebGPU initialization timed out");
+    stage("native-init");await timeout(renderer.init(),30000,"WebGPU initialization timed out");
     if(!renderer.backend?.isWebGPUBackend)throw Error("Native WebGPU unavailable; WebGL fallback is NOT a WebGPU pass");
     const device=renderer.backend.device;
     if(!device?.queue)throw Error("WebGPU device queue unavailable");
     device.addEventListener("uncapturederror",e=>{result.deviceError=String(e.error?.message||e.error);});
     device.lost.then(info=>{result.deviceLost=String(info.message||info.reason);});
     complete=()=>timeout(device.queue.onSubmittedWorkDone(),5000,"WebGPU queue stalled");
+    result.adapter={vendor:device.adapterInfo?.vendor,architecture:device.adapterInfo?.architecture,device:device.adapterInfo?.device,description:device.adapterInfo?.description};
+    stage("native-buffer-readback");
+    const src=device.createBuffer({size:4,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC});
+    const dst=device.createBuffer({size:4,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
+    try{
+      device.queue.writeBuffer(src,0,new Uint32Array([0x12345678]));
+      const enc=device.createCommandEncoder();enc.copyBufferToBuffer(src,0,dst,0,4);device.queue.submit([enc.finish()]);
+      await timeout(dst.mapAsync(GPUMapMode.READ),5000,"Native buffer readback timed out");
+      if(new Uint32Array(dst.getMappedRange())[0]!==0x12345678)throw Error("Native buffer readback mismatch");
+      dst.unmap();result.nativeBufferReadback=true;
+    }finally{src.destroy();dst.destroy();}
+    stage("minimal-canvas-frame");
+    const minimal=new THREE.Scene();minimal.background=new THREE.Color(0x334455);
+    const cam=new THREE.PerspectiveCamera(50,800/450,.1,10);cam.position.z=3;
+    const cube=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0xff3300}));minimal.add(cube);
+    try{renderer.render(minimal,cam);await complete();result.minimalCanvasFrame=true;}
+    finally{cube.geometry.dispose();cube.material.dispose();}
   }else{
     const gl=renderer.getContext();
     complete=async()=>{if(gl.isContextLost())throw Error("WebGL context lost");const fence=gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE,0);
@@ -35,7 +53,7 @@ async function start(){
       finally{gl.deleteSync(fence);}};
   }
   result.actualBackend=backend;
-  const scene=new THREE.Scene();scene.background=new THREE.Color(0x7c9fc2);
+  stage("build-scene");const scene=new THREE.Scene();scene.background=new THREE.Color(0x7c9fc2);
   const camera=new THREE.PerspectiveCamera(58,800/450,.1,1500);
   const track=new Track(getCircuit(circuit));track.build();scene.add(track.group);
   const sky=new THREE.HemisphereLight(0xd8e9ff,0x555947,2);scene.add(sky);
@@ -62,9 +80,9 @@ async function start(){
     const look=pos.clone().addScaledVector(tangent,7);look.y+=1;camera.lookAt(look);
   }
   pose(0);
-  if(typeof renderer.compileAsync==="function")await timeout(renderer.compileAsync(scene,camera),60000,"Shader compilation timed out");
-  renderer.render(scene,camera);await complete();
-  result.status="running";status.textContent=backend+" · "+format+" · "+circuit;
+  stage("compile-scene");if(typeof renderer.compileAsync==="function")await timeout(renderer.compileAsync(scene,camera),60000,"Shader compilation timed out");
+  stage("first-scene-frame");renderer.render(scene,camera);await complete();
+  stage("continuity");result.status="running";status.textContent=backend+" · "+format+" · "+circuit;
   const start=performance.now();let last=start;const times=[];
   while(performance.now()-start<125000){
     await timeout(new Promise(requestAnimationFrame),5000,"Animation callback stalled");

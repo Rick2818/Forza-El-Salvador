@@ -2,9 +2,14 @@ import {chromium} from "playwright";
 import assert from "node:assert/strict";
 import {mkdir,writeFile} from "node:fs/promises";
 const [backend,format,circuit]=process.argv.slice(2);
-const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--enable-unsafe-webgpu","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
+const gpu=backend==="webgpu";
+const args=["--no-sandbox","--disable-dev-shm-usage","--enable-unsafe-webgpu","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"];
+if(gpu)args.push("--enable-features=Vulkan","--use-angle=vulkan","--use-vulkan=swiftshader","--use-webgpu-adapter=swiftshader","--disable-vulkan-surface");
+else args.push("--use-angle=swiftshader");
+const browser=await chromium.launch({headless:!gpu,args});
+console.log("GPU_TEST_ENV",JSON.stringify({browser:browser.version(),headed:gpu,args}));
 const page=await browser.newPage({viewport:{width:800,height:480}});
-const errors=[];page.on("pageerror",e=>errors.push(String(e)));page.on("console",m=>{if(m.type()==="error")errors.push(m.text());});
+const errors=[];page.on("pageerror",e=>{errors.push(String(e));console.error("PAGE_ERROR",String(e));});page.on("console",m=>{if(m.type()==="error")errors.push(m.text());console.log("BROWSER",m.type(),m.text());});page.on("crash",()=>{errors.push("page crashed");console.error("PAGE_CRASH");});
 const dir="review/quality";await mkdir(dir,{recursive:true});const stem=dir+"/webgpu-"+backend+"-"+format+"-"+circuit;
 try{
  await page.goto("http://127.0.0.1:5173/webgpu-lab.html?"+new URLSearchParams({backend,ferrariFormat:format,circuit}),{timeout:120000});

@@ -44,6 +44,11 @@ jobs:
       - run: |
           npm install --no-save --package-lock=false playwright
           npx playwright install --with-deps chromium
+      - name: Install virtual display and Vulkan runtime for native WebGPU test
+        if: matrix.backend == 'webgpu'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libvulkan1 mesa-vulkan-drivers
       - name: Measure real backend and GPU queue completion for 125 wall seconds
         env:
           BACKEND: ${{ matrix.backend }}
@@ -60,7 +65,11 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:5173/webgpu-lab.html > /dev/null
-          node tools/webgpu-ferrari-probe.mjs "$BACKEND" "$FORMAT" "$CIRCUIT" 2>&1 | tee review/quality/webgpu-console.log
+          if [ "$BACKEND" = webgpu ]; then
+            xvfb-run -a node tools/webgpu-ferrari-probe.mjs "$BACKEND" "$FORMAT" "$CIRCUIT" 2>&1 | tee review/quality/webgpu-console.log
+          else
+            node tools/webgpu-ferrari-probe.mjs "$BACKEND" "$FORMAT" "$CIRCUIT" 2>&1 | tee review/quality/webgpu-console.log
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
