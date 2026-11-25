@@ -1,0 +1,58 @@
+name: WebGPU Ferrari driving preview validation (no deployment)
+on:
+  push:
+    branches: [experiment/webgpu-drive]
+permissions:
+  contents: read
+jobs:
+  drive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        circuit: [monzon, suzaka]
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libvulkan1 mesa-vulkan-drivers
+      - name: Validate WebGPU, Rapier, and driving for 125 simulated seconds
+        env:
+          CIRCUIT: ${{ matrix.circuit }}
+        run: |
+          set -euo pipefail
+          mkdir -p review/quality
+          npm run dev > review/quality/webgpu-drive-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/webgpu-drive.html >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/webgpu-drive.html >/dev/null
+          xvfb-run -a node tools/webgpu-drive-probe.mjs "$CIRCUIT" 2>&1 | tee review/quality/webgpu-drive-console.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webgpu-driving-${{ matrix.circuit }}
+          path: Horizon-REA-2026/review/quality/
+      - uses: actions/upload-artifact@v4
+        if: success() && matrix.circuit == 'monzon'
+        with:
+          name: webgpu-driving-preview
+          path: Horizon-REA-2026/dist/
