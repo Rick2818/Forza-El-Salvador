@@ -24,7 +24,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-offroad-repair",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-trail-quality",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -65,7 +65,7 @@ async function boot(){
  document.body.prepend(renderer.domElement);resize();addEventListener("resize",()=>{resizePending=true;});
  await RAPIER.init();const world=new RAPIER.World({x:0,y:-9.81,z:0});world.timestep=1/60;
  const definition=offroad?OFFROAD_CIRCUIT:getCircuit(circuit);if(!definition||definition.id!==circuit)throw Error("Circuito de velocidad no encontrado");
- const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);
+ const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);if(offroad){info.roadWidth=track.width;info.rockCount=track.group.getObjectByName("offroad-solid-rocks").userData.rockCount;}
  scene.add(new THREE.HemisphereLight(0xd8e9ff,0x555947,2));const sun=new THREE.DirectionalLight(0xfff3db,3);sun.position.set(70,100,20);scene.add(sun);
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:0x566748,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=offroad?-1:-.1;scene.add(floor);
  if(offroad){
@@ -81,21 +81,21 @@ async function boot(){
    }
    const geometry=mergeGeometries(planes,false);planes.forEach(g=>g.dispose());
    const locations=[];
-   for(let i=0;i<track.samples.length;i+=8)for(const side of [-1,1]){
-     const p=track.samples[i],r=track.rightAt(i),offset=34+10*(.5+.5*Math.sin(i*1.72+side));
+   for(let i=0;i<track.samples.length;i+=5)for(const side of [-1,1]){
+     const p=track.samples[i],r=track.rightAt(i),offset=11+23*(.5+.5*Math.sin(i*1.72+side));
      const x=p.x+r.x*offset*side,z=p.z+r.z*offset*side;
-     if(track.samples.some(s=>Math.hypot(s.x-x,s.z-z)<32))continue;
+     if(track.samples.some(s=>Math.hypot(s.x-x,s.z-z)<10))continue;
      if(locations.some(s=>Math.hypot(s.x-x,s.z-z)<6))continue;
-     locations.push({x,z,scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
+     let nearest=p,dist=Infinity;for(const sample of track.samples){const d=Math.hypot(sample.x-x,sample.z-z);if(d<dist){dist=d;nearest=sample;}}const t=Math.max(0,Math.min(1,(dist-track.halfWidth)/24)),blend=t*t*(3-2*t);locations.push({x,z,y:nearest.y+(-1-nearest.y)*blend,scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
    }
    const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0x66745b,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
-   const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,-1,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
+   const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
    forest.instanceMatrix.needsUpdate=true;forest.name="el-imposible-blender-forest";scene.add(forest);info.treeCount=locations.length;
-   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,85,420);
+   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,65,300);
  }
  await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true});car.resetToTrack(track);
  if(offroad&&car.supportsFourWheelDrive&&car.fourWheelDriveMode!=="4H")car.toggleFourWheelDrive();
- changeDriveMode=()=>{car.toggleFourWheelDrive();$("driveMode").textContent=car.fourWheelDriveMode;};$("driveMode").textContent=car.fourWheelDriveMode;
+ const updateDriveLabel=()=>{$("driveMode").textContent="4x4 · "+car.fourWheelDriveMode;$("driveMode").dataset.active=String(car.fourWheelDriveActive);};changeDriveMode=()=>{if(!car.toggleFourWheelDrive())$("notice").textContent="Reduce a 30 km/h para cambiar la tracción";else $("notice").textContent="Tracción "+car.fourWheelDriveMode;updateDriveLabel();};updateDriveLabel();
  const formats=[];car.visual.root.traverse(o=>{if(o.userData.ferrariExperimentFormat)formats.push(o.userData.ferrariExperimentFormat);});
  if(vehicleId==="ferrari-f430"&&!formats.includes(format))throw Error("Incorrect Ferrari asset");
  info.wheels=car.visual.root.userData.wheelAlignment;info.assetAudit=car.visual.root.userData.externalAudit;
@@ -108,7 +108,7 @@ async function boot(){
  const forward=new THREE.Vector3(),target=new THREE.Vector3(),pos=new THREE.Vector3(),quat=new THREE.Quaternion();
  function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;camera.lookAt(target);}
  cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=vehicleEntry.name+" · auditoría "+info.surface;last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=vehicleEntry.name+(offroad?" · Exploración todoterreno libre":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
  function tick(now){try{
   if(gpuError)throw Error(gpuError);
@@ -131,7 +131,7 @@ async function boot(){
   if(gate.ready()){if(resizePending||appliedScale!==resolution.scale)resize();const renderStart=performance.now();car.syncVisual(dt);for(const [i,w] of car.wheelVisualDebug().entries())info.wheelRollMax[i]=Math.max(info.wheelRollMax[i],Math.abs(w.roll));scanMaterials();cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
   if(gate.completed!==lastCount){lastCount=gate.completed;lastCompletionAt=now;}
   if(now-lastCompletionAt>5000)throw Error("Sin fotogramas GPU completados durante 5 segundos");
-  if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.floor(car.speedKph)+" km/h"+(car.turboActive?" · TURBO":car.turboArmed?" · Listo":" · Rearme <95");$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
+  if(now-lastReport>=1000){const seconds=(now-lastReport)/1000;info.frames=gate.completed;info.gpuFPS=(gate.completed-lastCompleted)/seconds;info.callbackFPS=callbacks/seconds;info.queue=gate.snapshot();info.speed=car.speedKph;info.position=car.position.toArray();info.cpu={physicsMsPerStep:physicsSteps?physicsMs/physicsSteps:0,renderMsPerSubmission:renderCount?renderMs/renderCount:0,maxCallbackGapMs:maxCallbackGap,physicsStepsPerSecond:physicsSteps/seconds};info.windows.push({elapsed:info.elapsed,gpuFPS:info.gpuFPS,callbackFPS:info.callbackFPS,scale:appliedScale,width:info.resolution.width,height:info.resolution.height,drawCalls:info.drawCalls,triangles:info.triangles,...info.cpu});if(info.windows.length>600)info.windows.shift();resolution.observe(info.gpuFPS,info.callbackFPS,seconds);lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;$("speed").textContent=Math.floor(car.speedKph)+" km/h"+(offroad?" · "+car.fourWheelDriveMode:car.turboActive?" · TURBO":car.turboArmed?" · Listo":" · Rearme <95");$("metrics").textContent="GPU "+info.gpuFPS.toFixed(1)+" · RAF "+info.callbackFPS.toFixed(1)+" FPS · "+Math.round(appliedScale*100)+"% · "+Math.floor(info.elapsed)+" s";}
   requestAnimationFrame(tick);
  }catch(e){fail(e);}}
  requestAnimationFrame(tick);

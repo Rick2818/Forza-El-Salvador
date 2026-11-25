@@ -7,7 +7,7 @@ export const OFFROAD_CIRCUIT: CircuitDefinition = {
   id: "el-imposible-4x4",
   name: "El Imposible 4x4",
   discipline: "Todoterreno · El Salvador",
-  blurb: "Tierra, lodo y pendientes; diseño preliminar sujeto a pruebas.",
+  blurb: "Exploración libre por tierra, lodo, piedras y pendientes; sin competición.",
   accent: "#8d7249",
   segments: [
     { straight: 280 }, { turn: 90, radius: 45, dir: 1 },

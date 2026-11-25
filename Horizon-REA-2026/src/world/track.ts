@@ -75,7 +75,7 @@ export class Track {
   }
 
   constructor(readonly circuit: CircuitDefinition = getCircuit(DEFAULT_CIRCUIT_ID)!) {
-    this.width = this.circuit.id === OFFROAD_CIRCUIT.id ? 12 : this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain" ? 14
+    this.width = this.circuit.id === OFFROAD_CIRCUIT.id ? 6.8 : this.circuit.layout === "figure-eight" || this.circuit.layout === "mountain" ? 14
       : this.circuit.layout === "desert" ? 16 : SETTINGS.track.width;
     this.halfWidth = this.width / 2;
   }
@@ -358,8 +358,8 @@ export class Track {
       const t = i/n * 2*Math.PI;
       for (let j=0;j<=cols;j++) {
         const lateral = (j/cols*2-1)*this.halfWidth;
-        const rut = .11*Math.exp(-((Math.abs(lateral)-1.0)**2)/.45);
-        const ripple = .035*Math.sin(25*t + lateral*.7) + .025*Math.cos(17*t-lateral);
+        const rut = .15*Math.exp(-((Math.abs(lateral)-1.0)**2)/.38);
+        const ripple = .05*Math.sin(25*t + lateral*.7) + .035*Math.cos(17*t-lateral);
         pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
         const shade=1-.32*Math.exp(-((Math.abs(lateral)-1.0)**2)/.32);
         colors.push(color.r*shade,color.g*shade,color.b*shade);
@@ -439,6 +439,37 @@ export class Track {
       envMapIntensity:.35,side:THREE.DoubleSide
     }));
     wet.name="offroad-muddy-puddles";wet.receiveShadow=true;this.group.add(wet);
+    // Compact natural obstacles: one indexed mesh, matching solid triangles.
+    // Keep the central passage open and leave space for a full-size pickup.
+    const rockPos:number[]=[],rockIdx:number[]=[],rockColors:number[]=[];
+    const baseRock=new THREE.IcosahedronGeometry(1,1);
+    const a=baseRock.getAttribute("position");
+    let count=0;
+    for(let i=20;i<n-20;i+=13){
+      const p=this.samples[i],r=this.rights[i],side=i%2===0?1:-1;
+      const radius=.19+.17*(.5+.5*Math.sin(i*1.73));
+      const lateral=side*(this.halfWidth-.27-.35*(.5+.5*Math.sin(i*.57)));
+      const height=.16+.15*(.5+.5*Math.cos(i*1.31));
+      const originX=p.x+r.x*lateral,originZ=p.z+r.z*lateral;
+      const color=new THREE.Color().setHSL(.09+.02*Math.sin(i),.14,.20+.10*(.5+.5*Math.cos(i*.83)));
+      const yaw=i*.67,c=Math.cos(yaw),s=Math.sin(yaw);
+      for(let j=0;j<a.count;j++){
+        const x=a.getX(j),y=a.getY(j),z=a.getZ(j);
+        // Same coordinate deformation for coincident vertices; no cracks.
+        const variation=.86+.13*Math.sin(x*7+z*5+y*3+i);
+        const xx=x*radius*variation,zz=z*radius*.82*variation;
+        rockPos.push(originX+xx*c-zz*s,p.y+.01+height*y,originZ+xx*s+zz*c);
+        rockColors.push(color.r,color.g,color.b);rockIdx.push(rockIdx.length);
+      }
+      count++;
+    }
+    baseRock.dispose();
+    const rocksGeo=new THREE.BufferGeometry();
+    rocksGeo.setAttribute("position",new THREE.Float32BufferAttribute(rockPos,3));
+    rocksGeo.setAttribute("color",new THREE.Float32BufferAttribute(rockColors,3));
+    rocksGeo.setIndex(rockIdx);rocksGeo.computeVertexNormals();
+    const rocks=new THREE.Mesh(rocksGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96}));
+    rocks.name="offroad-solid-rocks";rocks.userData.rockCount=count;this.group.add(rocks);
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
@@ -677,6 +708,9 @@ export class Track {
       world.createCollider(RAPIER.ColliderDesc.trimesh(
         new Float32Array(verge.geometry.getAttribute("position").array),
         new Uint32Array(verge.geometry.index.array)).setFriction(.65),body);
+      const rocks=this.group.getObjectByName("offroad-solid-rocks") as THREE.Mesh<THREE.BufferGeometry>;
+      if(!rocks?.geometry.index)throw Error("Offroad rocks missing");
+      world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(rocks.geometry.getAttribute("position").array),new Uint32Array(rocks.geometry.index.array)).setFriction(.95),body);
       return;
     }
     if (this.circuit.id === "suzaka") {
