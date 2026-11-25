@@ -12,7 +12,8 @@ export default defineConfig({
         showroom: "index.html",
         game: "race.html",
         gallery: "model-gallery.html",
-        gpuDrive: "webgpu-drive.html"
+        gpuDrive: "webgpu-drive.html",
+        gpuFleet: "webgpu-fleet.html"
       }
     }
   },
