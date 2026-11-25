@@ -30,7 +30,7 @@ try {
    assert.equal(state.vehicleId,id);assert.equal(state.circuit,"el-imposible-4x4");
    const art=await page.evaluate(()=>{const g=window.__HORIZON_GAME__,forest=g.scene.getObjectByName("offroad-woodland"),root=g.race.player.vehicle.visual.root;return {paintMaterials:root.userData.offroadOpaquePaintMaterials,treeCount:forest?.userData.treeCount,treeMeshes:forest?.children.filter(o=>o.isInstancedMesh&&o.count>0).length};});
    if(!(art.paintMaterials>0)){
-     const inventory=await page.evaluate(()=>{const root=window.__HORIZON_GAME__.race.player.vehicle.visual.root;const entries=[];root.traverse(o=>{if(!o.isMesh)return;for(const m of [o.material].flat()){entries.push({mesh:o.name,parent:o.parent?.name,material:m.name,color:m.color?.getHexString(),opacity:m.opacity,transparent:m.transparent,metalness:m.metalness,hasMap:!!m.map,hasEmissiveMap:!!m.emissiveMap});}});return entries;});
+     const inventory=await page.evaluate(()=>{const root=window.__HORIZON_GAME__.race.player.vehicle.visual.root;const entries=[];root.traverse(o=>{if(!o.isMesh)return;for(const m of [o.material].flat()){entries.push({mesh:o.name,parent:o.parent?.name,material:m.name,color:m.color?.getHexString(),opacity:m.opacity,transparent:m.transparent,metalness:m.metalness,hasMap:!!m.map,hasEmissiveMap:!!m.emissiveMap,bounds:(()=>{const g=o.geometry;g?.computeBoundingBox();return g?.boundingBox?{min:g.boundingBox.min.toArray(),max:g.boundingBox.max.toArray(),matrix:o.matrixWorld.toArray()}:null;})()});}});return entries;});
      await writeFile(join(out,id+"-material-inventory.json"),JSON.stringify(inventory,null,2));
      console.log("UNIDENTIFIED_PAINT",id,JSON.stringify(inventory.slice(0,50)));
    }

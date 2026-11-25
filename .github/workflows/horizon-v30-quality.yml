@@ -23,6 +23,11 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Preparar texturas CC0 verificadas para pruebas reales
+        run: |
+          node tools/stage-cc0-offroad.mjs
+          python -m pip install Pillow
+          python tools/optimize-cc0-offroad.py
       - run: npm ci
       - run: npm test
       - run: npm run build
