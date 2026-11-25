@@ -2,7 +2,7 @@
 import bpy, pathlib, sys, json
 args=sys.argv[sys.argv.index('--')+1:]; root=pathlib.Path(args[0]); out=pathlib.Path(args[1])
 report=[]
-for asset in ['island_tree_01','island_tree_02']:
+for asset in ['island_tree_01','island_tree_02','island_tree_03']:
     for name,budget in [('near',18000),('far',2200)]:
         bpy.ops.wm.read_factory_settings(use_empty=True)
         bpy.ops.import_scene.gltf(filepath=str(root/asset/(asset+'.gltf')))

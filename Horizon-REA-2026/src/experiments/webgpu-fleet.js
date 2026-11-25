@@ -74,7 +74,7 @@ async function boot(){
  if(offroad){
    await installSoilMaterials(track,info);
    updateForest=await installTropicalForest(scene,track,info);
-   scene.background=new THREE.Color(0x485548);scene.fog=new THREE.Fog(0x485548,65,160);
+   scene.background=new THREE.Color(0x394b3d);scene.fog=new THREE.Fog(0x394b3d,48,135);
    sun.intensity=1.6;
  }
  await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true});car.resetToTrack(track);

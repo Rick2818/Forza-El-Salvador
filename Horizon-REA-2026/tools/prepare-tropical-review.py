@@ -14,7 +14,7 @@ def download(entry,path):
     if expected and hashlib.md5(path.read_bytes()).hexdigest()!=expected: raise ValueError(f'Checksum mismatch {path}')
     return {'source':url,'bytes':path.stat().st_size,'sha256':hashlib.file_digest(path.open('rb'),'sha256').hexdigest()}
 records=[]
-for asset in ['island_tree_01','island_tree_02']:
+for asset in ['island_tree_01','island_tree_02','island_tree_03']:
     api=get_json('https://api.polyhaven.com/files/'+asset)
     manifest=api['gltf']['1k']['gltf']
     folder=root/asset; folder.mkdir(exist_ok=True)
@@ -29,9 +29,15 @@ for asset in ['island_tree_01','island_tree_02']:
         entry=manifest.get('include',{}).get(name) or manifest.get('include',{}).get(str(relative))
         if not entry:raise ValueError('Missing source dependency '+name)
         records.append(download(entry,folder/relative))
-for asset in ['mud_forest','dirt']:
+# Resolve actual map keys rather than assuming the "diff" key.
+for asset,label in [('mud_forest','mud_forest'),('forest_ground_04','dirt'),('forest_floor','forest_floor')]:
     api=get_json('https://api.polyhaven.com/files/'+asset)
-    for key in ['diff','nor_gl','rough']:
-        entry=api[key]['1k']['jpg']
-        records.append(download(entry,out/(asset+'_'+key+'.jpg')))
-(out/'source-manifest.json').write_text(json.dumps({'license':'CC0-1.0','sources':records,'assets':['island_tree_01','island_tree_02','mud_forest','dirt'],'visualApproval':False},indent=2))
+    for kind,aliases in [('diff',('diff','diffuse','albedo','basecolor')),('nor_gl',('nor_gl','normal_gl')),('rough',('rough','roughness'))]:
+        key=next((k for k in api if k.lower() in aliases),None)
+        if key is None: key=next((k for k in api if any(k.lower().endswith('_'+a) for a in aliases)),None)
+        if key is None: raise ValueError(f'{asset}: missing {kind}; API keys={list(api)}')
+        tier=api[key].get('1k')
+        if not tier:raise ValueError(f'{asset}: missing 1k {key}')
+        if 'jpg' not in tier:raise ValueError(f'{asset}: missing JPEG {key}: {list(tier)}')
+        records.append(download(tier['jpg'],out/(label+'_'+kind+'.jpg')))
+(out/'source-manifest.json').write_text(json.dumps({'license':'CC0-1.0','sources':records,'assets':['island_tree_01','island_tree_02','island_tree_03','mud_forest','forest_ground_04','forest_floor'],'visualApproval':False},indent=2))

@@ -3,16 +3,16 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 const ROOT=import.meta.env.BASE_URL+"scenery/tropical-review/";
 export async function installTropicalForest(scene,track,info){
  const loader=new GLTFLoader();
- const ids=["island_tree_01","island_tree_02"];
+ const ids=["island_tree_01","island_tree_02","island_tree_03"];
  const locations=[];
- for(let i=0;i<track.samples.length;i+=5)for(const side of [-1,1]){
-  const p=track.samples[i],r=track.rightAt(i),offset=10+25*(.5+.5*Math.sin(i*1.72+side));
+ for(let i=0;i<track.samples.length;i+=4)for(const side of [-1,1]){
+  const p=track.samples[i],r=track.rightAt(i),offset=9+27*(.5+.5*Math.sin(i*1.72+side));
   const x=p.x+r.x*offset*side,z=p.z+r.z*offset*side;
   let nearest=p,dist=Infinity;
   for(const s of track.samples){const d=Math.hypot(s.x-x,s.z-z);if(d<dist){nearest=s;dist=d;}}
-  if(dist<9||locations.some(s=>Math.hypot(s.x-x,s.z-z)<7))continue;
+  if(dist<9||locations.some(s=>Math.hypot(s.x-x,s.z-z)<5.5))continue;
   const t=Math.max(0,Math.min(1,(dist-track.halfWidth)/24)),blend=t*t*(3-2*t);
-  locations.push({x,z,y:nearest.y+(-1-nearest.y)*blend,height:11+8*(.5+.5*Math.sin(i*1.11)),yaw:i*.37,variant:Math.abs(i+(side>0?1:0))%2});
+  locations.push({x,z,y:nearest.y+(-1-nearest.y)*blend,height:7+13*(.5+.5*Math.sin(i*1.11)),yaw:i*.37,variant:Math.abs(Math.floor(i/4)+(side>0?1:0))%ids.length});
  }
  const sets=[];
  for(let v=0;v<ids.length;v++){
@@ -37,12 +37,12 @@ export async function installTropicalForest(scene,track,info){
   }
   sets.push(tiers);
  }
- info.treeCount=locations.length;info.forestAsset="Poly Haven island_tree_01/02 CC0";info.forestReviewOnly=true;
+ info.treeCount=locations.length;info.forestAsset="Poly Haven island_tree_01/02/03 CC0";info.forestReviewOnly=true;
  const dummy=new THREE.Object3D(),last=new THREE.Vector3(Infinity,Infinity,Infinity);
  return center=>{
   if(last.distanceToSquared(center)<64)return;last.copy(center);
   const candidates=locations.map((p,i)=>({p,i,d:Math.hypot(p.x-center.x,p.z-center.z)})).filter(e=>e.d<125).sort((a,b)=>a.d-b.d);
-  let nearCount=0,farCount=0,triangles=0;const counts=[[0,0],[0,0]];
+  let nearCount=0,farCount=0,triangles=0;const counts=ids.map(()=>[0,0]);
   for(const {p,d} of candidates){
    const v=p.variant;let tier=d<34&&nearCount<6?0:1;
    if(tier===0&&triangles+sets[v][0].triangles>110000)tier=1;
@@ -76,5 +76,12 @@ export async function installSoilMaterials(track,info){
  const old=road.geometry.groups.slice();road.geometry.clearGroups();
  for(const group of old){const prev=road.geometry.groups.at(-1);if(prev&&prev.materialIndex===group.materialIndex&&prev.start+prev.count===group.start)prev.count+=group.count;else road.geometry.addGroup(group.start,group.count,group.materialIndex);}
  const oldMaterial=road.material;road.material=materials;oldMaterial.dispose();
- info.soilAssets=names;
+ const verge=track.group.getObjectByName("offroad-solid-verges");
+ const floorMap=await loader.loadAsync(ROOT+"forest_floor_diff.jpg");
+ floorMap.colorSpace=THREE.SRGBColorSpace;floorMap.wrapS=floorMap.wrapT=THREE.RepeatWrapping;floorMap.anisotropy=4;
+ const pos=verge.geometry.getAttribute("position"),uv=new Float32Array(pos.count*2);
+ for(let i=0;i<pos.count;i++){uv[i*2]=pos.getX(i)/2.1;uv[i*2+1]=pos.getZ(i)/2.1;}
+ verge.geometry.setAttribute("uv",new THREE.BufferAttribute(uv,2));
+ verge.material=new THREE.MeshStandardMaterial({map:floorMap,roughness:.95,side:THREE.DoubleSide});
+ info.soilAssets=names;info.forestFloorAsset="forest_floor";
 }
