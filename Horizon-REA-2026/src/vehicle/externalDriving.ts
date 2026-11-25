@@ -538,7 +538,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
   const wheelAlignment=wheels.map((wheel,i)=>{
     const center=wheel.steer.getWorldPosition(new THREE.Vector3());
     const radius=externalWheelRadii(id,d)[i];
-    const parts:Array<{name:string;kind:string;radialOffsetM:number;radiusM:number;center:number[]}>= [];
+    const parts:Array<{name:string;kind:string;radialOffsetM:number;radiusM:number;center:number[];sourceLabel:string;materials:string[];triangles:number;widthM:number}>= [];
     wheel.spin.traverse(obj=>{
       if(!(obj instanceof THREE.Mesh))return;
       const bounds=indexedWorldBounds(obj),s=bounds.getSize(new THREE.Vector3()),p=bounds.getCenter(new THREE.Vector3());
@@ -558,7 +558,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
       const kind=/tyre|tire|neumatico|pneu|rubber|caucho|sidewall|thread|tread|(?:^|_)NEUMA(?:_|$)/i.test(label)?"tyre":
         silveradoRim||/rim|rines?|llanta|LOD_A_WHEEL/i.test(label)?"rim":"unidentified";
       parts.push({name:obj.name,kind,radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z),
-        radiusM:partRadius,center:p.toArray(),...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
+        radiusM:partRadius,center:p.toArray(),sourceLabel:label,materials:[obj.material].flat().map(m=>m.name),triangles:triangulationCount(obj.geometry),widthM:s.x,...{correctedM:Number(obj.userData.radialCorrectionM??0)}});
     });
     const tyres=parts.filter(p=>p.kind==="tyre"),rims=parts.filter(p=>p.kind==="rim");
     const maxOffsetM=parts.length?Math.max(...parts.map(p=>p.radialOffsetM)):null;

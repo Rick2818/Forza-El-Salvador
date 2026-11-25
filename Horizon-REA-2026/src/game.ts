@@ -615,7 +615,10 @@ export class Game {
     this.scaleTimer += dt;
     if (this.scaleTimer < 1) return;
     this.scaleTimer = 0;
-    if (document.hidden || (this.fps <= 0 && !(this.track.circuit.id===OFFROAD_CIRCUIT.id && performance.now()-this.lastDrawAt>250))) return;
+    if (document.hidden || (this.fps <= 0 && !this.gpuBackpressure.hasRecentPressure(performance.now()))) return;
+    // Defer framebuffer resizing until outstanding GPU work has completed.
+    // Resizing while the previous draw is pending can serialize the driver.
+    if (this.gpuBackpressure.hasPendingWork()) { this.scaleTimer = 1; return; }
     // A background or unfocused tab throttles requestAnimationFrame, so its
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.
@@ -868,7 +871,7 @@ export class Game {
     if (!this.captureMode) {
       this.input.update(dt);
       this.handleHotkeys();
-      this.adaptResolution(this.track.circuit.id===OFFROAD_CIRCUIT.id ? Math.min(rawDt,1) : dt);
+      this.scaleTimer += Math.min(rawDt,1);
     }
 
     if (this.state === "menu" && !this.menu.isGarageOpen) {
@@ -1017,8 +1020,8 @@ export class Game {
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender && !this.captureMode) {
       const now=performance.now();
-      const active=this.track.circuit.id===OFFROAD_CIRCUIT.id && (this.state==="racing"||this.state==="opening");
-      if(active && !document.hidden && document.hasFocus() && now-this.lastDrawAt>250)
+      const active=this.state==="racing"||this.state==="opening";
+      if(active && !document.hidden && document.hasFocus() && this.gpuBackpressure.hasRecentPressure(now))
         this.geometryPressureUntil=now+5000;
       this.race.updateRivalLods(this.camera,active&&now<this.geometryPressureUntil);
       updateMonzonTreeLods(this.scene,this.camera.position);
@@ -1027,6 +1030,7 @@ export class Game {
     this.framePhase = "gpu-backpressure";
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
+      if(!this.captureMode) this.adaptResolution(0);
       this.framePhase = "gpu-query-begin";
       const previousDraw = this.lastDrawAt;
       if (measured) this.gpuTimer.begin();
