@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeCircuitDefinition } from "./circuits";
-import { OFFROAD_CIRCUIT, OFFROAD_SECTORS, OFFROAD_PICKUP_IDS, isOffroadEligible, offroadSectorAt, offroadElevation, offroadDriveMultiplier } from "./offroadPrototype";
+import { OFFROAD_CIRCUIT, OFFROAD_SECTORS, OFFROAD_PICKUP_IDS, isOffroadEligible, offroadSectorAt, offroadElevation, offroadDriveMultiplier, offroadBrakeAcceleration, offroadSpeedLimit } from "./offroadPrototype";
 describe("El Imposible 4x4 prototype", () => {
   it("closes the loop and meets the existing track geometry contract", () => {
     const a = analyzeCircuitDefinition(OFFROAD_CIRCUIT);
@@ -21,6 +21,15 @@ describe("El Imposible 4x4 prototype", () => {
   it("only accepts the three approved pickup identifiers", () => {
     OFFROAD_PICKUP_IDS.forEach(id => expect(isOffroadEligible(id)).toBe(true));
     expect(isOffroadEligible("ferrari")).toBe(false);
+  });
+  it("limits descent speed and brakes lateral drift only with contact",()=>{
+    expect(offroadSpeedLimit("puddle")).toBeLessThan(offroadSpeedLimit("mud"));
+    expect(offroadSpeedLimit("mud")).toBeLessThan(offroadSpeedLimit("dirt"));
+    expect(offroadBrakeAcceleration(12,4,1,.44,0,"mud","4H")).toBe(0);
+    expect(offroadBrakeAcceleration(0,0,1,.44,1,"mud","4H")).toBe(0);
+    expect(offroadBrakeAcceleration(12,4,1,.44,1,"mud","4H")).toBeGreaterThan(4);
+    expect(offroadBrakeAcceleration(12,4,1,.32,1,"puddle","4H")).toBeLessThan(5);
+    expect(offroadBrakeAcceleration(3,0,0,.44,1,"mud","4H")).toBe(0);
   });
   it("models lower traction in mud and a contact-dependent 4H advantage", () => {
     const all = [true,true,true,true];

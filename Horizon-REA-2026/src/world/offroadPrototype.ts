@@ -27,10 +27,10 @@ export interface OffroadSector {
 }
 export const OFFROAD_SECTORS: readonly OffroadSector[] = [
   { start: 0, end: .10, surface: "dirt", grip: .78, resistance: .08 },
-  { start: .10, end: .35, surface: "mud", grip: .44, resistance: .28 },
+  { start: .10, end: .35, surface: "mud", grip: .44, resistance: .33 },
   { start: .35, end: .52, surface: "puddle", grip: .32, resistance: .38 },
   { start: .52, end: .62, surface: "dirt", grip: .78, resistance: .08 },
-  { start: .62, end: .94, surface: "mud", grip: .44, resistance: .28 },
+  { start: .62, end: .94, surface: "mud", grip: .44, resistance: .33 },
   { start: .94, end: 1, surface: "puddle", grip: .32, resistance: .38 },
 ];
 export const OFFROAD_PICKUP_IDS = [
@@ -50,10 +50,44 @@ export function offroadSectorAt(progress: number): OffroadSector {
 export function offroadElevation(progress: number): number {
   if (!Number.isFinite(progress)) throw new Error("Invalid lap progress");
   const t = 2 * Math.PI * (((progress % 1) + 1) % 1);
-  return 6 * (1 - Math.cos(t)) + 2 * (1 - Math.cos(3 * t));
+  return 6 * (1 - Math.cos(t)) + 2 * (1 - Math.cos(3 * t)) +
+    2.0 * (1 - Math.cos(12 * t)) + .85 * (1 - Math.cos(19 * t));
 }
 /** Arcade force multiplier only, not a validated mud/tire physics simulation. */
 export function offroadDriveMultiplier(mode: FourWheelDriveMode, contacts: readonly boolean[], progress: number): number {
   const s = offroadSectorAt(progress);
   return pickupContactTraction(mode, contacts, s.grip) * s.grip * (1 - s.resistance);
+}
+
+// Geometric obstacles are measured in metres, not a shader or a colour patch.
+// Circularly repeat over each lap with a clear launch and an optional bypass.
+export function offroadRelief(distance: number, lateral: number, length: number): number {
+  const d=((distance%length)+length)%length;
+  const fade=Math.min(1,d/16,(length-d)/16);
+  const local=((d+8)%26)-13;
+  const side=Math.floor((d+8)/26)%2===0?1:-1;
+  const basin=-.48*Math.exp(-(local*local)/5.2-((lateral-side*.86)**2)/.63);
+  const rut=-.22*Math.exp(-((Math.abs(lateral)-.98)**2)/.23);
+  const mound=.20*Math.exp(-(((d+11)%17-8.5)**2)/4.5-((lateral+side*.75)**2)/1.15);
+  const washboard=.06*Math.sin(d*1.65+lateral*.7)+.04*Math.sin(d*.88-lateral*2);
+  return fade*(basin+rut+mound+washboard);
+}
+
+/** Stable shoulder shelf followed by an earth bank, never a vertical drop. */
+export function offroadVergeHeight(edgeY: number, offset: number): number {
+  const t=Math.max(0,Math.min(1,(offset-7)/29));
+  return edgeY+(-1-edgeY)*t*t*(3-2*t)-.04*Math.min(1,offset/7)*(1-t);
+}
+
+/** Low-range arcade descent control, with contact-limited opposing force. */
+export function offroadSpeedLimit(surface: OffroadSurface): number {
+  return surface==="puddle"?6.5:surface==="mud"?8.5:10;
+}
+export function offroadBrakeAcceleration(planar: number, lateral: number, brake: number,
+  grip: number, contactFraction: number, surface: OffroadSurface, mode: FourWheelDriveMode): number {
+  const speed=Math.max(0,planar),contact=Math.max(0,Math.min(1,contactFraction));
+  const overspeed=Math.max(0,speed-offroadSpeedLimit(surface)*.72);
+  const demand=Math.max(0,Math.min(1,brake))*5.2+overspeed*1.8+Math.max(0,Math.abs(lateral)-.7)*.7;
+  const limit=9.81*Math.max(0,Math.min(1,grip))*contact*(mode==="4H"?1.32:1);
+  return Math.min(speed*8,limit,demand);
 }

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {offroadVergeHeight} from "./offroadPrototype";
 const ROOT=import.meta.env.BASE_URL+"scenery/tropical-review/";
 export async function installTropicalForest(scene,track,info){
  const loader=new GLTFLoader();
@@ -11,8 +12,7 @@ export async function installTropicalForest(scene,track,info){
   let nearest=p,dist=Infinity;
   for(const s of track.samples){const d=Math.hypot(s.x-x,s.z-z);if(d<dist){nearest=s;dist=d;}}
   if(dist<9||locations.some(s=>Math.hypot(s.x-x,s.z-z)<5.5))continue;
-  const t=Math.max(0,Math.min(1,(dist-track.halfWidth)/24)),blend=t*t*(3-2*t);
-  locations.push({x,z,y:nearest.y+(-1-nearest.y)*blend,height:7+13*(.5+.5*Math.sin(i*1.11)),yaw:i*.37,variant:Math.abs(Math.floor(i/4)+(side>0?1:0))%ids.length});
+  locations.push({x,z,y:offroadVergeHeight(nearest.y,Math.max(0,dist-track.halfWidth)),height:7+13*(.5+.5*Math.sin(i*1.11)),yaw:i*.37,variant:Math.abs(Math.floor(i/4)+(side>0?1:0))%ids.length});
  }
  const sets=[];
  for(let v=0;v<ids.length;v++){
@@ -44,7 +44,7 @@ export async function installTropicalForest(scene,track,info){
   const candidates=locations.map((p,i)=>({p,i,d:Math.hypot(p.x-center.x,p.z-center.z)})).filter(e=>e.d<125).sort((a,b)=>a.d-b.d);
   let nearCount=0,farCount=0,triangles=0;const counts=ids.map(()=>[0,0]);
   for(const {p,d} of candidates){
-   const v=p.variant;let tier=d<34&&nearCount<6?0:1;
+   const v=p.variant;let tier=d<27&&nearCount<4?0:1;
    if(tier===0&&triangles+sets[v][0].triangles>110000)tier=1;
    const s=sets[v][tier];
    if(triangles+s.triangles>155000||tier===1&&farCount>=48)continue;

@@ -13,6 +13,7 @@ import { AIDriver } from "../vehicle/ai";
 import { WebGPUFrameGate } from "../render/webgpuFrameGate";
 import { AdaptiveGpuResolution } from "../render/adaptiveGpuResolution";
 import { GameAudio } from "../audio/engine";
+import { SilveradoTrailAudio } from "../audio/silveradoTrailAudio.js";
 const TURBO_TRIGGER_KPH = 100;
 const q=new URLSearchParams(location.search);
 const circuit=["monzon","suzaka",OFFROAD_CIRCUIT.id].includes(q.get("circuit"))?q.get("circuit"):"monzon";
@@ -25,21 +26,22 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-tropical-asset-review",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-tropical-wet-review-v6",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
-const audio=new GameAudio();audio.setVehicle(vehicleId,design.powertrain==="electric");audio.setEngineProfile("vehiculo");
+const audio=offroad&&vehicleId==="chevrolet-silverado-ev-alternative"?new SilveradoTrailAudio():new GameAudio();audio.setVehicle(vehicleId,design.powertrain==="electric");audio.setEngineProfile("vehiculo");
 function unlockAudio(){try{audio.ensure();info.audioGesture=true;}catch(e){info.audioError=String(e);}}
 $("sound").onclick=()=>{audio.setMuted(false);audio.setVolumes({engines:1});unlockAudio();};
 addEventListener("pointerdown",unlockAudio,{passive:true});
 addEventListener("keydown",unlockAudio);
 function clear(){held.clear();keys.clear();document.querySelectorAll("[data-control]").forEach(b=>delete b.dataset.active);}
 for(const b of document.querySelectorAll("[data-control]")){
- b.addEventListener("pointerdown",e=>{e.preventDefault();b.setPointerCapture(e.pointerId);held.set(e.pointerId,b.dataset.control);b.dataset.active="true";auto=false;});
+ b.addEventListener("pointerdown",e=>{e.preventDefault();held.set(e.pointerId,b.dataset.control);try{b.setPointerCapture(e.pointerId);}catch{}b.dataset.active="true";auto=false;});
  const release=e=>{held.delete(e.pointerId);if(![...held.values()].includes(b.dataset.control))delete b.dataset.active;};
  for(const name of ["pointerup","pointercancel","lostpointercapture"])b.addEventListener(name,release);
 }
+addEventListener("pointerup",e=>{held.delete(e.pointerId);});addEventListener("pointercancel",e=>{held.delete(e.pointerId);});
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d"," "].includes(e.key)){e.preventDefault();keys.add(e.key);auto=false;}});
 addEventListener("keyup",e=>keys.delete(e.key));addEventListener("blur",()=>{clear();audio.silence();});document.addEventListener("visibilitychange",()=>{clear();if(document.hidden)audio.silence();});
 let changeDriveMode=()=>{},changeCamera=()=>{};
@@ -67,7 +69,7 @@ async function boot(){
  document.body.prepend(renderer.domElement);resize();addEventListener("resize",()=>{resizePending=true;});
  await RAPIER.init();const world=new RAPIER.World({x:0,y:-9.81,z:0});world.timestep=1/60;
  const definition=offroad?OFFROAD_CIRCUIT:getCircuit(circuit);if(!definition||definition.id!==circuit)throw Error("Circuito de velocidad no encontrado");
- const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);if(offroad){info.roadWidth=track.width;info.rockCount=track.group.getObjectByName("offroad-solid-rocks").userData.rockCount;}
+ const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);if(offroad){info.roadWidth=track.width;info.rockCount=track.group.getObjectByName("offroad-solid-rocks").userData.rockCount;info.relief=track.group.getObjectByName("offroad-surface").userData.reliefAudit;info.water=track.group.getObjectByName("offroad-muddy-puddles").userData.waterAudit;}
  scene.add(new THREE.HemisphereLight(0xd8e9ff,0x555947,2));const sun=new THREE.DirectionalLight(0xfff3db,3);sun.position.set(70,100,20);scene.add(sun);
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:0x566748,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=offroad?-1:-.1;scene.add(floor);
  let updateForest=()=>{};
@@ -107,15 +109,15 @@ async function boot(){
   const physicsStart=performance.now();acc+=dt;let steps=0;
   while(acc>=1/60&&steps<6){const hit=track.locate(car.position,hint);hint=hit.index;const grip=track.gripAt(hint,hit.lateral);
    const input=auto?pilot.plan(1/60,info.elapsed,[]):{throttle:Number(down("gas","ArrowUp","w")),brake:Number(down("brake","ArrowDown","s")),steer:Number(down("left","ArrowLeft","a"))-Number(down("right","ArrowRight","d")),handbrake:keys.has(" ")};
-   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined);world.step();car.afterPhysicsStep(1/60);
-   info.totalSteps++;car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;});
-   if(offroad){const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);info.maxOffroadDrop=Math.max(info.maxOffroadDrop,track.samples[hint].y-car.position.y);}
+   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0);world.step();car.afterPhysicsStep(1/60);
+   info.totalSteps++;info.throttle=input.throttle;info.manualThrottleSteps=(info.manualThrottleSteps??0)+Number(!auto&&input.throttle>.5);car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;if(w.contact){info.suspensionMin??=[Infinity,Infinity,Infinity,Infinity];info.suspensionMax??=[0,0,0,0];info.suspensionMin[i]=Math.min(info.suspensionMin[i],w.len);info.suspensionMax[i]=Math.max(info.suspensionMax[i],w.len);}});
+   if(offroad){const depth=track.waterDepthAt(hint,hit.lateral);info.maxDrivenWaterDepth=Math.max(info.maxDrivenWaterDepth??0,depth);info.waterContactSteps=(info.waterContactSteps??0)+Number(depth>.025);info.mudCoverage=car.trailMudCoverage;const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);const drop=track.samples[hint].y-car.position.y;const after=track.locate(car.position,hint);info.maxLateral=Math.max(info.maxLateral??0,Math.abs(after.lateral));const velocity=car.body.linvel();const planarKph=Math.hypot(velocity.x,velocity.z)*3.6;info.maxPlanarKph=Math.max(info.maxPlanarKph??0,planarKph);if(Math.abs(after.lateral)>track.halfWidth+2&&!info.firstExcursion)info.firstExcursion={elapsed:info.elapsed,lateral:after.lateral,index:after.index,planarKph,throttle:input.throttle,brake:input.brake,steer:input.steer,slip:car.slip,position:car.position.toArray()};if(drop>info.maxOffroadDrop){info.maxOffroadDrop=drop;info.worstDrop={elapsed:info.elapsed,index:hint,lateral:after.lateral,position:car.position.toArray(),speed:car.speedKph,throttle:input.throttle,steer:input.steer};}}
    info.fourWheelDrive=car.fourWheelDriveMode;
    info.maxSpeedKph=Math.max(info.maxSpeedKph,car.speedKph);if(!wasTurbo&&car.turboActive&&info.turboEvents.length<30)info.turboEvents.push({speed:car.speedKph,elapsed:info.elapsed});
    const p=car.position;info.distance+=p.distanceTo(previous);previous.copy(p);info.elapsed+=1/60;acc-=1/60;steps++;
   }
   physicsMs+=performance.now()-physicsStart;physicsSteps+=steps;
-  if(info.audioGesture)audio.update(car.rpm,car.controls.throttle,car.speedKph,car.slip);info.audioState=audio.getContextState();info.turboActive=car.turboActive;info.turboArmed=car.turboArmed;$("sound").textContent=info.audioState==="running"?"Sonido ✓":"Activar sonido";
+  if(info.audioGesture)audio.update(car.rpm,car.controls.throttle,car.speedKph,car.slip);info.audioState=audio.getContextState();info.audioRms=audio.rms??null;info.maxAudioRms=Math.max(info.maxAudioRms??0,info.audioRms??0);info.turboActive=car.turboActive;info.turboArmed=car.turboArmed;$("sound").textContent=info.audioState==="running"?(audio instanceof SilveradoTrailAudio?(info.audioRms>.003?"Sonido ✓":"Sonido · sin señal"):"Sonido ✓"):"Activar sonido";
   if(gate.ready()){if(resizePending||appliedScale!==resolution.scale)resize();const renderStart=performance.now();car.syncVisual(dt);updateForest(car.position);for(const [i,w] of car.wheelVisualDebug().entries())info.wheelRollMax[i]=Math.max(info.wheelRollMax[i],Math.abs(w.roll));scanMaterials();cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
   if(gate.completed!==lastCount){lastCount=gate.completed;lastCompletionAt=now;}
   if(now-lastCompletionAt>5000)throw Error("Sin fotogramas GPU completados durante 5 segundos");

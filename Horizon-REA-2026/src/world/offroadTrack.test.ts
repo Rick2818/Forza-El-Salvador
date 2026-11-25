@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
-import { OFFROAD_CIRCUIT } from "./offroadPrototype";
+import { OFFROAD_CIRCUIT, offroadVergeHeight } from "./offroadPrototype";
 beforeAll(async()=>{await RAPIER.init()});
 describe("Offroad engineering track",()=>{
  it("builds a graded closed mesh with matching physical support and differentiated grip",()=>{
@@ -12,6 +12,19 @@ describe("Offroad engineering track",()=>{
   expect(t.group.getObjectByName("offroad-surface")).toBeInstanceOf(THREE.Mesh);
   expect(t.group.getObjectByName("offroad-solid-verges")).toBeInstanceOf(THREE.Mesh);
   expect(t.width).toBeCloseTo(6.8);
+  expect(offroadVergeHeight(20,0)).toBe(20);
+  expect(offroadVergeHeight(20,7)).toBeGreaterThan(19.9);
+  expect(offroadVergeHeight(20,36)).toBeCloseTo(-1);
+  expect(offroadVergeHeight(20,18)).toBeGreaterThan(10);
+  const relief=t.group.getObjectByName("offroad-surface")!.userData.reliefAudit;
+  expect(relief.minRelief).toBeLessThan(-.40);
+  expect(relief.maxUphill).toBeGreaterThan(.12);
+  expect(relief.maxDownhill).toBeLessThan(-.12);
+  const water=t.group.getObjectByName("offroad-muddy-puddles")!.userData.waterAudit;
+  expect(water.basins).toBeGreaterThan(8);
+  expect(water.waterArea).toBeGreaterThan(30);
+  expect(water.maxWaterDepth).toBeGreaterThan(.22);
+  expect(t.waterDepthAt(t.startIndex,10)).toBe(0);
   expect(t.group.getObjectByName("offroad-solid-rocks")?.userData.rockCount).toBeGreaterThan(80);
   const idx=(fraction:number)=>Math.round(t.startIndex+t.samples.length*fraction)%t.samples.length;
   expect(t.gripAt(idx(.4),0)).toBeLessThan(t.gripAt(idx(.25),0));
