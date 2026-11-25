@@ -78,3 +78,16 @@ export function offroadVergeHeight(edgeY: number, offset: number): number {
   const t=Math.max(0,Math.min(1,(offset-7)/29));
   return edgeY+(-1-edgeY)*t*t*(3-2*t)-.04*Math.min(1,offset/7)*(1-t);
 }
+
+/** Low-range arcade descent control, with contact-limited opposing force. */
+export function offroadSpeedLimit(surface: OffroadSurface): number {
+  return surface==="puddle"?6.5:surface==="mud"?8.5:10;
+}
+export function offroadBrakeAcceleration(planar: number, lateral: number, brake: number,
+  grip: number, contactFraction: number, surface: OffroadSurface, mode: FourWheelDriveMode): number {
+  const speed=Math.max(0,planar),contact=Math.max(0,Math.min(1,contactFraction));
+  const overspeed=Math.max(0,speed-offroadSpeedLimit(surface)*.72);
+  const demand=Math.max(0,Math.min(1,brake))*5.2+overspeed*1.8+Math.max(0,Math.abs(lateral)-.7)*.7;
+  const limit=9.81*Math.max(0,Math.min(1,grip))*contact*(mode==="4H"?1.32:1);
+  return Math.min(speed*8,limit,demand);
+}

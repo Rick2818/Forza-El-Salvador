@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { accumulateMud, PickupMudCoating } from "../render/pickupMud";
-import type { OffroadSector } from "../world/offroadPrototype";
+import { offroadBrakeAcceleration, offroadSpeedLimit, type OffroadSector } from "../world/offroadPrototype";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { createCarVisual, type CarVisual, BODY_CENTER_Y } from "./carModel";
 import { SETTINGS } from "../core/settings";
@@ -352,6 +352,9 @@ export class Vehicle {
     // S / FRENO becomes a powerful reverse gear after stopping.
     // Propulsion continues throughout reverse instead of creeping at 2.2 kN.
     let reverseForce = reverseDriveForce(brake, speed, p.maxEngineForce);
+    const trail=this.supportsFourWheelDrive?this.offroadSector:undefined;
+    const planarBefore=Math.hypot(velocity.x,velocity.z);
+    if(trail&&planarBefore>1.2&&speed>-.6)reverseForce=0;
 
     if (this.controls.handbrake) {
       engineForce *= 0.2;
@@ -411,6 +414,12 @@ export class Vehicle {
     if (planar > 0.5) {
       const terrainDrag = this.offroadSector && this.supportsFourWheelDrive ? this.body.mass() * 9.81 * this.offroadSector.resistance * .22 * Math.min(1,planar/3) : 0;
       const d = dragForce(planar) + terrainDrag;
+      if(trail){
+        const contacts=this.contactScratch.reduce((sum,c)=>sum+Number(c),0)/4;
+        const decel=offroadBrakeAcceleration(planar,lateralSpeed,reverseForce>0?0:brake,grip,contacts,trail.surface,this.fourWheelDriveMode);
+        const force=this.body.mass()*decel;
+        this.body.addForce({x:-vel.x/planar*force,y:0,z:-vel.z/planar*force},true);
+      }
       this.body.addForce({ x: (-vel.x / planar) * d, y: 0, z: (-vel.z / planar) * d }, true);
     }
     // At 350–504 MPH the raw v² downforce exceeds suspension capacity
@@ -494,8 +503,10 @@ export class Vehicle {
       const scale = REVERSE_LIMIT_MS / Math.abs(forwardSpeed);
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
       this.speed = -REVERSE_LIMIT_MS;
-    } else if (planarSpeed > this.tuning.topSpeed) {
-      const scale = this.tuning.topSpeed / planarSpeed;
+    } else if (planarSpeed > (this.offroadSector&&this.supportsFourWheelDrive?offroadSpeedLimit(this.offroadSector.surface):this.tuning.topSpeed)) {
+      // Explicit arcade low-range speed governor; preserve height/orientation.
+      const cap=this.offroadSector&&this.supportsFourWheelDrive?offroadSpeedLimit(this.offroadSector.surface):this.tuning.topSpeed;
+      const scale = cap / planarSpeed;
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
       this.speed = forwardSpeed * scale;
     } else {

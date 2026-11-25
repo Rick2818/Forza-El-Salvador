@@ -92,7 +92,8 @@ export class AIDriver {
     const v = this.vehicle;
     const pos = v.position;
     this.hint = this.track.nearestIndex(pos, this.hint);
-    const speed = Math.abs(v.speed);
+    const velocity=v.body.linvel();
+    const speed = this.track.circuit.id==="el-imposible-4x4"?Math.hypot(velocity.x,velocity.z):Math.abs(v.speed);
     const tuning = DIFFICULTY_TUNING[this.difficulty];
     const road = this.track.sampleAt(this.hint);
     const tangent = this.track.tangentAt(this.hint);
@@ -255,7 +256,8 @@ export class AIDriver {
     // Large gaps allow full acceleration; taper small errors by the square
     // root of available power rather than cancelling all highway power.
     let throttle = offroad ? clamp(error/2.5,0,1) : clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
-    let brake = clamp(-error / (7.0 / tuning.reaction), 0, 1);
+    let brake = offroad?clamp(-error/1.4,0,1):clamp(-error / (7.0 / tuning.reaction), 0, 1);
+    if(offroad&&v.slip>1.5&&speed>2){throttle=0;brake=Math.max(brake,.45);}
     if (moderateInstability && !recovering && !offroad) {
       // Controlled recovery, never full throttle while still slipping.
       throttle = Math.min(throttle, 0.4);
