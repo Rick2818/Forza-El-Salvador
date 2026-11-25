@@ -1,0 +1,42 @@
+name: Horizon CC0 terrain preflight (no deployment)
+on:
+  push:
+    branches: [quality/v31-cc0-terrain]
+    paths: ['Horizon-REA-2026/**','.github/workflows/horizon-cc0-terrain-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/stage-cc0-offroad.mjs
+      - run: python -m pip install Pillow
+      - run: python tools/optimize-cc0-offroad.py
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          npm run dev > /tmp/horizon-cc0.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          node tools/v30-runtime-quality.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cc0-offroad-maps
+          path: |
+            Horizon-REA-2026/quality-evidence/
+            Horizon-REA-2026/public/scenery/offroad-pbr/
+          if-no-files-found: error

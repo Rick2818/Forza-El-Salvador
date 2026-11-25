@@ -1,1 +1,1 @@
-export const RELEASE_LABEL = "V29.2.2-4x4 BETA";
+export const RELEASE_LABEL = "V31-RC2-4x4";

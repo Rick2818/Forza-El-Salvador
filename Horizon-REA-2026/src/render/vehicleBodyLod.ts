@@ -10,6 +10,11 @@ export function chooseVehicleLod(distance:number,previous:Level):Level{
   while(level>0&&distance<distances[level-1]*.88)level=(level-1) as Level;
   return level;
 }
+/** Preserve nearby rival geometry and only increase distant body LOD under measured draw pressure. */
+export function pressureLodDistance(distance:number,pressured:boolean):number{
+  if(!pressured||distance<=12)return distance;
+  return distance+Math.min(distance-12, distance*.8);
+}
 type Entry={mesh:THREE.Mesh;original:THREE.BufferGeometry;levels:THREE.BufferGeometry[]};
 const count=(g:THREE.BufferGeometry)=>g.index?.count??g.getAttribute("position").count;
 const eligible=(m:THREE.Mesh)=>!(m instanceof THREE.SkinnedMesh||m instanceof THREE.InstancedMesh||
@@ -51,8 +56,8 @@ export class VehicleBodyLod{
       if(levels.some(g=>g!==original))this.entries.push({mesh:o,original,levels});
     });
   }
-  update(distance:number):void{
-    const level=chooseVehicleLod(distance,this.level);
+  update(distance:number,pressured=false):void{
+    const level=chooseVehicleLod(pressureLodDistance(distance,pressured),this.level);
     this.setLevel(level);
   }
   setLevel(level:Level):void{

@@ -106,7 +106,7 @@ export class Race {
       await new Promise<void>(resolve=>setTimeout(resolve,0));
     }
   }
-  updateRivalLods(camera:THREE.Camera):void{
+  updateRivalLods(camera:THREE.Camera,pressured=false):void{
     camera.updateMatrixWorld();
     this.rivalViewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
     this.rivalFrustum.setFromProjectionMatrix(this.rivalViewProjection);
@@ -121,7 +121,7 @@ export class Race {
       this.rivalBounds.center.copy(root.position);
       this.rivalBounds.radius=this.rivalRadius.get(vehicle)??10;
       root.visible=distance<30||this.rivalFrustum.intersectsSphere(this.rivalBounds);
-      if(root.visible){if(this.lodEnabled)lod.update(distance);else lod.setLevel(0);}else this.culledRivals++;
+      if(root.visible){if(this.lodEnabled)lod.update(distance,pressured);else lod.setLevel(0);}else this.culledRivals++;
     }
   }
   get culledRivalCount(){return this.culledRivals;}

@@ -1,3 +1,4 @@
+import { offroadPbr } from "./offroadPbr";
 import * as THREE from "three";
 import { createGrassTexture } from "./textures";
 import { clamp, smoothstep } from "../core/mathx";
@@ -79,6 +80,7 @@ export class TerrainField {
   readonly centerZ: number;
   private readonly heights: Float32Array;
   private readonly isSparda: boolean;
+  private readonly isOffroad: boolean;
   private readonly isDesert: boolean;
   private readonly isSuzaka: boolean;
   private readonly isMonzon: boolean;
@@ -88,6 +90,7 @@ export class TerrainField {
   constructor(track: TrackLike) {
     this.isSuzaka = track.circuit?.id === "suzaka";
     this.isSparda = track.circuit?.id === "sparda";
+    this.isOffroad = track.circuit?.id === "el-imposible-4x4";
     this.isDesert = track.circuit?.id === "sakhir-horizon";
     this.isMonzon = track.circuit?.id === "monzon";
     this.roadSamples = track.samples;
@@ -118,7 +121,7 @@ export class TerrainField {
   }
 
   private computeHeight(x: number, z: number, trackDistance: number): number {
-    if (this.isSparda) {
+    if (this.isSparda || this.isOffroad) {
       // Terrain follows the graded mountain road, always below the tyre
       // surface. A separate static collider supplies off-track support.
       let closest = 0;
@@ -128,7 +131,7 @@ export class TerrainField {
         const d = (p.x - x) ** 2 + (p.z - z) ** 2;
         if (d < minDistance) { minDistance = d; closest = p.y; }
       }
-      const valley = 1.5 + 2.0 * smoothstep(9, 85, trackDistance);
+      const valley = this.isOffroad ? 2.5 + 2.5 * smoothstep(10, 65, trackDistance) : 1.5 + 2.0 * smoothstep(9, 85, trackDistance);
       const ripple = (fbm(x * 0.012, z * 0.012, 2) - .5) *
         1.2 * smoothstep(40, 220, trackDistance);
       return closest - valley + ripple;
@@ -201,8 +204,8 @@ export class TerrainField {
     geo.translate(this.centerX, 0, this.centerZ);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
-    const grass = new THREE.Color(this.isMonzon ? 0x304b30 : this.isSparda ? 0x315e3a : this.isDesert ? 0x947958 : 0x395837);
-    const dryGrass = new THREE.Color(this.isMonzon ? 0x526044 : this.isSparda ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x68704e);
+    const grass = new THREE.Color(this.isMonzon ? 0x304b30 : (this.isSparda || this.isOffroad) ? 0x315e3a : this.isDesert ? 0x947958 : 0x395837);
+    const dryGrass = new THREE.Color(this.isMonzon ? 0x526044 : (this.isSparda || this.isOffroad) ? 0x4a7048 : this.isDesert ? 0xae8c62 : 0x68704e);
     const rock = new THREE.Color(this.isSparda ? 0x737a6c : this.isDesert ? 0x766450 : 0x6d717a);
     const tmp = new THREE.Color();
 
@@ -231,7 +234,10 @@ export class TerrainField {
       map: grassTex,
       vertexColors: true
     });
-    const mesh = new THREE.Mesh(geo, material);
+    const photo=this.isOffroad?offroadPbr("forest"):undefined;
+    if(photo){for(const t of Object.values(photo))t.repeat.set(160,160);grassTex.dispose();material.dispose();}
+    const mesh = new THREE.Mesh(geo, photo?new THREE.MeshStandardMaterial({...photo,vertexColors:true,roughness:1,normalScale:new THREE.Vector2(.5,.5),envMapIntensity:.05}):material);
+    if(photo)mesh.userData.photographicPbr=true;
     mesh.name = "terrain";
     mesh.receiveShadow = true;
     return mesh;

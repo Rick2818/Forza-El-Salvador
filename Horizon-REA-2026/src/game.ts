@@ -56,6 +56,7 @@ export class Game {
   private readonly gpuTimer: GPUFrameTimer;
   private readonly gpuBackpressure: RenderBackpressure;
   private lastDrawAt = performance.now();
+  private geometryPressureUntil = 0;
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -420,6 +421,7 @@ export class Game {
   private async prepareRaceGraphics(): Promise<void> {
     const started = performance.now();
     this.framePhase = "graphics-preparation";
+    this.geometryPressureUntil = 0;
     await this.drainPreparationGpu("previous-menu-frame");
     this.gpuBackpressure.reset();
     await this.environment.whenReady(this.scene);
@@ -468,8 +470,18 @@ export class Game {
       this.race.updateRivalLods(this.camera);
       updateMonzonTreeLods(this.scene,this.camera.position);
       this.environment.updateVegetationView(this.camera.position,1);
+      const representativeStarted = performance.now();
       this.renderer.render(this.scene, this.camera);
       await this.drainPreparationGpu("representative-race-frame");
+      // If the real warm-up draw is already slow, prepare the existing adaptive
+      // rival LOD before the countdown rather than uploading it during a stalled
+      // frame. Keep the player, wheels, physics and normal-device LOD unchanged.
+      if (performance.now() - representativeStarted >= 250) {
+        this.race.updateRivalLods(this.camera, true);
+        this.renderer.render(this.scene, this.camera);
+        await this.drainPreparationGpu("pressured-race-frame");
+        this.geometryPressureUntil = performance.now() + 5000;
+      }
       if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
     } finally {
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
@@ -480,10 +492,11 @@ export class Game {
 
   private beginPreparedRace(): void {
     this.performanceLog.reset();
+    if (this.captureMode) this.geometryPressureUntil = 0;
     this.lastEnteredPitGarage = null;
     this.audio.silence();
     this.audio.ensure();
-    this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
+    this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric",this.track.circuit.id===OFFROAD_CIRCUIT.id);
     this.race.state = this.fireworks ? "idle" : "countdown";
     this.race.countdown = SETTINGS.race.countdown;
     this.maxFrameGapMs = 0;
@@ -613,7 +626,10 @@ export class Game {
     this.scaleTimer += dt;
     if (this.scaleTimer < 1) return;
     this.scaleTimer = 0;
-    if (this.fps <= 0 || document.hidden) return;
+    if (document.hidden || (this.fps <= 0 && !this.gpuBackpressure.hasRecentPressure(performance.now()))) return;
+    // Defer framebuffer resizing until outstanding GPU work has completed.
+    // Resizing while the previous draw is pending can serialize the driver.
+    if (this.gpuBackpressure.hasPendingWork()) { this.scaleTimer = 1; return; }
     // A background or unfocused tab throttles requestAnimationFrame, so its
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.
@@ -866,7 +882,7 @@ export class Game {
     if (!this.captureMode) {
       this.input.update(dt);
       this.handleHotkeys();
-      this.adaptResolution(dt);
+      this.scaleTimer += Math.min(rawDt,1);
     }
 
     if (this.state === "menu" && !this.menu.isGarageOpen) {
@@ -886,6 +902,7 @@ export class Game {
       // controller integrates wheel forces for exactly the step it is given,
       // so world.step() and updateVehicle() must always share the same dt.
       const rescuesBefore = this.race.rescues;
+      const offroadCountdown=this.track.circuit.id===OFFROAD_CIRCUIT.id && this.race.state==="countdown";
       this.physicsAccum = Math.min(this.physicsAccum + dt, this.fixedStep * 4);
       let steps = 0;
       while (this.physicsAccum >= this.fixedStep && steps < 4) {
@@ -916,6 +933,14 @@ export class Game {
         steps++;
       }
       if (steps === 0) this.physicsAccum = Math.min(this.physicsAccum, this.fixedStep);
+      // The starting signal is a presentation clock, not a physics clock.
+      // Keep the existing fixed-step handbrake until Race.update releases it.
+      // Slow graphics must not stretch 5.2 seconds of red lights to a minute.
+      if(offroadCountdown && this.race.state==="countdown" && !this.captureMode &&
+         !document.hidden && document.hasFocus() && steps>0){
+        const realSeconds=Math.min(rawDt,1);
+        this.race.countdown-=Math.min(this.race.countdown,Math.max(0,realSeconds-steps*this.fixedStep));
+      }
       if (this.race.rescues > rescuesBefore) {
         this.chase.snap();
         this.hud.toast("✅ Auto enderezado y recuperado en la pista", 2600);
@@ -949,7 +974,7 @@ export class Game {
         this.lastEnteredPitGarage = garage;
       }
       this.framePhase = "audio";
-      this.audio.update(player.rpm, drive.throttle, player.speedKph, player.slip);
+      this.audio.update(player.rpm, this.track.circuit.id===OFFROAD_CIRCUIT.id && this.race.state!=="racing" ? 0 : drive.throttle, player.speedKph, player.slip);
       const listener = player.body.translation();
       const velocity = player.body.linvel();
       const cameraRight = this.camera.matrixWorld.elements;
@@ -1005,13 +1030,18 @@ export class Game {
 
     if (this.onBeforeRender) this.onBeforeRender();
     if (!this.skipRender && !this.captureMode) {
-      this.race.updateRivalLods(this.camera);
+      const now=performance.now();
+      const active=this.state==="racing"||this.state==="opening";
+      if(active && !document.hidden && document.hasFocus() && this.gpuBackpressure.hasRecentPressure(now))
+        this.geometryPressureUntil=now+5000;
+      this.race.updateRivalLods(this.camera,active&&now<this.geometryPressureUntil);
       updateMonzonTreeLods(this.scene,this.camera.position);
       this.environment.updateVegetationView(this.camera.position,dt);
     }
     this.framePhase = "gpu-backpressure";
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
+      if(!this.captureMode) this.adaptResolution(0);
       this.framePhase = "gpu-query-begin";
       const previousDraw = this.lastDrawAt;
       if (measured) this.gpuTimer.begin();

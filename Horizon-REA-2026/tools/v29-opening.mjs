@@ -1,5 +1,9 @@
 import {chromium} from "playwright";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const expectedVersion=readFileSync(new URL("../src/core/version.ts",import.meta.url),"utf8").match(/RELEASE_LABEL\s*=\s*["\x27]([^"\x27]+)/)?.[1];
+assert.ok(expectedVersion,"Missing expected source version");
+
 import {mkdir,writeFile} from "node:fs/promises";
 const circuit=process.argv[2]??"monzon",mode=process.argv[3]??"hybrid";
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
@@ -27,7 +31,7 @@ try{
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost")};
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Opening browser unresponsive")),15000))]);
     samples.push(s);console.log("V29_OPENING",JSON.stringify(s));
-    assert.equal(s.version,"V29");assert.equal(s.circuit,circuit);assert.equal(s.crowdMode,mode);
+    assert.equal(s.version,expectedVersion);assert.equal(s.circuit,circuit);assert.equal(s.crowdMode,mode);
     assert.equal(s.contextLost,false);assert.equal(s.recovery,false);assert.deepEqual(errors,[]);
     assert.ok(s.frameAgeMs<5000&&s.drawAgeMs<5000,"Opening frame/draw stalled");
     if(s.state==="opening"&&previous!==null)assert.ok(s.openingTime>previous,"Opening clock stopped");

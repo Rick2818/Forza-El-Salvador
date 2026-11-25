@@ -50,6 +50,15 @@ jobs:
         working-directory: Horizon-REA-2026
         run: node tools/audit-car-glbs.mjs
 
+      - name: Preparar texturas CC0 verificadas para V31
+        working-directory: Horizon-REA-2026
+        run: |
+          if grep -Eq 'RELEASE_LABEL *= *"V31' src/core/version.ts; then
+            node tools/stage-cc0-offroad.mjs
+            python -m pip install Pillow
+            python tools/optimize-cc0-offroad.py
+          fi
+
       - name: Compilar Horizon
         working-directory: Horizon-REA-2026
         run: npm run build
@@ -71,6 +80,10 @@ jobs:
           curl -fsS http://127.0.0.1:5173/race.html > /dev/null
           node tools/pickup-v24-probe.mjs
           node tools/offroad-render-probe.mjs
+
+      - name: Bloquear candidato V30 sin aprobación de calidad
+        working-directory: Horizon-REA-2026
+        run: node tools/v30-release-gate.mjs
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
