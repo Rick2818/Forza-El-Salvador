@@ -1,0 +1,59 @@
+name: V31 - comparación de continuidad con producción (sin despliegue)
+on:
+  push:
+    branches: [quality/v31-render-baseline]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: ["80199f2836c5c245e9f33be752c118964d4272c6", "4565422713468b95d858f0ecaaadf788429bcaff"]
+        scenario: [monzon-opening, monzon-race, suzaka-race]
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - name: Use identical diagnostic scripts for both commits
+        run: |
+          git show 4565422713468b95d858f0ecaaadf788429bcaff:Horizon-REA-2026/tools/pickup-v24-continuity.mjs > tools/pickup-v24-continuity.mjs
+          git show 4565422713468b95d858f0ecaaadf788429bcaff:Horizon-REA-2026/tools/v29-opening.mjs > tools/v29-opening.mjs
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Actual WebGL continuity, unchanged acceptance thresholds
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          set -o pipefail
+          mkdir -p review/quality
+          npm run dev > /tmp/horizon-ab-vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html >/dev/null
+          case "$SCENARIO" in
+            monzon-opening) node tools/v29-opening.mjs monzon hybrid ;;
+            monzon-race) node tools/pickup-v24-continuity.mjs ram-3500-alternative baseline monzon ;;
+            suzaka-race) node tools/pickup-v24-continuity.mjs ram-3500-alternative baseline suzaka ;;
+          esac 2>&1 | tee review/quality/ab-continuity.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ab-${{ matrix.ref }}-${{ matrix.scenario }}
+          path: Horizon-REA-2026/review/quality/
+          if-no-files-found: warn
