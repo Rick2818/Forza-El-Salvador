@@ -7,7 +7,7 @@ assert.ok(sourceVersion,"Missing source release label");
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
-assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod","no-crowd","vehicle-only"].includes(mode));
+assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod","no-crowd","vehicle-only","no-local-lights","player-track-render"].includes(mode));
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
 const errors=[];
@@ -94,6 +94,46 @@ try{
     timeMethod(game.world,"step","rapier");
     timeMethod(game.environment,"update","environment");
     timeMethod(game.audio,"updateRivals","rival-audio");
+    // Apply the render-only mask immediately before EACH submission and
+    // restore in finally: runtime LOD / crowd updates cannot undo this test.
+    // Physical bodies, AI, collision, clock and full traffic remain active.
+    if(mode==="no-local-lights"||mode==="player-track-render"){
+      const originalRender=game.renderer.render;
+      const allowedRoots=new Set([game.race.player.vehicle.visual.root,game.track.group]);
+      game.renderer.render=function(scene,camera,...args){
+        const masks=[];
+        scene.traverse(o=>{
+          let exclude=false;
+          if(mode==="no-local-lights")exclude=!!(o.isPointLight||o.isSpotLight);
+          else if(o.isMesh||o.isPoints||o.isLine||o.isSprite){
+            let p=o;while(p&&!allowedRoots.has(p))p=p.parent;
+            exclude=!p;
+          }
+          if(exclude&&o.layers.mask!==0){masks.push([o,o.layers.mask]);o.layers.mask=0;}
+        });
+        metrics.renderIsolation={mode,maskedObjects:masks.length};
+        try{return originalRender.call(this,scene,camera,...args);}
+        finally{for(const [o,mask] of masks)o.layers.mask=mask;}
+      };
+    }
+    // Count signaled fences, not only CPU submissions. Do not introduce
+    // blocking waits or reset outstanding work to make a test pass.
+    const gpu=game.gpuBackpressure;
+    const originalReady=gpu.ready.bind(gpu),originalSubmit=gpu.submit.bind(gpu);
+    const queue={completed:0,pendingSince:null,maxCompletionMs:0,pendingAgeMs:0};
+    metrics.gpuQueue=queue;
+    gpu.ready=()=>{
+      const ready=originalReady(),now=performance.now();
+      if(queue.pendingSince!==null){
+        queue.pendingAgeMs=now-queue.pendingSince;
+        if(ready){queue.completed++;queue.maxCompletionMs=Math.max(queue.maxCompletionMs,queue.pendingAgeMs);queue.pendingSince=null;queue.pendingAgeMs=0;}
+      }
+      return ready;
+    };
+    gpu.submit=()=>{
+      originalSubmit();
+      if(gpu.fence)queue.pendingSince=performance.now();
+    };
     timeMethod(game.renderer,"render","webgl");
     timeMethod(game.gpuBackpressure,"ready","gpu-fence-poll");
     timeMethod(game.gpuBackpressure,"submit","gpu-fence-submit");
@@ -154,7 +194,7 @@ try{
       assert.ok(stagnant<3,"Entire field stopped moving");
     }
     if(sample.elapsed>=125&&sample.raceState==="racing"){
-      if(mode!=="physics-only"){assert.ok(sample.drawCalls>0,"No rendering");assert.ok(sample.submittedDraws>100,"Insufficient actual rendered frames");}
+      if(mode!=="physics-only"){assert.ok(sample.drawCalls>0,"No rendering");assert.ok(sample.submittedDraws>100,"Insufficient actual rendered frames");assert.ok(sample.diagnostics.gpuQueue.completed>=100,"Insufficient signaled GPU fences");if(["no-local-lights","player-track-render"].includes(mode))assert.ok(sample.diagnostics.renderIsolation?.maskedObjects>0,"Isolation mask did not affect rendering");}
       assert.equal(sample.oncoming,5,"Traffic did not fully activate");
       assert.ok(samples.some(s=>s.elapsed>=48&&s.elapsed<60),"Did not sample original freeze window");
       console.log("CONTINUITY_PASS",id,mode,JSON.stringify({elapsed:sample.elapsed,samples:samples.length,wallSeconds:(Date.now()-start)/1000,minimumSampleFPS:Math.min(...samples.filter(s=>s.raceState==="racing").map(s=>s.fps))}));
