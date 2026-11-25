@@ -100,6 +100,7 @@ export class AIDriver {
     const ownLane = (pos.x - road.x) * right.x + (pos.z - road.z) * right.z;
     // Reacquire the racing surface instead of continuing a high-speed
     // overtaking maneuver while sideways/outside the road on Suzaka.
+    const offroad=this.track.circuit.id==="el-imposible-4x4";
     const recovering = !v.onTrack || Math.abs(ownLane) > this.track.halfWidth * .82;
 
     // Only local projections are needed; no expensive global pathfinding at 60 FPS.
@@ -129,7 +130,7 @@ export class AIDriver {
     const push=straight && chasing ? 1+tuning.pressure*.06 : 1;
     const profileSpeed = this.track.targetSpeeds[this.hint] * pace * push;
     const cornerAhead = this.track.targetSpeeds[(this.hint + 12) % this.track.samples.length] * pace * push;
-    let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, 17));
+    let targetSpeed = Math.min(profileSpeed, Math.max(cornerAhead, offroad?4:17));
     const onBridge = this.track.circuit?.layout === "figure-eight" && road.y > 1;
     if (onBridge) targetSpeed = Math.min(targetSpeed, 45);
     // Difficulty changes pace, never the available braking distance or grip.
@@ -160,7 +161,7 @@ export class AIDriver {
       Math.abs(o.lane - ownLane) > 1.3 && o.speed > speed + 1);
     const headOn = nearby.filter(other => other.oncoming && other.gap > 0 && other.gap < 75 &&
       Math.abs(other.lane - ownLane) < 4.5).sort((a, b) => a.gap - b.gap)[0];
-    const wander = Math.sin(time * 0.27 + this.phase) * 0.35;
+    const wander = offroad?0:Math.sin(time * 0.27 + this.phase) * 0.35;
     let desiredLane = this.baseLane + wander;
 
     if (this.pass) {
@@ -205,11 +206,11 @@ export class AIDriver {
     }
 
     // Opponents drive within the asphalt; gradual lateral transitions avoid swerves.
-    desiredLane = clamp(desiredLane, -4.55, 4.55);
+    desiredLane = clamp(desiredLane, offroad?-1: -4.55, offroad?1:4.55);
     const maxLaneStep = (1.4 + tuning.pressure * 0.8) * dt;
     this.currentLane += clamp(desiredLane - this.currentLane, -maxLaneStep, maxLaneStep);
 
-    const lookAhead = recovering
+    const lookAhead = offroad ? clamp(4+speed*.65,4,11) : recovering
       ? clamp(7 + speed * .25, 7, 24)
       : clamp((7 + speed * 0.62) * tuning.reaction, 7, 46);
     const aheadIndex = this.hint + Math.round(lookAhead / this.track.segmentLength);
@@ -237,7 +238,7 @@ export class AIDriver {
     if (headOn) targetSpeed = Math.min(targetSpeed, Math.max(7, (headOn.gap - 8) * 0.55));
     const moderateInstability = Math.abs(headingError) > .3 || v.slip > 3;
     const severeInstability = Math.abs(headingError) > .6 || v.slip > 6;
-    if (recovering) targetSpeed = Math.min(targetSpeed, 12);
+    if (recovering) targetSpeed = Math.min(targetSpeed, offroad?3.5:12);
     else if (severeInstability) {
       // Real slides still demand firm deceleration until safely aligned.
       targetSpeed = Math.min(targetSpeed, 25);
@@ -246,13 +247,16 @@ export class AIDriver {
       // Re-evaluate on every tick; preserve lower corner/traffic speed caps.
       targetSpeed = Math.min(targetSpeed, Math.max(32, speed + 4));
     }
+    if(offroad){
+      targetSpeed=Math.min(targetSpeed,Math.abs(headingError)>.45?3.5:Math.abs(headingError)>.2?5.5:10);
+    }
     const error = targetSpeed - speed;
     // The speed controller must account for the stronger highway engine;
     // Large gaps allow full acceleration; taper small errors by the square
     // root of available power rather than cancelling all highway power.
-    let throttle = clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
+    let throttle = offroad ? clamp(error/2.5,0,1) : clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
     let brake = clamp(-error / (7.0 / tuning.reaction), 0, 1);
-    if (moderateInstability && !recovering) {
+    if (moderateInstability && !recovering && !offroad) {
       // Controlled recovery, never full throttle while still slipping.
       throttle = Math.min(throttle, 0.4);
     }
@@ -267,7 +271,7 @@ export class AIDriver {
 
     if (speed < 1.4 && time > 2) {
       this.stuckTime += dt;
-      if (this.stuckTime > 1.8) {
+      if (this.stuckTime > (offroad?4:1.8)) {
         this.reverseTime = 2.2;
         this.stuckTime = 0;
       }

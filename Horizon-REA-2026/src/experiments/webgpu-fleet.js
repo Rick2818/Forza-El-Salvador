@@ -5,7 +5,7 @@ import { Track } from "../world/track";
 import { getCircuit } from "../world/circuits";
 import { loadSelectedVehicle, vehicleDesign } from "../vehicle/selectedAsset";
 import { EXTERNAL_VEHICLES, IS_EXTERNAL_PICKUP } from "../vehicle/externalRoster";
-import { OFFROAD_CIRCUIT, offroadSectorAt } from "../world/offroadPrototype";
+import { OFFROAD_CIRCUIT, offroadSectorAt, offroadVergeHeight } from "../world/offroadPrototype";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Vehicle } from "../vehicle/vehicle";
@@ -26,7 +26,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-physical-trail-v2",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-physical-trail-v3",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -90,7 +90,7 @@ async function boot(){
      const x=p.x+r.x*offset*side,z=p.z+r.z*offset*side;
      if(track.samples.some(s=>Math.hypot(s.x-x,s.z-z)<10))continue;
      if(locations.some(s=>Math.hypot(s.x-x,s.z-z)<6))continue;
-     let nearest=p,dist=Infinity;for(const sample of track.samples){const d=Math.hypot(sample.x-x,sample.z-z);if(d<dist){dist=d;nearest=sample;}}const t=Math.max(0,Math.min(1,(dist-track.halfWidth)/24)),blend=t*t*(3-2*t);locations.push({x,z,y:nearest.y+(-1-nearest.y)*blend,scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
+     let nearest=p,dist=Infinity;for(const sample of track.samples){const d=Math.hypot(sample.x-x,sample.z-z);if(d<dist){dist=d;nearest=sample;}}locations.push({x,z,y:offroadVergeHeight(nearest.y,Math.max(0,dist-track.halfWidth)),scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
    }
    const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0xd5ded0,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
    const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
@@ -157,7 +157,7 @@ async function boot(){
    const input=auto?pilot.plan(1/60,info.elapsed,[]):{throttle:Number(down("gas","ArrowUp","w")),brake:Number(down("brake","ArrowDown","s")),steer:Number(down("left","ArrowLeft","a"))-Number(down("right","ArrowRight","d")),handbrake:keys.has(" ")};
    const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined);world.step();car.afterPhysicsStep(1/60);
    info.totalSteps++;info.throttle=input.throttle;info.manualThrottleSteps=(info.manualThrottleSteps??0)+Number(!auto&&input.throttle>.5);car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;if(w.contact){info.suspensionMin??=[Infinity,Infinity,Infinity,Infinity];info.suspensionMax??=[0,0,0,0];info.suspensionMin[i]=Math.min(info.suspensionMin[i],w.len);info.suspensionMax[i]=Math.max(info.suspensionMax[i],w.len);}});
-   if(offroad){const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);info.maxOffroadDrop=Math.max(info.maxOffroadDrop,track.samples[hint].y-car.position.y);}
+   if(offroad){const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);const drop=track.samples[hint].y-car.position.y;const after=track.locate(car.position,hint);info.maxLateral=Math.max(info.maxLateral??0,Math.abs(after.lateral));if(drop>info.maxOffroadDrop){info.maxOffroadDrop=drop;info.worstDrop={elapsed:info.elapsed,index:hint,lateral:after.lateral,position:car.position.toArray(),speed:car.speedKph,throttle:input.throttle,steer:input.steer};}}
    info.fourWheelDrive=car.fourWheelDriveMode;
    info.maxSpeedKph=Math.max(info.maxSpeedKph,car.speedKph);if(!wasTurbo&&car.turboActive&&info.turboEvents.length<30)info.turboEvents.push({speed:car.speedKph,elapsed:info.elapsed});
    const p=car.position;info.distance+=p.distanceTo(previous);previous.copy(p);info.elapsed+=1/60;acc-=1/60;steps++;

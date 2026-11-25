@@ -3,7 +3,7 @@
 // MCP data can be loaded via pitstop.getCircuits() from src/integrations/pitstop.ts.
 
 import * as THREE from "three";
-import { OFFROAD_CIRCUIT, offroadElevation, offroadSectorAt, offroadRelief } from "./offroadPrototype";
+import { OFFROAD_CIRCUIT, offroadElevation, offroadSectorAt, offroadRelief, offroadVergeHeight } from "./offroadPrototype";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import { monzonPitBarrierGap } from "./monzonPitAccess";
 import { suzakaPitBarrierGap, suzakaPitViewingWall, SUZAKA_PIT_LOW_BARRIER_HEIGHT } from "./suzakaPitAccess";
@@ -197,7 +197,7 @@ export class Track {
     }
     this.targetSpeeds = offroad ? rawSpeed.map((speed,i) => {
       const sector = offroadSectorAt(this.progress(i));
-      const cap = sector.surface === "puddle" ? 8 : sector.surface === "mud" ? 13 : 22;
+      const cap = sector.surface === "puddle" ? 6 : sector.surface === "mud" ? 8.5 : 10;
       return Math.min(speed, cap);
     }) : rawSpeed;
 
@@ -398,14 +398,13 @@ export class Track {
     // Use the same mesh for rendering and Rapier; do not leave an elevated ribbon.
     const vergePositions:number[]=[],vergeIndices:number[]=[];
     for(const side of [-1,1]){
-      const base=vergePositions.length/3,segments=6;
+      const base=vergePositions.length/3,segments=12;
       for(let i=0;i<n;i++){
         const edge=(i*(cols+1)+(side<0?0:cols))*3;
         const x=pos[edge],y=pos[edge+1],z=pos[edge+2],right=this.rights[i];
         for(let k=0;k<=segments;k++){
-          const t=k/segments,offset=24*t;
-          const blend=t*t*(3-2*t);
-          vergePositions.push(x+side*right.x*offset,y+(-1-y)*blend,z+side*right.z*offset);
+          const offset=36*k/segments;
+          vergePositions.push(x+side*right.x*offset,offroadVergeHeight(y,offset),z+side*right.z*offset);
         }
       }
       for(let i=0;i<n;i++)for(let k=0;k<segments;k++){

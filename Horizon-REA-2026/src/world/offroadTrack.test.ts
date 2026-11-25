@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
-import { OFFROAD_CIRCUIT } from "./offroadPrototype";
+import { OFFROAD_CIRCUIT, offroadVergeHeight } from "./offroadPrototype";
 beforeAll(async()=>{await RAPIER.init()});
 describe("Offroad engineering track",()=>{
  it("builds a graded closed mesh with matching physical support and differentiated grip",()=>{
@@ -12,6 +12,10 @@ describe("Offroad engineering track",()=>{
   expect(t.group.getObjectByName("offroad-surface")).toBeInstanceOf(THREE.Mesh);
   expect(t.group.getObjectByName("offroad-solid-verges")).toBeInstanceOf(THREE.Mesh);
   expect(t.width).toBeCloseTo(6.8);
+  expect(offroadVergeHeight(20,0)).toBe(20);
+  expect(offroadVergeHeight(20,7)).toBeGreaterThan(19.9);
+  expect(offroadVergeHeight(20,36)).toBeCloseTo(-1);
+  expect(offroadVergeHeight(20,18)).toBeGreaterThan(10);
   const relief=t.group.getObjectByName("offroad-surface")!.userData.reliefAudit;
   expect(relief.minRelief).toBeLessThan(-.40);
   expect(relief.maxUphill).toBeGreaterThan(.12);

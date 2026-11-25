@@ -51,7 +51,7 @@ export function offroadElevation(progress: number): number {
   if (!Number.isFinite(progress)) throw new Error("Invalid lap progress");
   const t = 2 * Math.PI * (((progress % 1) + 1) % 1);
   return 6 * (1 - Math.cos(t)) + 2 * (1 - Math.cos(3 * t)) +
-    2.6 * (1 - Math.cos(12 * t)) + 1.3 * (1 - Math.cos(19 * t));
+    2.0 * (1 - Math.cos(12 * t)) + .85 * (1 - Math.cos(19 * t));
 }
 /** Arcade force multiplier only, not a validated mud/tire physics simulation. */
 export function offroadDriveMultiplier(mode: FourWheelDriveMode, contacts: readonly boolean[], progress: number): number {
@@ -71,4 +71,10 @@ export function offroadRelief(distance: number, lateral: number, length: number)
   const mound=.20*Math.exp(-(((d+11)%17-8.5)**2)/4.5-((lateral+side*.75)**2)/1.15);
   const washboard=.06*Math.sin(d*1.65+lateral*.7)+.04*Math.sin(d*.88-lateral*2);
   return fade*(basin+rut+mound+washboard);
+}
+
+/** Stable shoulder shelf followed by an earth bank, never a vertical drop. */
+export function offroadVergeHeight(edgeY: number, offset: number): number {
+  const t=Math.max(0,Math.min(1,(offset-7)/29));
+  return edgeY+(-1-edgeY)*t*t*(3-2*t)-.04*Math.min(1,offset/7)*(1-t);
 }
