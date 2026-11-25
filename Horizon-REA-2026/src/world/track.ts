@@ -355,7 +355,6 @@ export class Track {
       const sector = offroadSectorAt(this.progress(i));
       const color = new THREE.Color(sector.surface === "dirt" ? 0x8b6848 : sector.surface === "mud" ? 0x58402d : 0x46382d);
       // Smooth continuous shallow ruts, independent of the surface boundary.
-      const t = i/n * 2*Math.PI;
       for (let j=0;j<=cols;j++) {
         const lateral = (j/cols*2-1)*this.halfWidth;
         const relief=offroadRelief(this.progress(i)*this.length,lateral,this.length);
