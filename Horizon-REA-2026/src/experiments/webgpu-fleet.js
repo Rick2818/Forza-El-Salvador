@@ -6,8 +6,8 @@ import { getCircuit } from "../world/circuits";
 import { loadSelectedVehicle, vehicleDesign } from "../vehicle/selectedAsset";
 import { EXTERNAL_VEHICLES, IS_EXTERNAL_PICKUP } from "../vehicle/externalRoster";
 import { OFFROAD_CIRCUIT, offroadSectorAt } from "../world/offroadPrototype";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { installTropicalForest, installSoilMaterials } from "../world/tropicalForest.js";
+import { ChaseCamera } from "../render/camera";
 import { Vehicle } from "../vehicle/vehicle";
 import { AIDriver } from "../vehicle/ai";
 import { WebGPUFrameGate } from "../render/webgpuFrameGate";
@@ -25,7 +25,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-silverado-trail-forest3d",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-tropical-asset-review",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -42,7 +42,8 @@ for(const b of document.querySelectorAll("[data-control]")){
 }
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d"," "].includes(e.key)){e.preventDefault();keys.add(e.key);auto=false;}});
 addEventListener("keyup",e=>keys.delete(e.key));addEventListener("blur",()=>{clear();audio.silence();});document.addEventListener("visibilitychange",()=>{clear();if(document.hidden)audio.silence();});
-let changeDriveMode=()=>{};
+let changeDriveMode=()=>{},changeCamera=()=>{};
+$("camera").onclick=()=>changeCamera();$("cockpitDrive").onclick=()=>changeDriveMode();
 $("driveMode").hidden=!IS_EXTERNAL_PICKUP(vehicleId);$("driveMode").onclick=()=>changeDriveMode();
 $("reset").onclick=()=>{resetRequested=true;};
 const nextCircuit=offroad?"monzon":IS_EXTERNAL_PICKUP(vehicleId)?"el-imposible-4x4":circuit==="monzon"?"suzaka":"monzon";
@@ -71,65 +72,14 @@ async function boot(){
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:0x566748,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=offroad?-1:-.1;scene.add(floor);
  let updateForest=()=>{};
  if(offroad){
-   // Authored Blender-baked atlas already present in the project. No primitive
-   // cartoon trees or WebGL render targets. Keep all trunks outside verges.
-   const atlas=await new THREE.TextureLoader().loadAsync(import.meta.env.BASE_URL+"scenery/pine-far.png");
-   atlas.colorSpace=THREE.SRGBColorSpace;atlas.anisotropy=4;
-   const planes=[];
-   for(let k=0;k<3;k++){
-     const g=new THREE.PlaneGeometry(8.8,17.6).translate(0,8.8,0).rotateY(k*Math.PI/3),uv=g.getAttribute("uv");
-     for(let i=0;i<uv.count;i++)uv.setX(i,(uv.getX(i)+k)/3);
-     planes.push(g);
-   }
-   const geometry=mergeGeometries(planes,false);planes.forEach(g=>g.dispose());
-   const locations=[];
-   for(let i=0;i<track.samples.length;i+=5)for(const side of [-1,1]){
-     const p=track.samples[i],r=track.rightAt(i),offset=11+23*(.5+.5*Math.sin(i*1.72+side));
-     const x=p.x+r.x*offset*side,z=p.z+r.z*offset*side;
-     if(track.samples.some(s=>Math.hypot(s.x-x,s.z-z)<10))continue;
-     if(locations.some(s=>Math.hypot(s.x-x,s.z-z)<6))continue;
-     let nearest=p,dist=Infinity;for(const sample of track.samples){const d=Math.hypot(sample.x-x,sample.z-z);if(d<dist){dist=d;nearest=sample;}}const t=Math.max(0,Math.min(1,(dist-track.halfWidth)/24)),blend=t*t*(3-2*t);locations.push({x,z,y:nearest.y+(-1-nearest.y)*blend,scale:.82+.28*(.5+.5*Math.sin(i*2.19)),yaw:i*.37});
-   }
-   const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0xd5ded0,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
-   const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
-   forest.instanceMatrix.needsUpdate=true;forest.name="el-imposible-blender-forest";scene.add(forest);info.treeCount=locations.length;
-   const response=await fetch(import.meta.env.BASE_URL+"scenery/pine-medium.glb.gz");
-   if(!response.ok)throw Error("Forest 3D asset unavailable");
-   let bytes=await response.arrayBuffer();
-   if(new Uint8Array(bytes)[0]===31)bytes=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
-   const source=(await new GLTFLoader().parseAsync(bytes,"")).scene;
-   source.updateMatrixWorld(true);
-   const parts=[];let trianglesPerTree=0;
-   source.traverse(o=>{
-     if(!o.isMesh||Array.isArray(o.material))return;
-     const g=o.geometry.clone().applyMatrix4(o.matrixWorld),m=o.material;
-     trianglesPerTree+=(g.index?.count??g.getAttribute("position").count)/3;
-     const leaves=/needle|foliage|leaf/i.test(m.name);
-     const mat=new THREE.MeshLambertMaterial({map:m.map??null,color:m.color??0xffffff,
-       vertexColors:!!g.getAttribute("color"),alphaTest:leaves?.34:0,side:leaves?THREE.DoubleSide:THREE.FrontSide,depthWrite:true});
-     parts.push({g,mat});
-   });
-   if(!parts.length||trianglesPerTree<=0)throw Error("Forest 3D geometry missing");
-   const limit=Math.max(1,Math.min(24,Math.floor(42000/trianglesPerTree)));
-   const near=parts.map(({g,mat},i)=>{const m=new THREE.InstancedMesh(g,mat,limit);m.name="el-imposible-tree-3d-"+i;m.count=0;m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(m);return m;});
-   forest.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-   const last=new THREE.Vector3(Infinity,Infinity,Infinity);
-   function transform(p){dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();return dummy.matrix;}
-   updateForest=(center)=>{
-     if(last.distanceToSquared(center)<64)return;last.copy(center);
-     const sorted=locations.map((p,i)=>({i,d:Math.hypot(p.x-center.x,p.z-center.z)})).filter(p=>p.d<58).sort((a,b)=>a.d-b.d).slice(0,limit);
-     const ids=new Set(sorted.map(p=>p.i));
-     let k=0;for(let i=0;i<locations.length;i++)if(!ids.has(i))forest.setMatrixAt(k++,transform(locations[i]));
-     forest.count=k;forest.instanceMatrix.needsUpdate=true;forest.computeBoundingSphere();
-     sorted.forEach(({i},n)=>{const matrix=transform(locations[i]);for(const m of near)m.setMatrixAt(n,matrix);});
-     for(const m of near){m.count=sorted.length;m.visible=m.count>0;m.instanceMatrix.needsUpdate=true;if(m.count)m.computeBoundingSphere();}
-     info.nearTreeCount=sorted.length;info.maxNearTreeCount=Math.max(info.maxNearTreeCount??0,sorted.length);info.forestTriangles=sorted.length*trianglesPerTree;info.forestAsset="pine-medium.glb.gz";
-   };
-   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,65,300);
+   await installSoilMaterials(track,info);
+   updateForest=await installTropicalForest(scene,track,info);
+   scene.background=new THREE.Color(0x485548);scene.fog=new THREE.Fog(0x485548,65,160);
+   sun.intensity=1.6;
  }
  await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true});car.resetToTrack(track);
  if(offroad&&car.supportsFourWheelDrive&&car.fourWheelDriveMode!=="4H")car.toggleFourWheelDrive();
- const updateDriveLabel=()=>{$("driveMode").textContent="4x4 · "+car.fourWheelDriveMode;$("driveMode").dataset.active=String(car.fourWheelDriveActive);};changeDriveMode=()=>{if(!car.toggleFourWheelDrive())$("notice").textContent="Reduce a 30 km/h para cambiar la tracción";else $("notice").textContent="Tracción "+car.fourWheelDriveMode;updateDriveLabel();};updateDriveLabel();
+ const updateDriveLabel=()=>{for(const id of ["driveMode","cockpitDrive"]){$(id).textContent="4x4 · "+car.fourWheelDriveMode;$(id).dataset.active=String(car.fourWheelDriveActive);}};changeDriveMode=()=>{if(!car.toggleFourWheelDrive())$("notice").textContent="Reduce a 30 km/h para cambiar la tracción";else $("notice").textContent="Tracción "+car.fourWheelDriveMode;updateDriveLabel();};updateDriveLabel();
  const formats=[];car.visual.root.traverse(o=>{if(o.userData.ferrariExperimentFormat)formats.push(o.userData.ferrariExperimentFormat);});
  if(vehicleId==="ferrari-f430"&&!formats.includes(format))throw Error("Incorrect Ferrari asset");
  info.wheels=car.visual.root.userData.wheelAlignment;info.assetAudit=car.visual.root.userData.externalAudit;
@@ -140,7 +90,11 @@ async function boot(){
  info.contactSteps=[0,0,0,0];info.totalSteps=0;info.maxOffroadDrop=0;info.sectors=[];
  let previous=car.position.clone(),hint=track.startIndex,acc=0,last=performance.now(),lastReport=last,lastCompleted=0,lastCompletionAt=last,lastCount=0,callbacks=0,physicsMs=0,renderMs=0,renderCount=0,physicsSteps=0,maxCallbackGap=0;
  const forward=new THREE.Vector3(),target=new THREE.Vector3(),pos=new THREE.Vector3(),quat=new THREE.Quaternion();
- function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;camera.lookAt(target);}
+ const chase=new ChaseCamera(camera);let cockpit=false;
+ const dash=new THREE.Box3();car.visual.root.updateMatrixWorld(true);car.visual.root.traverse(o=>{if(o.isMesh&&/dashboard|instrument[_ -]?panel|center[_ -]?console|centre[_ -]?console/i.test(o.name))dash.union(new THREE.Box3().setFromObject(o));});
+ const dashAnchor=dash.isEmpty()?null:car.visual.root.worldToLocal(dash.getCenter(new THREE.Vector3()));info.dashboardIdentified=!!dashAnchor;
+ changeCamera=()=>{cockpit=!cockpit;chase.setMode(cockpit?"hood":"chase");$("camera").textContent=cockpit?"3ª persona":"1ª persona";info.camera=cockpit?"cockpit":"chase";};info.camera="chase";
+ function cameraPose(){if(cockpit){chase.update(1/60,car,info.elapsed);camera.updateMatrixWorld(true);const button=$("cockpitDrive");button.hidden=true;if(car.supportsFourWheelDrive&&dashAnchor){car.visual.root.updateMatrixWorld(true);const point=car.visual.root.localToWorld(dashAnchor.clone()).project(camera);if(Math.abs(point.x)<.9&&Math.abs(point.y)<.9&&point.z>=-1&&point.z<=1){button.hidden=false;button.style.left=((point.x+1)*innerWidth/2)+"px";button.style.top=((1-point.y)*innerHeight/2)+"px";}}info.cockpitControlVisible=!button.hidden;return;}$("cockpitDrive").hidden=true;info.cockpitControlVisible=false;const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
  info.status="running";$("status").textContent=definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=vehicleEntry.name+(offroad?" · Exploración todoterreno libre":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));

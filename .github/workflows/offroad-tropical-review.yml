@@ -1,0 +1,86 @@
+name: Tropical forest source and three-pickup review (no publication)
+on:
+  push:
+    branches: [experiment/offroad-tropical-review]
+permissions:
+  contents: read
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Acquire original CC0 assets
+        working-directory: Horizon-REA-2026
+        run: python tools/prepare-tropical-review.py "$RUNNER_TEMP/tropical" public/scenery/tropical-review
+      - name: Install Blender
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base=https://download.blender.org/release/Blender5.0
+          archive=blender-5.0.1-linux-x64.tar.xz
+          curl --fail --location --retry 3 "$base/$archive" -o "$archive"
+          curl --fail --location --retry 3 "$base/blender-5.0.1.sha256" -o blender.sha256
+          grep -E "[[:space:]]\\*?$archive$" blender.sha256 > archive.sha256
+          sha256sum --check archive.sha256
+          tar -xf "$archive"
+      - name: Prepare textured tree LODs
+        run: |
+          "$RUNNER_TEMP/blender-5.0.1-linux-x64/blender" -b --factory-startup --disable-autoexec --python-exit-code 1 --python Horizon-REA-2026/tools/blender/prepare-tropical-review.py -- "$RUNNER_TEMP/tropical" "$GITHUB_WORKSPACE/Horizon-REA-2026/public/scenery/tropical-review"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tropical-review-assets
+          path: Horizon-REA-2026/public/scenery/tropical-review/
+  pickup:
+    needs: assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        vehicle: [chevrolet-silverado-ev-alternative, ram-3500-alternative, ford-f150-raptor-police]
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: tropical-review-assets
+          path: Horizon-REA-2026/public/scenery/tropical-review
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm exec -- vitest run src/world/offroadTrack.test.ts src/world/offroadPrototype.test.ts src/render/pickupMud.test.ts src/sim/fourWheelDrive.test.ts src/sim/wheelMotion.test.ts
+      - run: npm run build
+      - run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libvulkan1 mesa-vulkan-drivers
+      - name: Capture and test exploration route
+        env:
+          VEHICLE: ${{ matrix.vehicle }}
+        run: |
+          set -euo pipefail
+          mkdir -p review/quality
+          npm run dev > review/quality/server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/webgpu-fleet.html >/dev/null; then break; fi
+            sleep 1
+          done
+          xvfb-run -a node tools/webgpu-fleet-probe.mjs el-imposible-4x4 "$VEHICLE" 2>&1 | tee review/quality/console.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tropical-${{ matrix.vehicle }}
+          path: Horizon-REA-2026/review/quality/
