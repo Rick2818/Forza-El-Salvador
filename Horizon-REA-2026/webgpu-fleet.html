@@ -9,6 +9,13 @@
 .compact-trail #stage{font-size:10px;font-weight:500!important}
 .compact-trail #speed{font-size:14px;line-height:1.2}
 .compact-trail #metrics{font-size:9px;opacity:.85}
+
+/* Compact touch controls for El Imposible; other circuits keep their layout. */
+.compact-trail #controls{gap:10px}
+.compact-trail #controls div{gap:8px}
+.compact-trail #controls button{width:clamp(44px,9vw,72px);height:clamp(46px,10vw,76px);font-weight:700;font-size:16px;padding:4px;user-select:none;-webkit-user-select:none}
+.compact-trail #controls div:has(#reverse:not([hidden])){gap:5px}
+.compact-trail #controls div:has(#reverse:not([hidden])) button{width:clamp(40px,8vw,64px);height:clamp(44px,9vw,70px);font-size:14px}
 </style></head><body>
 <div id="hud"><div><b>HORIZON · WebGPU</b><div id="status">Cargando…</div><div id="notice">Cargando expedición</div><div id="stage" hidden style="font-weight:700;color:#ffdfad"></div></div><div><div id="speed">0 km/h</div><div id="metrics">GPU: —</div></div></div>
 <div id="actions"><a id="switch" href="?circuit=suzaka">Suzaka</a><button id="reset">Recuperar</button><button id="driveMode" hidden>4x4 · 2H</button><a id="quality" href="?quality=fixed">Fija/Auto</a><button id="sound">Activar sonido</button><button id="report">Informe</button></div>
