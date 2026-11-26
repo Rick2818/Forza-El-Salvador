@@ -19,6 +19,13 @@ describe("adaptive WebGPU resolution",()=>{
   const p=new AdaptiveGpuResolution(false);for(let i=0;i<20;i++)p.observe(0,60,1);expect(p.scale).toBe(1);
   const a=new AdaptiveGpuResolution();a.observe(NaN,60,1);a.observe(0,0,1);a.observe(0,60,60);expect(a.scale).toBe(1);
  });
+ it("recovers from severe offroad GPU pressure below 15 callbacks",()=>{
+  const p=new AdaptiveGpuResolution(true,60,true);
+  for(let i=0;i<35;i++)p.observe(3.3,9,1);
+  expect(p.scale).toBe(.5);
+  for(let i=0;i<25;i++)p.observe(9,9,1);
+  expect(p.scale).toBe(.5);
+ });
  it("does not accumulate pressure across a visibility interruption",()=>{
   const p=new AdaptiveGpuResolution();p.observe(10,60,2);p.interrupt();p.observe(10,60,2);expect(p.scale).toBe(1);
  });
