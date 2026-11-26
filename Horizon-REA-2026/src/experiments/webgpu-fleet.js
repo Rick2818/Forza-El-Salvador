@@ -30,7 +30,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive",60,offroad);
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9.2-stall-recovery",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9.3-finish-controls",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,trailRecoveryRequested=false,auto=q.get("auto")==="1";
@@ -188,7 +188,7 @@ async function boot(){
    const p=track.sampleAt(partnerHint),t=track.tangentAt(partnerHint);
    partner.place(p,Math.atan2(t.x,t.z));partnerLaunchAnchor=partner.position.clone();partnerPilot.recoverAt(partnerHint);
    partnerStage=new TrailStage(track.samples.length,track.startIndex,partnerHint);partnerPrevious=partner.position.clone();started=false;
-   info.stageFinished=false;info.finishTime=null;info.partnerFinished=false;info.stageProgress=0;info.partnerDistance=0;info.partnerContactSteps=0;info.partnerMaxSpeed=0;
+   if(cleanTrail)$("reset").style.display="none";info.stageFinished=false;info.finishTime=null;info.partnerFinished=false;info.stageProgress=0;info.partnerDistance=0;info.partnerContactSteps=0;info.partnerMaxSpeed=0;
    $("stage").hidden=false;$("stage").textContent="Expedición · 0% · 2 pickups";
  }
  if(offroad){
@@ -234,7 +234,7 @@ async function boot(){
    info.currentGrade=(look.y-track.sampleAt(at).y)/10*100;
  }else{camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;}camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4 · V9.2":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4 · V9.3":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  // Reposition only to the same trail station or a short distance behind it; no advance credit.
  function recoverStall(vehicle,stageState,index,driver,other){
   const n=track.samples.length,back=Math.max(1,Math.round(3/track.segmentLength));
@@ -242,7 +242,7 @@ async function boot(){
   if(other&&track.sampleAt(station).distanceTo(other.position)<6)station=(index-back+n)%n;
   const p=track.sampleAt(station),t=track.tangentAt(station);
   vehicle.place(p,Math.atan2(t.x,t.z));driver.recoverAt(station);
-  const delta=stageState.delta(stageState.last,station);stageState.travel=Math.max(-n*.1,stageState.travel+Math.min(0,delta));stageState.last=station;
+  if(!stageState.finished){const delta=stageState.delta(stageState.last,station);stageState.travel=Math.max(-n*.1,stageState.travel+Math.min(0,delta));stageState.last=station;}
   info.stallRecoveries=(info.stallRecoveries??0)+1;return station;
  }
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
@@ -254,7 +254,7 @@ async function boot(){
   if(resetRequested){car.resetToTrack(track);previous.copy(car.position);hint=track.startIndex;lastSafeHint=hint;recoverySeconds=stallSeconds=partnerStallSeconds=0;stallOrigin=partnerStallOrigin=null;pilot.recoverAt(hint);if(offroad)resetExpedition();info.resets++;resetRequested=false;}
   const physicsStart=performance.now();acc+=dt;let steps=0;
   while(acc>=1/60&&steps<6){let hit=track.locate(car.position,hint);hint=hit.index;
-   if(cleanTrail&&!stage.finished){const r=car.body.rotation(),upY=1-2*(r.x*r.x+r.z*r.z),drop=track.samples[hint].y-car.position.y;
+   if(cleanTrail&&(!stage.finished||!auto)){const r=car.body.rotation(),upY=1-2*(r.x*r.x+r.z*r.z),drop=track.samples[hint].y-car.position.y;
     const severe=drop>6||Math.abs(hit.lateral)>12||upY<.25;
     if(!severe&&Math.abs(hit.lateral)<track.halfWidth*.75&&Math.abs(drop)<3&&upY>.7)lastSafeHint=hint;
     recoverySeconds=severe?recoverySeconds+1/60:0;
@@ -265,10 +265,10 @@ async function boot(){
    if(offroad){
     if(input.throttle>.05||input.reverse)started=true;
     // Detect sustained drive demand with no horizontal motion, not intentional stops.
-    const demanding=started&&!stage.finished&&input.throttle>.5&&!input.reverse&&input.brake<.05&&!input.handbrake&&car.fourWheelDriveMode==="4H";
+    const demanding=started&&(!stage.finished||!auto)&&input.throttle>.5&&!input.reverse&&input.brake<.05&&!input.handbrake&&car.fourWheelDriveMode==="4H";
     if(demanding){if(!stallOrigin)stallOrigin=car.position.clone();const d=Math.hypot(car.position.x-stallOrigin.x,car.position.z-stallOrigin.z);if(d>.8){stallOrigin.copy(car.position);stallSeconds=0;}else stallSeconds+=1/60;}else{stallSeconds=0;stallOrigin=null;}
     info.stallSeconds=stallSeconds;
-    if(started&&!stage.finished&&(trailRecoveryRequested||stallSeconds>=4)){
+    if(started&&(!stage.finished||!auto)&&(trailRecoveryRequested||stallSeconds>=4)){
       hint=recoverStall(car,stage,hint,pilot,partner);previous.copy(car.position);lastSafeHint=hint;hit=track.locate(car.position,hint);stallSeconds=0;stallOrigin=null;recoverySeconds=0;info.playerStallRecoveries=(info.playerStallRecoveries??0)+1;$("notice").textContent="Pickup recuperado · continúa la expedición";
     }trailRecoveryRequested=false;
      // Before the first deliberate drive command, hold horizontal position but allow suspension to settle.
@@ -276,7 +276,7 @@ async function boot(){
      if(!started)input={throttle:0,brake:1,steer:0,handbrake:true,reverse:false};
     // AI test driver can reverse when recovering but never changes the transfer case.
     if(auto&&input.reverse&&car.speed<.6)input={...input,brake:0};
-    if(stage.finished)input={throttle:0,brake:1,steer:0,handbrake:true};
+    if(stage.finished&&auto)input={throttle:0,brake:1,steer:0,handbrake:true};
     const ph=track.locate(partner.position,partnerHint);partnerHint=ph.index;
     let ai=partnerPilot.plan(1/60,info.elapsed,[{position:car.position,speed:car.speed,isPlayer:true}]);
      if(ai.reverse&&partner.speed<.6)ai={...ai,brake:0};
@@ -302,7 +302,7 @@ async function boot(){
       const v=car.body.linvel(),t=track.tangentAt(track.startIndex),n=Math.hypot(t.x,t.z);
       if(n>0){const x=t.x/n,z=t.z/n,s=v.x*x+v.z*z;if(s<0){car.body.setLinvel({x:v.x-s*x,y:v.y,z:v.z-s*z},true);info.launchRollbackPrevented=(info.launchRollbackPrevented??0)+1;}}
     }
-   }car.afterPhysicsStep(1/60);if(partner){partner.afterPhysicsStep(1/60);const pp=partner.position,ph=track.locate(pp,partnerHint),ch=track.locate(car.position,hint);partnerStage.update(ph.index,Math.abs(ph.lateral)<=track.halfWidth+.35);stage.update(ch.index,Math.abs(ch.lateral)<=track.halfWidth+.35);info.partnerDistance+=pp.distanceTo(partnerPrevious);partnerPrevious.copy(pp);info.partnerContactSteps+=Number(partner.wheelDebug().filter(w=>w.contact).length>=2);info.partnerMaxSpeed=Math.max(info.partnerMaxSpeed,partner.speedKph);info.partnerFinished=partnerStage.finished;info.stageFinished=stage.finished;info.stageProgress=stage.progress;info.partnerProgress=partnerStage.progress;info.partnerGap=pp.distanceTo(car.position);if(stage.finished&&!info.finishTime){info.finishTime=info.elapsed;clear();} }
+   }car.afterPhysicsStep(1/60);if(partner){partner.afterPhysicsStep(1/60);const pp=partner.position,ph=track.locate(pp,partnerHint),ch=track.locate(car.position,hint);partnerStage.update(ph.index,Math.abs(ph.lateral)<=track.halfWidth+.35);stage.update(ch.index,Math.abs(ch.lateral)<=track.halfWidth+.35);info.partnerDistance+=pp.distanceTo(partnerPrevious);partnerPrevious.copy(pp);info.partnerContactSteps+=Number(partner.wheelDebug().filter(w=>w.contact).length>=2);info.partnerMaxSpeed=Math.max(info.partnerMaxSpeed,partner.speedKph);info.partnerFinished=partnerStage.finished;info.stageFinished=stage.finished;info.stageProgress=stage.progress;info.partnerProgress=partnerStage.progress;info.partnerGap=pp.distanceTo(car.position);if(stage.finished&&!info.finishTime){info.finishTime=info.elapsed;clear();if(cleanTrail){$("reset").textContent="Reiniciar";$("reset").style.display="";$("notice").textContent="META · Gas para continuar o Reiniciar";}} }
    info.totalSteps++;info.throttle=input.throttle;info.manualThrottleSteps=(info.manualThrottleSteps??0)+Number(!auto&&input.throttle>.5);car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;if(w.contact){info.suspensionMin??=[Infinity,Infinity,Infinity,Infinity];info.suspensionMax??=[0,0,0,0];info.suspensionMin[i]=Math.min(info.suspensionMin[i],w.len);info.suspensionMax[i]=Math.max(info.suspensionMax[i],w.len);}});
    if(offroad){const depth=track.waterDepthAt(hint,hit.lateral);info.maxDrivenWaterDepth=Math.max(info.maxDrivenWaterDepth??0,depth);info.waterContactSteps=(info.waterContactSteps??0)+Number(depth>.025);info.mudCoverage=car.trailMudCoverage;const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);const drop=track.samples[hint].y-car.position.y;const after=track.locate(car.position,hint);info.maxLateral=Math.max(info.maxLateral??0,Math.abs(after.lateral));const velocity=car.body.linvel();const planarKph=Math.hypot(velocity.x,velocity.z)*3.6;info.maxPlanarKph=Math.max(info.maxPlanarKph??0,planarKph);if(Math.abs(after.lateral)>track.halfWidth+2&&!info.firstExcursion)info.firstExcursion={elapsed:info.elapsed,lateral:after.lateral,index:after.index,planarKph,throttle:input.throttle,brake:input.brake,steer:input.steer,slip:car.slip,position:car.position.toArray()};if(drop>info.maxOffroadDrop){info.maxOffroadDrop=drop;info.worstDrop={elapsed:info.elapsed,index:hint,lateral:after.lateral,position:car.position.toArray(),speed:car.speedKph,throttle:input.throttle,steer:input.steer};}}
    info.fourWheelDrive=car.fourWheelDriveMode;info.reverseHeld=!!input.reverse;info.signedSpeedKph=car.speed*3.6;info.maxReverseKph=Math.max(info.maxReverseKph??0,-car.speed*3.6);info.tractionLimited=car.trailTractionLimited;if(offroad&&car.fourWheelDriveMode==="2H"&&car.trailTractionLimited)$("notice").textContent="Falta tracción · activa 4x4 manualmente";
