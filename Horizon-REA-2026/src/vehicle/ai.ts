@@ -265,6 +265,13 @@ export class AIDriver {
     let throttle = offroad ? clamp(error/2.5,0,1) : clamp(error / (5.5 / tuning.reaction) / Math.sqrt(v.highSpeedPowerMultiplier ?? 1), 0, 1);
     let brake = offroad?clamp(-error/1.4,0,1):clamp(-error / (7.0 / tuning.reaction), 0, 1);
     if(offroad&&v.slip>1.5&&speed>2){throttle=0;brake=Math.max(brake,.45);}
+    // Mud/grade resistance needs sustained crawl torque, not tiny speed-error demands.
+    // Only autonomous 4H driving, with clear space and alignment; manual input is unchanged.
+    if(offroad&&v.fourWheelDriveMode==="4H"&&speed<2.5&&error>.15&&brake===0&&Math.abs(headingError)<.35&&(!front||front.gap>9)) {
+      const ahead=this.track.sampleAt(this.hint+Math.max(1,Math.round(5/this.track.segmentLength)));
+      const grade=(ahead.y-road.y)/5;
+      if(grade>.04)throttle=Math.max(throttle,.72);
+    }
     if (moderateInstability && !recovering && !offroad) {
       // Controlled recovery, never full throttle while still slipping.
       throttle = Math.min(throttle, 0.4);
@@ -278,7 +285,7 @@ export class AIDriver {
       steer = -steer;
     }
 
-    if (speed < 1.4 && time > 2) {
+    if (speed < (offroad?.35:1.4) && time > 2) {
       this.stuckTime += dt;
       if (this.stuckTime > (offroad?4:1.8)) {
         this.reverseTime = 2.2;
