@@ -1,5 +1,7 @@
-/** Dedicated electric pickup preview sound. Synthetic motor + tyre texture,
- * not a combustion recording. Measured post-volume signal, not context status. */
+/** Recorded trail sound selected by the user: "truck driving sound" by
+ * joni_ompong, CC0, https://freesound.org/people/joni_ompong/sounds/785698/
+ * Generic truck recording, not verified as a Silverado EV.
+ * Synthetic fallback remains explicit in telemetry until the asset is present. */
 export class SilveradoTrailAudio {
   constructor(){this.ctx=null;this.muted=false;this.rms=0;this.recordingState="not-loaded";}
   setVehicle(){}
@@ -11,13 +13,31 @@ export class SilveradoTrailAudio {
     if(!this.ctx||this.recordingState!=="not-loaded")return;
     this.recordingState="loading";
     try{
-      const response=await fetch(`${import.meta.env.BASE_URL}audio/silverado-motor-loop.wav`);
+      const response=await fetch(`${import.meta.env.BASE_URL}audio/truck-driving-785698.mp3`);
       if(!response.ok)throw Error(`HTTP ${response.status}`);
       const buffer=await this.ctx.decodeAudioData(await response.arrayBuffer());
       if(buffer.duration<.5||buffer.duration>30)throw Error("Motor loop duration outside limits");
       const data=buffer.getChannelData(0);let energy=0;for(const value of data)energy+=value*value;
       if(Math.sqrt(energy/data.length)<.005)throw Error("Motor loop silent");
-      const src=this.ctx.createBufferSource();src.buffer=buffer;src.loop=true;src.connect(this.motor);src.start();this.recording=src;
+      // Overlap the tail and head once to remove the loop seam without a pause.
+      const fade=Math.min(Math.floor(buffer.sampleRate*.12),Math.floor(buffer.length/4));
+      const length=buffer.length-fade;
+      const loop=this.ctx.createBuffer(buffer.numberOfChannels,length,buffer.sampleRate);
+      let peak=0;
+      for(let ch=0;ch<buffer.numberOfChannels;ch++){
+        const input=buffer.getChannelData(ch),out=loop.getChannelData(ch);
+        for(let i=0;i<length;i++){
+          let sample=input[i+fade];
+          if(i>=length-fade){
+            const j=i-(length-fade),w=(1-Math.cos(Math.PI*(j+1)/fade))*.5;
+            sample=sample*(1-w)+input[j]*w;
+          }
+          out[i]=sample;peak=Math.max(peak,Math.abs(sample));
+        }
+      }
+      const normalize=Math.min(2,.92/Math.max(peak,.001));
+      for(let ch=0;ch<loop.numberOfChannels;ch++){const out=loop.getChannelData(ch);for(let i=0;i<out.length;i++)out[i]*=normalize;}
+      const src=this.ctx.createBufferSource();src.buffer=loop;src.loop=true;src.connect(this.motor);src.start();this.recording=src;
       this.low.disconnect();this.high.disconnect();this.recordingState="recorded";
     }catch(e){this.recordingState="synthetic-fallback";this.recordingError=String(e);}
   }
@@ -46,11 +66,11 @@ export class SilveradoTrailAudio {
   update(rpm,throttle,speedKph,slip){
     if(!this.ctx||this.muted||this.ctx.state!=="running")return;
     const t=this.ctx.currentTime,v=Math.min(1,Math.abs(speedKph)/65),gas=Math.min(1,Math.max(0,throttle));
-    if(this.recording)this.recording.playbackRate.setTargetAtTime(.85+v*.7+gas*.65,t,.08);
+    if(this.recording)this.recording.playbackRate.setTargetAtTime(.78+v*.42+gas*.30,t,.10);
     this.low.frequency.setTargetAtTime(145+v*210+gas*50,t,.06);
     this.high.frequency.setTargetAtTime(290+v*420+gas*100,t,.06);
     this.motor.gain.setTargetAtTime(.035+gas*.30+v*.13,t,.06);
-    this.tyre.gain.setTargetAtTime(v*.10,t,.1);
+    this.tyre.gain.setTargetAtTime(v*(this.recording?.buffer?.numberOfChannels ? .035 : .10),t,.1);
     this.meter.getFloatTimeDomainData(this.samples);let sum=0;for(const x of this.samples)sum+=x*x;this.rms=Math.sqrt(sum/this.samples.length);
   }
   silence(){if(this.ctx){this.motor?.gain.setTargetAtTime(0,this.ctx.currentTime,.025);this.tyre?.gain.setTargetAtTime(0,this.ctx.currentTime,.025);}this.rms=0;}
