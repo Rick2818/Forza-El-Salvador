@@ -1,0 +1,62 @@
+name: Acquire approved public truck audio (review only)
+on:
+  push:
+    branches: [experiment/webgpu-silverado-offroad]
+    paths: [.github/workflows/silverado-audio-review.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Discover public preview, never authenticated original
+        run: |
+          mkdir -p review/audio
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, re, html, pathlib, hashlib, json
+          source='https://freesound.org/people/joni_ompong/sounds/785698/'
+          pages=[source,'https://freesound.org/embed/sound/iframe/785698/?size=medium']
+          candidates=set()
+          for page in pages:
+              try:
+                  req=urllib.request.Request(page,headers={'User-Agent':'HorizonAudioReview/1.0'})
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      body=html.unescape(r.read(3000000).decode('utf-8','replace')).replace('\\/','/')
+                  for url in re.findall(r'(?:https:)?//[^\s"\x27<>]+?\.mp3',body):
+                      url=urllib.parse.urljoin(page,url)
+                      p=urllib.parse.urlparse(url)
+                      if p.scheme=='https' and p.hostname in ('cdn.freesound.org','freesound.org') and '/previews/' in p.path and re.search(r'/785698_[^/]+\.mp3$',p.path):
+                          candidates.add(url)
+              except Exception as e: print('Public page unavailable:',type(e).__name__,str(e)[:200])
+          if not candidates:
+              raise SystemExit('No explicitly published preview found. Obtain original from author or logged-in Freesound download; no guessed URLs.')
+          ordered=sorted(candidates,key=lambda u: ('-hq.mp3' not in u,u))
+          url=ordered[0]
+          req=urllib.request.Request(url,headers={'User-Agent':'HorizonAudioReview/1.0'})
+          with urllib.request.urlopen(req,timeout=20) as r:
+              if urllib.parse.urlparse(r.geturl()).hostname not in ('cdn.freesound.org','freesound.org'):
+                  raise SystemExit('Unexpected preview redirect')
+              data=r.read(2000001)
+          if not 10000<len(data)<=2000000: raise SystemExit('Unexpected audio size')
+          if not (data[:3]==b'ID3' or (data[0]==255 and data[1]&224==224)): raise SystemExit('Not MP3')
+          pathlib.Path('review/audio/truck-driving-785698.mp3').write_bytes(data)
+          pathlib.Path('review/audio/source.json').write_text(json.dumps({'sound_id':785698,'author':'joni_ompong','license':'CC0-1.0','source':source,'preview':url,'sha256':hashlib.sha256(data).hexdigest(),'note':'Public preview; generic truck, not verified Chevrolet EV.'},indent=2))
+          print('Preview acquired:',len(data),'bytes')
+          PY
+          ffprobe -v error -show_entries format=duration:stream=codec_name,sample_rate,channels -of json review/audio/truck-driving-785698.mp3 | tee review/audio/probe.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('review/audio/probe.json'))
+          assert 5.9<float(p['format']['duration'])<6.5
+          assert any(s.get('codec_name')=='mp3' for s in p['streams'])
+          PY
+          ffmpeg -v error -i review/audio/truck-driving-785698.mp3 -f null -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: approved-truck-audio-785698
+          path: review/audio/
