@@ -21,6 +21,10 @@ describe("El Imposible 4x4 prototype", () => {
     expect(offroadSectorAt(.4).surface).toBe("puddle");
     expect(offroadElevation(1)).toBeCloseTo(offroadElevation(0));
   });
+  it("keeps the starting grid and initial acceleration zone level",()=>{
+    for(const p of [.035,.04,.048,.06,.075,.085])expect(offroadElevation(p)).toBeCloseTo(offroadElevation(.05),8);
+    expect(Math.abs(offroadElevation(.2)-offroadElevation(.23))).toBeGreaterThan(.1);
+  });
   it("only accepts the three approved pickup identifiers", () => {
     OFFROAD_PICKUP_IDS.forEach(id => expect(isOffroadEligible(id)).toBe(true));
     expect(isOffroadEligible("ferrari")).toBe(false);
