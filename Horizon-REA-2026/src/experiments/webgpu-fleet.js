@@ -30,7 +30,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive",60,offroad);
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9.3-finish-controls",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9.4-hill-torque",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,trailRecoveryRequested=false,auto=q.get("auto")==="1";
@@ -234,7 +234,7 @@ async function boot(){
    info.currentGrade=(look.y-track.sampleAt(at).y)/10*100;
  }else{camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;}camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4 · V9.3":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4 · V9.4":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  // Reposition only to the same trail station or a short distance behind it; no advance credit.
  function recoverStall(vehicle,stageState,index,driver,other){
   const n=track.samples.length,back=Math.max(1,Math.round(3/track.segmentLength));
@@ -245,6 +245,8 @@ async function boot(){
   if(!stageState.finished){const delta=stageState.delta(stageState.last,station);stageState.travel=Math.max(-n*.1,stageState.travel+Math.min(0,delta));stageState.last=station;}
   info.stallRecoveries=(info.stallRecoveries??0)+1;return station;
  }
+ // Signed grade projected onto each pickup's actual heading, not camera pitch.
+ function trailGrade(vehicle,index){const t=track.tangentAt(index),q=vehicle.body.rotation(),fx=2*(q.x*q.z+q.w*q.y),fz=1-2*(q.x*q.x+q.y*q.y),n=Math.hypot(t.x,t.z),f=Math.hypot(fx,fz);return n>.01&&f>.01?t.y*(t.x*fx+t.z*fz)/(n*n*f):0;}
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
  function tick(now){try{
   if(gpuError)throw Error(gpuError);
@@ -290,9 +292,10 @@ async function boot(){
       if(partnerStallSeconds>=4){partnerHint=recoverStall(partner,partnerStage,partnerHint,partnerPilot,car);partnerPrevious.copy(partner.position);partnerStallSeconds=0;partnerStallOrigin=null;info.partnerStallRecoveries=(info.partnerStallRecoveries??0)+1;}
     }else{partnerStallSeconds=0;partnerStallOrigin=null;}
     info.partnerThrottle=ai.throttle;info.partnerBrake=ai.brake;
-     partner.update(1/60,ai,track.gripAt(partnerHint,ph.lateral),track.gripAtFootprints(partner.wheelContactPoints(),partnerHint,partner.wheelGripBuffer()),offroadSectorAt(track.progress(partnerHint)),Math.abs(ph.lateral)<=track.halfWidth+.35,track.waterDepthAt(partnerHint,ph.lateral));
+     partner.update(1/60,ai,track.gripAt(partnerHint,ph.lateral),track.gripAtFootprints(partner.wheelContactPoints(),partnerHint,partner.wheelGripBuffer()),offroadSectorAt(track.progress(partnerHint)),Math.abs(ph.lateral)<=track.halfWidth+.35,track.waterDepthAt(partnerHint,ph.lateral),trailGrade(partner,partnerHint));
    }
-   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0);world.step();
+   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0,offroad?trailGrade(car,hint):0);world.step();
+    if(offroad){const grade=trailGrade(car,hint);info.hillAssistN=car.trailHillAssist;info.maxHillAssistN=Math.max(info.maxHillAssistN??0,car.trailHillAssist);if(car.trailHillAssist>0)info.hillAssistSteps=(info.hillAssistSteps??0)+1;if(grade>.18&&input.throttle>.5&&car.fourWheelDriveMode==="4H"&&car.wheelDebug().some(w=>w.contact)){const v=car.body.linvel(),t=track.tangentAt(hint);info.steepClimbMetres=(info.steepClimbMetres??0)+Math.max(0,v.x*t.x+v.z*t.z)/60;}}
    if(offroad){
     // Both vehicles remain parked before the first deliberate drive command.
     if(!started){for(const [vehicle,anchor] of [[car,launchAnchor],[partner,partnerLaunchAnchor]]){if(!vehicle||!anchor)continue;const p=vehicle.body.translation(),v=vehicle.body.linvel();vehicle.body.setTranslation({x:anchor.x,y:p.y,z:anchor.z},true);vehicle.body.setLinvel({x:0,y:v.y,z:0},true);}}
