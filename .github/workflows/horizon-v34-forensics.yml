@@ -1,0 +1,61 @@
+name: Horizon V34 GPU forensics (no deployment)
+on:
+  push:
+    branches: [recovery/v34-gpu-forensics]
+    paths:
+      - 'Horizon-REA-2026/**'
+      - '.github/workflows/horizon-v34-forensics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v34-forensics-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  trace:
+    if: github.ref == 'refs/heads/recovery/v34-gpu-forensics'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        circuit: [monzon, suzaka]
+        mode: [baseline, no-gpu-timer, vehicle-only]
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Capture Chromium trace and unchanged continuity gates
+        env:
+          HORIZON_FORENSICS: '1'
+          HORIZON_BACKEND: software
+        run: |
+          set -o pipefail
+          mkdir -p review/quality
+          git rev-parse HEAD > review/quality/v34-commit.txt
+          npm run dev > review/quality/v34-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/race.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/race.html > /dev/null
+          node tools/pickup-v24-continuity.mjs ram-3500-alternative "${{ matrix.mode }}" "${{ matrix.circuit }}" 2>&1 | tee review/quality/v34-continuity.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v34-${{ matrix.circuit }}-${{ matrix.mode }}
+          path: Horizon-REA-2026/review/quality/
+          retention-days: 7
+          if-no-files-found: error

@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 const sourceVersion=(await readFile(new URL("../src/core/version.ts",import.meta.url),"utf8")).match(/RELEASE_LABEL\s*=\s*"([^"]+)"/)?.[1];
 assert.ok(sourceVersion,"Missing source release label");
 
@@ -8,16 +8,45 @@ const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
 assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod","no-crowd","vehicle-only","no-local-lights","player-track-render"].includes(mode));
-const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
+const forensic=process.env.HORIZON_FORENSICS==="1";
+const backend=process.env.HORIZON_BACKEND??"software";
+assert.ok(["software","hardware"].includes(backend),"Unknown backend");
+const args=["--disable-background-timer-throttling","--disable-renderer-backgrounding"];
+if(backend==="software")args.push("--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader");
+const browser=await chromium.launch({headless:backend==="software",args});
 const page=await browser.newPage({viewport:{width:800,height:450}});
 const errors=[];
+const out="review/quality/v34-"+circuit+"-"+mode+"-"+backend;
+let tracing=false;
+let gpuInfo=null;
 page.on("pageerror",e=>{errors.push(String(e));console.error("[pageerror]",e);});
 page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());});
 try{
+  if(forensic||backend==="hardware"){
+    await mkdir(out,{recursive:true});
+    const cdp=await browser.newBrowserCDPSession();
+    gpuInfo=await cdp.send("SystemInfo.getInfo");
+    const info={browser:browser.version(),backend,gpu:gpuInfo.gpu,os:process.platform,viewport:page.viewportSize()};
+    await writeFile(out+"/environment.json",JSON.stringify(info,null,2));
+    console.log("V34_GPU",JSON.stringify(info));
+    await cdp.detach();
+  }
+  if(forensic){
+    await browser.startTracing(page,{path:out+"/chromium-trace.json",screenshots:false,categories:["devtools.timeline","v8","blink","gpu","viz","cc","toplevel","disabled-by-default-devtools.timeline.frame"]});
+    tracing=true;
+  }
   await page.addInitScript((circuit)=>{localStorage.setItem("horizon.circuit",circuit);localStorage.setItem("horizon.quality","equilibrada");localStorage.setItem("horizon.oncoming-traffic","true");},circuit);
   await page.goto("http://127.0.0.1:5173/race.html?vehicle="+encodeURIComponent(id),{timeout:120000});
   await page.bringToFront();
   await page.waitForFunction(()=>window.__HORIZON_GAME__&&window.HORIZON,{},{timeout:120000});
+  if(forensic||backend==="hardware"){
+    const webgl=await page.evaluate(()=>{const gl=window.__HORIZON_GAME__.renderer.getContext();const ext=gl.getExtension("WEBGL_debug_renderer_info");return {renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):null,vendor:ext?gl.getParameter(ext.UNMASKED_VENDOR_WEBGL):null,version:gl.getParameter(gl.VERSION),extensions:gl.getSupportedExtensions(),buffer:[gl.drawingBufferWidth,gl.drawingBufferHeight]};});
+    await writeFile(out+"/webgl.json",JSON.stringify(webgl,null,2));
+    if(backend==="hardware"){
+      assert.ok(webgl.renderer&&!/swiftshader|llvmpipe|software|basic render|lavapipe/i.test(webgl.renderer),"Physical GPU not verified by WebGL renderer");
+      assert.equal(gpuInfo?.gpu?.featureStatus?.webgl2,"enabled","CDP did not report hardware WebGL2 enabled");
+    }
+  }
   await page.evaluate(()=>{window.HORIZON.setQuality("equilibrada");window.HORIZON.autoScale(false);window.HORIZON.setScale(.5);});
   if(mode==="physics-only")await page.evaluate(()=>{window.__HORIZON_GAME__.skipRender=true;});
   await page.locator('#autos-panel button[data-action="start"]').click({timeout:60000});
@@ -178,6 +207,7 @@ try{
         diagnostics:window.__HORIZON_DIAG__};
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
+    if(forensic)await appendFile(out+"/samples.ndjson",JSON.stringify(sample)+"\n");
     assert.equal(sample.vehicle,id);
     assert.equal(sample.version,sourceVersion,"Unexpected running build");
     if(sample.hudVersion)assert.ok(sample.hudVersion.includes(sourceVersion),"HUD release label mismatch");
@@ -207,4 +237,6 @@ try{
   await mkdir("review/quality",{recursive:true});
   await Promise.race([page.screenshot({path:"review/quality/freeze-"+id+".png"}),new Promise(r=>setTimeout(r,5000))]).catch(()=>{});
   throw e;
-}finally{await browser.close();}
+}finally{
+  try{if(tracing)await browser.stopTracing();}finally{await browser.close();}
+}
