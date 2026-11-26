@@ -13,9 +13,18 @@ export class SilveradoTrailAudio {
     if(!this.ctx||this.recordingState!=="not-loaded")return;
     this.recordingState="loading";
     try{
-      const response=await fetch(`${import.meta.env.BASE_URL}audio/truck-driving-785698.mp3`);
-      if(!response.ok)throw Error(`HTTP ${response.status}`);
-      const buffer=await this.ctx.decodeAudioData(await response.arrayBuffer());
+      let buffer,format;
+      const failures=[];
+      for(const ext of ["wav","mp3"]){
+        try{
+          const response=await fetch(new URL(`${import.meta.env.BASE_URL}audio/truck-driving-785698.${ext}`,document.baseURI));
+          if(!response.ok||/text\/html/i.test(response.headers.get("content-type")??""))throw Error(`HTTP ${response.status} or HTML response`);
+          buffer=await this.ctx.decodeAudioData(await response.arrayBuffer());
+          format=ext;break;
+        }catch(e){failures.push(ext+": "+String(e));}
+      }
+      if(!buffer)throw Error(failures.join("; "));
+      this.recordingFormat=format;
       if(buffer.duration<.5||buffer.duration>30)throw Error("Motor loop duration outside limits");
       const data=buffer.getChannelData(0);let energy=0;for(const value of data)energy+=value*value;
       if(Math.sqrt(energy/data.length)<.005)throw Error("Motor loop silent");
