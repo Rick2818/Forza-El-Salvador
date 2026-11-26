@@ -67,3 +67,20 @@ export function trailDriveLimit(mass:number,grip:number,mode:FourWheelDriveMode)
   const mu=Math.max(0,Math.min(1,grip));
   return Math.max(0,mass)*9.81*mu*(mode==="4H"?1.12: .48);
 }
+
+/** Low-range, contact-limited arcade extraction assist. Only explicit 4H,
+ * on wet terrain, with driver demand and ground contact. Never moves a
+ * stationary uncommanded vehicle, or a vehicle with all wheels airborne.
+ * Fade out before normal trail speed so this cannot become a speed boost. */
+export function trailExtractionForce(
+  mass:number, contacts:readonly boolean[], mode:FourWheelDriveMode,
+  wet:boolean, planarSpeed:number, demand:number
+):number {
+  if(mode!=="4H"||!wet||contacts.length!==4||
+    !Number.isFinite(mass)||!Number.isFinite(planarSpeed)||!Number.isFinite(demand))return 0;
+  const count=contacts.reduce((sum,contact)=>sum+Number(contact),0);
+  if(!count||demand<=0)return 0;
+  const fade=1-Math.max(0,Math.min(1,(Math.abs(planarSpeed)-1.2)/2.8));
+  const groundedCapacity=count===1?.40:count===2?.72:count===3?.82:.90;
+  return Math.max(0,mass)*9.81*groundedCapacity*fade*Math.min(1,demand);
+}
