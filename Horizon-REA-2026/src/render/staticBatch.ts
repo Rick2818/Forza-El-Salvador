@@ -19,9 +19,7 @@ export function batchStaticScenery(root: THREE.Group, cellSize = 160): void {
          m.type === "MeshLambertMaterial") &&
         m.onBeforeCompile === THREE.Material.prototype.onBeforeCompile &&
         m.customProgramCacheKey === THREE.Material.prototype.customProgramCacheKey) {
-      const data = m.toJSON();
-      delete data.uuid;
-      delete data.name;
+      const { uuid: _uuid, name: _name, ...data } = m.toJSON();
       key = JSON.stringify(data);
     }
     signatures.set(m, key);
