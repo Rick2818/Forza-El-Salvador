@@ -110,7 +110,7 @@ export class MonzonGarages {
     for (const bay of GARAGE_LAYOUT) {
       const light = new THREE.PointLight(0xfff1df, 140, 18, 2);
       light.position.set(bay.x, 4.65, 36.6);
-      light.castShadow = false; this.lights.push(light); scene.add(light);
+      light.castShadow = false; light.visible = false; this.lights.push(light); scene.add(light);
     }
     this.update(new THREE.Vector3(140, 0, 0));
     this.ready = Promise.all([this.loadKit(), this.loadBrandMarks()]).then(() => { this.group.userData.ready = true; });
@@ -259,7 +259,9 @@ export class MonzonGarages {
 
   update(position: THREE.Vector3): void {
     this.lights.forEach((light, i) => {
-      light.intensity = Math.abs(GARAGE_LAYOUT[i].x-position.x) < 48 ? 140 : 0;
+      const active = Math.abs(GARAGE_LAYOUT[i].x-position.x) < 48;
+      light.intensity = active ? 140 : 0;
+      light.visible = active;
     });
     if (position.distanceToSquared(this.lastEquipmentPosition) < 9) return;
     const matrix = new THREE.Matrix4();
