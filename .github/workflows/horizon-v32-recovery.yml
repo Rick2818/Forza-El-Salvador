@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   baseline:
-    if: github.head_ref == 'recovery/v32-stability' || github.ref == 'refs/heads/recovery/v32-stability'
+    if: github.head_ref == 'recovery/v32-stability' || github.ref == 'refs/heads/recovery/v32-stability' || github.head_ref == 'recovery/v33-render-engine' || github.ref == 'refs/heads/recovery/v33-render-engine'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
