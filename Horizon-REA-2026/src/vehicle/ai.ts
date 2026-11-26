@@ -294,6 +294,6 @@ export class AIDriver {
     } else {
       this.stuckTime = 0;
     }
-    return { throttle, brake, steer, handbrake: false };
+    return { throttle, brake, steer, handbrake: false, reverse: offroad&&this.reverseTime>0 };
   }
 }
