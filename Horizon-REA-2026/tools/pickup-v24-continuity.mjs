@@ -26,12 +26,12 @@ try{
     await mkdir(out,{recursive:true});
     const cdp=await browser.newBrowserCDPSession();
     gpuInfo=await cdp.send("SystemInfo.getInfo");
-    const info={browser:browser.version(),backend,gpu:gpuInfo.gpu,os:process.platform,viewport:page.viewportSize()};
+    const info={browser:browser.version(),backend,gpu:gpuInfo.gpu,os:process.platform,viewport:page.viewportSize(),traceEnabled:forensic&&process.env.HORIZON_TRACE!=="0"};
     await writeFile(out+"/environment.json",JSON.stringify(info,null,2));
     console.log("V34_GPU",JSON.stringify(info));
     await cdp.detach();
   }
-  if(forensic){
+  if(forensic&&process.env.HORIZON_TRACE!=="0"){
     await browser.startTracing(page,{path:out+"/chromium-trace.json",screenshots:false,categories:["devtools.timeline","v8","blink","gpu","viz","cc","toplevel","disabled-by-default-devtools.timeline.frame"]});
     tracing=true;
   }

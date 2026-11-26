@@ -21,7 +21,15 @@ jobs:
       max-parallel: 2
       matrix:
         circuit: [monzon, suzaka]
-        mode: [baseline, no-vegetation, no-terrain, no-rivals, no-tunnels]
+        mode: [baseline, no-local-lights, player-track-render, no-crowd]
+        trace: ["0"]
+        include:
+          - circuit: monzon
+            mode: baseline
+            trace: "1"
+          - circuit: suzaka
+            mode: baseline
+            trace: "1"
     defaults:
       run:
         working-directory: Horizon-REA-2026
@@ -39,6 +47,7 @@ jobs:
         env:
           HORIZON_FORENSICS: '1'
           HORIZON_BACKEND: software
+          HORIZON_TRACE: ${{ matrix.trace }}
         run: |
           set -o pipefail
           mkdir -p review/quality
@@ -55,7 +64,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: v34-${{ matrix.circuit }}-${{ matrix.mode }}
+          name: v34-${{ matrix.circuit }}-${{ matrix.mode }}-trace${{ matrix.trace }}
           path: Horizon-REA-2026/review/quality/
           retention-days: 7
           if-no-files-found: error
