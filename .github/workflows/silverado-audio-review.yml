@@ -68,3 +68,102 @@ jobs:
         with:
           name: approved-truck-audio-785698
           path: review/audio/
+
+  incorporate:
+    needs: acquire
+    if: github.ref == 'refs/heads/experiment/webgpu-silverado-offroad'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      revision: ${{ steps.commit.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/webgpu-silverado-offroad
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: approved-truck-audio-785698
+          path: review/audio
+      - name: Incorporate verified recording in experimental branch only
+        id: commit
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          import json, hashlib, pathlib, shutil
+          src=pathlib.Path('review/audio')
+          data=(src/'truck-driving-785698.mp3').read_bytes()
+          meta=json.loads((src/'source.json').read_text())
+          assert meta['sound_id']==785698 and meta['license']=='CC0-1.0'
+          assert hashlib.sha256(data).hexdigest()==meta['sha256']
+          dest=pathlib.Path('Horizon-REA-2026/public/audio')
+          dest.mkdir(parents=True,exist_ok=True)
+          for filename in ('truck-driving-785698.mp3','source.json'):
+              shutil.copyfile(src/filename,dest/('truck-driving-785698.source.json' if filename=='source.json' else filename))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Horizon-REA-2026/public/audio/truck-driving-785698.mp3 Horizon-REA-2026/public/audio/truck-driving-785698.source.json
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(audio): incorporate validated CC0 truck recording 785698"
+            git push origin HEAD:refs/heads/experiment/webgpu-silverado-offroad
+          fi
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  validate_game:
+    needs: incorporate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.incorporate.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npm exec -- vitest run src/world/offroadTrack.test.ts src/world/offroadPrototype.test.ts src/render/pickupMud.test.ts src/world/trailStage.test.ts
+      - run: npm run build
+      - run: |
+          set -euo pipefail
+          test -s dist/audio/truck-driving-785698.mp3
+          cmp public/audio/truck-driving-785698.mp3 dist/audio/truck-driving-785698.mp3
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libvulkan1 mesa-vulkan-drivers
+      - name: Drive full existing offroad audit with mandatory recorded audio
+        run: |
+          set -euo pipefail
+          mkdir -p review/quality
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tools/webgpu-fleet-probe.mjs')
+          s=p.read_text()
+          a='const m=await page.evaluate(()=>window.HORIZON_GPU_DRIVE);'
+          assert s.count(a)==1
+          s=s.replace(a,'await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.audioRecordingState==="recorded",{},{timeout:20000});'+a+'assert.equal(m.audioRecordingState,"recorded");console.log("RECORDED_AUDIO",m.audioRecordingState,m.maxAudioRms);')
+          p.write_text(s)
+          PY
+          npm run dev > review/quality/fleet-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5173/webgpu-fleet.html >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/webgpu-fleet.html >/dev/null
+          xvfb-run -a node tools/webgpu-fleet-probe.mjs el-imposible-4x4 chevrolet-silverado-ev-alternative 2>&1 | tee review/quality/fleet-console.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: silverado-recorded-audio-drive
+          path: Horizon-REA-2026/review/quality/
