@@ -84,3 +84,18 @@ export function trailExtractionForce(
   const groundedCapacity=count===1?.40:count===2?.72:count===3?.82:.90;
   return Math.max(0,mass)*9.81*groundedCapacity*fade*Math.min(1,demand);
 }
+
+/** Grade-aware low-range torque reserve (arcade). Grade is signed rise/run
+ * in the requested direction. Never powers 2H, airborne or idle vehicles.
+ * Compensates gravity and rolling resistance through walking/climbing speed.
+ */
+export function trailHillForce(mass:number,contacts:readonly boolean[],mode:FourWheelDriveMode,grade:number,resistance:number,waterDepth:number,planarSpeed:number,demand:number):number {
+ if(mode!=="4H"||contacts.length!==4||![mass,grade,resistance,waterDepth,planarSpeed,demand].every(Number.isFinite)||grade<.10||demand<=0)return 0;
+ const count=contacts.reduce((sum,c)=>sum+Number(c),0);if(!count)return 0;
+ const slope=Math.min(.65,Math.max(0,grade));
+ const gravity=slope/Math.sqrt(1+slope*slope);
+ const rolling=.22*Math.max(0,Math.min(1,resistance))+.14*Math.max(0,Math.min(.55,waterDepth));
+ const fade=1-Math.max(0,Math.min(1,(Math.abs(planarSpeed)-2.5)/4.5));
+ const capacity=[0,.55,.85,1,1.12][count];
+ return Math.max(0,mass)*9.81*Math.min(capacity,gravity+rolling+.20)*fade*Math.min(1,demand);
+}
