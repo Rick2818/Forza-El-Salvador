@@ -17,6 +17,12 @@ try{
   const audio=await page.evaluate(()=>({state:window.HORIZON_GPU_DRIVE.audioRecordingState,error:window.HORIZON_GPU_DRIVE.audioRecordingError,format:window.HORIZON_GPU_DRIVE.audioRecordingFormat}));
   assert.equal(audio.state,"recorded","Approved recording did not decode: "+JSON.stringify(audio));
   console.log("RECORDED_AUDIO",JSON.stringify(audio));
+  const launch=await page.evaluate(()=>({position:window.HORIZON_GPU_DRIVE.position,steps:window.HORIZON_GPU_DRIVE.totalSteps}));
+  await page.waitForFunction(steps=>window.HORIZON_GPU_DRIVE.totalSteps>=steps+120,launch.steps,{timeout:35000});
+  const idle=await page.evaluate(()=>({position:window.HORIZON_GPU_DRIVE.position,speed:window.HORIZON_GPU_DRIVE.signedSpeedKph,hold:window.HORIZON_GPU_DRIVE.launchHold}));
+  assert.equal(idle.hold,true,"Launch hold inactive before driver input");
+  assert.ok(Math.hypot(idle.position[0]-launch.position[0],idle.position[2]-launch.position[2])<.1,"Pickup rolled before driver input");
+  assert.ok(Math.abs(idle.speed)<.2,"Pickup not stationary");
   const gas=await page.locator('[data-control="gas"]').boundingBox();
   assert.ok(gas,"Missing mobile accelerator");
   const cdp=await page.context().newCDPSession(page);
