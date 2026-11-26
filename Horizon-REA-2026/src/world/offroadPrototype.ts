@@ -51,9 +51,16 @@ export function offroadSectorAt(progress: number): OffroadSector {
 /** Continuous grade profile; actual terrain collision geometry not yet installed. */
 export function offroadElevation(progress: number): number {
   if (!Number.isFinite(progress)) throw new Error("Invalid lap progress");
-  const t = 2 * Math.PI * (((progress % 1) + 1) % 1);
-  return 6 * (1 - Math.cos(t)) + 3.7 * (1 - Math.cos(8*t-.75)) +
-    .85 * (1 - Math.cos(15*t-.5));
+  const p = ((progress % 1) + 1) % 1;
+  const elevation = (fraction:number) => {
+    const t=2*Math.PI*fraction;
+    return 6*(1-Math.cos(t))+3.7*(1-Math.cos(8*t-.75))+.85*(1-Math.cos(15*t-.5));
+  };
+  // Flat launch pad around the 48 m starting grid; blend back into the
+  // original hills outside the pad. The rest of the expedition is unchanged.
+  const smooth=(x:number)=>{const a=Math.max(0,Math.min(1,x));return a*a*(3-2*a);};
+  const weight=smooth((p-.01)/.025)*smooth((.115-p)/.03);
+  return elevation(p)*(1-weight)+elevation(.05)*weight;
 }
 /** Arcade force multiplier only, not a validated mud/tire physics simulation. */
 export function offroadDriveMultiplier(mode: FourWheelDriveMode, contacts: readonly boolean[], progress: number): number {
