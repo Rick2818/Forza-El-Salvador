@@ -13,6 +13,10 @@ try{
   assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.status),"running");
   assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.fourWheelDrive),"2H");
   await page.locator("#sound").tap();
+  await page.waitForFunction(()=>["recorded","synthetic-fallback"].includes(window.HORIZON_GPU_DRIVE.audioRecordingState),{},{timeout:30000});
+  const audio=await page.evaluate(()=>({state:window.HORIZON_GPU_DRIVE.audioRecordingState,error:window.HORIZON_GPU_DRIVE.audioRecordingError,format:window.HORIZON_GPU_DRIVE.audioRecordingFormat}));
+  assert.equal(audio.state,"recorded","Approved recording did not decode: "+JSON.stringify(audio));
+  console.log("RECORDED_AUDIO",JSON.stringify(audio));
   const gas=await page.locator('[data-control="gas"]').boundingBox();
   assert.ok(gas,"Missing mobile accelerator");
   const cdp=await page.context().newCDPSession(page);
