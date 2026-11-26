@@ -30,7 +30,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive",60,offroad);
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-hill-hold",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-level-start",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -178,14 +178,14 @@ async function boot(){
  const updateDriveLabel=()=>{$("driveMode").textContent="4x4 · "+car.fourWheelDriveMode;$("driveMode").dataset.active=String(car.fourWheelDriveActive);};changeDriveMode=()=>{if(!car.toggleFourWheelDrive())$("notice").textContent="Reduce a 30 km/h para cambiar la tracción";else {info.modeSwitches++;$("notice").textContent=car.fourWheelDriveMode==="4H"?"4x4 activado manualmente":"Tracción trasera 2H";}info.fourWheelDrive=car.fourWheelDriveMode;updateDriveLabel();};updateDriveLabel();
  const partnerId=vehicleId==="ram-3500-alternative"?"chevrolet-silverado-ev-alternative":"ram-3500-alternative";
  let partner=null,partnerPilot=null,partnerStage=null,stage=null,partnerHint=track.startIndex,partnerPrevious=null,started=false;
- let launchAnchor=car.position.clone();
+ let launchAnchor=car.position.clone(),partnerLaunchAnchor=null;
  function resetExpedition(){
    if(!offroad)return;
     launchAnchor=car.position.clone();info.launchHold=true;
     stage=new TrailStage(track.samples.length,track.startIndex);
    partnerHint=(track.startIndex+Math.round(13/track.segmentLength))%track.samples.length;
    const p=track.sampleAt(partnerHint),t=track.tangentAt(partnerHint);
-   partner.place(p,Math.atan2(t.x,t.z));partnerPilot.recoverAt(partnerHint);
+   partner.place(p,Math.atan2(t.x,t.z));partnerLaunchAnchor=partner.position.clone();partnerPilot.recoverAt(partnerHint);
    partnerStage=new TrailStage(track.samples.length,track.startIndex,partnerHint);partnerPrevious=partner.position.clone();started=false;
    info.stageFinished=false;info.finishTime=null;info.partnerFinished=false;info.stageProgress=0;info.partnerDistance=0;info.partnerContactSteps=0;info.partnerMaxSpeed=0;
    $("stage").hidden=false;$("stage").textContent="Expedición · 0% · 2 pickups";
@@ -233,7 +233,7 @@ async function boot(){
    info.currentGrade=(look.y-track.sampleAt(at).y)/10*100;
  }else{camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;}camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4 · V9.1":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
  function tick(now){try{
   if(gpuError)throw Error(gpuError);
@@ -254,7 +254,7 @@ async function boot(){
    if(offroad){
     if(input.throttle>.05||input.reverse)started=true;
      // Before the first deliberate drive command, hold horizontal position but allow suspension to settle.
-     info.launchHold=!started;
+     info.launchHold=!started;info.launchForwardMetres=(car.position.x-launchAnchor.x)*track.tangentAt(track.startIndex).x+(car.position.z-launchAnchor.z)*track.tangentAt(track.startIndex).z;
      if(!started)input={throttle:0,brake:1,steer:0,handbrake:true,reverse:false};
     // AI test driver can reverse when recovering but never changes the transfer case.
     if(auto&&input.reverse&&car.speed<.6)input={...input,brake:0};
@@ -270,7 +270,17 @@ async function boot(){
     info.partnerThrottle=ai.throttle;info.partnerBrake=ai.brake;
      partner.update(1/60,ai,track.gripAt(partnerHint,ph.lateral),track.gripAtFootprints(partner.wheelContactPoints(),partnerHint,partner.wheelGripBuffer()),offroadSectorAt(track.progress(partnerHint)),Math.abs(ph.lateral)<=track.halfWidth+.35,track.waterDepthAt(partnerHint,ph.lateral));
    }
-   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0);world.step();if(offroad&&!started){const p=car.body.translation(),v=car.body.linvel();car.body.setTranslation({x:launchAnchor.x,y:p.y,z:launchAnchor.z},true);car.body.setLinvel({x:0,y:v.y,z:0},true);}car.afterPhysicsStep(1/60);if(partner){partner.afterPhysicsStep(1/60);const pp=partner.position,ph=track.locate(pp,partnerHint),ch=track.locate(car.position,hint);partnerStage.update(ph.index,Math.abs(ph.lateral)<=track.halfWidth+.35);stage.update(ch.index,Math.abs(ch.lateral)<=track.halfWidth+.35);info.partnerDistance+=pp.distanceTo(partnerPrevious);partnerPrevious.copy(pp);info.partnerContactSteps+=Number(partner.wheelDebug().filter(w=>w.contact).length>=2);info.partnerMaxSpeed=Math.max(info.partnerMaxSpeed,partner.speedKph);info.partnerFinished=partnerStage.finished;info.stageFinished=stage.finished;info.stageProgress=stage.progress;info.partnerProgress=partnerStage.progress;info.partnerGap=pp.distanceTo(car.position);if(stage.finished&&!info.finishTime){info.finishTime=info.elapsed;clear();} }
+   const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0);world.step();
+   if(offroad){
+    // Both vehicles remain parked before the first deliberate drive command.
+    if(!started){for(const [vehicle,anchor] of [[car,launchAnchor],[partner,partnerLaunchAnchor]]){if(!vehicle||!anchor)continue;const p=vehicle.body.translation(),v=vehicle.body.linvel();vehicle.body.setTranslation({x:anchor.x,y:p.y,z:anchor.z},true);vehicle.body.setLinvel({x:0,y:v.y,z:0},true);}}
+    // Hill-start anti-rollback within the launch pad only. Never engage 4H
+    // automatically, add forward speed, or suppress deliberate reverse.
+    if(started&&!input.reverse&&input.throttle>.05&&stage.travel*track.segmentLength<15&&stage.travel*track.segmentLength>=-5&&car.wheelDebug().some(w=>w.contact)){
+      const v=car.body.linvel(),t=track.tangentAt(track.startIndex),n=Math.hypot(t.x,t.z);
+      if(n>0){const x=t.x/n,z=t.z/n,s=v.x*x+v.z*z;if(s<0){car.body.setLinvel({x:v.x-s*x,y:v.y,z:v.z-s*z},true);info.launchRollbackPrevented=(info.launchRollbackPrevented??0)+1;}}
+    }
+   }car.afterPhysicsStep(1/60);if(partner){partner.afterPhysicsStep(1/60);const pp=partner.position,ph=track.locate(pp,partnerHint),ch=track.locate(car.position,hint);partnerStage.update(ph.index,Math.abs(ph.lateral)<=track.halfWidth+.35);stage.update(ch.index,Math.abs(ch.lateral)<=track.halfWidth+.35);info.partnerDistance+=pp.distanceTo(partnerPrevious);partnerPrevious.copy(pp);info.partnerContactSteps+=Number(partner.wheelDebug().filter(w=>w.contact).length>=2);info.partnerMaxSpeed=Math.max(info.partnerMaxSpeed,partner.speedKph);info.partnerFinished=partnerStage.finished;info.stageFinished=stage.finished;info.stageProgress=stage.progress;info.partnerProgress=partnerStage.progress;info.partnerGap=pp.distanceTo(car.position);if(stage.finished&&!info.finishTime){info.finishTime=info.elapsed;clear();} }
    info.totalSteps++;info.throttle=input.throttle;info.manualThrottleSteps=(info.manualThrottleSteps??0)+Number(!auto&&input.throttle>.5);car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;if(w.contact){info.suspensionMin??=[Infinity,Infinity,Infinity,Infinity];info.suspensionMax??=[0,0,0,0];info.suspensionMin[i]=Math.min(info.suspensionMin[i],w.len);info.suspensionMax[i]=Math.max(info.suspensionMax[i],w.len);}});
    if(offroad){const depth=track.waterDepthAt(hint,hit.lateral);info.maxDrivenWaterDepth=Math.max(info.maxDrivenWaterDepth??0,depth);info.waterContactSteps=(info.waterContactSteps??0)+Number(depth>.025);info.mudCoverage=car.trailMudCoverage;const sector=offroadSectorAt(track.progress(hint)).surface;if(!info.sectors.includes(sector))info.sectors.push(sector);const drop=track.samples[hint].y-car.position.y;const after=track.locate(car.position,hint);info.maxLateral=Math.max(info.maxLateral??0,Math.abs(after.lateral));const velocity=car.body.linvel();const planarKph=Math.hypot(velocity.x,velocity.z)*3.6;info.maxPlanarKph=Math.max(info.maxPlanarKph??0,planarKph);if(Math.abs(after.lateral)>track.halfWidth+2&&!info.firstExcursion)info.firstExcursion={elapsed:info.elapsed,lateral:after.lateral,index:after.index,planarKph,throttle:input.throttle,brake:input.brake,steer:input.steer,slip:car.slip,position:car.position.toArray()};if(drop>info.maxOffroadDrop){info.maxOffroadDrop=drop;info.worstDrop={elapsed:info.elapsed,index:hint,lateral:after.lateral,position:car.position.toArray(),speed:car.speedKph,throttle:input.throttle,steer:input.steer};}}
    info.fourWheelDrive=car.fourWheelDriveMode;info.reverseHeld=!!input.reverse;info.signedSpeedKph=car.speed*3.6;info.maxReverseKph=Math.max(info.maxReverseKph??0,-car.speed*3.6);info.tractionLimited=car.trailTractionLimited;if(offroad&&car.fourWheelDriveMode==="2H"&&car.trailTractionLimited)$("notice").textContent="Falta tracción · activa 4x4 manualmente";
