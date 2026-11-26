@@ -7,7 +7,7 @@ assert.ok(sourceVersion,"Missing source release label");
 const id=process.argv[2]??"ram-3500-alternative";
 const mode=process.argv[3]??"baseline";
 const circuit=process.argv[4]??"monzon";
-assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod","no-crowd","vehicle-only","no-local-lights","player-track-render"].includes(mode));
+assert.ok(["baseline","physics-only","constant-tunnel-lights","no-rival-audio","no-gpu-timer","adaptive-resolution","no-lod","no-crowd","vehicle-only","no-local-lights","player-track-render","no-vegetation","no-terrain","no-rivals","no-tunnels"].includes(mode));
 const forensic=process.env.HORIZON_FORENSICS==="1";
 const backend=process.env.HORIZON_BACKEND??"software";
 assert.ok(["software","hardware"].includes(backend),"Unknown backend");
@@ -49,6 +49,34 @@ try{
   }
   await page.evaluate(()=>{window.HORIZON.setQuality("equilibrada");window.HORIZON.autoScale(false);window.HORIZON.setScale(.5);});
   if(mode==="physics-only")await page.evaluate(()=>{window.__HORIZON_GAME__.skipRender=true;});
+  // Install per-frame isolation BEFORE race preparation, including the first
+  // draw. Resolve current roots at render time: start may replace the scene.
+  const groupModes=["no-vegetation","no-terrain","no-rivals","no-tunnels"];
+  if(groupModes.includes(mode))await page.evaluate(mode=>{
+    const game=window.__HORIZON_GAME__;
+    const original=game.renderer.render;
+    const state={mode,maskedObjects:0,maxMaskedObjects:0,draws:0,roots:[]};
+    window.__V34_GROUP_ISOLATION__=state;
+    game.renderer.render=function(scene,camera,...args){
+      if(scene!==game.scene)return original.call(this,scene,camera,...args);
+      const hidden=[],matched=new Set();
+      const rivals=new Set([...game.race.racers.filter(r=>!r.isPlayer),...game.race.oncoming].map(r=>r.vehicle.visual.root));
+      scene.traverse(o=>{
+        if(!(o.isMesh||o.isPoints||o.isLine||o.isSprite))return;
+        for(let p=o;p&&p!==scene;p=p.parent){
+          const n=p.name??"";
+          const exclude=mode==="no-vegetation"?/monzon-organic-tree-grove|suzaka-pine-forest|suzaka-resilient-organic-pines/i.test(n):
+            mode==="no-terrain"?n==="terrain":
+            mode==="no-tunnels"?/^illuminated-race-tunnels-/.test(n):rivals.has(p);
+          if(exclude){matched.add(n||p.type);if(o.layers.mask!==0){hidden.push([o,o.layers.mask]);o.layers.mask=0;}break;}
+        }
+      });
+      state.maskedObjects=hidden.length;state.maxMaskedObjects=Math.max(state.maxMaskedObjects,hidden.length);
+      state.draws++;state.roots=[...new Set([...state.roots,...matched])];
+      try{return original.call(this,scene,camera,...args);}
+      finally{for(const [o,mask] of hidden)o.layers.mask=mask;}
+    };
+  },mode);
   await page.locator('#autos-panel button[data-action="start"]').click({timeout:60000});
   await page.waitForFunction(()=>!window.__HORIZON_GAME__.preparingGraphics&&["opening","racing"].includes(window.__HORIZON_GAME__.state),{},{timeout:180000});
   await page.evaluate(async(mode)=>{
@@ -77,7 +105,7 @@ try{
     const {AIDriver}=await import("/src/vehicle/ai.ts");
     const pilot=new AIDriver(game.race.player.vehicle,game.track,-2.7,.94,1,"estratega","medio");
     // Runtime-only diagnostic wrappers: leave the shipping game untouched.
-    const metrics={phases:{},lastTransition:null,lightChanges:0};
+    const metrics={phases:{},lastTransition:null,lightChanges:0,groupIsolation:window.__V34_GROUP_ISOLATION__??null};
     window.__HORIZON_DIAG__=metrics;
     function timeMethod(obj,key,label){
       const original=obj[key];
@@ -149,13 +177,16 @@ try{
     // blocking waits or reset outstanding work to make a test pass.
     const gpu=game.gpuBackpressure;
     const originalReady=gpu.ready.bind(gpu),originalSubmit=gpu.submit.bind(gpu);
-    const queue={completed:0,pendingSince:null,maxCompletionMs:0,pendingAgeMs:0};
+    // A fence may already be pending when the diagnostic wrappers are installed.
+    // Observe it without counting it as a newly submitted frame.
+    const initialPending=!!gpu.fence;
+    const queue={completed:0,pendingSince:initialPending?game.lastDrawAt:null,maxCompletionMs:0,pendingAgeMs:0,initialPending,initialCompleted:false};
     metrics.gpuQueue=queue;
     gpu.ready=()=>{
       const ready=originalReady(),now=performance.now();
       if(queue.pendingSince!==null){
         queue.pendingAgeMs=now-queue.pendingSince;
-        if(ready){queue.completed++;queue.maxCompletionMs=Math.max(queue.maxCompletionMs,queue.pendingAgeMs);queue.pendingSince=null;queue.pendingAgeMs=0;}
+        if(ready){if(queue.initialPending&&!queue.initialCompleted)queue.initialCompleted=true;else queue.completed++;queue.maxCompletionMs=Math.max(queue.maxCompletionMs,queue.pendingAgeMs);queue.pendingSince=null;queue.pendingAgeMs=0;}
       }
       return ready;
     };
@@ -225,6 +256,7 @@ try{
     }
     if(sample.elapsed>=125&&sample.raceState==="racing"){
       if(mode!=="physics-only"){assert.ok(sample.drawCalls>0,"No rendering");assert.ok(sample.submittedDraws>100,"Insufficient actual rendered frames");assert.ok(sample.diagnostics.gpuQueue.completed>=100,"Insufficient signaled GPU fences");if(["no-local-lights","player-track-render"].includes(mode))assert.ok(sample.diagnostics.renderIsolation?.maskedObjects>0,"Isolation mask did not affect rendering");}
+      if(groupModes.includes(mode))assert.ok(sample.diagnostics.groupIsolation?.maxMaskedObjects>0,"Group isolation did not mask a drawable");
       assert.equal(sample.oncoming,5,"Traffic did not fully activate");
       assert.ok(samples.some(s=>s.elapsed>=48&&s.elapsed<60),"Did not sample original freeze window");
       console.log("CONTINUITY_PASS",id,mode,JSON.stringify({elapsed:sample.elapsed,samples:samples.length,wallSeconds:(Date.now()-start)/1000,minimumSampleFPS:Math.min(...samples.filter(s=>s.raceState==="racing").map(s=>s.fps))}));

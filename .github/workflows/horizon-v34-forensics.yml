@@ -21,7 +21,7 @@ jobs:
       max-parallel: 2
       matrix:
         circuit: [monzon, suzaka]
-        mode: [baseline, no-gpu-timer, vehicle-only]
+        mode: [baseline, no-vegetation, no-terrain, no-rivals, no-tunnels]
     defaults:
       run:
         working-directory: Horizon-REA-2026
