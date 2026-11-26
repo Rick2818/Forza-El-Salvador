@@ -29,7 +29,7 @@ try{
   await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:gas.x+gas.width/2,y:gas.y+gas.height/2,id:1}]});
   try{
    await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.manualThrottleSteps>=120&&window.HORIZON_GPU_DRIVE.distance>4&&window.HORIZON_GPU_DRIVE.maxAudioRms>.012,{},{timeout:35000});
-   const m=await page.evaluate(()=>window.HORIZON_GPU_DRIVE);console.log("MANUAL_TOUCH_AUDIO",JSON.stringify({distance:m.distance,throttleSteps:m.manualThrottleSteps,maxRms:m.maxAudioRms,speed:m.speed,relief:m.relief}));
+   const m=await page.evaluate(()=>window.HORIZON_GPU_DRIVE);assert.ok(m.signedSpeedKph>0,"Gas did not drive forward");assert.ok(m.launchForwardMetres>2,"Gas did not advance from starting grid");console.log("MANUAL_TOUCH_AUDIO",JSON.stringify({distance:m.distance,throttleSteps:m.manualThrottleSteps,maxRms:m.maxAudioRms,speed:m.speed,relief:m.relief}));
    await page.screenshot({path:"review/quality/manual-touch.png"});
   }finally{await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});}
   await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.throttle===0,{},{timeout:5000});
