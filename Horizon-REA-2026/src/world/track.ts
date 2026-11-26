@@ -362,6 +362,21 @@ export class Track {
       if(high-low>.65)continue;
       basins.push({center:i,radius,level:low-.045,side:Math.sin(i*.79)>.1?.35:-.35});
     }
+    // The new level launch changes arc-length sampling. Search intermediate
+    // wet-sector samples for additional nonoverlapping, genuinely level basins.
+    // Preserve the original basin geometry and keep the starting grid dry.
+    for(let i=20;i<n-20&&basins.length<9;i+=4){
+      if(offroadSectorAt(this.progress(i)).surface==="dirt")continue;
+      const radius=4.5, steps=Math.ceil(radius/this.segmentLength);
+      if(basins.some(b=>Math.min(Math.abs(i-b.center),n-Math.abs(i-b.center))*this.segmentLength<b.radius+radius+1))continue;
+      let low=Infinity,high=-Infinity,wet=true;
+      for(let k=-steps;k<=steps;k++){
+        const y=this.sampleAt(i+k).y;low=Math.min(low,y);high=Math.max(high,y);
+        if(offroadSectorAt(this.progress(i+k)).surface==="dirt")wet=false;
+      }
+      if(!wet||high-low>.65)continue;
+      basins.push({center:i,radius,level:low-.045,side:Math.sin(i*.79)>.1?.35:-.35});
+    }
     this.offroadWaterRows=Array.from({length:n},()=>({level:0,row:Array(cols+1).fill(0)}));
     const pos: number[] = [], colors: number[] = [], indices: number[] = [], uv: number[] = [];
     for (let i=0;i<n;i++) {
