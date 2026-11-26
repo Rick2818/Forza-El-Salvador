@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   FOUR_BY_FOUR_PICKUP_IDS, isFourWheelDrivePickup, defaultFourWheelDriveMode,
-  nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit
+  nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit, trailExtractionForce
 } from "./fourWheelDrive";
 
 describe("4x4 pickup control", () => {
@@ -61,5 +61,22 @@ describe("manual expedition transfer case",()=>{
   expect(trailDriveLimit(mass,grip,"2H")*pickupContactTraction("2H",all,grip)).toBeLessThan(gravity);
   expect(trailDriveLimit(mass,grip,"4H")*pickupContactTraction("4H",all,grip)).toBeGreaterThan(gravity);
   expect(trailDriveLimit(mass,grip,"4H")*pickupContactTraction("4H",[false,false,false,false],grip)).toBe(0);
+ });
+});
+
+describe("manual 4H wet extraction V9",()=>{
+ const mass=3000,all=[true,true,true,true],two=[true,false,false,true],air=[false,false,false,false];
+ it("provides a reserve above a 30% slope plus wet resistance with two grounded wheels",()=>{
+  const load=mass*9.81*(.30/Math.sqrt(1+.30*.30)+.38*.22+.55*.14);
+  expect(trailExtractionForce(mass,two,"4H",true,.2,1)).toBeGreaterThan(load);
+  expect(trailExtractionForce(mass,all,"4H",true,0,1)).toBeGreaterThan(trailDriveLimit(mass,.32,"4H"));
+ });
+ it("requires manual 4H, wet ground, demand and contact; fades to zero",()=>{
+  for(const mode of ["2H","4A"] as const)expect(trailExtractionForce(mass,all,mode,true,0,1)).toBe(0);
+  expect(trailExtractionForce(mass,air,"4H",true,0,1)).toBe(0);
+  expect(trailExtractionForce(mass,all,"4H",false,0,1)).toBe(0);
+  expect(trailExtractionForce(mass,all,"4H",true,0,0)).toBe(0);
+  expect(trailExtractionForce(mass,all,"4H",true,4,1)).toBe(0);
+  expect(trailExtractionForce(mass,all,"4H",true,2,1)).toBeLessThan(trailExtractionForce(mass,all,"4H",true,0,1));
  });
 });
