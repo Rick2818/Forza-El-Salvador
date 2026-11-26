@@ -8,16 +8,16 @@ export class AdaptiveGpuResolution {
   private low=0;
   private high=0;
   private cooldown=0;
-  constructor(readonly enabled=true,readonly target=60){}
+  constructor(readonly enabled=true,readonly target=60,readonly allowLowCallbackPressure=false){}
   get scale(){return this.levels[this.index];}
   observe(gpuFps:number,callbackFps:number,seconds:number):number {
     if(!this.enabled||!Number.isFinite(gpuFps)||!Number.isFinite(callbackFps)||!Number.isFinite(seconds)||seconds<=0||seconds>2.5)return this.scale;
     // Do not chase 60 when the browser/OS is only delivering ~30 callbacks.
     const desired=Math.min(this.target,callbackFps);
-    if(desired<15){this.low=this.high=0;return this.scale;}
+    if(desired<15&&(!this.allowLowCallbackPressure||desired<=0)){this.low=this.high=0;return this.scale;}
     this.cooldown=Math.max(0,this.cooldown-seconds);
     if(gpuFps<desired*.88){this.low+=seconds;this.high=0;}
-    else if(gpuFps>=desired*.97){this.high+=seconds;this.low=0;}
+    else if(gpuFps>=desired*.97&&(!this.allowLowCallbackPressure||desired>=15)){this.high+=seconds;this.low=0;}
     else{this.low=this.high=0;}
     if(this.cooldown===0&&this.low>=3&&this.index<this.levels.length-1){
       this.index++;this.low=this.high=0;this.cooldown=4;
