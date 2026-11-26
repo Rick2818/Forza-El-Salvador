@@ -422,7 +422,7 @@ export class Vehicle {
       this.controller.setWheelEngineForce(i, 0);
 
       let braking = 0;
-      if (brake > 0.05 && speed >= 0.6) {
+      if (brake > 0.05 && (this.manualTrailDrive ? Math.abs(speed) >= 0.6 : speed >= 0.6)) {
         braking = brake * p.maxBrakeForce * (w.front ? 1.12 : 0.9);
       }
       if (this.controls.handbrake && !w.front) {
