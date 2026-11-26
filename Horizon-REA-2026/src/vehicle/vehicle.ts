@@ -202,9 +202,12 @@ export class Vehicle {
     return Math.abs(this.speed) * 3.6;
   }
 
+  // Each vehicle owns its own position buffer. Traffic calculations must
+  // never overwrite another vehicle's position while reading this one.
+  private readonly positionView = new THREE.Vector3();
   get position(): THREE.Vector3 {
     const t = this.body.translation();
-    return _v.set(t.x, t.y, t.z);
+    return this.positionView.set(t.x, t.y, t.z);
   }
 
   /** Four world-space tyre contact estimates, based on the ACTUAL body pose and

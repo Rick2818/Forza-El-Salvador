@@ -238,8 +238,9 @@ async function boot(){
     const ph=track.locate(partner.position,partnerHint);partnerHint=ph.index;
     let ai=partnerPilot.plan(1/60,info.elapsed,[{position:car.position,speed:car.speed,isPlayer:true}]);
     const lead=(partnerStage.travel-stage.travel)*track.segmentLength;
-    if(!started||partnerStage.finished||lead>22)ai={throttle:0,brake:1,steer:0,handbrake:true};
-    else if(lead>15){ai.throttle=Math.min(ai.throttle,.22);if(partner.speedKph>car.speedKph+3){ai.throttle=0;ai.brake=Math.max(.45,ai.brake);}}
+    const clearOfFinish=partnerStage.finished&&track.progress(partnerHint)*track.length>=8&&track.progress(partnerHint)<.1;
+    if(!started||clearOfFinish||lead>22&&!partnerStage.finished)ai={throttle:0,brake:1,steer:0,handbrake:true};
+    else if(lead>15&&!partnerStage.finished){ai.throttle=Math.min(ai.throttle,.22);if(partner.speedKph>car.speedKph+3){ai.throttle=0;ai.brake=Math.max(.45,ai.brake);}}
     partner.update(1/60,ai,track.gripAt(partnerHint,ph.lateral),track.gripAtFootprints(partner.wheelContactPoints(),partnerHint,partner.wheelGripBuffer()),offroadSectorAt(track.progress(partnerHint)),Math.abs(ph.lateral)<=track.halfWidth+.35,track.waterDepthAt(partnerHint,ph.lateral));
    }
    const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0);world.step();car.afterPhysicsStep(1/60);if(partner){partner.afterPhysicsStep(1/60);const pp=partner.position,ph=track.locate(pp,partnerHint),ch=track.locate(car.position,hint);partnerStage.update(ph.index,Math.abs(ph.lateral)<=track.halfWidth+.35);stage.update(ch.index,Math.abs(ch.lateral)<=track.halfWidth+.35);info.partnerDistance+=pp.distanceTo(partnerPrevious);partnerPrevious.copy(pp);info.partnerContactSteps+=Number(partner.wheelDebug().filter(w=>w.contact).length>=2);info.partnerMaxSpeed=Math.max(info.partnerMaxSpeed,partner.speedKph);info.partnerFinished=partnerStage.finished;info.stageFinished=stage.finished;info.stageProgress=stage.progress;info.partnerProgress=partnerStage.progress;info.partnerGap=pp.distanceTo(car.position);if(stage.finished&&!info.finishTime){info.finishTime=info.elapsed;clear();} }
