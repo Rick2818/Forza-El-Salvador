@@ -1,0 +1,40 @@
+name: Tropical forest Blender asset review (no publication)
+on:
+  push:
+    branches: [experiment/webgpu-silverado-offroad]
+permissions:
+  contents: read
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reuse audited asset preparation scripts
+        run: |
+          git fetch --depth=1 origin experiment/offroad-tropical-review
+          git show FETCH_HEAD:Horizon-REA-2026/tools/prepare-tropical-review.py > Horizon-REA-2026/tools/prepare-tropical-review.py
+          git show FETCH_HEAD:Horizon-REA-2026/tools/blender/prepare-tropical-review.py > Horizon-REA-2026/tools/blender/prepare-tropical-review.py
+      - name: Acquire original CC0 assets
+        working-directory: Horizon-REA-2026
+        run: python tools/prepare-tropical-review.py "$RUNNER_TEMP/tropical" public/scenery/tropical-review
+      - name: Install Blender
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base=https://download.blender.org/release/Blender5.0
+          archive=blender-5.0.1-linux-x64.tar.xz
+          curl --fail --location --retry 3 "$base/$archive" -o "$archive"
+          curl --fail --location --retry 3 "$base/blender-5.0.1.sha256" -o blender.sha256
+          grep -E "[[:space:]]\\*?$archive$" blender.sha256 > archive.sha256
+          sha256sum --check archive.sha256
+          tar -xf "$archive"
+      - name: Prepare textured tree LODs
+        run: |
+          "$RUNNER_TEMP/blender-5.0.1-linux-x64/blender" -b --factory-startup --disable-autoexec --python-exit-code 1 --python Horizon-REA-2026/tools/blender/prepare-tropical-review.py -- "$RUNNER_TEMP/tropical" "$GITHUB_WORKSPACE/Horizon-REA-2026/public/scenery/tropical-review"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tropical-review-assets
+          path: Horizon-REA-2026/public/scenery/tropical-review/
