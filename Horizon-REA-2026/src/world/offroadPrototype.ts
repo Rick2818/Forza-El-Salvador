@@ -60,7 +60,10 @@ export function offroadElevation(progress: number): number {
   // original hills outside the pad. The rest of the expedition is unchanged.
   const smooth=(x:number)=>{const a=Math.max(0,Math.min(1,x));return a*a*(3-2*a);};
   const weight=smooth((p-.01)/.025)*smooth((.115-p)/.03);
-  return elevation(p)*(1-weight)+elevation(.05)*weight;
+  // Lower the level pad by one metre so the retained first ascent meets
+  // the 1.5 m minimum without changing the remainder of the elevation profile.
+  const launchHeight=elevation(.05)-1;
+  return elevation(p)*(1-weight)+launchHeight*weight;
 }
 /** Arcade force multiplier only, not a validated mud/tire physics simulation. */
 export function offroadDriveMultiplier(mode: FourWheelDriveMode, contacts: readonly boolean[], progress: number): number {
