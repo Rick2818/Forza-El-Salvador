@@ -411,7 +411,31 @@ function partitionWheelMesh(
     divided.addGroup(0,indices.length,0);
     // Expand only this corner's referenced triangles. Sharing the full axle's
     // position buffer gave each wheel an invalid full-axle bounding box.
-    const compact=divided.toNonIndexed();
+    // Preserve indexed vertex reuse for regular GLB attributes. The previous
+    // non-indexed expansion uploaded three full vertices for every triangle.
+    // Copy only vertices referenced by this corner; keep exact attribute
+    // values, normals, UVs and triangle order. Unusual layouts retain the
+    // existing non-indexed fallback.
+    let compact:THREE.BufferGeometry;
+    if(Object.values(geo.attributes).every(a=>a instanceof THREE.BufferAttribute)&&
+       Object.keys(geo.morphAttributes).length===0){
+      const remap=new Map<number,number>(),vertices:number[]=[],local:number[]=[];
+      for(const sourceIndex of indices){
+        let target=remap.get(sourceIndex);
+        if(target===undefined){target=vertices.length;remap.set(sourceIndex,target);vertices.push(sourceIndex);}
+        local.push(target);
+      }
+      compact=new THREE.BufferGeometry();
+      for(const [name,source] of Object.entries(geo.attributes)){
+        if(!(source instanceof THREE.BufferAttribute))continue;
+        const target=new THREE.BufferAttribute(source.array.slice(0,vertices.length*source.itemSize),source.itemSize,source.normalized);
+        target.name=source.name;target.setUsage(source.usage);target.gpuType=source.gpuType;
+        vertices.forEach((index,i)=>target.copyAt(i,source,index));
+        compact.setAttribute(name,target);
+      }
+      compact.setIndex(local);
+      compact.addGroup(0,local.length,0);
+    }else compact=divided.toNonIndexed();
     divided.dispose();
     compact.computeBoundingBox();
     compact.computeBoundingSphere();
@@ -540,10 +564,14 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     const center=wheel.steer.getWorldPosition(new THREE.Vector3());
     const radius=externalWheelRadii(id,d)[i];
     const parts:Array<{name:string;kind:string;radialOffsetM:number;radiusM:number;center:number[]}>= [];
+    const sourceComponents:Array<{name:string;label:string;materials:string[];size:number[];radiusM:number;radialOffsetM:number}>= [];
     wheel.spin.traverse(obj=>{
       if(!(obj instanceof THREE.Mesh))return;
       const bounds=indexedWorldBounds(obj),s=bounds.getSize(new THREE.Vector3()),p=bounds.getCenter(new THREE.Vector3());
       const partRadius=(s.y+s.z)/4;
+      sourceComponents.push({name:obj.name,label:String(obj.userData.originalWheelLabel??wheelLabel(obj)),
+        materials:[obj.material].flat().map(m=>m.name),size:s.toArray(),radiusM:partRadius,
+        radialOffsetM:Math.hypot(p.y-center.y,p.z-center.z)});
       // Full circular surfaces only: spokes, balance weights and lugs are
       // not expected to have a bounding box centered on the hub.
       if(partRadius<radius*.48||partRadius>radius*1.18||Math.abs(s.y-s.z)>partRadius*.28)return;
@@ -564,7 +592,7 @@ export function createExternalVisual(id:string,d:ExternalDimensions):CarVisual{
     const tyres=parts.filter(p=>p.kind==="tyre"),rims=parts.filter(p=>p.kind==="rim");
     const maxOffsetM=parts.length?Math.max(...parts.map(p=>p.radialOffsetM)):null;
     const pairOffsetM=tyres.length&&rims.length?Math.max(...tyres.flatMap(t=>rims.map(r=>Math.hypot(t.center[1]-r.center[1],t.center[2]-r.center[2])))):null;
-    return {corner:wheel.steer.name,radiusM:radius,parts,maxOffsetM,pairOffsetM,
+    return {corner:wheel.steer.name,radiusM:radius,parts,sourceComponents,maxOffsetM,pairOffsetM,
       toleranceM:Math.min(.025,radius*.075),explicitPair:tyres.length>0&&rims.length>0};
   });
   root.userData.wheelAlignment=wheelAlignment;
