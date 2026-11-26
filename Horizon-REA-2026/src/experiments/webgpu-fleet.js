@@ -23,14 +23,14 @@ const vehicleEntry=EXTERNAL_VEHICLES.find(v=>v.id===vehicleId);
 const offroad=circuit===OFFROAD_CIRCUIT.id;
 // Explicit audit URLs retain instrumentation; normal expedition is uncluttered.
 const cleanTrail=offroad&&!q.has("auto")&&q.get("audit")!=="1";
-if(cleanTrail){for(const id of ["switch","reset","quality","sound","report"])document.getElementById(id).style.display="none";document.getElementById("actions").style.top="auto";document.getElementById("actions").style.bottom="max(128px,calc(env(safe-area-inset-bottom) + 120px))";}
+if(cleanTrail){document.body.classList.add("compact-trail");for(const id of ["switch","reset","quality","sound","report"])document.getElementById(id).style.display="none";document.getElementById("actions").style.top="auto";document.getElementById("actions").style.bottom="max(128px,calc(env(safe-area-inset-bottom) + 120px))";}
 if(!vehicleEntry||offroad&&!IS_EXTERNAL_PICKUP(vehicleId))throw Error("Invalid fleet/circuit combination");
 const design=vehicleDesign(vehicleId);
 const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-manual-4x4-reverse-v9-mud-recovery",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-recorded-audio-compact-view",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -64,16 +64,16 @@ async function boot(){
  info.backend="webgpu";info.adapter={vendor:device.adapterInfo?.vendor,architecture:device.adapterInfo?.architecture};
  const gate=new WebGPUFrameGate(device.queue,device.lost);let gpuError;
  device.addEventListener("uncapturederror",e=>{gpuError=String(e.error?.message||e.error);});
- renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.info.autoReset=false;
+ renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=offroad?1.15:1;renderer.info.autoReset=false;
  const scene=new THREE.Scene();scene.background=new THREE.Color(0x7c9fc2);
- const camera=new THREE.PerspectiveCamera(58,1,.1,1500);
+ const camera=new THREE.PerspectiveCamera(offroad?55:58,1,.1,1500);
  let resizePending=true,appliedScale=0;
  function resize(){const w=innerWidth,h=innerHeight,ratio=Math.min(1,1280/w,720/h)*resolution.scale;renderer.setSize(Math.max(1,Math.round(w*ratio)),Math.max(1,Math.round(h*ratio)),false);camera.aspect=w/h;camera.updateProjectionMatrix();appliedScale=resolution.scale;resizePending=false;info.resolution={width:renderer.domElement.width,height:renderer.domElement.height,scale:appliedScale};}
  document.body.prepend(renderer.domElement);resize();addEventListener("resize",()=>{resizePending=true;});
  await RAPIER.init();const world=new RAPIER.World({x:0,y:-9.81,z:0});world.timestep=1/60;
  const definition=offroad?OFFROAD_CIRCUIT:getCircuit(circuit);if(!definition||definition.id!==circuit)throw Error("Circuito de velocidad no encontrado");
  const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);if(offroad){info.roadWidth=track.width;info.rockCount=track.group.getObjectByName("offroad-solid-rocks").userData.rockCount;info.relief=track.group.getObjectByName("offroad-surface").userData.reliefAudit;info.water=track.group.getObjectByName("offroad-muddy-puddles").userData.waterAudit;}
- scene.add(new THREE.HemisphereLight(0xd8e9ff,0x555947,2));const sun=new THREE.DirectionalLight(0xfff3db,3);sun.position.set(70,100,20);scene.add(sun);
+ scene.add(new THREE.HemisphereLight(0xd8e9ff,0x555947,offroad?1.55:2));const sun=new THREE.DirectionalLight(0xfff3db,offroad?3.2:3);sun.position.set(70,100,20);scene.add(sun);
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:offroad?0x493528:0x566748,roughness:1}));
  if(offroad){
    // Material-only conversion: preserve original road, shoulder vertices and Rapier colliders.
@@ -169,7 +169,7 @@ async function boot(){
      for(const m of near){m.count=sorted.length;m.visible=m.count>0;m.instanceMatrix.needsUpdate=true;if(m.count)m.computeBoundingSphere();}
      info.nearTreeCount=sorted.length;info.maxNearTreeCount=Math.max(info.maxNearTreeCount??0,sorted.length);info.forestTriangles=sorted.length*trianglesPerTree+k*6;info.forestAsset="pine-medium.glb.gz";
    };
-   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,45,105);
+   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,65,120);
  }
  await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true,manualTrailDrive:offroad});car.resetToTrack(track);
  $("reverse").hidden=!offroad;info.manual4x4=offroad;info.initialDriveMode=car.fourWheelDriveMode;info.modeSwitches=0;
@@ -218,14 +218,16 @@ async function boot(){
    // Low chase camera follows the true grade rather than aiming at a
    // constant horizontal horizon; keep the upcoming hill in view.
    const at=track.locate(pos,hint).index,look=track.sampleAt(at+Math.round(10/track.segmentLength));
-   const behind=track.sampleAt(at-Math.round(6.5/track.segmentLength));
-   camera.position.copy(pos).addScaledVector(forward,-6.5);
-   camera.position.y=Math.max(pos.y+1.9,behind.y+2.35);
-   target.set(look.x,look.y+1.05,look.z);
+   const behind=track.sampleAt(at-Math.round(5.2/track.segmentLength));
+   const aim=track.sampleAt(at+Math.round(5.5/track.segmentLength));
+   camera.position.copy(pos).addScaledVector(forward,-5.2);
+   camera.position.y=Math.max(pos.y+1.75,behind.y+2.05);
+   target.set(aim.x,aim.y+.85,aim.z);
+   info.visualProfile={chaseDistance:5.2,fov:55,exposure:renderer.toneMappingExposure,fogNear:65,fogFar:120,compactHud:cleanTrail};
    info.currentGrade=(look.y-track.sampleAt(at).y)/10*100;
  }else{camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;}camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
- info.status="running";$("status").textContent=definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
+ info.status="running";$("status").textContent=cleanTrail?"El Imposible 4x4":definition.name+" · "+format.toUpperCase()+" · "+profile+" · P1";$("notice").textContent=cleanTrail?"Silverado · Exploración":vehicleEntry.name+(offroad?" · 16 curvas · Exploración todoterreno":" · auditoría "+info.surface);last=lastReport=lastCompletionAt=performance.now();
  const down=(name,...k)=>[...held.values()].includes(name)||k.some(v=>keys.has(v));
  function tick(now){try{
   if(gpuError)throw Error(gpuError);
