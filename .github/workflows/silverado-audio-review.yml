@@ -14,8 +14,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Install audio validation tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          ffprobe -version
+          ffmpeg -version
       - name: Discover public preview, never authenticated original
         run: |
+          set -euo pipefail
           mkdir -p review/audio
           python3 - <<'PY'
           import urllib.request, urllib.parse, re, html, pathlib, hashlib, json
