@@ -717,15 +717,15 @@ export class Track {
 
   nearestIndex(pos: THREE.Vector3, hint = -1): number {
     const N = this.samples.length;
+    const yWeight = this.circuit.layout === "figure-eight" ? 4 : this.circuit.layout === "mountain" ? 1 : 0;
     let best = 0;
     let bestDist = Infinity;
     if (hint >= 0) {
-      for (let d = -45; d <= 45; d++) {
-        const i = ((hint + d) % N + N) % N;
+      let i = ((hint - 45) % N + N) % N;
+      for (let d = -45; d <= 45; d++, i = i + 1 === N ? 0 : i + 1) {
         const p = this.samples[i];
         const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 +
-        (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 :
-          this.circuit.layout === "mountain" ? (p.y - pos.y) ** 2 : 0);
+          (yWeight ? (p.y - pos.y) ** 2 * yWeight : 0);
         if (dist < bestDist) {
           bestDist = dist;
           best = i;
@@ -738,8 +738,7 @@ export class Track {
       // Global reacquisition must distinguish the flyover from the road below,
       // just as the local hint search does after the first physics step.
       const dist = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 +
-        (this.circuit.layout === "figure-eight" ? (p.y - pos.y) ** 2 * 4 :
-          this.circuit.layout === "mountain" ? (p.y - pos.y) ** 2 : 0);
+          (yWeight ? (p.y - pos.y) ** 2 * yWeight : 0);
       if (dist < bestDist) {
         bestDist = dist;
         best = i;

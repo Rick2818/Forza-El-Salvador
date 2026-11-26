@@ -120,7 +120,7 @@ export class Race {
       const root=vehicle.visual.root,distance=camera.position.distanceTo(root.position);
       this.rivalBounds.center.copy(root.position);
       this.rivalBounds.radius=this.rivalRadius.get(vehicle)??10;
-      root.visible=distance<30||this.rivalFrustum.intersectsSphere(this.rivalBounds);
+      root.visible=this.rivalFrustum.intersectsSphere(this.rivalBounds);
       if(root.visible){if(this.lodEnabled)lod.update(distance);else lod.setLevel(0);}else this.culledRivals++;
     }
   }

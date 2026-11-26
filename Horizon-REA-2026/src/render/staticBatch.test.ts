@@ -3,6 +3,18 @@ import * as THREE from "three";
 import { batchStaticScenery } from "./staticBatch";
 
 describe("spatial scenery batching", () => {
+  it("merges equivalent opaque materials but preserves different colors", () => {
+    const root = new THREE.Group();
+    const a = new THREE.MeshStandardMaterial({color: 0x335522, roughness: .8});
+    const b = a.clone();
+    const c = a.clone(); c.color.setHex(0x884422);
+    for (const material of [a,b,c]) root.add(new THREE.Mesh(new THREE.BoxGeometry(), material));
+    batchStaticScenery(root);
+    const meshes = root.children.filter(o => o instanceof THREE.Mesh) as THREE.Mesh[];
+    expect(meshes).toHaveLength(2);
+    expect(meshes.some(m => m.material === c)).toBe(true);
+    expect(meshes.find(m => m.material === a)?.geometry.index?.count).toBe(72);
+  });
   it("preserves transformed bounds, transparency and distant culling cells", () => {
     const root = new THREE.Group(); root.position.set(13, 0, 20);
     const group = new THREE.Group(); group.position.set(5, 2, 0); root.add(group);
