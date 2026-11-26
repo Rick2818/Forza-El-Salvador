@@ -10,7 +10,7 @@ import { createTurboState, stepTurbo, createCrossingTurboState, stepCrossingTurb
 import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
-import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit, type FourWheelDriveMode } from "../sim/fourWheelDrive";
+import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit, trailExtractionForce, type FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections, wheelRadiiForVehicle } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
@@ -401,7 +401,18 @@ export class Vehicle {
       this.trailTractionLimited=throttle>.45&&engineForce>limit&&Math.abs(speed)<1.8;
       engineForce=Math.min(engineForce,limit);reverseForce=Math.min(reverseForce,limit);
     }
-    const drive = (engineForce + (this.offroadSector ? 0 : nitro) - reverseForce) * contactTraction;
+    let drive = (engineForce + (this.offroadSector ? 0 : nitro) - reverseForce) * contactTraction;
+    // 4H low-range extraction: overcome wet rolling resistance and a steep
+    // grade without turbo or automatic transfer-case engagement.
+    if(trail&&this.manualTrailDrive&&!this.controls.handbrake){
+      const wet=trail.surface!=="dirt"||this.waterDepth>.04;
+      const forwardDemand=brake<=.05?throttle:0;
+      const reverseDemand=explicitReverse&&speed<.6&&this.controls.brake<.05&&!(planarBefore>1.2&&speed>-.6)?1:0;
+      const assist=trailExtractionForce(this.body.mass(),this.contactScratch,this.fourWheelDriveMode,wet,planarBefore,Math.max(forwardDemand,reverseDemand));
+      if(forwardDemand>0)drive=Math.max(drive,assist);
+      else if(reverseDemand>0)drive=Math.min(drive,-assist);
+      if(assist>0)this.trailTractionLimited=false;
+    }
     if (Math.abs(drive) > 0.5) {
       this.body.addForce({ x: fwd.x * drive, y: 0, z: fwd.z * drive }, true);
     }
