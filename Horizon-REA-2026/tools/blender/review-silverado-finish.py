@@ -1,12 +1,14 @@
 """Isolated visual review; never replaces the source GLB or live wheel pivots."""
-import bpy, json, math, re, hashlib
+import bpy, json, math, re, hashlib, os
 from pathlib import Path
 from mathutils import Vector
 source=Path("Horizon-REA-2026/public/models/external-candidates/chevrolet-silverado-ev-alternative.glb")
 out=Path("review/silverado")
 out.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=str(source.resolve()))
+decoded=Path(os.environ.get('SILVERADO_REVIEW_GLB',str(source)))
+assert decoded.is_file(), 'Missing review GLB'
+bpy.ops.import_scene.gltf(filepath=str(decoded.resolve()))
 meshes=[o for o in bpy.context.scene.objects if o.type=="MESH"]
 assert meshes, "No vehicle meshes"
 bounds=[o.matrix_world@Vector(c) for o in meshes for c in o.bound_box]
@@ -88,6 +90,6 @@ for mat in eligible-protected:
                     changes.append({"material":mat.name,"property":name,"before":old,"after":value})
 render("silverado-candidate.png")
 bpy.ops.wm.save_as_mainfile(filepath=str((out/"silverado-review.blend").resolve()))
-report={"source":str(source),"sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"blender":bpy.app.version_string,"mesh_count":len(meshes),"vertices":sum(len(o.data.vertices) for o in meshes),"dimensions":list(size),"material_before":before,"material_after":snapshot(),"changes":changes,"note":"Review only. No source geometry, wheel transforms or game assets overwritten."}
+report={"source":str(source),"decoded_sha256":hashlib.sha256(decoded.read_bytes()).hexdigest(),"sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"blender":bpy.app.version_string,"mesh_count":len(meshes),"vertices":sum(len(o.data.vertices) for o in meshes),"dimensions":list(size),"material_before":before,"material_after":snapshot(),"changes":changes,"note":"Review only. No source geometry, wheel transforms or game assets overwritten."}
 (out/"silverado-review.json").write_text(json.dumps(report,indent=2))
 print("SILVERADO_BLENDER_REVIEW",json.dumps({k:report[k] for k in ("blender","mesh_count","vertices","dimensions","changes")}))

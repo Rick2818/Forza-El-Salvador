@@ -8,20 +8,47 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Install Blender and inspect exact in-game GLB
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Decode mesh compression into temporary review GLB
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/silverado-decode review/silverado
+          cd /tmp/silverado-decode
+          npm install --no-audit --no-fund --no-save @gltf-transform/core@4 @gltf-transform/extensions@4 meshoptimizer draco3dgltf
+          cat > decode.mjs <<'JS'
+          import { NodeIO } from '@gltf-transform/core';
+          import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+          import { MeshoptDecoder } from 'meshoptimizer';
+          import draco3d from 'draco3dgltf';
+          await MeshoptDecoder.ready;
+          const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
+            'meshopt.decoder':MeshoptDecoder,
+            'draco3d.decoder':await draco3d.createDecoderModule()
+          });
+          const doc=await io.read(process.argv[2]);
+          for(const ext of doc.getRoot().listExtensionsUsed()){
+            if(['EXT_meshopt_compression','KHR_draco_mesh_compression'].includes(ext.extensionName))ext.dispose();
+          }
+          await io.write(process.argv[3],doc);
+          const json=await io.readAsJSON(process.argv[3]);
+          if((json.json.extensionsUsed??[]).some(x=>['EXT_meshopt_compression','KHR_draco_mesh_compression'].includes(x)))throw Error('Compression remains');
+          console.log('Decoded review asset; source GLB unchanged.');
+          JS
+          node decode.mjs "$GITHUB_WORKSPACE/Horizon-REA-2026/public/models/external-candidates/chevrolet-silverado-ev-alternative.glb" /tmp/silverado-review-decoded.glb
+      - name: Install Blender and render original and candidate
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y blender python3-numpy
-          blender --background --factory-startup --python-exit-code 1 --python-expr 'import numpy; print(numpy.__version__)' python3-numpy
           blender --background --factory-startup --python-exit-code 1 --python-expr 'import numpy; print(numpy.__version__)'
-          mkdir -p review/silverado
-          blender --background --factory-startup --python-exit-code 1 --python Horizon-REA-2026/tools/blender/review-silverado-finish.py
+          SILVERADO_REVIEW_GLB=/tmp/silverado-review-decoded.glb blender --background --factory-startup --python-exit-code 1 --python Horizon-REA-2026/tools/blender/review-silverado-finish.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
