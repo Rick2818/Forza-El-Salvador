@@ -17,7 +17,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender python3-numpy
+          blender --background --factory-startup --python-exit-code 1 --python-expr 'import numpy; print(numpy.__version__)'
           mkdir -p review/silverado
           blender --background --factory-startup --python-exit-code 1 --python Horizon-REA-2026/tools/blender/review-silverado-finish.py
       - uses: actions/upload-artifact@v4
