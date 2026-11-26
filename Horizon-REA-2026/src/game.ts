@@ -56,6 +56,7 @@ export class Game {
   private readonly gpuTimer: GPUFrameTimer;
   private readonly gpuBackpressure: RenderBackpressure;
   private lastDrawAt = performance.now();
+  private vegetationDrawDt = 0;
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -377,6 +378,7 @@ export class Game {
         this.lastCompletedFrame = performance.now();
         this.lastDrawAt = performance.now();
         this.gpuBackpressure.reset();
+        this.vegetationDrawDt = 0;
         this.clock.getDelta();
         this.beginPreparedRace();
         // If the player left the tab during preparation, keep pause semantics.
@@ -1005,13 +1007,18 @@ export class Game {
     }
 
     if (this.onBeforeRender) this.onBeforeRender();
-    if (!this.skipRender && !this.captureMode) {
-      this.race.updateRivalLods(this.camera);
-      updateMonzonTreeLods(this.scene,this.camera.position);
-      this.environment.updateVegetationView(this.camera.position,dt);
-    }
     this.framePhase = "gpu-backpressure";
+    if (!this.skipRender && !this.captureMode)
+      this.vegetationDrawDt = Math.min(1, this.vegetationDrawDt + dt);
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
+      // Camera-dependent visual LOD work belongs to a frame actually admitted
+      // by the GPU gate, not to every physics/input callback while it is busy.
+      if (!this.captureMode) {
+        this.race.updateRivalLods(this.camera);
+        updateMonzonTreeLods(this.scene,this.camera.position);
+        this.environment.updateVegetationView(this.camera.position,this.vegetationDrawDt);
+        this.vegetationDrawDt = 0;
+      }
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
       this.framePhase = "gpu-query-begin";
       const previousDraw = this.lastDrawAt;
