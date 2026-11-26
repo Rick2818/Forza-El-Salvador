@@ -138,8 +138,10 @@ export class AIDriver {
     // Multiplying the precomputed braking envelope by pace also multiplied
     // its required deceleration by pace². With V9 highway power that sent
     // the hard Bugatti into Suzaka's barrier after the start straight.
-    const brakingDeceleration = 8;
-    const previewMetres = Math.max(60, speed * speed / (2 * brakingDeceleration) + speed * .4);
+    // Mud and wet ruts cannot sustain the asphalt braking/turning envelope.
+    // Anticipate corners before steering saturation rather than braking after a slide.
+    const brakingDeceleration = offroad ? 2.2 : 8;
+    const previewMetres = Math.max(offroad ? 24 : 60, speed * speed / (2 * brakingDeceleration) + speed * (offroad ? .8 : .4));
     const previewSteps = Math.min(this.track.samples.length - 1,
       Math.ceil(previewMetres / this.track.segmentLength));
     for (let step = 0; step <= previewSteps; step += 3) {
@@ -150,7 +152,7 @@ export class AIDriver {
       // grip envelope. These are physical differences in driving style.
       const cornerPace = this.personality === "defensor" ? .96
         : this.personality === "atacante" ? 1 : .98;
-      const cornerSpeed = Math.sqrt(13.5 / curvature) * Math.min(pace, cornerPace);
+      const cornerSpeed = Math.sqrt((offroad ? 1.8 : 13.5) / curvature) * Math.min(pace, cornerPace);
       const reachable = Math.sqrt(cornerSpeed * cornerSpeed +
         2 * brakingDeceleration * Math.max(0, step * this.track.segmentLength - speed * .25));
       targetSpeed = Math.min(targetSpeed, reachable);
@@ -172,7 +174,7 @@ export class AIDriver {
         this.pass = null;
       }
     }
-    if (!onBridge && !this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
+    if (!offroad && !onBridge && !this.pass && front && targetSpeed > front.speed + (1 - tuning.pressure) * 2.4 + 0.65) {
       const firstSide = Math.sin(this.phase) > 0 ? -1 : 1;
       for (const side of [firstSide, -firstSide]) {
         const candidate = clamp(front.lane + side * 3.35, -4.55, 4.55);
@@ -185,7 +187,7 @@ export class AIDriver {
         }
       }
     }
-    if (recovering || onBridge) {
+    if (offroad || recovering || onBridge) {
       this.pass = null;
       desiredLane = 0;
     } else if (headOn) {
@@ -249,7 +251,12 @@ export class AIDriver {
       targetSpeed = Math.min(targetSpeed, Math.max(32, speed + 4));
     }
     if(offroad){
-      targetSpeed=Math.min(targetSpeed,Math.abs(headingError)>.45?3.5:Math.abs(headingError)>.2?5.5:10);
+      const lateralFraction = Math.abs(ownLane) / this.track.halfWidth;
+      const alignmentSpeed = Math.abs(headingError)>.45?2.5:Math.abs(headingError)>.2?4.0:7.5;
+      const edgeSpeed = lateralFraction > .8 ? 2.5 : lateralFraction > .5 ? 4 : 7.5;
+      targetSpeed=Math.min(targetSpeed,alignmentSpeed,edgeSpeed);
+      // Do not let an automatic expedition attempt a racing overtake on the narrow trail.
+      if(front&&front.gap<12)targetSpeed=Math.min(targetSpeed,Math.max(0,front.speed+(front.gap-5)*.45));
     }
     const error = targetSpeed - speed;
     // The speed controller must account for the stronger highway engine;
