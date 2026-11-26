@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { trailHillForce } from "../sim/fourWheelDrive";
 import { analyzeCircuitDefinition } from "./circuits";
 import { OFFROAD_CIRCUIT, OFFROAD_SECTORS, OFFROAD_PICKUP_IDS, isOffroadEligible, offroadSectorAt, offroadElevation, offroadDriveMultiplier, offroadBrakeAcceleration, offroadSpeedLimit } from "./offroadPrototype";
 describe("El Imposible 4x4 prototype", () => {
@@ -46,4 +47,22 @@ describe("El Imposible 4x4 prototype", () => {
     expect(offroadDriveMultiplier("4H", [true,true,false,false], .25)).toBeGreaterThan(0);
     expect(offroadDriveMultiplier("4H", [false,false,false,false], .25)).toBe(0);
   });
+});
+
+describe("V9.4 hill torque reserve",()=>{
+ const mass=3000,all=[true,true,true,true],two=[true,false,false,true],air=[false,false,false,false];
+ it("overcomes gravity and rolling resistance on 33% dirt and mud climbs",()=>{
+  for(const [resistance,depth] of [[.08,0],[.38,.55]]){
+   const load=mass*9.81*(.33/Math.sqrt(1+.33*.33)+resistance*.22+depth*.14);
+   expect(trailHillForce(mass,two,"4H",.33,resistance,depth,2,1)).toBeGreaterThan(load);
+  }
+ });
+ it("requires explicit 4H, uphill demand, contact and low speed",()=>{
+  expect(trailHillForce(mass,all,"2H",.33,.38,.55,0,1)).toBe(0);
+  expect(trailHillForce(mass,air,"4H",.33,.38,.55,0,1)).toBe(0);
+  expect(trailHillForce(mass,all,"4H",-.33,.38,.55,0,1)).toBe(0);
+  expect(trailHillForce(mass,all,"4H",.33,.38,.55,0,0)).toBe(0);
+  expect(trailHillForce(mass,all,"4H",.33,.38,.55,7,1)).toBe(0);
+  expect(trailHillForce(mass,all,"4H",.33,.38,.55,4,1)).toBeGreaterThan(0);
+ });
 });
