@@ -57,6 +57,7 @@ export class Game {
   private readonly gpuBackpressure: RenderBackpressure;
   private lastDrawAt = performance.now();
   private vegetationDrawDt = 0;
+  private adaptiveDrawDt = 0;
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -379,6 +380,7 @@ export class Game {
         this.lastDrawAt = performance.now();
         this.gpuBackpressure.reset();
         this.vegetationDrawDt = 0;
+        this.adaptiveDrawDt = 0;
         this.clock.getDelta();
         this.beginPreparedRace();
         // If the player left the tab during preparation, keep pause semantics.
@@ -600,8 +602,11 @@ export class Game {
       Math.max(1, window.innerWidth * window.innerHeight));
     const base = Math.min(window.devicePixelRatio, limit, pixelBudget);
     const ratio = Math.max(0.5, base * this.renderScale);
-    this.renderer.setPixelRatio(ratio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    // setPixelRatio also resizes the canvas. Resize the drawing buffer once,
+    // and avoid reallocating it entirely when dimensions are unchanged.
+    const size = this.renderer.getSize(new THREE.Vector2());
+    if (this.renderer.getPixelRatio() !== ratio || size.x !== window.innerWidth || size.y !== window.innerHeight)
+      this.renderer.setDrawingBufferSize(window.innerWidth, window.innerHeight, ratio);
     this.environment.setPixelRatio(ratio);
   }
 
@@ -869,7 +874,7 @@ export class Game {
     if (!this.captureMode) {
       this.input.update(dt);
       this.handleHotkeys();
-      this.adaptResolution(dt);
+      this.adaptiveDrawDt = Math.min(2, this.adaptiveDrawDt + dt);
     }
 
     if (this.state === "menu" && !this.menu.isGarageOpen) {
@@ -1014,6 +1019,10 @@ export class Game {
       // Camera-dependent visual LOD work belongs to a frame actually admitted
       // by the GPU gate, not to every physics/input callback while it is busy.
       if (!this.captureMode) {
+        // A framebuffer resize can flush/reallocate GPU resources. Apply the
+        // automatic scaler only after the previous submission has completed.
+        this.adaptResolution(this.adaptiveDrawDt);
+        this.adaptiveDrawDt = 0;
         this.race.updateRivalLods(this.camera);
         updateMonzonTreeLods(this.scene,this.camera.position);
         this.environment.updateVegetationView(this.camera.position,this.vegetationDrawDt);
