@@ -22,8 +22,12 @@ describe("Offroad engineering track",()=>{
   expect(relief.maxDownhill).toBeLessThan(-.18);
   expect(relief.maxUphill).toBeGreaterThan(.18);
   const spawn=t.samples[t.startIndex];
-  const firstHill=t.samples[(t.startIndex+Math.round(22/t.segmentLength))%t.samples.length];
-  expect(firstHill.y-spawn.y).toBeGreaterThan(1.5);
+  // V9.1 explicitly requires a level launch before the first climb.
+  // Verify the launch and the retained climb independently.
+  const atMetres=(metres:number)=>t.samples[(t.startIndex+Math.round(metres/t.segmentLength))%t.samples.length];
+  for(const metres of [0,3,6,9,12,15])expect(Math.abs(atMetres(metres).y-spawn.y)).toBeLessThan(.15);
+  const firstHill=Math.max(...Array.from({length:31},(_,i)=>atMetres(30+i).y));
+  expect(firstHill-spawn.y).toBeGreaterThan(1.5);
   const water=t.group.getObjectByName("offroad-muddy-puddles")!.userData.waterAudit;
   expect(water.basins).toBeGreaterThan(8);
   expect(water.waterArea).toBeGreaterThan(30);
