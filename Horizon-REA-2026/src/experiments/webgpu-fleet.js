@@ -29,8 +29,8 @@ const design=vehicleDesign(vehicleId);
 const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
-const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-recorded-audio-compact-view",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const resolution=new AdaptiveGpuResolution(profile==="adaptive",60,offroad);
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-stability-repair",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -159,8 +159,9 @@ async function boot(){
    const last=new THREE.Vector3(Infinity,Infinity,Infinity);
    function transform(p){dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();return dummy.matrix;}
    updateForest=(center)=>{
-     if(last.distanceToSquared(center)<64)return;last.copy(center);
-     const sorted=locations.map((p,i)=>({i,d:Math.hypot(p.x-center.x,p.z-center.z)})).filter(p=>p.d<58).sort((a,b)=>a.d-b.d).slice(0,limit);
+     const budget=profile==="adaptive"?Math.max(1,Math.floor(limit*resolution.scale*resolution.scale)):limit;
+     if(last.distanceToSquared(center)<64&&info.nearTreeBudget===budget)return;last.copy(center);info.nearTreeBudget=budget;
+     const sorted=locations.map((p,i)=>({i,d:Math.hypot(p.x-center.x,p.z-center.z)})).filter(p=>p.d<58).sort((a,b)=>a.d-b.d).slice(0,budget);
      const ids=new Set(sorted.map(p=>p.i));
      let k=0;for(let i=0;i<locations.length;i++)if(!ids.has(i)&&Math.hypot(locations[i].x-center.x,locations[i].z-center.z)<105)forest.setMatrixAt(k++,transform(locations[i]));
      info.visibleTreeCount=k+sorted.length;
@@ -188,7 +189,7 @@ async function boot(){
  }
  if(offroad){
    await loadSelectedVehicle(partnerId);const pd=vehicleDesign(partnerId);
-   partner=new Vehicle(world,scene,{paintColor:pd.paint,accentColor:0xffffff,number:2,isPlayer:false,vehicleId:partnerId,webgpuMud:true});
+   partner=new Vehicle(world,scene,{paintColor:pd.paint,accentColor:0xffffff,number:2,isPlayer:false,vehicleId:partnerId,webgpuMud:true,manualTrailDrive:true});
    if(partner.supportsFourWheelDrive&&partner.fourWheelDriveMode!=="4H")partner.toggleFourWheelDrive();
    partnerPilot=new AIDriver(partner,track,0,.88,2,"defensor","medio");
    info.partnerId=partnerId;info.partnerDrive=partner.fourWheelDriveMode;
@@ -248,10 +249,11 @@ async function boot(){
    if(offroad){
     if(input.throttle>.05||input.reverse)started=true;
     // AI test driver can reverse when recovering but never changes the transfer case.
-    if(auto&&input.brake>.9&&car.speed<.6&&input.throttle===0&&!input.handbrake)input.reverse=true;
+    if(auto&&input.brake>.9&&Math.abs(car.speed)<.6&&input.throttle===0&&!input.handbrake)input={...input,brake:0,reverse:true};
     if(stage.finished)input={throttle:0,brake:1,steer:0,handbrake:true};
     const ph=track.locate(partner.position,partnerHint);partnerHint=ph.index;
     let ai=partnerPilot.plan(1/60,info.elapsed,[{position:car.position,speed:car.speed,isPlayer:true}]);
+     if(ai.brake>.9&&Math.abs(partner.speed)<.6&&ai.throttle===0&&!ai.handbrake)ai={...ai,brake:0,reverse:true};
     const lead=(partnerStage.travel-stage.travel)*track.segmentLength;
     const clearOfFinish=partnerStage.finished&&track.progress(partnerHint)*track.length>=8&&track.progress(partnerHint)<.1;
     if(!started||clearOfFinish||lead>22&&!partnerStage.finished)ai={throttle:0,brake:1,steer:0,handbrake:true};
