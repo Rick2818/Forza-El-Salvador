@@ -10,7 +10,7 @@ import { createTurboState, stepTurbo, createCrossingTurboState, stepCrossingTurb
 import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
-import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit, trailExtractionForce, type FourWheelDriveMode } from "../sim/fourWheelDrive";
+import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit, trailExtractionForce, trailHillForce, type FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections, wheelRadiiForVehicle } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
@@ -74,6 +74,8 @@ export class Vehicle {
   private readonly webgpuMud:boolean;
   readonly manualTrailDrive:boolean;
   trailTractionLimited=false;
+  trailHillAssist=0;
+  private trailGrade=0;
   private offroadSector?: OffroadSector;
   private smoothedGrip = 1;
   readonly vehicleId: string | undefined;
@@ -396,6 +398,7 @@ export class Vehicle {
       contactTraction = pickupContactTraction(this.fourWheelDriveMode, this.contactScratch, grip);
     }
     this.trailTractionLimited=false;
+    this.trailHillAssist=0;
     if(trail&&this.manualTrailDrive){
       const limit=trailDriveLimit(this.body.mass(),grip,this.fourWheelDriveMode);
       this.trailTractionLimited=throttle>.45&&engineForce>limit&&Math.abs(speed)<1.8;
@@ -408,7 +411,9 @@ export class Vehicle {
       const wet=trail.surface!=="dirt"||this.waterDepth>.04;
       const forwardDemand=brake<=.05?throttle:0;
       const reverseDemand=explicitReverse&&speed<.6&&this.controls.brake<.05&&!(planarBefore>1.2&&speed>-.6)?1:0;
-      const assist=trailExtractionForce(this.body.mass(),this.contactScratch,this.fourWheelDriveMode,wet,planarBefore,Math.max(forwardDemand,reverseDemand));
+      const hill=trailHillForce(this.body.mass(),this.contactScratch,this.fourWheelDriveMode,reverseDemand>0?-this.trailGrade:this.trailGrade,trail.resistance,this.waterDepth,planarBefore,Math.max(forwardDemand,reverseDemand));
+      this.trailHillAssist=hill;
+      const assist=Math.max(hill,trailExtractionForce(this.body.mass(),this.contactScratch,this.fourWheelDriveMode,wet,planarBefore,Math.max(forwardDemand,reverseDemand)));
       if(forwardDemand>0)drive=Math.max(drive,assist);
       else if(reverseDemand>0)drive=Math.min(drive,-assist);
       if(assist>0)this.trailTractionLimited=false;
@@ -473,11 +478,12 @@ export class Vehicle {
     this.controller.updateVehicle(dt);
   }
 
-  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector, offroadOnTrack?: boolean, waterDepth=0): void {
+  update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector, offroadOnTrack?: boolean, waterDepth=0, trailGrade=0): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
     input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake, reverse: !!input.reverse };
     this.controls = input;
     this.offroadSector = offroadSector;
+    this.trailGrade=offroadSector&&Number.isFinite(trailGrade)?trailGrade:0;
     this.waterDepth=offroadSector&&Number.isFinite(waterDepth)?clamp(waterDepth,0,.55):0;
     if (offroadSector && this.supportsFourWheelDrive) {
       let contacts = 0;
