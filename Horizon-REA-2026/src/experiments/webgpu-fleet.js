@@ -21,18 +21,21 @@ const circuit=["monzon","suzaka",OFFROAD_CIRCUIT.id].includes(q.get("circuit"))?
 const vehicleId=q.get("vehicle")||(circuit===OFFROAD_CIRCUIT.id?"chevrolet-silverado-ev-alternative":"ferrari-f430");
 const vehicleEntry=EXTERNAL_VEHICLES.find(v=>v.id===vehicleId);
 const offroad=circuit===OFFROAD_CIRCUIT.id;
+// Explicit audit URLs retain instrumentation; normal expedition is uncluttered.
+const cleanTrail=offroad&&!q.has("auto")&&q.get("audit")!=="1";
+if(cleanTrail){for(const id of ["switch","reset","quality","sound","report"])document.getElementById(id).style.display="none";document.getElementById("actions").style.top="auto";document.getElementById("actions").style.bottom="max(128px,calc(env(safe-area-inset-bottom) + 120px))";}
 if(!vehicleEntry||offroad&&!IS_EXTERNAL_PICKUP(vehicleId))throw Error("Invalid fleet/circuit combination");
 const design=vehicleDesign(vehicleId);
 const format="glb";
 const $=id=>document.getElementById(id);
-const profile=q.get("quality")==="fixed"?"fixed":"adaptive";
+const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive");
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-manual-4x4-reverse-v9",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-manual-4x4-reverse-v9-mud-recovery",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
 const audio=offroad&&vehicleId==="chevrolet-silverado-ev-alternative"?new SilveradoTrailAudio():new GameAudio();audio.setVehicle(vehicleId,design.powertrain==="electric");audio.setEngineProfile("vehiculo");
-function unlockAudio(){try{audio.ensure();info.audioGesture=true;}catch(e){info.audioError=String(e);}}
+function unlockAudio(){try{audio.ensure();if(cleanTrail){audio.setMuted(false);audio.setVolumes({engines:1});}info.audioGesture=true;}catch(e){info.audioError=String(e);}}
 $("sound").onclick=()=>{audio.setMuted(false);audio.setVolumes({engines:1});unlockAudio();};
 addEventListener("pointerdown",unlockAudio,{passive:true});
 addEventListener("keydown",unlockAudio);
@@ -208,6 +211,7 @@ async function boot(){
  const incompatible=new Set();function scanMaterials(){scene.traverse(o=>{for(const m of [o.material].flat().filter(Boolean)){if(m.isShaderMaterial||m.isRawShaderMaterial||Object.hasOwn(m,"onBeforeCompile"))incompatible.add(m.name||m.type);}});info.incompatibleMaterials=[...incompatible];}scanMaterials();
  const pilot=new AIDriver(car,track,offroad?0:-2.7,.94,1,"estratega","medio");
  info.contactSteps=[0,0,0,0];info.totalSteps=0;info.maxOffroadDrop=0;info.sectors=[];
+ let lastSafeHint=track.startIndex,recoverySeconds=0;
  let previous=car.position.clone(),hint=track.startIndex,acc=0,last=performance.now(),lastReport=last,lastCompleted=0,lastCompletionAt=last,lastCount=0,callbacks=0,physicsMs=0,renderMs=0,renderCount=0,physicsSteps=0,maxCallbackGap=0;
  const forward=new THREE.Vector3(),target=new THREE.Vector3(),pos=new THREE.Vector3(),quat=new THREE.Quaternion();
  function cameraPose(){const t=car.body.translation(),r=car.body.rotation();pos.set(t.x,t.y,t.z);quat.set(r.x,r.y,r.z,r.w);forward.set(0,0,1).applyQuaternion(quat);forward.y=0;if(forward.lengthSq()<.01)forward.set(0,0,1);forward.normalize();if(offroad){
@@ -228,9 +232,16 @@ async function boot(){
   const gap=Math.max(0,now-last);const dt=Math.min(.10,gap/1000);last=now;
   if(document.hidden){acc=0;lastCompletionAt=now;lastReport=now;lastCompleted=gate.completed;callbacks=physicsMs=renderMs=renderCount=physicsSteps=maxCallbackGap=0;resolution.interrupt();requestAnimationFrame(tick);return;}
   callbacks++;maxCallbackGap=Math.max(maxCallbackGap,gap);
-  if(resetRequested){car.resetToTrack(track);previous.copy(car.position);hint=track.startIndex;pilot.recoverAt(hint);if(offroad)resetExpedition();info.resets++;resetRequested=false;}
+  if(resetRequested){car.resetToTrack(track);previous.copy(car.position);hint=track.startIndex;lastSafeHint=hint;recoverySeconds=0;pilot.recoverAt(hint);if(offroad)resetExpedition();info.resets++;resetRequested=false;}
   const physicsStart=performance.now();acc+=dt;let steps=0;
-  while(acc>=1/60&&steps<6){const hit=track.locate(car.position,hint);hint=hit.index;const grip=track.gripAt(hint,hit.lateral);
+  while(acc>=1/60&&steps<6){let hit=track.locate(car.position,hint);hint=hit.index;
+   if(cleanTrail&&!stage.finished){const r=car.body.rotation(),upY=1-2*(r.x*r.x+r.z*r.z),drop=track.samples[hint].y-car.position.y;
+    const severe=drop>6||Math.abs(hit.lateral)>12||upY<.25;
+    if(!severe&&Math.abs(hit.lateral)<track.halfWidth*.75&&Math.abs(drop)<3&&upY>.7)lastSafeHint=hint;
+    recoverySeconds=severe?recoverySeconds+1/60:0;
+    if(recoverySeconds>1.5){const p=track.sampleAt(lastSafeHint),t=track.tangentAt(lastSafeHint);car.place(p,Math.atan2(t.x,t.z));hint=lastSafeHint;pilot.recoverAt(hint);previous.copy(car.position);recoverySeconds=0;info.resets++;info.autoRecoveries=(info.autoRecoveries??0)+1;hit=track.locate(car.position,hint);}
+   }
+   const grip=track.gripAt(hint,hit.lateral);
    let input=auto?pilot.plan(1/60,info.elapsed,partner?[{position:partner.position,speed:partner.speed,isPlayer:false}]:[]):{throttle:Number(down("gas","ArrowUp","w")),brake:Number(down("brake","ArrowDown","s")),steer:Number(down("left","ArrowLeft","a"))-Number(down("right","ArrowRight","d")),handbrake:keys.has(" "),reverse:offroad&&down("reverse","r")};
    if(offroad){
     if(input.throttle>.05||input.reverse)started=true;
