@@ -1,0 +1,27 @@
+name: Silverado Blender material review (isolated)
+on:
+  push:
+    branches: [experiment/silverado-blender-review]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Blender and inspect exact in-game GLB
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y blender
+          mkdir -p review/silverado
+          blender --background --factory-startup --python-exit-code 1 --python Horizon-REA-2026/tools/blender/review-silverado-finish.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: silverado-blender-before-after
+          path: review/silverado/
