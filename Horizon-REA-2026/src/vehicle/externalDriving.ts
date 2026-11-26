@@ -418,6 +418,7 @@ function partitionWheelMesh(
     owned.push(compact);
     const part=new THREE.Mesh(compact,mesh.material);
     part.name=mesh.name+"_original_wheel_"+hub;
+    part.userData.originalWheelLabel=mesh.userData.originalWheelLabel??wheelLabel(mesh);
     part.position.copy(mesh.position);
     part.quaternion.copy(mesh.quaternion);
     part.scale.copy(mesh.scale);
