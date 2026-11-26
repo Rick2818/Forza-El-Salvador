@@ -46,8 +46,9 @@ for(const b of document.querySelectorAll("[data-control]")){
  for(const name of ["pointerup","pointercancel","lostpointercapture"])b.addEventListener(name,release);
 }
 addEventListener("pointerup",e=>{held.delete(e.pointerId);});addEventListener("pointercancel",e=>{held.delete(e.pointerId);});
-addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d","r"," "].includes(e.key)){e.preventDefault();keys.add(e.key);auto=false;}});
-addEventListener("keyup",e=>keys.delete(e.key));addEventListener("blur",()=>{clear();audio.silence();});document.addEventListener("visibilitychange",()=>{clear();if(document.hidden)audio.silence();});
+const drivingKey=e=>e.code==="KeyK"?"k":e.code==="KeyL"?"l":e.key.length===1?e.key.toLowerCase():e.key;
+addEventListener("keydown",e=>{const key=drivingKey(e);if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d","k","l","r"," "].includes(key)){e.preventDefault();keys.add(key);auto=false;}});
+addEventListener("keyup",e=>keys.delete(drivingKey(e)));addEventListener("blur",()=>{clear();audio.silence();});document.addEventListener("visibilitychange",()=>{clear();if(document.hidden)audio.silence();});
 let changeDriveMode=()=>{};
 $("driveMode").hidden=!IS_EXTERNAL_PICKUP(vehicleId);$("driveMode").onclick=()=>changeDriveMode();
 $("reset").onclick=()=>{resetRequested=true;};
@@ -263,7 +264,7 @@ async function boot(){
     if(recoverySeconds>1.5){const p=track.sampleAt(lastSafeHint),t=track.tangentAt(lastSafeHint);car.place(p,Math.atan2(t.x,t.z));hint=lastSafeHint;pilot.recoverAt(hint);previous.copy(car.position);recoverySeconds=0;info.resets++;info.autoRecoveries=(info.autoRecoveries??0)+1;hit=track.locate(car.position,hint);}
    }
    const grip=track.gripAt(hint,hit.lateral);
-   let input=auto?pilot.plan(1/60,info.elapsed,partner?[{position:partner.position,speed:partner.speed,isPlayer:false}]:[]):{throttle:Number(down("gas","ArrowUp","w")),brake:Number(down("brake","ArrowDown","s")),steer:Number(down("left","ArrowLeft","a"))-Number(down("right","ArrowRight","d")),handbrake:keys.has(" "),reverse:offroad&&down("reverse","r")};
+   let input=auto?pilot.plan(1/60,info.elapsed,partner?[{position:partner.position,speed:partner.speed,isPlayer:false}]:[]):{throttle:Number(down("gas","ArrowUp","w")),brake:Number(down("brake","ArrowDown","s")),steer:Number(down("left","ArrowLeft","a","k"))-Number(down("right","ArrowRight","d","l")),handbrake:keys.has(" "),reverse:offroad&&down("reverse","r")};
    if(offroad){
     if(input.throttle>.05||input.reverse)started=true;
     // Detect sustained drive demand with no horizontal motion, not intentional stops.
