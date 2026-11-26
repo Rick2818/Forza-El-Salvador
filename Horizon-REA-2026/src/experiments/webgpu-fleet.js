@@ -17,7 +17,7 @@ import { SilveradoTrailAudio } from "../audio/silveradoTrailAudio.js";
 import { TrailStage } from "../world/trailStage.js";
 const TURBO_TRIGGER_KPH = 100;
 const q=new URLSearchParams(location.search);
-const circuit=["monzon","suzaka",OFFROAD_CIRCUIT.id].includes(q.get("circuit"))?q.get("circuit"):"monzon";
+const circuit=["monzon","suzaka",OFFROAD_CIRCUIT.id].includes(q.get("circuit"))?q.get("circuit"):OFFROAD_CIRCUIT.id;
 const vehicleId=q.get("vehicle")||(circuit===OFFROAD_CIRCUIT.id?"chevrolet-silverado-ev-alternative":"ferrari-f430");
 const vehicleEntry=EXTERNAL_VEHICLES.find(v=>v.id===vehicleId);
 const offroad=circuit===OFFROAD_CIRCUIT.id;
