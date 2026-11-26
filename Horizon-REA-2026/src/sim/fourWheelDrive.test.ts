@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   FOUR_BY_FOUR_PICKUP_IDS, isFourWheelDrivePickup, defaultFourWheelDriveMode,
-  nextFourWheelDriveMode, pickupContactTraction
+  nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit
 } from "./fourWheelDrive";
 
 describe("4x4 pickup control", () => {
@@ -46,4 +46,20 @@ describe("4x4 pickup control", () => {
   it("requires four wheel contacts", () => {
     expect(()=>pickupContactTraction("4H",[true],0.6)).toThrow();
   });
+});
+
+describe("manual expedition transfer case",()=>{
+ it("switches only on request, returns to 2H, never 4A",()=>{
+  expect(nextManualTrailMode("2H",0)).toBe("4H");
+  expect(nextManualTrailMode("4H",0)).toBe("2H");
+  expect(nextManualTrailMode("2H",31)).toBe("2H");
+ });
+ it("2H traction is insufficient for a muddy 30% hill but 4H has reserve",()=>{
+  const mass=3000,grip=.44,grade=.30;
+  const gravity=mass*9.81*grade/Math.sqrt(1+grade*grade);
+  const all=[true,true,true,true];
+  expect(trailDriveLimit(mass,grip,"2H")*pickupContactTraction("2H",all,grip)).toBeLessThan(gravity);
+  expect(trailDriveLimit(mass,grip,"4H")*pickupContactTraction("4H",all,grip)).toBeGreaterThan(gravity);
+  expect(trailDriveLimit(mass,grip,"4H")*pickupContactTraction("4H",[false,false,false,false],grip)).toBe(0);
+ });
 });

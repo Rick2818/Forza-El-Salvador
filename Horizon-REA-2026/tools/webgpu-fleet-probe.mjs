@@ -11,6 +11,7 @@ try{
   await page.goto("http://127.0.0.1:5173/webgpu-fleet.html?circuit="+circuit+"&auto=0&vehicle="+vehicle);
   await page.waitForFunction(()=>["running","failed"].includes(window.HORIZON_GPU_DRIVE?.status),{},{timeout:180000});
   assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.status),"running");
+  assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.fourWheelDrive),"2H");
   await page.locator("#sound").tap();
   const gas=await page.locator('[data-control="gas"]').boundingBox();
   assert.ok(gas,"Missing mobile accelerator");
@@ -22,9 +23,16 @@ try{
    await page.screenshot({path:"review/quality/manual-touch.png"});
   }finally{await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});}
   await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.throttle===0,{},{timeout:5000});
+  assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.fourWheelDrive),"2H");
+  await page.locator("#driveMode").tap();await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.fourWheelDrive==="4H");
+  const rev=await page.locator("#reverse").boundingBox();assert.ok(rev,"Missing reverse pedal");
+  await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:rev.x+rev.width/2,y:rev.y+rev.height/2,id:2}]});
+  try{await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.signedSpeedKph< -3,{},{timeout:35000});console.log("MANUAL_REVERSE",JSON.stringify(await page.evaluate(()=>({speed:window.HORIZON_GPU_DRIVE.signedSpeedKph,mode:window.HORIZON_GPU_DRIVE.fourWheelDrive,modeSwitches:window.HORIZON_GPU_DRIVE.modeSwitches}))));}finally{await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});}
+  await page.waitForFunction(()=>!window.HORIZON_GPU_DRIVE.reverseHeld);
  }
  await page.goto("http://127.0.0.1:5173/webgpu-fleet.html?circuit="+circuit+"&auto=1&quality="+quality+"&vehicle="+encodeURIComponent(vehicle));
  await page.waitForFunction(()=>["running","failed"].includes(window.HORIZON_GPU_DRIVE?.status),{},{timeout:180000});
+ if(circuit==="el-imposible-4x4"){assert.equal(await page.evaluate(()=>window.HORIZON_GPU_DRIVE.fourWheelDrive),"2H");await page.locator("#driveMode").tap();await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.fourWheelDrive==="4H");}
  try{await page.waitForFunction(()=>window.HORIZON_GPU_DRIVE.status==="failed"||(window.HORIZON_GPU_DRIVE.elapsed>=125&&(window.HORIZON_GPU_DRIVE.circuit!=="el-imposible-4x4"||window.HORIZON_GPU_DRIVE.sectors.includes("puddle"))),{},{timeout:900000});}catch(e){console.log("TIMEOUT_TELEMETRY",JSON.stringify(await page.evaluate(()=>window.HORIZON_GPU_DRIVE)));throw e;}
  const result=await page.evaluate(()=>window.HORIZON_GPU_DRIVE);console.log("DRIVE_RESULT",JSON.stringify(result));await writeFile("review/quality/webgpu-drive-"+circuit+".json",JSON.stringify(result,null,2));
  await page.screenshot({path:"review/quality/webgpu-drive-"+circuit+".png"});

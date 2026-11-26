@@ -55,3 +55,15 @@ export function pickupContactTraction(
     * Math.max(0, Math.min(1, (0.86 - surfaceGrip) / 0.36));
   return Math.min(1.22, powered * offRoad);
 }
+
+/** Arcade expedition: explicit transfer case, no automatic engagement. */
+export function nextManualTrailMode(current: FourWheelDriveMode,speedKph:number):FourWheelDriveMode {
+  if(!Number.isFinite(speedKph)||Math.abs(speedKph)>MAX_MODE_SWITCH_KPH)return current;
+  return current==="4H"?"2H":"4H";
+}
+/** Available drive force before contact multiplier, in newtons. 2H has
+ * only the rear axle and cannot match 4H in deep mud or on steep grades. */
+export function trailDriveLimit(mass:number,grip:number,mode:FourWheelDriveMode):number {
+  const mu=Math.max(0,Math.min(1,grip));
+  return Math.max(0,mass)*9.81*mu*(mode==="4H"?1.12: .48);
+}

@@ -10,7 +10,7 @@ import { createTurboState, stepTurbo, createCrossingTurboState, stepCrossingTurb
 import { turboTractionFactor } from "../sim/turboTraction";
 import { reverseDriveForce, REVERSE_LIMIT_MS } from "../sim/reverseGear";
 import { nextWheelRoll, visibleWheelSteer } from "../sim/wheelMotion";
-import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, type FourWheelDriveMode } from "../sim/fourWheelDrive";
+import { isFourWheelDrivePickup, defaultFourWheelDriveMode, nextFourWheelDriveMode, pickupContactTraction, nextManualTrailMode, trailDriveLimit, type FourWheelDriveMode } from "../sim/fourWheelDrive";
 import { createSelectedVisual, disposeSelectedVisual, vehicleDesign, wheelConnections, wheelRadiiForVehicle } from "./selectedAsset";
 import {
   ENGINE_IDLE_RPM,
@@ -30,6 +30,7 @@ export interface DriveInput {
   brake: number;
   steer: number;
   handbrake: boolean;
+  reverse?: boolean;
 }
 
 const WHEELS: { x: number; y: number; z: number; front: boolean }[] = [
@@ -50,6 +51,7 @@ export interface VehicleOptions {
   vehicleId?: string;
   turboTriggerKph?: number;
   webgpuMud?: boolean;
+  manualTrailDrive?: boolean;
 }
 
 export class Vehicle {
@@ -70,6 +72,8 @@ export class Vehicle {
   get trailMudCoverage():number{return this.mudCoverage;}
   private mudCoating?: PickupMudCoating;
   private readonly webgpuMud:boolean;
+  readonly manualTrailDrive:boolean;
+  trailTractionLimited=false;
   private offroadSector?: OffroadSector;
   private smoothedGrip = 1;
   readonly vehicleId: string | undefined;
@@ -98,7 +102,7 @@ export class Vehicle {
   /** Transfer switch is disabled above 30 km/h; existing sportscars are untouched. */
   toggleFourWheelDrive(): boolean {
     if (!this.supportsFourWheelDrive) return false;
-    const next = nextFourWheelDriveMode(this.fourWheelDriveMode, this.speedKph, this.vehicleId);
+    const next = this.manualTrailDrive?nextManualTrailMode(this.fourWheelDriveMode,this.speedKph):nextFourWheelDriveMode(this.fourWheelDriveMode, this.speedKph, this.vehicleId);
     if (next === this.fourWheelDriveMode) return false;
     this.fourWheelDriveMode = next;
     return true;
@@ -122,7 +126,8 @@ export class Vehicle {
     const design = opts.vehicleId ? vehicleDesign(opts.vehicleId) : null;
     this.electric = design?.powertrain === "electric";
     this.supportsFourWheelDrive = isFourWheelDrivePickup(opts.vehicleId);
-    this.fourWheelDriveMode = defaultFourWheelDriveMode(opts.vehicleId);
+    this.manualTrailDrive=!!opts.manualTrailDrive&&this.supportsFourWheelDrive;
+    this.fourWheelDriveMode = this.manualTrailDrive?"2H":defaultFourWheelDriveMode(opts.vehicleId);
     this.tuning = design?.tuning ?? { power: 1, mass: 1, topSpeed: 92, grip: 1, steer: .52 };
     // Candidate arcade calibration; keep authored wheel mounts and rest length.
     const profiles:Record<string,[number,number,number,number,number,number]>={
@@ -289,8 +294,9 @@ export class Vehicle {
     this.rpm = clamp(this.rpm, ENGINE_IDLE_RPM, ENGINE_REDLINE_RPM);
 
     const p = SETTINGS.physics;
-    const brake = this.controls.brake;
-    const throttle = brake > .05 ? 0 : this.controls.throttle;
+    const explicitReverse=this.manualTrailDrive&&!!this.controls.reverse;
+    const brake = Math.max(this.controls.brake,explicitReverse&&speed>.6?1:0);
+    const throttle = brake > .05 || explicitReverse ? 0 : this.controls.throttle;
     const lateralSpeed = velocity.x * forward.z - velocity.z * forward.x;
     const wheelbase = Math.abs(this.wheelMounts[0].z - this.wheelMounts[2].z);
     const requestedSteer = steeringAngleAt(speed, this.controls.steer, this.tuning.steer);
@@ -360,6 +366,11 @@ export class Vehicle {
     const trail=this.supportsFourWheelDrive?this.offroadSector:undefined;
     const planarBefore=Math.hypot(velocity.x,velocity.z);
     if(trail&&planarBefore>1.2&&speed>-.6)reverseForce=0;
+    if(this.manualTrailDrive){
+      reverseForce=explicitReverse&&speed<.6&&this.controls.brake<.05?reverseDriveForce(1,speed,p.maxEngineForce):0;
+      // The dedicated reverse pedal brakes forward movement first; Freno never reverses.
+      if(explicitReverse&&planarBefore>1.2&&speed>-.6)reverseForce=0;
+    }
 
     if (this.controls.handbrake) {
       engineForce *= 0.2;
@@ -383,6 +394,12 @@ export class Vehicle {
     if (this.supportsFourWheelDrive) {
       for (let i = 0; i < 4; i++) this.contactScratch[i] = this.controller.wheelIsInContact(i);
       contactTraction = pickupContactTraction(this.fourWheelDriveMode, this.contactScratch, grip);
+    }
+    this.trailTractionLimited=false;
+    if(trail&&this.manualTrailDrive){
+      const limit=trailDriveLimit(this.body.mass(),grip,this.fourWheelDriveMode);
+      this.trailTractionLimited=throttle>.45&&engineForce>limit&&Math.abs(speed)<1.8;
+      engineForce=Math.min(engineForce,limit);reverseForce=Math.min(reverseForce,limit);
     }
     const drive = (engineForce + (this.offroadSector ? 0 : nitro) - reverseForce) * contactTraction;
     if (Math.abs(drive) > 0.5) {
@@ -447,7 +464,7 @@ export class Vehicle {
 
   update(dt: number, input: DriveInput, grip: number, wheelGrips?: readonly number[], offroadSector?: OffroadSector, offroadOnTrack?: boolean, waterDepth=0): void {
     if (!Number.isFinite(dt) || dt <= 0) return;
-    input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake };
+    input = { throttle: Number.isFinite(input.throttle) ? clamp(input.throttle,0,1) : 0, brake: Number.isFinite(input.brake) ? clamp(input.brake,0,1) : 0, steer: Number.isFinite(input.steer) ? clamp(input.steer,-1,1) : 0, handbrake: !!input.handbrake, reverse: !!input.reverse };
     this.controls = input;
     this.offroadSector = offroadSector;
     this.waterDepth=offroadSector&&Number.isFinite(waterDepth)?clamp(waterDepth,0,.55):0;
@@ -505,10 +522,11 @@ export class Vehicle {
     fwd.normalize();
     const forwardSpeed = vel.x * fwd.x + vel.z * fwd.z;
     const planarSpeed = Math.hypot(vel.x, vel.z);
-    if (forwardSpeed < -REVERSE_LIMIT_MS) {
-      const scale = REVERSE_LIMIT_MS / Math.abs(forwardSpeed);
+    const reverseLimit=this.manualTrailDrive?4:REVERSE_LIMIT_MS;
+    if (forwardSpeed < -reverseLimit) {
+      const scale = reverseLimit / Math.abs(forwardSpeed);
       this.body.setLinvel({ x: vel.x * scale, y: vel.y, z: vel.z * scale }, true);
-      this.speed = -REVERSE_LIMIT_MS;
+      this.speed = -reverseLimit;
     } else if (planarSpeed > (this.offroadSector&&this.supportsFourWheelDrive?offroadSpeedLimit(this.offroadSector.surface):this.tuning.topSpeed)) {
       // Explicit arcade low-range speed governor; preserve height/orientation.
       const cap=this.offroadSector&&this.supportsFourWheelDrive?offroadSpeedLimit(this.offroadSector.surface):this.tuning.topSpeed;
