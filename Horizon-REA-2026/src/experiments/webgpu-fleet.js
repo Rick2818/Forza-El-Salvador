@@ -30,7 +30,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive",60,offroad);
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-stability-repair",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-clear-daylight",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -64,7 +64,7 @@ async function boot(){
  info.backend="webgpu";info.adapter={vendor:device.adapterInfo?.vendor,architecture:device.adapterInfo?.architecture};
  const gate=new WebGPUFrameGate(device.queue,device.lost);let gpuError;
  device.addEventListener("uncapturederror",e=>{gpuError=String(e.error?.message||e.error);});
- renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=offroad?1.15:1;renderer.info.autoReset=false;
+ renderer.setPixelRatio(1);renderer.toneMapping=offroad?THREE.NeutralToneMapping:THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=offroad?1.24:1;renderer.info.autoReset=false;
  const scene=new THREE.Scene();scene.background=new THREE.Color(0x7c9fc2);
  const camera=new THREE.PerspectiveCamera(offroad?55:58,1,.1,1500);
  let resizePending=true,appliedScale=0;
@@ -73,7 +73,7 @@ async function boot(){
  await RAPIER.init();const world=new RAPIER.World({x:0,y:-9.81,z:0});world.timestep=1/60;
  const definition=offroad?OFFROAD_CIRCUIT:getCircuit(circuit);if(!definition||definition.id!==circuit)throw Error("Circuito de velocidad no encontrado");
  const track=new Track(definition);track.build();if(!track.group.getObjectByName(offroad?"offroad-surface":"asphalt"))throw Error("Superficie incorrecta");info.trackId=definition.id;info.trackName=definition.name;info.surface=offroad?"offroad":"asphalt";scene.add(track.group);track.addPhysics(world);if(offroad){info.roadWidth=track.width;info.rockCount=track.group.getObjectByName("offroad-solid-rocks").userData.rockCount;info.relief=track.group.getObjectByName("offroad-surface").userData.reliefAudit;info.water=track.group.getObjectByName("offroad-muddy-puddles").userData.waterAudit;}
- scene.add(new THREE.HemisphereLight(0xd8e9ff,0x555947,offroad?1.55:2));const sun=new THREE.DirectionalLight(0xfff3db,offroad?3.2:3);sun.position.set(70,100,20);scene.add(sun);
+ scene.add(new THREE.HemisphereLight(offroad?0xe8f3ff:0xd8e9ff,offroad?0x514033:0x555947,offroad?1.12:2));const sun=new THREE.DirectionalLight(offroad?0xfff5e4:0xfff3db,offroad?3.35:3);sun.position.set(70,offroad?65:100,20);scene.add(sun);
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30000,30000),new THREE.MeshStandardMaterial({color:offroad?0x493528:0x566748,roughness:1}));
  if(offroad){
    // Material-only conversion: preserve original road, shoulder vertices and Rapier colliders.
@@ -133,7 +133,7 @@ async function boot(){
      placeTree(p.x+r.x*offset*side,p.z+r.z*offset*side,.85,i*.53);
    }
    info.forestBaseCount=524;info.forestBelts=6;info.forestInitialGrid=baseCount;
-   const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0xd5ded0,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
+   const forest=new THREE.InstancedMesh(geometry,new THREE.MeshLambertMaterial({map:atlas,color:0xffffff,alphaTest:.34,side:THREE.DoubleSide,depthWrite:true}),locations.length);
    const dummy=new THREE.Object3D();locations.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.yaw;dummy.scale.setScalar(p.scale);dummy.updateMatrix();forest.setMatrixAt(i,dummy.matrix);});
    forest.instanceMatrix.needsUpdate=true;forest.name="el-imposible-blender-forest";scene.add(forest);info.treeCount=locations.length;
    const response=await fetch(import.meta.env.BASE_URL+"scenery/pine-medium.glb.gz");
@@ -170,7 +170,8 @@ async function boot(){
      for(const m of near){m.count=sorted.length;m.visible=m.count>0;m.instanceMatrix.needsUpdate=true;if(m.count)m.computeBoundingSphere();}
      info.nearTreeCount=sorted.length;info.maxNearTreeCount=Math.max(info.maxNearTreeCount??0,sorted.length);info.forestTriangles=sorted.length*trianglesPerTree+k*6;info.forestAsset="pine-medium.glb.gz";
    };
-   scene.background=new THREE.Color(0x536452);scene.fog=new THREE.Fog(0x536452,65,120);
+   // Clear daylight: eliminate the olive veil over the foreground and vehicle.
+   scene.background=new THREE.Color(0x91b9dd);scene.fog=new THREE.Fog(0x91b9dd,82,115);
  }
  await loadSelectedVehicle(vehicleId);const car=new Vehicle(world,scene,{paintColor:design.paint,accentColor:0xffffff,number:1,isPlayer:true,vehicleId,turboTriggerKph:TURBO_TRIGGER_KPH,webgpuMud:true,manualTrailDrive:offroad});car.resetToTrack(track);
  $("reverse").hidden=!offroad;info.manual4x4=offroad;info.initialDriveMode=car.fourWheelDriveMode;info.modeSwitches=0;
@@ -224,7 +225,7 @@ async function boot(){
    camera.position.copy(pos).addScaledVector(forward,-5.2);
    camera.position.y=Math.max(pos.y+1.75,behind.y+2.05);
    target.set(aim.x,aim.y+.85,aim.z);
-   info.visualProfile={chaseDistance:5.2,fov:55,exposure:renderer.toneMappingExposure,fogNear:65,fogFar:120,compactHud:cleanTrail};
+   info.visualProfile={chaseDistance:5.2,fov:55,exposure:renderer.toneMappingExposure,fogNear:82,fogFar:115,toneMapping:"neutral",daylight:"clear",compactHud:cleanTrail};
    info.currentGrade=(look.y-track.sampleAt(at).y)/10*100;
  }else{camera.position.copy(pos).addScaledVector(forward,-7);camera.position.y+=3;target.copy(pos).addScaledVector(forward,5);target.y+=.9;}camera.lookAt(target);}
  updateForest(car.position);cameraPose();await timeout(renderer.compileAsync(scene,camera),60000,"Compilación GPU fallida");renderer.render(scene,camera);await timeout(device.queue.onSubmittedWorkDone(),5000,"Primer fotograma bloqueado");
