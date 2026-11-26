@@ -485,7 +485,7 @@ export class Game {
       // trigger lazy shader/buffer work not exercised by the driving camera.
       if (this.fireworks) {
         const opening = this.fireworks;
-        const savedCamera = this.camera.clone(false);
+        const savedCamera = this.camera.clone();
         await warmStartupFrame({
           prepare: () => {
             opening.start();
