@@ -30,7 +30,7 @@ const format="glb";
 const $=id=>document.getElementById(id);
 const profile=!cleanTrail&&q.get("quality")==="fixed"?"fixed":"adaptive";
 const resolution=new AdaptiveGpuResolution(profile==="adaptive",60,offroad);
-const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-clear-daylight",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
+const info=window.HORIZON_GPU_DRIVE={status:"loading",circuit,format,backend:null,profile,vehicleId,vehicleName:vehicleEntry.name,build:"gpu-expedition-v9-clear-daylight-ram-attack",turboTriggerKph:TURBO_TRIGGER_KPH,audioGesture:false,elapsed:0,frames:0,distance:0,resets:0,windows:[]};
 const timeout=(p,ms,label)=>{let t;return Promise.race([p,new Promise((_,rej)=>{t=setTimeout(()=>rej(Error(label)),ms)})]).finally(()=>clearTimeout(t));};
 const held=new Map(),keys=new Set();
 let resetRequested=false,auto=q.get("auto")==="1";
@@ -192,7 +192,9 @@ async function boot(){
    await loadSelectedVehicle(partnerId);const pd=vehicleDesign(partnerId);
    partner=new Vehicle(world,scene,{paintColor:pd.paint,accentColor:0xffffff,number:2,isPlayer:false,vehicleId:partnerId,webgpuMud:true,manualTrailDrive:true});
    if(partner.supportsFourWheelDrive&&partner.fourWheelDriveMode!=="4H")partner.toggleFourWheelDrive();
-   partnerPilot=new AIDriver(partner,track,0,.88,2,"defensor","medio");
+   const ramAttack=partnerId==="ram-3500-alternative";
+    partnerPilot=new AIDriver(partner,track,0,ramAttack?1.08:.88,2,ramAttack?"atacante":"defensor",ramAttack?"dificil":"medio");
+    info.partnerAggression=ramAttack?100:20;
    info.partnerId=partnerId;info.partnerDrive=partner.fourWheelDriveMode;
    const end=track.sampleAt(track.startIndex),dir=track.tangentAt(track.startIndex),right=track.rightAt(track.startIndex);
    const finish=new THREE.Group();finish.name="expedition-finish-gate";finish.position.copy(end);finish.rotation.y=Math.atan2(dir.x,dir.z);
@@ -257,9 +259,11 @@ async function boot(){
      if(ai.reverse&&partner.speed<.6)ai={...ai,brake:0};
     const lead=(partnerStage.travel-stage.travel)*track.segmentLength;
     const clearOfFinish=partnerStage.finished&&track.progress(partnerHint)*track.length>=8&&track.progress(partnerHint)<.1;
-    if(!started||clearOfFinish||lead>22&&!partnerStage.finished)ai={throttle:0,brake:1,steer:0,handbrake:true};
-    else if(lead>15&&!partnerStage.finished){ai.throttle=Math.min(ai.throttle,.22);if(partner.speedKph>car.speedKph+3){ai.throttle=0;ai.brake=Math.max(.45,ai.brake);}}
-    partner.update(1/60,ai,track.gripAt(partnerHint,ph.lateral),track.gripAtFootprints(partner.wheelContactPoints(),partnerHint,partner.wheelGripBuffer()),offroadSectorAt(track.progress(partnerHint)),Math.abs(ph.lateral)<=track.halfWidth+.35,track.waterDepthAt(partnerHint,ph.lateral));
+    const independentRam=partnerId==="ram-3500-alternative";
+     if(!started||clearOfFinish||(!independentRam&&lead>22&&!partnerStage.finished))ai={throttle:0,brake:1,steer:0,handbrake:true};
+    else if(!independentRam&&lead>15&&!partnerStage.finished){ai.throttle=Math.min(ai.throttle,.22);if(partner.speedKph>car.speedKph+3){ai.throttle=0;ai.brake=Math.max(.45,ai.brake);}}
+    info.partnerThrottle=ai.throttle;info.partnerBrake=ai.brake;
+     partner.update(1/60,ai,track.gripAt(partnerHint,ph.lateral),track.gripAtFootprints(partner.wheelContactPoints(),partnerHint,partner.wheelGripBuffer()),offroadSectorAt(track.progress(partnerHint)),Math.abs(ph.lateral)<=track.halfWidth+.35,track.waterDepthAt(partnerHint,ph.lateral));
    }
    const wasTurbo=car.turboActive;car.update(1/60,input,grip,track.gripAtFootprints(car.wheelContactPoints(),hint,car.wheelGripBuffer()),offroad?offroadSectorAt(track.progress(hint)):undefined,offroad?Math.abs(hit.lateral)<=track.halfWidth+.35:undefined,offroad?track.waterDepthAt(hint,hit.lateral):0);world.step();car.afterPhysicsStep(1/60);if(partner){partner.afterPhysicsStep(1/60);const pp=partner.position,ph=track.locate(pp,partnerHint),ch=track.locate(car.position,hint);partnerStage.update(ph.index,Math.abs(ph.lateral)<=track.halfWidth+.35);stage.update(ch.index,Math.abs(ch.lateral)<=track.halfWidth+.35);info.partnerDistance+=pp.distanceTo(partnerPrevious);partnerPrevious.copy(pp);info.partnerContactSteps+=Number(partner.wheelDebug().filter(w=>w.contact).length>=2);info.partnerMaxSpeed=Math.max(info.partnerMaxSpeed,partner.speedKph);info.partnerFinished=partnerStage.finished;info.stageFinished=stage.finished;info.stageProgress=stage.progress;info.partnerProgress=partnerStage.progress;info.partnerGap=pp.distanceTo(car.position);if(stage.finished&&!info.finishTime){info.finishTime=info.elapsed;clear();} }
    info.totalSteps++;info.throttle=input.throttle;info.manualThrottleSteps=(info.manualThrottleSteps??0)+Number(!auto&&input.throttle>.5);car.wheelDebug().forEach((w,i)=>{if(w.contact)info.contactSteps[i]++;if(w.contact){info.suspensionMin??=[Infinity,Infinity,Infinity,Infinity];info.suspensionMax??=[0,0,0,0];info.suspensionMin[i]=Math.min(info.suspensionMin[i],w.len);info.suspensionMax[i]=Math.max(info.suspensionMax[i],w.len);}});
