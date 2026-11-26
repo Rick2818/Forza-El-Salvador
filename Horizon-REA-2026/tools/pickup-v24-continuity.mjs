@@ -20,7 +20,7 @@ const out="review/quality/v34-"+circuit+"-"+mode+"-"+backend;
 let tracing=false;
 let gpuInfo=null;
 page.on("pageerror",e=>{errors.push(String(e));console.error("[pageerror]",e);});
-page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());});
+page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());else if(msg.text().includes("GPU_PREPARATION"))console.log("[startup]",msg.text());});
 try{
   if(forensic||backend==="hardware"){
     await mkdir(out,{recursive:true});

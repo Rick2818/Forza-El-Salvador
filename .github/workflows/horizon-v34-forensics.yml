@@ -12,6 +12,24 @@ concurrency:
   group: v34-forensics-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  build-and-unit:
+    if: github.ref == 'refs/heads/recovery/v34-gpu-forensics'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Horizon-REA-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Horizon-REA-2026/package-lock.json
+      - run: npm ci
+      - run: npx vitest run src/render/startupGpu.test.ts
+      - run: npm run build
+      - run: npm test
   trace:
     if: github.ref == 'refs/heads/recovery/v34-gpu-forensics'
     runs-on: ubuntu-latest

@@ -1,6 +1,7 @@
 import { RacePerformance, GPUFrameTimer } from "./render/performance";
 import { FrameScheduler } from "./core/frameScheduler";
 import { RenderBackpressure } from "./render/renderBackpressure";
+import { drainThenReplace, warmStartupFrame } from "./render/startupGpu";
 import { startSignalPhase } from "./race/startSignal";
 import * as THREE from "three";
 import { RELEASE_LABEL } from "./core/version";
@@ -374,8 +375,14 @@ export class Game {
       try {
         // Paint the loading state before doing expensive scene work.
         await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-        this.replaceRace();
-        if (!this.skipRender) await this.prepareRaceGraphics();
+        if (!this.skipRender) {
+          // Resource disposal must not precede completion of the menu submission.
+          await drainThenReplace(() => this.drainPreparationGpu("before-race-replacement"), () => {
+            this.gpuBackpressure.reset();
+            this.replaceRace();
+          });
+          await this.prepareRaceGraphics();
+        } else this.replaceRace();
         this.lastCompletedFrame = performance.now();
         this.lastDrawAt = performance.now();
         this.gpuBackpressure.reset();
@@ -474,6 +481,31 @@ export class Game {
       this.environment.updateVegetationView(this.camera.position,1);
       this.renderer.render(this.scene, this.camera);
       await this.drainPreparationGpu("representative-race-frame");
+      // The actual initial cinematic view has different visibility and may
+      // trigger lazy shader/buffer work not exercised by the driving camera.
+      if (this.fireworks) {
+        const opening = this.fireworks;
+        const savedCamera = this.camera.clone(false);
+        await warmStartupFrame({
+          prepare: () => {
+            opening.start();
+            opening.cinematicCamera(this.camera, 0, this.scene, this.race.player.vehicle.position);
+            this.race.updateRivalLods(this.camera);
+            updateMonzonTreeLods(this.scene, this.camera.position);
+            this.environment.updateVegetationView(this.camera.position, 1);
+          },
+          draw: () => this.renderer.render(this.scene, this.camera),
+          drain: () => this.drainPreparationGpu("representative-opening-frame"),
+          restore: () => {
+            opening.stop();
+            this.camera.copy(savedCamera, false);
+            this.camera.updateMatrixWorld(true);
+            this.race.updateRivalLods(this.camera);
+            updateMonzonTreeLods(this.scene, this.camera.position);
+            this.environment.updateVegetationView(this.camera.position, 1);
+          }
+        });
+      }
       if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
     } finally {
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
