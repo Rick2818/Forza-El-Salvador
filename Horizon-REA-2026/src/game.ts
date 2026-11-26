@@ -56,6 +56,8 @@ export class Game {
   private readonly gpuTimer: GPUFrameTimer;
   private readonly gpuBackpressure: RenderBackpressure;
   private lastDrawAt = performance.now();
+  private vegetationDrawDt = 0;
+  private adaptiveDrawDt = 0;
   private hud: HUD;
   private menu: Menu;
   private smoke: SmokeSystem;
@@ -377,6 +379,8 @@ export class Game {
         this.lastCompletedFrame = performance.now();
         this.lastDrawAt = performance.now();
         this.gpuBackpressure.reset();
+        this.vegetationDrawDt = 0;
+        this.adaptiveDrawDt = 0;
         this.clock.getDelta();
         this.beginPreparedRace();
         // If the player left the tab during preparation, keep pause semantics.
@@ -598,8 +602,11 @@ export class Game {
       Math.max(1, window.innerWidth * window.innerHeight));
     const base = Math.min(window.devicePixelRatio, limit, pixelBudget);
     const ratio = Math.max(0.5, base * this.renderScale);
-    this.renderer.setPixelRatio(ratio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    // setPixelRatio also resizes the canvas. Resize the drawing buffer once,
+    // and avoid reallocating it entirely when dimensions are unchanged.
+    const size = this.renderer.getSize(new THREE.Vector2());
+    if (this.renderer.getPixelRatio() !== ratio || size.x !== window.innerWidth || size.y !== window.innerHeight)
+      this.renderer.setDrawingBufferSize(window.innerWidth, window.innerHeight, ratio);
     this.environment.setPixelRatio(ratio);
   }
 
@@ -613,7 +620,8 @@ export class Game {
     this.scaleTimer += dt;
     if (this.scaleTimer < 1) return;
     this.scaleTimer = 0;
-    if (this.fps <= 0 || document.hidden) return;
+    // Zero rendered FPS is real overload once callbacks have been sampled.
+    if (this.skipRender || this.callbackFps <= 0 || document.hidden) return;
     // A background or unfocused tab throttles requestAnimationFrame, so its
     // FPS says nothing about the GPU. Measuring there would shrink the buffer
     // for no reason and the game would look soft when the user comes back.
@@ -866,7 +874,7 @@ export class Game {
     if (!this.captureMode) {
       this.input.update(dt);
       this.handleHotkeys();
-      this.adaptResolution(dt);
+      this.adaptiveDrawDt = Math.min(2, this.adaptiveDrawDt + dt);
     }
 
     if (this.state === "menu" && !this.menu.isGarageOpen) {
@@ -1004,13 +1012,22 @@ export class Game {
     }
 
     if (this.onBeforeRender) this.onBeforeRender();
-    if (!this.skipRender && !this.captureMode) {
-      this.race.updateRivalLods(this.camera);
-      updateMonzonTreeLods(this.scene,this.camera.position);
-      this.environment.updateVegetationView(this.camera.position,dt);
-    }
     this.framePhase = "gpu-backpressure";
+    if (!this.skipRender && !this.captureMode)
+      this.vegetationDrawDt = Math.min(1, this.vegetationDrawDt + dt);
     if (!this.skipRender && (this.captureMode || this.gpuBackpressure.ready())) {
+      // Camera-dependent visual LOD work belongs to a frame actually admitted
+      // by the GPU gate, not to every physics/input callback while it is busy.
+      if (!this.captureMode) {
+        // A framebuffer resize can flush/reallocate GPU resources. Apply the
+        // automatic scaler only after the previous submission has completed.
+        this.adaptResolution(this.adaptiveDrawDt);
+        this.adaptiveDrawDt = 0;
+        this.race.updateRivalLods(this.camera);
+        updateMonzonTreeLods(this.scene,this.camera.position);
+        this.environment.updateVegetationView(this.camera.position,this.vegetationDrawDt);
+        this.vegetationDrawDt = 0;
+      }
       const measured=!this.captureMode && this.state==="racing" && this.race.state==="racing" && this.performanceLog.recording;
       this.framePhase = "gpu-query-begin";
       const previousDraw = this.lastDrawAt;

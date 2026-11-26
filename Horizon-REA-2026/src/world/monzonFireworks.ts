@@ -374,7 +374,7 @@ export class MonzonLaunchFireworks {
 
     for(let i=0;i<2;i++) {
       const light=new THREE.PointLight(0xffd1a4,0,175,2);
-      light.castShadow=false;this.flashLights.push(light);this.group.add(light);
+      light.castShadow=false;light.visible=false;this.flashLights.push(light);this.group.add(light);
     }
     this.group.visible=false;
     this.group.userData.particleCount=center.length/3;
@@ -431,7 +431,7 @@ export class MonzonLaunchFireworks {
   stop():void {
     this.active=false;this.group.visible=false;
     this.group.userData.activeParticleVertices=0;
-    for(const light of this.flashLights)light.intensity=0;
+    for(const light of this.flashLights){light.intensity=0;light.visible=false;}
   }
   get running():boolean{return this.active;}
   update(dt:number):void {
@@ -465,7 +465,8 @@ export class MonzonLaunchFireworks {
       const light=this.flashLights[i];
       light.position.copy(b.center);
       light.color.copy(b.colour);
-      light.intensity=age>=0&&age<.42?850*Math.exp(-age*9):0;
+      light.visible=age>=0&&age<.42;
+      light.intensity=light.visible?850*Math.exp(-age*9):0;
     }
   }
   cinematicCamera(camera:THREE.PerspectiveCamera, time = this.elapsed,

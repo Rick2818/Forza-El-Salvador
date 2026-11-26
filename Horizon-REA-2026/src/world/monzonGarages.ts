@@ -110,7 +110,7 @@ export class MonzonGarages {
     for (const bay of GARAGE_LAYOUT) {
       const light = new THREE.PointLight(0xfff1df, 140, 18, 2);
       light.position.set(bay.x, 4.65, 36.6);
-      light.castShadow = false; this.lights.push(light); scene.add(light);
+      light.castShadow = false; light.visible = false; this.lights.push(light); scene.add(light);
     }
     this.update(new THREE.Vector3(140, 0, 0));
     this.ready = Promise.all([this.loadKit(), this.loadBrandMarks()]).then(() => { this.group.userData.ready = true; });
@@ -259,19 +259,28 @@ export class MonzonGarages {
 
   update(position: THREE.Vector3): void {
     this.lights.forEach((light, i) => {
-      light.intensity = Math.abs(GARAGE_LAYOUT[i].x-position.x) < 48 ? 140 : 0;
+      // Garage lighting must be local in both horizontal axes, not an
+      // infinite strip spanning the opposite side of the circuit.
+      const active = Math.hypot(GARAGE_LAYOUT[i].x-position.x,36.6-position.z) < 48;
+      light.intensity = active ? 140 : 0;
+      light.visible = active;
     });
     if (position.distanceToSquared(this.lastEquipmentPosition) < 9) return;
     const matrix = new THREE.Matrix4();
+    const scale = new THREE.Matrix4().makeScale(GARAGE_SCALE,1,GARAGE_SCALE);
     for (const {mesh, detail, transform} of this.equipment) {
       let count = 0;
       for (const bay of GARAGE_LAYOUT) {
-        if (Math.hypot(bay.x-position.x, 36.6-position.z) > (detail ? 110 : 250)) continue;
+        // Workshop equipment is a near-field detail behind garage walls.
+        // Keep the building and physical obstacles at all distances.
+        const distance = Math.hypot(bay.x-position.x, 36.6-position.z);
+        if (distance > (detail ? 45 : 95)) continue;
         matrix.makeTranslation(bay.x, .12, GARAGE_EQUIPMENT_ANCHOR_Z)
-          .multiply(new THREE.Matrix4().makeScale(GARAGE_SCALE,1,GARAGE_SCALE)).multiply(transform);
+          .multiply(scale).multiply(transform);
         mesh.setMatrixAt(count++, matrix);
       }
-      mesh.count = count; mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere();
+      mesh.count = count; mesh.visible = count > 0;
+      if (count > 0) { mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere(); }
     }
     if (this.equipment.length) this.lastEquipmentPosition.copy(position);
   }
