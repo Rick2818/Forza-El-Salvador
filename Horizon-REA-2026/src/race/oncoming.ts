@@ -47,7 +47,7 @@ export class OncomingDriver {
 
   plan(traffic: readonly TrafficCar[] = []): DriveInput {
     const vehicle = this.vehicle;
-    const pos = vehicle.position.clone();
+    const pos = vehicle.position;
     this.hint = this.track.nearestIndex(pos, this.hint);
     const speed = Math.abs(vehicle.speed);
     const lookAhead = clamp(10 + speed * 0.65, 12, 38);
