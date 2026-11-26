@@ -65,7 +65,8 @@ it("keeps Monzón running past two minutes when the fifth traffic model is unava
     race.dispose();
     world.free();
   }
-});
+// 7500 real physics steps: shared CI runners can exceed Vitest's 5 s default.
+}, 60_000);
 
 it("recovers a real Rapier-controlled rival trapped in an impact-style deadlock", () => {
   const track = new Track(getCircuit("monzon"));
