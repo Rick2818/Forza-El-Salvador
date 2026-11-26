@@ -249,11 +249,11 @@ async function boot(){
    if(offroad){
     if(input.throttle>.05||input.reverse)started=true;
     // AI test driver can reverse when recovering but never changes the transfer case.
-    if(auto&&input.brake>.9&&Math.abs(car.speed)<.6&&input.throttle===0&&!input.handbrake)input={...input,brake:0,reverse:true};
+    if(auto&&input.reverse&&car.speed<.6)input={...input,brake:0};
     if(stage.finished)input={throttle:0,brake:1,steer:0,handbrake:true};
     const ph=track.locate(partner.position,partnerHint);partnerHint=ph.index;
     let ai=partnerPilot.plan(1/60,info.elapsed,[{position:car.position,speed:car.speed,isPlayer:true}]);
-     if(ai.brake>.9&&Math.abs(partner.speed)<.6&&ai.throttle===0&&!ai.handbrake)ai={...ai,brake:0,reverse:true};
+     if(ai.reverse&&partner.speed<.6)ai={...ai,brake:0};
     const lead=(partnerStage.travel-stage.travel)*track.segmentLength;
     const clearOfFinish=partnerStage.finished&&track.progress(partnerHint)*track.length>=8&&track.progress(partnerHint)<.1;
     if(!started||clearOfFinish||lead>22&&!partnerStage.finished)ai={throttle:0,brake:1,steer:0,handbrake:true};
@@ -268,7 +268,7 @@ async function boot(){
    const p=car.position;info.distance+=p.distanceTo(previous);previous.copy(p);info.elapsed+=1/60;acc-=1/60;steps++;
   }
   physicsMs+=performance.now()-physicsStart;physicsSteps+=steps;
-  if(info.audioGesture)audio.update(car.rpm,car.controls.throttle,car.speedKph,car.slip);info.audioState=audio.getContextState();info.audioRecordingState=audio.recordingState??null;info.audioRecordingError=audio.recordingError??null;info.audioRms=audio.rms??null;info.maxAudioRms=Math.max(info.maxAudioRms??0,info.audioRms??0);info.turboActive=car.turboActive;info.turboArmed=car.turboArmed;$("sound").textContent=info.audioState==="running"?(audio instanceof SilveradoTrailAudio?(info.audioRms>.003?"Sonido ✓":"Sonido · sin señal"):"Sonido ✓"):"Activar sonido";
+  if(info.audioGesture)audio.update(car.rpm,car.controls.throttle,car.speedKph,car.slip);info.audioState=audio.getContextState();info.audioRecordingState=audio.recordingState??null;info.audioRecordingError=audio.recordingError??null;info.audioRecordingFormat=audio.recordingFormat??null;info.audioRms=audio.rms??null;info.maxAudioRms=Math.max(info.maxAudioRms??0,info.audioRms??0);info.turboActive=car.turboActive;info.turboArmed=car.turboArmed;$("sound").textContent=info.audioState==="running"?(audio instanceof SilveradoTrailAudio?(info.audioRms>.003?"Sonido ✓":"Sonido · sin señal"):"Sonido ✓"):"Activar sonido";
   if(gate.ready()){if(resizePending||appliedScale!==resolution.scale)resize();const renderStart=performance.now();car.syncVisual(dt);if(partner)partner.syncVisual(dt);updateForest(car.position);for(const [i,w] of car.wheelVisualDebug().entries())info.wheelRollMax[i]=Math.max(info.wheelRollMax[i],Math.abs(w.roll));scanMaterials();cameraPose();renderer.info.reset();renderer.render(scene,camera);const i=renderer.info.render;if(!(i.drawCalls>0&&i.triangles>0))throw Error("Fotograma sin geometría");info.drawCalls=i.drawCalls;info.triangles=i.triangles;gate.submit();renderMs+=performance.now()-renderStart;renderCount++;}
   if(gate.completed!==lastCount){lastCount=gate.completed;lastCompletionAt=now;}
   if(now-lastCompletionAt>5000)throw Error("Sin fotogramas GPU completados durante 5 segundos");
