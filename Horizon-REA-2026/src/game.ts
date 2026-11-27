@@ -122,7 +122,8 @@ export class Game {
     this.renderer.toneMappingExposure = 1.12;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.gpuTimer = new GPUFrameTimer(this.renderer.getContext());
-    this.gpuBackpressure = new RenderBackpressure(this.renderer.getContext());
+    // Two frames in flight let the CPU prepare one while the GPU draws the other.
+    this.gpuBackpressure = new RenderBackpressure(this.renderer.getContext(), 2);
 
     this.camera = new THREE.PerspectiveCamera(
       SETTINGS.camera.fov,

@@ -13,4 +13,15 @@ describe("GPU frame backpressure",()=>{
     gate.submit();gate.reset();expect(deletes).toBe(2);
     expect(gate.ready()).toBe(true);expect(gate.submitted).toBe(2);
   });
+  it("allows two frames in flight and releases the oldest first",()=>{
+    let next=0;const done=new Set<number>(),deleted:number[]=[];
+    const gl={TIMEOUT_EXPIRED:1,WAIT_FAILED:2,SYNC_GPU_COMMANDS_COMPLETE:3,
+      fenceSync:()=>++next,clientWaitSync:(f:number)=>done.has(f)?4:1,deleteSync:(f:number)=>{deleted.push(f);},
+      flush:()=>{},isContextLost:()=>false} as unknown as WebGL2RenderingContext;
+    const gate=new RenderBackpressure(gl,2);
+    gate.submit();expect(gate.ready()).toBe(true);
+    gate.submit();expect(gate.ready()).toBe(false);
+    done.add(1);expect(gate.ready()).toBe(true);expect(deleted).toEqual([1]);
+    gate.reset();expect(deleted).toEqual([1,2]);
+  });
 });
