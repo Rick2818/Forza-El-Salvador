@@ -20,7 +20,7 @@ const out="review/quality/v34-"+circuit+"-"+mode+"-"+backend;
 let tracing=false;
 let gpuInfo=null;
 page.on("pageerror",e=>{errors.push(String(e));console.error("[pageerror]",e);});
-page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());else if(msg.text().includes("GPU_PREPARATION"))console.log("[startup]",msg.text());});
+page.on("console",msg=>{if(msg.type()==="error")console.error("[browser]",msg.text());else if(/GPU_PREPARATION|V34_GL_SLOW/.test(msg.text()))console.log("[startup]",msg.text());});
 try{
   if(forensic||backend==="hardware"){
     await mkdir(out,{recursive:true});
@@ -35,6 +35,20 @@ try{
     await browser.startTracing(page,{path:out+"/chromium-trace.json",screenshots:false,categories:["devtools.timeline","v8","blink","gpu","viz","cc","toplevel","disabled-by-default-devtools.timeline.frame"]});
     tracing=true;
   }
+  if(forensic&&process.env.HORIZON_GL_PROFILE==="1")await page.addInitScript(()=>{
+    const stats={phase:"boot",methods:{}};
+    window.__V34_GL_PROFILE__=stats;
+    for(const name of ["compileShader","linkProgram","texImage2D","texSubImage2D","compressedTexImage2D","texStorage2D","generateMipmap","bufferData","bufferSubData","clientWaitSync","flush","drawElements","drawArrays","drawElementsInstanced","drawArraysInstanced"]){
+      const proto=WebGL2RenderingContext.prototype,original=proto[name];
+      if(typeof original!=="function")continue;
+      proto[name]=function(...args){
+        const phase=window.__HORIZON_GAME__?.framePhase??"boot";
+        const key=phase+":"+name,start=performance.now();
+        try{return original.apply(this,args);}
+        finally{const ms=performance.now()-start,m=stats.methods[key]??={count:0,totalMs:0,maxMs:0};m.count++;m.totalMs+=ms;m.maxMs=Math.max(m.maxMs,ms);if(ms>100)console.info("V34_GL_SLOW",key,ms.toFixed(1));}
+      };
+    }
+  });
   await page.addInitScript((circuit)=>{localStorage.setItem("horizon.circuit",circuit);localStorage.setItem("horizon.quality","equilibrada");localStorage.setItem("horizon.oncoming-traffic","true");},circuit);
   await page.goto("http://127.0.0.1:5173/race.html?vehicle="+encodeURIComponent(id),{timeout:120000});
   await page.bringToFront();
@@ -235,7 +249,7 @@ try{
         programs:g.renderer.info.programs?.length??null,
         geometries:g.renderer.info.memory.geometries,textures:g.renderer.info.memory.textures,
         meshBudget:g.race.racers.map(r=>({id:r.vehicle.vehicleId,...r.vehicle.visual.root.userData.renderMeshBudget})),
-        diagnostics:window.__HORIZON_DIAG__};
+        glProfile:window.__V34_GL_PROFILE__??null,diagnostics:window.__HORIZON_DIAG__};
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser unresponsive for 15 seconds")),15000))]);
     samples.push(sample);console.log("CONTINUITY",JSON.stringify(sample));
     if(forensic)await appendFile(out+"/samples.ndjson",JSON.stringify(sample)+"\n");
@@ -270,5 +284,11 @@ try{
   await Promise.race([page.screenshot({path:"review/quality/freeze-"+id+".png"}),new Promise(r=>setTimeout(r,5000))]).catch(()=>{});
   throw e;
 }finally{
-  try{if(tracing)await browser.stopTracing();}finally{await browser.close();}
+  try{
+    if(forensic&&process.env.HORIZON_GL_PROFILE==="1"){
+      const profile=await Promise.race([page.evaluate(()=>window.__V34_GL_PROFILE__??null),new Promise(resolve=>setTimeout(()=>resolve(null),5000))]).catch(()=>null);
+      await writeFile(out+"/gl-profile.json",JSON.stringify(profile,null,2));
+    }
+    if(tracing)await browser.stopTracing();
+  }finally{await browser.close();}
 }
