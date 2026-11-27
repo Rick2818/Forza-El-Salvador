@@ -22,7 +22,7 @@ export class TunnelLighting {
       const light = new THREE.PointLight(0xf6f9ff, 0, 76, 2);
       light.name = `tunnel-driving-light-${i + 1}`;
       light.castShadow = false;
-      light.visible = true;
+      // Always visible: changing the light count recompiles every lit shader.
       scene.add(light);
       this.lights.push(light);
     }
@@ -44,7 +44,7 @@ export class TunnelLighting {
       station >= p.startMeters - 36 && station <= p.endMeters + 36
     );
     if (!active || distanceSq > (this.track.halfWidth + 14) ** 2) {
-      for (const light of this.lights) { light.intensity = 0; }
+      for (const light of this.lights) light.intensity = 0;
       return;
     }
     // Smoothly fade near portals so the open-air lighting is not abruptly cut.
@@ -59,7 +59,6 @@ export class TunnelLighting {
       const anchor = this.track.samples[a];
       light.position.set(anchor.x, anchor.y + 7.5, anchor.z);
       light.intensity = strength;
-      // Keep shader light count constant across portals.
       light.intensity = strength > 10 ? strength : 0;
     });
   }

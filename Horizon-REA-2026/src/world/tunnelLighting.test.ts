@@ -34,7 +34,7 @@ describe("tunnel roadway illumination", () => {
         expect(light.distance).toBeGreaterThanOrEqual(65);
         expect(light.position.y).toBeGreaterThan(7);
       }
-      // Exiting a tunnel extinguishes intensity but preserves the shader light count.
+      // Outside a tunnel the lights go dark but stay counted, avoiding shader recompiles.
       controller.update(track.samples[0].clone(), .2);
       expect(controller.lights.every(light => light.visible && light.intensity === 0)).toBe(true);
       // At an elevated crossing/bridge, do not illuminate the wrong road deck.

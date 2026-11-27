@@ -1,6 +1,8 @@
 import {chromium} from "playwright";
 import assert from "node:assert/strict";
-import {mkdir,writeFile} from "node:fs/promises";
+import {mkdir,writeFile,readFile} from "node:fs/promises";
+const sourceVersion=(await readFile(new URL("../src/core/version.ts",import.meta.url),"utf8")).match(/RELEASE_LABEL\s*=\s*"([^"]+)"/)?.[1];
+assert.ok(sourceVersion,"Missing source release label");
 const circuit=process.argv[2]??"monzon",mode=process.argv[3]??"hybrid";
 const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-dev-shm-usage","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--disable-background-timer-throttling","--disable-renderer-backgrounding"]});
 const page=await browser.newPage({viewport:{width:800,height:450}});
@@ -27,7 +29,7 @@ try{
         recovery:!!document.getElementById("frame-failure")||!!document.getElementById("context-lost")};
     }),new Promise((_,reject)=>setTimeout(()=>reject(Error("Opening browser unresponsive")),15000))]);
     samples.push(s);console.log("V29_OPENING",JSON.stringify(s));
-    assert.equal(s.version,"V29");assert.equal(s.circuit,circuit);assert.equal(s.crowdMode,mode);
+    assert.equal(s.version,sourceVersion,"Unexpected running release");assert.equal(s.circuit,circuit);assert.equal(s.crowdMode,mode);
     assert.equal(s.contextLost,false);assert.equal(s.recovery,false);assert.deepEqual(errors,[]);
     assert.ok(s.frameAgeMs<5000&&s.drawAgeMs<5000,"Opening frame/draw stalled");
     if(s.state==="opening"&&previous!==null)assert.ok(s.openingTime>previous,"Opening clock stopped");
