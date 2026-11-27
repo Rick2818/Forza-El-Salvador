@@ -13,7 +13,7 @@ import { setSuzakaPitGatesOpen } from "./world/suzakaRoadsideSafety";
 import { updateHumanPeople, prepareHumanImpostors, crowdStats, type CrowdMode } from "./world/humanPeople";
 import { prepareMonzonTreeLods, updateMonzonTreeLods } from "./world/monzonBlenderTrees";
 import { Environment } from "./world/environment";
-import { MonzonLaunchFireworks, MONZON_OPENING_DURATION } from "./world/monzonFireworks";
+import { openingCamera, OPENING_DURATION } from "./world/openingFlyover";
 import { Race, type Difficulty } from "./race/race";
 import { HUD } from "./ui/hud";
 import { Menu } from "./ui/menu";
@@ -81,7 +81,6 @@ export class Game {
   private fpsTimer = 0;
   private goFlash = 0;
   private goShown = false;
-  private fireworks: MonzonLaunchFireworks | null = null;
   private crowdMode:CrowdMode="hybrid";
   private openingTime = 0;
   private pausedOpening = false;
@@ -153,12 +152,6 @@ export class Game {
     // Never add debug helpers or a second directional light in production.
     this.environment = new Environment(this.scene, this.renderer, this.track);
     this.environment.installTerrainPhysics(this.world);
-    if (this.track.circuit.id === "monzon" || this.track.circuit.id === "suzaka") {
-      this.fireworks = new MonzonLaunchFireworks(this.scene, this.track,
-        cue => cue.kind === "launch"
-          ? this.audio.playFireworkLaunch(cue.distance)
-          : this.audio.playFireworkBurst(cue.distance,cue.pattern));
-    }
     this.applyResolution();
     const requestedCrowd=new URLSearchParams(window.location.search).get("crowd");
     if(requestedCrowd==="3d"||requestedCrowd==="hybrid"||requestedCrowd==="impostors")this.crowdMode=requestedCrowd;
@@ -295,8 +288,6 @@ export class Game {
         maxFrameGapMs: this.maxFrameGapMs,
         crowdMode:this.crowdMode,
         crowd:crowdStats(this.scene),
-        fireworksActiveVertices:this.fireworks?.group.userData.activeParticleVertices??0,
-        fireworksAllocatedVertices:this.fireworks?.group.userData.particleCount??0,
         rivalLods: this.race.rivalLodStats(),
         culledRivals: this.race.culledRivalCount,
         submittedDraws: this.gpuBackpressure.submitted,
@@ -434,12 +425,8 @@ export class Game {
     updateMonzonTreeLods(this.scene,this.camera.position);
     this.environment.updateVegetationView(this.camera.position,1);
     await this.race.prepareRivalLods();
-    this.fireworks?.prepareGpu(this.renderer);
-    await this.drainPreparationGpu("fireworks-buffers");
     const hiddenCars = this.race.standbyVisuals();
     const saved = hiddenCars.map(root => root.visible);
-    const fireworks = this.fireworks?.group;
-    const wasFireworksVisible = fireworks?.visible;
     const textures = new Set<THREE.Texture>();
     try {
       // Compile both the parade and race light configurations while the clock is stopped.
@@ -459,11 +446,6 @@ export class Game {
       }
       await this.drainPreparationGpu("textures-complete");
       updateHumanPeople(this.scene,this.camera);
-      if (fireworks) {
-        fireworks.visible = true;
-        await this.renderer.compileAsync(this.scene, this.camera);
-        fireworks.visible = false;
-      }
       await this.renderer.compileAsync(this.scene, this.camera);
       // Submit a real representative race frame before the clock starts.
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
@@ -477,7 +459,6 @@ export class Game {
       if (this.renderer.getContext().isContextLost()) throw new Error("WebGL context lost during preparation");
     } finally {
       hiddenCars.forEach((root,i) => { root.visible = saved[i]; });
-      if (fireworks) fireworks.visible = wasFireworksVisible ?? false;
       this.graphicsPreparationMs = performance.now() - started;
     }
   }
@@ -488,28 +469,27 @@ export class Game {
     this.audio.silence();
     this.audio.ensure();
     this.audio.setVehicle(this.selectedVehicleId,vehicleDesign(this.selectedVehicleId).powertrain === "electric");
-    this.race.state = this.fireworks ? "idle" : "countdown";
+    const hasOpening = this.track.circuit.id === "monzon" || this.track.circuit.id === "suzaka";
+    this.race.state = hasOpening ? "idle" : "countdown";
     this.race.countdown = SETTINGS.race.countdown;
     this.maxFrameGapMs = 0;
     this.lastFrameGapMs = 0;
-    this.state = this.fireworks ? "opening" : "racing";
+    this.state = hasOpening ? "opening" : "racing";
     this.goFlash = 0;
     this.goShown = false;
     this.finishDelay = 0;
     this.lowFpsTime = 0;
     this.physicsAccum = 0;
     this.chase.snap();
-    this.fireworks?.stop();
     this.openingTime = 0;
     this.pausedOpening = false;
-    this.openingOverlay.hidden = !this.fireworks;
-    if (this.fireworks) this.fireworks.start();
+    this.openingOverlay.hidden = !hasOpening;
     this.menu.hide();
-    this.input.setTouchControlsVisible(!this.fireworks);
-    this.hud.show(!this.fireworks);
+    this.input.setTouchControlsVisible(!hasOpening);
+    this.hud.show(!hasOpening);
     this.refreshFourWheelDriveControl();
-    this.hud.setStartSignal(this.fireworks ? null : "red");
-    if (!this.fireworks) this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
+    this.hud.setStartSignal(hasOpening ? null : "red");
+    if (!hasOpening) this.hud.toast(`${this.track.circuit.name} · ${this.difficulty.toUpperCase()} · 3 vueltas · Tráfico contrario ${this.oncomingEnabled ? "ACTIVADO" : "desactivado"}`, 3300);
     // The start button keeps DOM focus after a click; move it back to the
     // canvas so Space/Enter no longer reactivate the button mid-race.
     this.input.focusGame();
@@ -518,7 +498,6 @@ export class Game {
   /** Only transition out of an active opening, so repeated clicks cannot reset a race. */
   skipOpening(): void {
     if (this.state !== "opening") return;
-    this.fireworks?.stop();
     this.audio.stopPyrotechnics();
     this.openingOverlay.hidden = true;
     this.race.state = "countdown";
@@ -579,7 +558,6 @@ export class Game {
     this.hud.setCountdown(null);
     this.hud.show(false);
     this.audio.silence();
-    this.fireworks?.stop();
     this.openingTime = 0;
     this.pausedOpening = false;
     this.openingOverlay.hidden = true;
@@ -638,7 +616,6 @@ export class Game {
   }
 
   private applyQuality(): void {
-    this.fireworks?.setQuality(this.quality);
     const high = this.quality === "alta";
     const moon = this.environment.moon;
     moon.shadow.mapSize.set(SETTINGS.render.shadowMapSize, SETTINGS.render.shadowMapSize);
@@ -885,10 +862,9 @@ export class Game {
       // No Race.update or physics steps here: all vehicles and race clocks are frozen.
       this.openingTime += dt;
       this.environment.update(this.race.player.vehicle.position, dt);
-      this.fireworks?.update(dt);
-      this.fireworks?.cinematicCamera(this.camera, this.openingTime,
+      openingCamera(this.camera, this.openingTime, this.track.circuit.id,
         this.scene, this.race.player.vehicle.position);
-      if (this.openingTime >= MONZON_OPENING_DURATION) this.skipOpening();
+      if (this.openingTime >= OPENING_DURATION) this.skipOpening();
     } else if (this.state === "racing") {
       // Fixed 60 Hz physics with up to three catch-up sub-steps. The vehicle
       // controller integrates wheel forces for exactly the step it is given,

@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { createVisibleSpectators, monzonGrandstandSpectatorPositions } from "./monzonSpectatorTerraces";
 import { createBannerTexture } from "./textures";
 import type { Track } from "./track";
 import type { TerrainField } from "./terrain";
@@ -115,14 +114,6 @@ export class MonzonScenery {
     for (const x of [90,160,230,300,370,440,520]) {
       box("monzon-canopy-column", x, standY + 11.75, -92, .75, 23.5, .75, steel);
     }
-
-    // Human-shaped instanced PBR crowd, ten exposed rows, animated on the GPU.
-    // Phones add one batched draw call instead of hundreds of dynamic lights.
-    const standCrowd = createVisibleSpectators(
-      monzonGrandstandSpectatorPositions(standY),"monzon-open-grandstand-public",true,true
-    );
-    this.group.add(standCrowd);
-    this.group.userData.grandstandSpectators = standCrowd.userData.people;
 
     // Braking-distance boards before the first chicane: approach on +X.
     const markerMat = material(0xffffff);

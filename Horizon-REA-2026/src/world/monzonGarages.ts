@@ -6,12 +6,11 @@ import {
   GARAGE_HEIGHT, GARAGE_SCALE, GARAGE_FRONT_Z, GARAGE_REAR_Z
 } from "./monzonPitAccess";
 import {
-  createPitMechanics, mechanicStations, WORKSHOP_OBSTACLES,
+  WORKSHOP_OBSTACLES,
   obstacleWorldBox, GARAGE_EQUIPMENT_ANCHOR_Z
 } from "./monzonWorkshopContents";
 import { batchStaticScenery } from "../render/staticBatch";
 import { makeRng } from "../core/mathx";
-import { createVisibleSpectators, monzonPitSpectatorPositions } from "./monzonSpectatorTerraces";
 
 function workshopFloorMap(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas"); canvas.width = canvas.height = 512;
@@ -102,7 +101,6 @@ export class MonzonGarages {
       this.brandSigns.push({bay, canvas, map});
     }
     this.installPitSpectators(box);
-    this.group.add(createPitMechanics(GARAGE_LAYOUT));
     batchStaticScenery(this.group);
     scene.add(this.group);
     // Four tightly bounded workshop lights use no shadow maps. Their
@@ -149,9 +147,6 @@ export class MonzonGarages {
         const b=obstacleWorldBox(bay.x,obstacle);
         solid(b.x,b.y,b.z,b.width,b.height,b.depth,.7);
       }
-      // Mechanics remain in side service stations; cars cannot phase through.
-      for(const station of mechanicStations(bay.x))
-        solid(station.x,1.02,station.z,.68,1.8,.68,.65);
     }
     this.group.userData.physicsInstalled = true;
     this.group.userData.colliderCount = solidCount;
@@ -190,10 +185,6 @@ export class MonzonGarages {
       box("open-pit-balcony-bracket",bay.x,GARAGE_HEIGHT-.08,GARAGE_FRONT_Z-1.55,
         .48,.43,3.0,metal);
     }
-    const people = createVisibleSpectators(monzonPitSpectatorPositions(),"monzon-pit-visible-public",true,true);
-    this.group.add(people);
-    this.group.userData.pitSpectators = people.userData.people;
-    this.group.userData.pitSpectatorDrawCalls = people.userData.drawCalls;
     this.group.userData.drivableGarages = MONZON_PIT_GARAGES.length;
   }
 

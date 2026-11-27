@@ -3,7 +3,6 @@ import { makeRng } from "../core/mathx";
 import { distanceToTrack, type TerrainField } from "./terrain";
 import type { Track } from "./track";
 import {
-  createVisibleSpectators,
   type SpectatorPosition
 } from "./monzonSpectatorTerraces";
 
@@ -162,8 +161,6 @@ export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField
         });
       }
     }
-    const audience=createVisibleSpectators(people,`suzaka-public-sector-${sector+1}`,true);
-    group.add(audience);
     const front=stand.offset - 1.8;
     const gx=stand.anchor.x+stand.right.x*stand.side*front;
     const gz=stand.anchor.z+stand.right.z*stand.side*front;
@@ -198,7 +195,7 @@ export function createSuzakaPublicStands(track: Track, ground: Pick<TerrainField
       lamp.quaternion.copy(transform);
       group.add(lamp);
     }
-    group.userData.people=people.length;
+    group.userData.people=0;
     group.userData.minimumDistanceToTrack=stand.clearance;
     group.userData.worldPosition=[sx,base,sz];
     root.add(group);

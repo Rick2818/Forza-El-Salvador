@@ -6,7 +6,6 @@ import { monzonPitSpectatorPositions, monzonGrandstandSpectatorPositions,
 import { GARAGE_HEIGHT, GARAGE_FRONT_Z } from "./monzonPitAccess";
 import {
   planSuzakaPublicStands, inSuzakaPublicStand, createSuzakaPublicStands,
-  SUZAKA_PUBLIC_TOTAL, SUZAKA_PUBLIC_STAND_ROWS, SUZAKA_PUBLIC_STAND_COLUMNS
 } from "./suzakaPublicStands";
 import { distanceToTrack } from "./terrain";
 
@@ -51,20 +50,12 @@ describe("Visible spectators in Monzón and Suzaka", () => {
     }
   });
 
-  it("renders 2560 GPU-animated human-shaped Suzaka fans in eight visible rows per stand", () => {
+  it("keeps the four Suzaka stands without any audience meshes", () => {
     const track = suzaka();
     const group = createSuzakaPublicStands(track,{heightAt:()=>-.14});
-    expect(SUZAKA_PUBLIC_TOTAL).toBe(2560);
-    expect(SUZAKA_PUBLIC_STAND_ROWS).toBe(8);
-    expect(SUZAKA_PUBLIC_STAND_COLUMNS).toBe(80);
-    expect(group.userData.people).toBe(2560);
     expect(group.userData.stands).toBe(4);
     for(const stand of group.children){
-      expect(stand.userData.people).toBe(640);
-      expect(stand.children.some(obj=>obj.name.includes("public-sector-"))).toBe(true);
-      const audience=stand.children.find(obj=>obj.name.includes("public-sector-")) as {userData:Record<string, unknown>};
-      expect(audience.userData.drawCalls).toBe(3);
-      expect(audience.userData.people).toBe(640);
+      expect(stand.children.some(obj=>obj.name.includes("public-sector-"))).toBe(false);
     }
   });
 });
