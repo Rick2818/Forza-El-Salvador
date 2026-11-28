@@ -1,9 +1,11 @@
+import { fbm } from "./terrain";
 // Minimal Track class for Horizon El Salvador.
 // Provides procedural circuit generation + MCP Pitstop integration.
 // MCP data can be loaded via pitstop.getCircuits() from src/integrations/pitstop.ts.
 
 import * as THREE from "three";
 import { OFFROAD_CIRCUIT, offroadElevation, offroadSectorAt } from "./offroadPrototype";
+import { createOffroadStones, offroadBankGeometry } from "./offroadScenery";
 import { addMonzonRoadDetails } from "./monzonRoadDetails";
 import { monzonPitBarrierGap } from "./monzonPitAccess";
 import { suzakaPitBarrierGap, suzakaPitViewingWall, SUZAKA_PIT_LOW_BARRIER_HEIGHT } from "./suzakaPitAccess";
@@ -353,7 +355,12 @@ export class Track {
     for (let i=0;i<n;i++) {
       const p = this.samples[i], r = this.rights[i];
       const sector = offroadSectorAt(this.progress(i));
-      const color = new THREE.Color(sector.surface === "dirt" ? 0x8b6848 : sector.surface === "mud" ? 0x58402d : 0x46382d);
+      // Blend neighbouring sectors so dirt never changes to mud in a hard line.
+      const color = new THREE.Color(0, 0, 0);
+      for (let d = -18; d <= 18; d += 6) {
+        const s = offroadSectorAt(this.progress((i + d + n) % n));
+        color.add(new THREE.Color(s.surface === "dirt" ? 0x8b6848 : s.surface === "mud" ? 0x58402d : 0x46382d).multiplyScalar(1 / 7));
+      }
       // Smooth continuous shallow ruts, independent of the surface boundary.
       const t = i/n * 2*Math.PI;
       for (let j=0;j<=cols;j++) {
@@ -362,7 +369,9 @@ export class Track {
         const ripple = .035*Math.sin(25*t + lateral*.7) + .025*Math.cos(17*t-lateral);
         pos.push(p.x+r.x*lateral, p.y + .025 - rut + ripple, p.z+r.z*lateral);
         const shade=1-.32*Math.exp(-((Math.abs(lateral)-1.0)**2)/.32);
-        colors.push(color.r*shade,color.g*shade,color.b*shade);
+        const x=pos[pos.length-3], z=pos[pos.length-1];
+        const grain=(sector.surface==="puddle"?.9:1)*(.68+.64*fbm(x*.45,z*.45,3));
+        colors.push(color.r*shade*grain,color.g*shade*grain,color.b*shade*grain);
         uv.push((p.x+r.x*lateral)/5,(p.z+r.z*lateral)/5);
       }
     }
@@ -393,12 +402,14 @@ export class Track {
     for(let i=0;i<n;i++){
       const next=(i+1)%n;
       if(offroadSectorAt(this.progress(i)).surface!=="puddle" ||
-         offroadSectorAt(this.progress(next)).surface!=="puddle") continue;
+         offroadSectorAt(this.progress(next)).surface!=="puddle" ||
+         i%34>=19) continue;
       const offset=wetPos.length/3;
       for(const k of [i,next]){
         const p=this.samples[k], r=this.rights[k];
         const t=k/n*2*Math.PI;
-        const width=1.5+.65*Math.sin(t*13)+.3*Math.cos(t*27);
+        // Taper both ends of each separate pool.
+        const width=(1.5+.65*Math.sin(t*13)+.3*Math.cos(t*27))*Math.sin(Math.PI*((i%34)+(k===i?.15:1.15))/19.4);
         for(const side of [-1,1]){
           const d=side*width+.4*Math.sin(t*19);
           wetPos.push(p.x+r.x*d,p.y+.095,p.z+r.z*d);
@@ -409,11 +420,15 @@ export class Track {
     const wetGeo=new THREE.BufferGeometry();
     wetGeo.setAttribute("position",new THREE.Float32BufferAttribute(wetPos,3));
     wetGeo.setIndex(wetIdx);wetGeo.computeVertexNormals();
-    const wet=new THREE.Mesh(wetGeo,new THREE.MeshStandardMaterial({
-      color:0x493a29,roughness:.38,metalness:0,
-      envMapIntensity:.35,side:THREE.DoubleSide
-    }));
+    // Opaque brown water: no mirror-blue sky reflection, and cheaper to shade.
+    const wet=new THREE.Mesh(wetGeo,new THREE.MeshLambertMaterial({color:0x4b3922,side:THREE.DoubleSide}));
     wet.name="offroad-muddy-puddles";wet.receiveShadow=true;this.group.add(wet);
+    const bank=new THREE.Mesh(offroadBankGeometry(this),new THREE.MeshLambertMaterial({vertexColors:true,map}));
+    bank.name="offroad-embankment";
+    const bankPos=bank.geometry.getAttribute("position"),bankUv:number[]=[];
+    for(let i=0;i<bankPos.count;i++)bankUv.push(bankPos.getX(i)/7,bankPos.getZ(i)/7);
+    bank.geometry.setAttribute("uv",new THREE.Float32BufferAttribute(bankUv,2));
+    this.group.add(bank,createOffroadStones(this));
   }
 
   /** Ribbon that follows the centreline between two lateral offsets. */
@@ -645,7 +660,15 @@ export class Track {
       );
     }
 
-    if (offroad) return; // no invisible race barriers in the engineering prototype
+    if (offroad) {
+      // The mountain shoulders are solid too; still no invisible race barriers.
+      const bank = (this.group.getObjectByName("offroad-embankment") as THREE.Mesh).geometry;
+      world.createCollider(RAPIER.ColliderDesc.trimesh(
+        new Float32Array(bank.getAttribute("position").array as ArrayLike<number>),
+        new Uint32Array(bank.index!.array as ArrayLike<number>)).setFriction(.8),
+        world.createRigidBody(RAPIER.RigidBodyDesc.fixed()));
+      return;
+    }
     if (this.circuit.id === "suzaka") {
       // Thick, overlapping CCD-compatible walls on the ENTIRE circuit.
       // The earlier zero-thickness trimesh could be crossed at high velocity,

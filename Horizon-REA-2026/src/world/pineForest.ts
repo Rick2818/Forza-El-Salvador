@@ -60,7 +60,7 @@ export class PineForest {
  private refresh=1;
  private detailLevels: (0|1|2)[]=[];
  private lastCenter=new THREE.Vector3(Infinity,Infinity,Infinity);
- constructor(scene:THREE.Scene,track:Track,ground:TerrainField) {
+ constructor(scene:THREE.Scene,track:Track,ground:Pick<TerrainField,"heightAt">) {
   this.group.name='suzaka-pine-forest';scene.add(this.group);
   this.placements=pinePlacements(track,ground);
   this.detailLevels=this.placements.map(()=>2);

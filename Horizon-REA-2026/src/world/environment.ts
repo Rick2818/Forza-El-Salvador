@@ -1,4 +1,5 @@
 import { PineForest } from "./pineForest";
+import { offroadGround } from "./offroadScenery";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Track } from "./track";
@@ -175,8 +176,11 @@ export class Environment {
       }
     } else if (track.circuit.id === "el-imposible-4x4") {
       // Use the existing natural mountain mesh instead of the blue night silhouettes.
-      scene.add(createNaturalMountainRange(track,true));
-      scene.fog = new THREE.FogExp2(0xb7cddd,.0008);
+      scene.add(createNaturalMountainRange(track));
+      this.forest=new PineForest(scene,track,offroadGround(track,this.terrain));
+      this.forest.group.name="offroad-pine-forest";
+      this.pendingAssets.push(this.forest.ready.catch(error=>console.warn("[Horizon] Pine forest could not load",error)));
+      scene.fog = new THREE.FogExp2(0xb7cddd,.00045);
     } else {
       this.buildRidges(scene);
     }
