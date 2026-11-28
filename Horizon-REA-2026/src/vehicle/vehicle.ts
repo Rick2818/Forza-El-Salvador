@@ -310,7 +310,10 @@ export class Vehicle {
       // stalled Ferrari/Porsche around 197 mph and Bugatti around 224 mph.
       // Absolute speed remains bounded by the post-step governor.
       const limiter = 1 - Math.pow(clamp(absSpeed / this.tuning.topSpeed, 0, 1), 3) * .36;
-      engineForce = Math.min(total * limiter * grip, p.maxEngineForce * power);
+      // Mud and puddles still slide (wheel friction below), but must not
+      // starve a 4x4 of drive until it stalls or rolls back on a climb.
+      const driveGrip = this.offroadSector && this.supportsFourWheelDrive ? Math.max(grip, .85) : grip;
+      engineForce = Math.min(total * limiter * driveGrip, p.maxEngineForce * power);
       // On a straight, compensate aero drag near 350-504 MPH WITHOUT boosting
       // launches, continuous steering or a slide. Restore the previous stable
       // per-brand power levels for corners and AI-driving.
@@ -390,7 +393,7 @@ export class Vehicle {
     const vel = this.body.linvel();
     const planar = Math.hypot(vel.x, vel.z);
     if (planar > 0.5) {
-      const terrainDrag = this.offroadSector && this.supportsFourWheelDrive ? this.body.mass() * 9.81 * this.offroadSector.resistance * .22 * Math.min(1,planar/3) : 0;
+      const terrainDrag = this.offroadSector && this.supportsFourWheelDrive ? this.body.mass() * 9.81 * this.offroadSector.resistance * .12 * Math.min(1,planar/3) : 0;
       const d = dragForce(planar) + terrainDrag;
       this.body.addForce({ x: (-vel.x / planar) * d, y: 0, z: (-vel.z / planar) * d }, true);
     }
