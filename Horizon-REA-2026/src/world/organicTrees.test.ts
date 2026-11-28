@@ -27,7 +27,7 @@ describe("Horizon: vegetación orgánica en ambos circuitos", () => {
   });
 
   it("preserva el acceso de pits y el presupuesto de instancias de Monzón", () => {
-    expect(MONZON_TREE_BUDGET).toBe(460);
+    expect(MONZON_TREE_BUDGET).toBe(230);
     expect(monzonTreePlacementAllowed(150, 35)).toBe(false);
     expect(monzonTreePlacementAllowed(310, -65)).toBe(false);
     expect(monzonTreePlacementAllowed(850, 115)).toBe(true);

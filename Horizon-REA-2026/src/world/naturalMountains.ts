@@ -6,8 +6,8 @@ import type { Track } from "./track";
  * sine-wave rings. Geometry is built once, after the live circuit is known.
  * Metres throughout. It is purely background scenery: no track collisions. */
 export const MOUNTAIN_LAYER_COUNT = 3;
-export const MOUNTAIN_ANGULAR_DIVISIONS = 256;
-export const MOUNTAIN_RADIAL_DIVISIONS = 26;
+export const MOUNTAIN_ANGULAR_DIVISIONS = 160;
+export const MOUNTAIN_RADIAL_DIVISIONS = 18;
 
 export interface NaturalMountainLayout {
   centerX:number;

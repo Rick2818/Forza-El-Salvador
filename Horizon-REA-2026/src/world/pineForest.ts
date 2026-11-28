@@ -21,7 +21,7 @@ export interface PinePlacement {x:number; y:number; z:number; height:number; wid
 export function pinePlacements(track:Track, ground:Pick<TerrainField,'heightAt'>):PinePlacement[] {
  const random=makeRng(28182026), trees:PinePlacement[]=[], occupied=new Map<string,PinePlacement[]>();
  const stands=planSuzakaPublicStands(track);
- for(let anchor=0;anchor<140;anchor++) {
+ for(let anchor=0;anchor<85;anchor++) {
   const index=Math.floor(random()*track.samples.length),p=track.sampleAt(index),right=track.rightAt(index);
   const side=random()<.5?-1:1, offset=30+random()*125;
   for(let i=0;i<7;i++) {

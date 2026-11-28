@@ -5,10 +5,10 @@ import type { TerrainField } from "./terrain";
 import { buildBroadleaf, createBarkTexture, createBroadleafTexture } from "./vegetation";
 import { upgradeMonzonTreesFromBlender } from "./monzonBlenderTrees";
 
-/** Keep the original positions/density, but replace faceted blobs with actual
+/** Seeded positions (half the former density, for integrated GPUs) with actual
  * branching skeletons and hundreds of alpha-cut leaves per crown. Only four
  * instanced draw calls regardless of the number of trees. */
-export const MONZON_TREE_BUDGET = 460;
+export const MONZON_TREE_BUDGET = 230;
 
 export function monzonTreePlacementAllowed(x: number, z: number): boolean {
   // Preserve the clear approach to pit entrance, garages, grandstands and
